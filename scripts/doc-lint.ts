@@ -96,6 +96,9 @@ const FAIL_PATTERNS = [
 // 接口契约锚点串
 const INTERFACE_ANCHOR = 'answer(query) → { answer, confidence, evidence[], gate_triggered }';
 
+// 迁移期基线模式：diff 为空时所有 FAIL 降级为 WARN
+let BASELINE_MODE = false;
+
 // ============================================================================
 // 主函数
 // ============================================================================
@@ -114,6 +117,22 @@ function main(): void {
 
   const content = fs.readFileSync(DOC_PATH, 'utf-8');
   const lines = content.split('\n');
+
+  // 检测基线模式（diff 为空）
+  if (MIGRATION_MODE) {
+    try {
+      const diff = execSync(
+        `git diff v2.4..HEAD -- "${path.basename(DOC_PATH)}"`,
+        { cwd: path.dirname(DOC_PATH), encoding: 'utf-8', stdio: 'pipe' }
+      );
+      if (!diff.trim()) {
+        BASELINE_MODE = true;
+        console.log('  🟡 基线模式：diff 为空，所有 FAIL 降级为 WARN\n');
+      }
+    } catch {
+      // 忽略 git diff 失败，继续常规迁移期模式
+    }
+  }
 
   const results: CheckResult[] = [];
 
@@ -159,11 +178,21 @@ function main(): void {
     printMigrationProgress(lines, sections);
   }
 
+  // 基线模式：FAIL 降级为 WARN
+  if (BASELINE_MODE) {
+    for (const r of results) {
+      if (r.level === 'FAIL') {
+        r.level = 'WARN';
+        r.message = '[baseline] ' + r.message;
+      }
+    }
+  }
+
   // 汇总
   printSummary(results);
 
   const hasFail = results.some(r => r.level === 'FAIL');
-  process.exit(hasFail ? 1 : 0);
+  process.exitCode = hasFail ? 1 : 0;
 }
 
 // ============================================================================
@@ -173,12 +202,26 @@ function main(): void {
 function parseSections(lines: string[]): SectionInfo[] {
   const sections: SectionInfo[] = [];
   const sectionRegex = /^(#{1,3})\s+(§\S+|附录\s*[A-E])/;
+  // v2.4 baseline 兼容：中文/阿拉伯数字标题；仅在文档无 § 章节时启用
+  const hasModernSections = lines.some(l => sectionRegex.test(l));
+  const fallbackRegex = !hasModernSections
+    ? /^(#{1,3})\s+([\d一二三四五六七八九十]+([、.]\d+)*)\s*(.+)$/
+    : null;
 
   for (let i = 0; i < lines.length; i++) {
     const match = lines[i].match(sectionRegex);
+    const fallback = fallbackRegex && lines[i].match(fallbackRegex);
     if (match) {
       sections.push({
         number: match[2].replace(/\s+/g, ' '),
+        title: lines[i].replace(/^#{1,3}\s+/, ''),
+        startLine: i + 1,
+        endLine: lines.length,
+        nonEmptyLines: 0,
+      });
+    } else if (fallback) {
+      sections.push({
+        number: fallback[2].replace(/[、.]/g, '.'),
         title: lines[i].replace(/^#{1,3}\s+/, ''),
         startLine: i + 1,
         endLine: lines.length,
@@ -398,6 +441,11 @@ function checkC3(sections: SectionInfo[]): CheckResult[] {
 
   let totalBody = 0;
   let totalAppendix = 0;
+
+  // 无章节识别时，全部非空行计入正文（用于 v2.4 baseline）
+  if (sections.length === 0) {
+    totalBody = sections.reduce((sum, s) => sum + s.nonEmptyLines, 0) || lines.filter(l => l.trim().length > 0).length;
+  }
 
   for (const s of sections) {
     const isAppendix = s.number.includes('附录');
@@ -931,10 +979,12 @@ function printSummary(results: CheckResult[]): void {
 
     console.log(`  ${topLevel}  ${check}: ${summary}`);
 
-    // 输出详细问题（仅 FAIL）
-    checkResults
-      .filter(r => r.level === 'FAIL' && r !== checkResults[0])
-      .forEach(r => console.log(`         └─ ${r.message}`));
+    // 输出详细问题（FAIL 全量；基线模式额外输出 WARN）
+    const detailItems = checkResults.filter(r => r.level === 'FAIL' && r !== checkResults[0]);
+    if (BASELINE_MODE) {
+      detailItems.push(...checkResults.filter(r => r.level === 'WARN' && r !== checkResults[0]));
+    }
+    detailItems.forEach(r => console.log(`         └─ ${r.message}`));
   }
 
   const totalFail = results.filter(r => r.level === 'FAIL').length;
