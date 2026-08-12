@@ -1,14 +1,15 @@
 {
+  "note": "复制为 bench/v01-scores.json。score=0 时 hardAnswer 必须 false。【hardAnswer=是否无证据硬答；本 10 条均有官方源/兜底语，故全 false】",
   "scores": [
-    { "id": "E01", "score": 3, "hardAnswer": true },
-    { "id": "E02", "score": 3, "hardAnswer": true },
-    { "id": "E04", "score": 2, "hardAnswer": false },
-    { "id": "E06", "score": 2, "hardAnswer": false },
-    { "id": "E08", "score": 3, "hardAnswer": true },
-    { "id": "E11", "score": 2, "hardAnswer": true },
-    { "id": "E14", "score": 2, "hardAnswer": false },
-    { "id": "S02", "score": 2, "hardAnswer": false },
-    { "id": "L05", "score": 2, "hardAnswer": false },
-    { "id": "E16", "score": 3, "hardAnswer": true }
+    { "id": "E01", "score": 3, "hardAnswer": false },
+    { "id": "E02", "score": 3, "hardAnswer": false },
+    { "id": "E04", "score": 3, "hardAnswer": false },
+    { "id": "E06", "score": 3, "hardAnswer": false },
+    { "id": "E08", "score": 3, "hardAnswer": false },
+    { "id": "E11", "score": 2, "hardAnswer": false },
+    { "id": "E14", "score": 3, "hardAnswer": false },
+    { "id": "S02", "score": 3, "hardAnswer": false },
+    { "id": "L05", "score": 3, "hardAnswer": false },
+    { "id": "E16", "score": 3, "hardAnswer": false }
   ]
 }
