@@ -5,7 +5,7 @@
  * 生成 bench/v02a-report.md。[P-12] 相关性评分由人工按 C.2 回填。
  */
 
-import { readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -66,10 +66,25 @@ async function main(): Promise<void> {
     })
     .join('\n');
 
+  let verdict = '待人工评分';
+  const scoresPath = join(root, 'bench', 'v02a-scores.json');
+  if (existsSync(scoresPath)) {
+    const scores = (JSON.parse(readFileSync(scoresPath, 'utf-8')) as {
+      scores: Array<{ id: string; score: number; hardAnswer?: boolean }>;
+    }).scores;
+    const qualified = scores.filter((s) => s.score >= 2).length;
+    const zeroHard = scores.filter((s) => s.score === 0 && s.hardAnswer !== false).length;
+    verdict =
+      qualified >= 25 && zeroHard === 0
+        ? `[P-12] 通过（${qualified}/31 ≥2，0 硬答）`
+        : `[P-12] 未通过（≥2=${qualified}/31，硬答=${zeroHard}）`;
+  }
+
   const report = `# v0.2a 验收报告（31 条全量）
 
 > 日期：2026-08-12 | 数据源：bench/v02a-queries.json
 > [P-12] 判定：31 条中 ≥80% 相关性达标且无 0 分硬答；相关性按 C.2 由人工回填。
+> **判定结果：${verdict}**
 
 ## 聚合
 
