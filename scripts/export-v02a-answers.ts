@@ -52,6 +52,15 @@ for (const s of scoreRows) {
   relByQuery.set(s.query, entry);
 }
 
+const v01ScoresPath = join(root, 'bench', 'v01-scores.json');
+const v01ById = new Map<string, { score: number | null; hardAnswer?: boolean }>();
+if (existsSync(v01ScoresPath)) {
+  const v01 = (JSON.parse(readFileSync(v01ScoresPath, 'utf-8')) as {
+    scores: Array<{ id: string; score: number | null; hardAnswer?: boolean }>;
+  }).scores;
+  for (const s of v01) v01ById.set(s.id, s);
+}
+
 const dbPath = join(root, 'data', 'memory.db');
 if (!existsSync(dbPath)) {
   console.error('未找到 data/memory.db，请先运行 npm run bench:v02a');
@@ -76,12 +85,14 @@ db.close();
 const sections = rows
   .map((r) => {
     const rel = relByQuery.get(r.query) ?? {};
+    const v01 = v01ById.get(r.id);
     return `## ${r.id}（${r.intent}）
 
 - query：${r.query}
 - confidence：${r.confidence.toFixed(2)}
 - 引擎相关性参考：Bocha=${rel.bocha ?? '-'} / AnySearch=${rel.anysearch ?? '-'} / Tavily=${rel.tavily ?? '-'}
-- 相关性(0-3)：____
+- v0.1 复用分：${v01 ? `${v01.score ?? '未填'}（请复核 v0.2a 新答案）` : '无（新评）'}
+- 相关性(0-3)：${v01 ? '____（复核后如需调整请改）' : '____'}
 
 ${r.answer}
 `;
@@ -99,8 +110,13 @@ ${sections}
 
 writeFileSync(join(root, 'bench', 'v02a-scoring-worksheet.md'), md, 'utf-8');
 const example = {
-  note: '复制为 v02a-scores.json 后按附录 C.2 回填 31 条相关性分（0-3 整数）。score=0 时必须确认 hardAnswer=false。',
-  scores: rows.map((r) => ({ id: r.id, score: null, hardAnswer: false })),
+  note: '复制为 v02a-scores.json。前 10 条已带入 v0.1 复用分（请复核 v0.2a 新答案），其余 21 条按附录 C.2 新评（0-3 整数）。score=0 时必须确认 hardAnswer=false。',
+  scores: rows.map((r) => {
+    const v01 = v01ById.get(r.id);
+    return v01
+      ? { id: r.id, score: v01.score ?? null, hardAnswer: v01.hardAnswer ?? false }
+      : { id: r.id, score: null, hardAnswer: false };
+  }),
 };
 writeFileSync(
   join(root, 'bench', 'v02a-scores.example.json'),
