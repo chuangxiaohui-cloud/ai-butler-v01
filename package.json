@@ -17,6 +17,7 @@
     "score:v02a": "tsx scripts/score-v02a.ts",
     "worksheet:v02a": "tsx scripts/export-v02a-answers.ts",
     "migrate:memorycore": "tsx scripts/migrate-to-memorycore.ts",
+    "distill": "tsx scripts/distill-worker.ts",
     "test": "node --test dist/**/*.test.js"
   },
   "keywords": [

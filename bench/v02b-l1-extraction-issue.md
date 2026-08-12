@@ -1,6 +1,6 @@
 # v0.2b L1 提取质量问题记录
 
-> 日期：2026-08-13｜状态：遗留待调（不阻塞 L0 写入与主对话）
+> 日期：2026-08-13｜状态：**已缓解（项目侧 distill worker 落地，E6）**
 
 ## 现象
 
@@ -49,6 +49,13 @@
 | C | 接受现状：MemoryCore 蒸馏仅对强信号（明确指令/健康禁忌等）生效，偏好类弱信号不进 L1 | 记忆价值打折，成熟度依赖人工反馈 |
 
 推荐 B：保持 DeepSeek 单栈，L0 提取可控，且复用已完成的 ExperienceManager。
+
+## 落地（方案 B，2026-08-13）
+
+- `src/memory/distill.ts`：DeepSeek + 本项目中文 prompt，输出 persona/episodic/instruction + keywords。
+- `scripts/distill-worker.ts`：从 `data/memory.db` L0 提取并写入 ExperienceManager（幂等 id `l0:<rowid>:<idx>`）。
+- 实测：全量 137 条 L0 → 191 条记忆，成功 130 条。
+- MemoryCore 内置 L1 不作为主路径；E6 已登记，复验门为 MemoryCore 适配后评估回切。
 
 ## 影响
 

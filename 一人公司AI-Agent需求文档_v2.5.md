@@ -1651,6 +1651,21 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 
 </details>
 
+### 2026-08-13（L1 蒸馏实现偏离 E6）
+
+- **偏离项**：§8.1.4 L1/L2 蒸馏由 MemoryCore 内置 pipeline 承担；因 DeepSeek 与默认 prompt 不兼容，v0.2b 采用项目侧 distill worker（DeepSeek + 本项目中文 prompt）从 L0 提取，写入 ExperienceManager。
+- **状态**：provisional@2026-08-13。
+- **依据**：DeepSeek chat/reasoner 对中文偏好提取实测返回空；few-shot/规则不稳定（bench/v02b-l1-extraction-issue.md）。
+- **落地**：`npm run distill` 全量 L0 蒸馏完成（详见下方），成功率高；MemoryCore 内置 L1 不作为主路径。
+- **复验门**：MemoryCore prompt 或模型适配后评估回切；回切时保留 ExperienceManager 数据。
+- affects: §8 | bench:B-20260813-01
+
+<details><summary>蒸馏数据（bench:B-20260813-01）</summary>
+
+全量 L0 137 条 → 提取记忆 191 条，成功 130 条，无提取 7 条。
+
+</details>
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
