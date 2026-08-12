@@ -11,6 +11,8 @@
     "classify:smoke": "tsx scripts/classify-smoke.ts",
     "search:smoke": "tsx scripts/search-smoke.ts",
     "score:v01": "tsx scripts/score-v01.ts",
+    "tavily:verify": "tsx scripts/verify-tavily.ts",
+    "gen:v02a": "tsx scripts/gen-v02a-queries.ts",
     "test": "node --test dist/**/*.test.js"
   },
   "keywords": [

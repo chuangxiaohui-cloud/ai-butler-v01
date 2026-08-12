@@ -111,6 +111,7 @@ export async function runSearchStage(
   const limits: Record<ProviderId, number> = {
     bocha: BOCHA_DAILY_LIMIT,
     anysearch: ANYSEARCH_DAILY_LIMIT,
+    tavily: 0, // v0.2a 启用月配额 [P-64] 后替换
   };
 
   const attempts: SearchAttempt[] = [];

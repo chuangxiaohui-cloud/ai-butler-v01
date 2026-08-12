@@ -1,0 +1,165 @@
+{
+  "meta": {
+    "version": "v0.2a",
+    "created_at": "2026-08-12",
+    "source": "附录 C.3（bench/raw_scores.csv）+ 历史基准脚本意图标注",
+    "count": 31
+  },
+  "queries": [
+    {
+      "id": "E01",
+      "query": "STM32F103C8T6 最大主频是多少",
+      "intent": "factual"
+    },
+    {
+      "id": "E02",
+      "query": "TPS5430 输入电压范围",
+      "intent": "factual"
+    },
+    {
+      "id": "E03",
+      "query": "IRF540N 最大漏极电流",
+      "intent": "factual"
+    },
+    {
+      "id": "E04",
+      "query": "STM32F103 ADC 多通道采集 踩坑 经验",
+      "intent": "experience"
+    },
+    {
+      "id": "E05",
+      "query": "ESP32 WiFi 频繁断连重连 解决方案",
+      "intent": "experience"
+    },
+    {
+      "id": "E06",
+      "query": "MOSFET 栅极驱动电阻 选型 注意事项",
+      "intent": "experience"
+    },
+    {
+      "id": "E07",
+      "query": "BUCK电路 电感选型 经验 踩坑",
+      "intent": "experience"
+    },
+    {
+      "id": "E08",
+      "query": "KiCad 和 Altium Designer 对比 优缺点",
+      "intent": "comparison"
+    },
+    {
+      "id": "E09",
+      "query": "STM32 vs ESP32 物联网方案选型",
+      "intent": "comparison"
+    },
+    {
+      "id": "E10",
+      "query": "Tauri 和 Electron 桌面应用框架对比",
+      "intent": "comparison"
+    },
+    {
+      "id": "E11",
+      "query": "Keil MDK JTAG 配置 步骤",
+      "intent": "how_to"
+    },
+    {
+      "id": "E12",
+      "query": "FreeCAD 导出 STL 格式",
+      "intent": "how_to"
+    },
+    {
+      "id": "E13",
+      "query": "LTspice 瞬态仿真 设置方法",
+      "intent": "how_to"
+    },
+    {
+      "id": "E14",
+      "query": "STM32 HAL_UART_Transmit 阻塞 卡死",
+      "intent": "troubleshooting"
+    },
+    {
+      "id": "E15",
+      "query": "Altium Designer DRC clearance constraint 报错",
+      "intent": "troubleshooting"
+    },
+    {
+      "id": "E16",
+      "query": "ESP32 I2C 通信失败 无应答",
+      "intent": "troubleshooting"
+    },
+    {
+      "id": "E17",
+      "query": "今天A股行情",
+      "intent": "news"
+    },
+    {
+      "id": "E18",
+      "query": "国产RISC-V芯片 最新进展",
+      "intent": "news"
+    },
+    {
+      "id": "E19",
+      "query": "Tauri 框架 架构 技术栈",
+      "intent": "github_analysis"
+    },
+    {
+      "id": "E20",
+      "query": "OpenWorker 项目 用途",
+      "intent": "github_analysis"
+    },
+    {
+      "id": "L01",
+      "query": "北京今天天气",
+      "intent": "factual"
+    },
+    {
+      "id": "L02",
+      "query": "感冒了能不能吃鸡蛋",
+      "intent": "factual"
+    },
+    {
+      "id": "L03",
+      "query": "周末北京周边自驾游 推荐路线",
+      "intent": "how_to"
+    },
+    {
+      "id": "L04",
+      "query": "最近有什么好看的电影推荐",
+      "intent": "news"
+    },
+    {
+      "id": "L05",
+      "query": "个人所得税 专项附加扣除 怎么申报",
+      "intent": "how_to"
+    },
+    {
+      "id": "S01",
+      "query": "劳动合同到期不续签 经济补偿金 标准",
+      "intent": "factual"
+    },
+    {
+      "id": "S02",
+      "query": "高血压 用药注意事项 禁忌",
+      "intent": "factual"
+    },
+    {
+      "id": "S03",
+      "query": "基金定投 和 一次性买入 哪个收益好",
+      "intent": "comparison"
+    },
+    {
+      "id": "X01",
+      "query": "Protel 怎么画四层板",
+      "intent": "how_to"
+    },
+    {
+      "id": "X02",
+      "query": "51单片机 和 STM32 区别",
+      "intent": "comparison"
+    },
+    {
+      "id": "X03",
+      "query": "嘉立创EDA 怎么导出Gerber",
+      "intent": "how_to"
+    }
+  ]
+}

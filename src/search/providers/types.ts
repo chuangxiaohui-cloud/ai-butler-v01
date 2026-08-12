@@ -2,7 +2,7 @@
  * 搜索引擎适配器统一类型（v0.1 仅 Bocha + AnySearch）
  */
 
-export type ProviderId = 'bocha' | 'anysearch';
+export type ProviderId = 'bocha' | 'anysearch' | 'tavily';
 
 export interface SearchResultItem {
   title: string;
@@ -18,6 +18,7 @@ export interface SearchProviderResult {
   results: SearchResultItem[];
   latencyMs: number;
   error?: string;
+  answer?: string;
 }
 
 export interface SearchProvider {
