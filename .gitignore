@@ -18,6 +18,14 @@ benchmarks/results/
 # WorkBuddy内部目录
 .workbuddy/
 
+# Node.js / TypeScript
+node_modules/
+dist/
+.env
+
+# 运行时数据（SQLite、JSONL、缓存）
+data/
+
 # 其他
 clean_*
 preview_*

@@ -1,0 +1,36 @@
+{
+  "name": "ai-butler-v01",
+  "version": "0.1.0",
+  "description": "一人公司 AI-Agent v0.1 MVP：搜索问答最小闭环",
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "build": "tsc",
+    "bench:v01": "tsx scripts/bench-v01.ts",
+    "test": "node --test dist/**/*.test.js"
+  },
+  "keywords": [
+    "ai-agent",
+    "search",
+    "mcp",
+    "tauri"
+  ],
+  "author": "zhxh",
+  "license": "MIT",
+  "dependencies": {
+    "@esbuild/win32-x64": "^0.28.2",
+    "better-sqlite3": "^12.0.0",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
