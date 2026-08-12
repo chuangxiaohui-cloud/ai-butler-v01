@@ -1,0 +1,23 @@
+# 3D模型/PCB相关
+C48971840/
+C5183894/
+*.step
+*.stl
+
+# 图片
+*.png
+*.jpg
+*.jpeg
+
+# Python脚本
+*.py
+
+# Benchmark原始数据（git跟踪bench/目录，不跟踪results/）
+benchmarks/results/
+
+# WorkBuddy内部目录
+.workbuddy/
+
+# 其他
+clean_*
+preview_*
