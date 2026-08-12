@@ -8,6 +8,7 @@ C5183894/
 *.png
 *.jpg
 *.jpeg
+!docs/*.png
 
 # Python脚本
 *.py
