@@ -10,6 +10,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 import { MemoryCoreStore } from '../src/memory/memorycore-store.js';
+import { clearSessionL0 } from '../src/memory/memorycore-cleaner.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dbPath = join(root, 'data', 'memory.db');
@@ -55,9 +56,10 @@ async function main(): Promise<void> {
   const sessions = [...new Set(rows.map((r) => r.session_id))];
   if (reset) {
     for (const session of sessions) {
-      await store.forget(session);
-      console.log(`已清空 session: ${session}`);
+      const r = clearSessionL0(session);
+      console.log(`已清空 session: ${session}（删除 ${r.deleted} 条 L0，文件 ${r.files.join(',') || '无'}）`);
     }
+    console.log('注意：局部清理可能残留 MemoryCore 索引；若校验失败请使用整目录重建（停 sidecar → 清空 memory-tdai → 启动）。');
   }
 
   let ok = 0;

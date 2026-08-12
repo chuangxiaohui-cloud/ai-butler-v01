@@ -36,7 +36,7 @@
 
 1. **L1 提取**：已缓解（E6）——项目侧 distill worker 全量 137 条 L0 → 191 条记忆；MemoryCore 内置 L1 不作为主路径。
 2. **[P-16]/[P-17] 维持 provisional**：正负例融合分重叠，见 `bench/v02a-rule2-calibration.md`。
-3. **MemoryCore delete 缺口**：`deleteL0BySession` 对 standalone 文件存储无效；`--reset` 迁移不可用，采用清空重建。后续可向 MemoryCore 反馈。
+3. **MemoryCore delete 缺口**：`deleteL0BySession` 只删 SQLite 表，JSONL 文件与内部索引未删；局部清理后查询仍返回旧数据，`--reset` 采用整目录重建（已验证 137/137）。排查结论见 `bench/v02b-memorycore-delete-issue.md`。
 4. **P-04/P-02 复验门**：WP11 冷调用 n≥30 后复核（E1/E2）。
 5. **Experience/Skill 集成**：模块已就绪，pipeline 注入经验到合成层待 v1.0 或回灌后接入。
 
