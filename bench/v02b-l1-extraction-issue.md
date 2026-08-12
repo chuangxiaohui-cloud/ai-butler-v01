@@ -28,6 +28,28 @@
 3. 换用 DeepSeek 其他模型（如 deepseek-reasoner）对比。
 4. 若为 MemoryCore 行为，考虑给 L1 提取注入中文 few-shot。
 
+## 排查结论（2026-08-13）
+
+已复现并验证：
+- 直接调用 DeepSeek（`deepseek-chat`/`deepseek-v4-flash`）与 MemoryCore 默认 L1 prompt：
+  对"用户明确陈述工具偏好"（含"以后我画板子都用 Altium Designer，不用 KiCad，打样走嘉立创"）
+  返回 `memories: []` 或误判为 episodic"比较"。
+- `deepseek-reasoner` 同样返回空。
+- 追加 few-shot 示例 / 强化规则：不稳定，模型仍常输出 episodic 或空。
+
+根因判断：DeepSeek 对 MemoryCore L1 prompt 的"宁缺毋滥"执行偏保守，且把"不用 X"误读为对比事件；
+默认 prompt 面向的模型行为与 DeepSeek 不匹配。
+
+## 候选方案（待决策）
+
+| 方案 | 做法 | 代价 |
+|---|---|---|
+| A | MemoryCore LLM 改用 OpenAI 系模型（如 gpt-4o-mini） | 需额外 key/成本；非 DeepSeek 单栈 |
+| B | 项目侧自研 L1 蒸馏兜底：DeepSeek + 本项目中文 prompt 从 L0 提取，写入 ExperienceManager（WP4），登记 E6 技术偏离 | MemoryCore L1/L2 不作为主路径；需实现 distill worker |
+| C | 接受现状：MemoryCore 蒸馏仅对强信号（明确指令/健康禁忌等）生效，偏好类弱信号不进 L1 | 记忆价值打折，成熟度依赖人工反馈 |
+
+推荐 B：保持 DeepSeek 单栈，L0 提取可控，且复用已完成的 ExperienceManager。
+
 ## 影响
 
 - L1/L2 蒸馏暂无法产出可复用记忆（Skill/Wiki 依赖受影响，WP4/WP5 评估时注意）。
