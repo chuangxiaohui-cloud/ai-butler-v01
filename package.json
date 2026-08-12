@@ -16,6 +16,7 @@
     "bench:v02a": "tsx scripts/bench-v02a.ts",
     "score:v02a": "tsx scripts/score-v02a.ts",
     "worksheet:v02a": "tsx scripts/export-v02a-answers.ts",
+    "migrate:memorycore": "tsx scripts/migrate-to-memorycore.ts",
     "test": "node --test dist/**/*.test.js"
   },
   "keywords": [
