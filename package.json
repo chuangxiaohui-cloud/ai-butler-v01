@@ -13,6 +13,9 @@
     "score:v01": "tsx scripts/score-v01.ts",
     "tavily:verify": "tsx scripts/verify-tavily.ts",
     "gen:v02a": "tsx scripts/gen-v02a-queries.ts",
+    "bench:v02a": "tsx scripts/bench-v02a.ts",
+    "score:v02a": "tsx scripts/score-v02a.ts",
+    "worksheet:v02a": "tsx scripts/export-v02a-answers.ts",
     "test": "node --test dist/**/*.test.js"
   },
   "keywords": [
