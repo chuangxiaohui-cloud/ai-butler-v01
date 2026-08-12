@@ -5,6 +5,7 @@
 
 import { join } from 'path';
 import { getCache, setCache, ttlForIntent } from '../cache.js';
+import { heartbeat } from '../heartbeat.js';
 import { logSearchRequest } from '../metrics.js';
 import type { QuotaStoreLike } from '../quota.js';
 import {
@@ -149,6 +150,7 @@ export async function runSearchStage(
       }
       try {
         const result = await provider.search(query);
+        heartbeat.record(provider.id, result.ok);
         attempts.push({
           provider: result.provider,
           ok: result.ok,
@@ -158,6 +160,7 @@ export async function runSearchStage(
         if (result.ok) collected.push(result);
         if (result.ok && result.answer) aiAnswers.push(result.answer);
       } catch (err) {
+        heartbeat.record(provider.id, false);
         attempts.push({
           provider: provider.id,
           ok: false,
