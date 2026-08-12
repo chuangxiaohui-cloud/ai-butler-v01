@@ -42,3 +42,28 @@ export class FileQuotaStore implements QuotaStoreLike {
     return true;
   }
 }
+
+export class FileMonthlyQuotaStore implements QuotaStoreLike {
+  constructor(private readonly filePath: string) {}
+
+  async take(key: string, limit: number): Promise<boolean> {
+    const month = new Date().toISOString().slice(0, 7);
+    let state: { month: string; counts: Record<string, number> } = { month, counts: {} };
+    try {
+      state = JSON.parse(readFileSync(this.filePath, 'utf-8')) as typeof state;
+    } catch {
+      // 首次使用或文件损坏
+    }
+    if (state.month !== month) state = { month, counts: {} };
+    const used = state.counts[key] ?? 0;
+    if (used >= limit) return false;
+    state.counts[key] = used + 1;
+    try {
+      mkdirSync(dirname(this.filePath), { recursive: true });
+      writeFileSync(this.filePath, JSON.stringify(state, null, 2), 'utf-8');
+    } catch {
+      // 配额文件写失败不阻塞
+    }
+    return true;
+  }
+}

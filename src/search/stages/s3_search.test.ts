@@ -20,6 +20,7 @@ class FakeProvider implements SearchProvider {
     readonly id: ProviderId,
     private readonly outcome: 'ok' | 'error' | 'timeout',
     private readonly items: SearchResultItem[] = [],
+    private readonly answer?: string,
   ) {}
 
   async search(query: string): Promise<SearchProviderResult> {
@@ -41,6 +42,7 @@ class FakeProvider implements SearchProvider {
       ok: this.items.length > 0,
       results: this.items,
       latencyMs: 1,
+      answer: this.answer,
     };
   }
 }
@@ -182,5 +184,56 @@ test('s3: 单引擎结果缓存标记 single', async () => {
   const parsed = JSON.parse(cached) as { engines: string; results: unknown[] };
   assert.equal(parsed.engines, 'single');
   assert.ok(Array.isArray(parsed.results));
+  clearCacheForTests();
+});
+
+test('s3: tavily 触发并联并收集 AI Answer', async () => {
+  clearCacheForTests();
+  const tavilyFake = new FakeProvider(
+    'tavily',
+    'ok',
+    [{ title: 't', url: 'https://tavily.example/1', content: 'c', provider: 'tavily' }],
+    'AI Answer 高置信软事实',
+  );
+  const r = await runSearchStage('q', {
+    intent: 'news',
+    providers: [okBocha, okAny],
+    quota: new FakeQuota(),
+    tavilyMonthlyQuota: new FakeQuota(),
+    tavily: { enabled: true, trigger: 'news' },
+  });
+  // 默认 providers 是 [bocha, anysearch]，tavily 需要注入才有实际 provider
+  const r2 = await runSearchStage('q', {
+    intent: 'news',
+    providers: [okBocha, okAny, tavilyFake],
+    quota: new FakeQuota(),
+    tavilyMonthlyQuota: new FakeQuota(),
+    tavily: { enabled: true, trigger: 'news' },
+  });
+  assert.equal(r2.aiAnswers.length, 1);
+  assert.equal(r2.aiAnswers[0], 'AI Answer 高置信软事实');
+  assert.equal(r2.attempts.some((a) => a.provider === 'tavily'), true);
+  assert.equal(r.aiAnswers.length, 0);
+  clearCacheForTests();
+});
+
+test('s3: tavily 月配额用尽则跳过', async () => {
+  clearCacheForTests();
+  const tavilyFake = new FakeProvider(
+    'tavily',
+    'ok',
+    [{ title: 't', url: 'https://tavily.example/1', content: 'c', provider: 'tavily' }],
+    'AI Answer',
+  );
+  const r = await runSearchStage('q', {
+    intent: 'news',
+    providers: [okBocha, okAny, tavilyFake],
+    quota: new FakeQuota(),
+    tavilyMonthlyQuota: new FakeQuota(new Set(['tavily'])),
+    tavily: { enabled: true, trigger: 'news' },
+  });
+  const tavilyAttempt = r.attempts.find((a) => a.provider === 'tavily');
+  assert.equal(tavilyAttempt?.quotaSkipped, true);
+  assert.equal(r.aiAnswers.length, 0);
   clearCacheForTests();
 });

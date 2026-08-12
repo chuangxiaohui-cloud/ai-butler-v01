@@ -11,6 +11,7 @@ import { defaultMemoryStore } from '../memory/store.js';
 import { getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
 import { applyRule3 } from './rule3.js';
+import { shouldTriggerTavily } from './tavily-trigger.js';
 import { prepareQuery } from './stages/s1_prepare.js';
 import { classifyQuery } from './stages/s2_classify.js';
 import { runSearchStage } from './stages/s3_search.js';
@@ -39,6 +40,7 @@ export interface PipelineDeps {
   providers?: SearchProvider[];
   quota?: QuotaStoreLike;
   memoryStore?: Pick<MemoryStore, 'put' | 'recall'>;
+  tavily?: { enabled?: boolean };
 }
 
 export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<AnswerResult> {
@@ -87,12 +89,17 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
   const rule3 = applyRule3(prepared.cleanQuery);
 
   // Stage 3：搜索执行（Bocha + AnySearch 并行）
+  const tavilyEnabled = deps.tavily?.enabled ?? false;
+  const tavilyTrigger = tavilyEnabled
+    ? shouldTriggerTavily(prepared.cleanQuery, classified.intent, rule3.serious)
+    : null;
   const search = await runSearchStage(prepared.cleanQuery, {
     intent: classified.intent,
     cacheKey: prepared.cacheKey,
     cachedValue: prepared.cachedValue,
     providers: deps.providers,
     quota: deps.quota,
+    tavily: { enabled: tavilyEnabled, trigger: tavilyTrigger },
   });
 
   // Stage 4：四过滤器 + 加权评分 + 规则① + 来源权威注入
@@ -119,6 +126,7 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
     llm: deps.llm,
     serious: rule3.serious,
     memoryNotes,
+    aiAnswers: search.aiAnswers,
   });
 
   // Stage 6：后处理 + L0 记忆写入

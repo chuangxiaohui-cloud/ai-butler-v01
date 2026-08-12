@@ -11,13 +11,17 @@ import {
   ANYSEARCH_DAILY_LIMIT,
   BOCHA_DAILY_LIMIT,
   FileQuotaStore,
+  FileMonthlyQuotaStore,
 } from '../quota.js';
 import { anysearchProvider } from '../providers/anysearch.js';
 import { bochaProvider } from '../providers/bocha.js';
+import { tavilyProvider } from '../providers/tavily.js';
 import type { ProviderId, SearchProvider, SearchProviderResult, SearchResultItem } from '../providers/types.js';
 import type { IntentKey } from './s2_classify.js';
+import type { TavilyTrigger } from '../tavily-trigger.js';
 
 const DEFAULT_BUDGET_MS = 5000; // [P-02]
+const TAVILY_MONTHLY_LIMIT = 1000; // [P-64]
 
 export interface SearchAttempt {
   provider: ProviderId;
@@ -34,6 +38,7 @@ export interface SearchStageResult {
   cacheEngines: 'both' | 'single' | null;
   degraded: boolean;
   elapsedMs: number;
+  aiAnswers: string[];
 }
 
 export interface SearchStageOptions {
@@ -44,6 +49,8 @@ export interface SearchStageOptions {
   budgetMs?: number;
   quota?: QuotaStoreLike;
   metricsLogPath?: string;
+  tavily?: { enabled?: boolean; trigger?: TavilyTrigger };
+  tavilyMonthlyQuota?: QuotaStoreLike;
 }
 
 interface CachedSearchValue {
@@ -82,7 +89,12 @@ export async function runSearchStage(
 ): Promise<SearchStageResult> {
   const start = Date.now();
   const quota = opts.quota ?? new FileQuotaStore(joinDataPath());
-  const providers = opts.providers ?? [bochaProvider, anysearchProvider];
+  const tavilyMonthlyQuota =
+    opts.tavilyMonthlyQuota ?? new FileMonthlyQuotaStore(joinDataPathMonthly());
+  const baseProviders = opts.providers ?? [bochaProvider, anysearchProvider];
+  const useTavily = opts.tavily?.enabled === true && Boolean(opts.tavily.trigger);
+  const providers =
+    useTavily && !opts.providers ? [...baseProviders, tavilyProvider] : baseProviders;
   const budgetMs = opts.budgetMs ?? DEFAULT_BUDGET_MS;
 
   const cached = parseCachedValue(opts.cachedValue ?? getCache(opts.cacheKey ?? ''));
@@ -105,6 +117,7 @@ export async function runSearchStage(
       cacheEngines: cached.engines,
       degraded: false,
       elapsedMs: Date.now() - start,
+      aiAnswers: [],
     };
   }
 
@@ -116,10 +129,14 @@ export async function runSearchStage(
 
   const attempts: SearchAttempt[] = [];
   let collected: SearchProviderResult[] = [];
+  const aiAnswers: string[] = [];
   const allSettled = Promise.allSettled(
     providers.map(async (provider) => {
       const attemptStart = Date.now();
-      const allowed = await quota.take(provider.id, limits[provider.id]);
+      const allowed =
+        provider.id === 'tavily'
+          ? await tavilyMonthlyQuota.take('tavily', TAVILY_MONTHLY_LIMIT)
+          : await quota.take(provider.id, limits[provider.id]);
       if (!allowed) {
         attempts.push({
           provider: provider.id,
@@ -139,6 +156,7 @@ export async function runSearchStage(
           error: result.error,
         });
         if (result.ok) collected.push(result);
+        if (result.ok && result.answer) aiAnswers.push(result.answer);
       } catch (err) {
         attempts.push({
           provider: provider.id,
@@ -190,9 +208,14 @@ export async function runSearchStage(
     cacheEngines: engines,
     degraded,
     elapsedMs: Date.now() - start,
+    aiAnswers,
   };
 }
 
 function joinDataPath(): string {
   return join(process.cwd(), 'data', 'search-quota.json');
+}
+
+function joinDataPathMonthly(): string {
+  return join(process.cwd(), 'data', 'tavily-monthly.json');
 }

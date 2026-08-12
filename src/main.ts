@@ -13,7 +13,7 @@ if (!arg || arg === '--help' || arg === '-h') {
   process.exit(arg ? 0 : 1);
 }
 
-pipeline(arg)
+pipeline(arg, { tavily: { enabled: true } })
   .then((result) => {
     console.log(JSON.stringify(result, null, 2));
   })

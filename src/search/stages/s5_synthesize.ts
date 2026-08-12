@@ -12,6 +12,7 @@ export interface SynthesizeOptions {
   llm?: LLMClient;
   serious?: boolean;
   memoryNotes?: string[];
+  aiAnswers?: string[];
 }
 
 export interface SynthesizeResult {
@@ -59,11 +60,18 @@ export async function synthesizeAnswer(
           .map((n) => `- ${n}`)
           .join('\n')}`
       : '';
+  const aiAnswerBlock =
+    (opts.aiAnswers ?? []).length > 0
+      ? `\n\nAI Answer（Tavily，高置信软事实候选，须优先核对）：\n${(opts.aiAnswers ?? [])
+          .slice(0, 2)
+          .map((a) => `- ${a.slice(0, 500)}`)
+          .join('\n')}`
+      : '';
   const messages = [
     { role: 'system' as const, content: buildSystemPrompt(opts.serious ?? false) },
     {
       role: 'user' as const,
-      content: `问题：${query}\n意图：${classified.intent}${memoryBlock}\n\n证据：\n${evidenceBlock}`,
+      content: `问题：${query}\n意图：${classified.intent}${memoryBlock}${aiAnswerBlock}\n\n证据：\n${evidenceBlock}`,
     },
   ];
 
