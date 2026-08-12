@@ -18,11 +18,18 @@ export interface QuotaStoreLike {
   take(key: string, limit: number): Promise<boolean>;
 }
 
+export function localDateString(d = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export class FileQuotaStore implements QuotaStoreLike {
   constructor(private readonly filePath: string) {}
 
   async take(key: string, limit: number): Promise<boolean> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateString();
     let state: QuotaState = { date: today, counts: {} };
     try {
       state = JSON.parse(readFileSync(this.filePath, 'utf-8')) as QuotaState;
@@ -47,7 +54,7 @@ export class FileMonthlyQuotaStore implements QuotaStoreLike {
   constructor(private readonly filePath: string) {}
 
   async take(key: string, limit: number): Promise<boolean> {
-    const month = new Date().toISOString().slice(0, 7);
+    const month = localDateString().slice(0, 7);
     let state: { month: string; counts: Record<string, number> } = { month, counts: {} };
     try {
       state = JSON.parse(readFileSync(this.filePath, 'utf-8')) as typeof state;

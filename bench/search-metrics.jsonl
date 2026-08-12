@@ -42,3 +42,65 @@
 {"ts":"2026-08-12T13:23:50.832Z","query":"Altium Designer 怎么画四层板","bocha_ms":305,"bocha_ok":true,"anysearch_ms":1270,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-12T13:24:01.843Z","query":"51单片机 和 STM32 区别","bocha_ms":262,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
 {"ts":"2026-08-12T13:24:12.587Z","query":"嘉立创EDA 怎么导出Gerber","bocha_ms":297,"bocha_ok":true,"anysearch_ms":3774,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:20:41.083Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":328,"bocha_ok":true,"anysearch_ms":4577,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:20:49.086Z","query":"TPS5430 输入电压范围","bocha_ms":286,"bocha_ok":true,"anysearch_ms":1244,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:20:56.054Z","query":"IRF540N 最大漏极电流","bocha_ms":201,"bocha_ok":true,"anysearch_ms":1224,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:21:05.989Z","query":"STM32F103 ADC 多通道采集 踩坑 经验","bocha_ms":240,"bocha_ok":true,"anysearch_ms":3939,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:21:18.320Z","query":"ESP32 WiFi 频繁断连重连 解决方案","bocha_ms":228,"bocha_ok":true,"anysearch_ms":3760,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:21:28.611Z","query":"MOSFET 栅极驱动电阻 选型 注意事项","bocha_ms":null,"bocha_ok":false,"anysearch_ms":1295,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:21:42.106Z","query":"BUCK电路 电感选型 经验 踩坑","bocha_ms":null,"bocha_ok":false,"anysearch_ms":4429,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:21:53.566Z","query":"KiCad 和 Altium Designer 对比 优缺点","bocha_ms":null,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:22:01.714Z","query":"STM32 vs ESP32 物联网方案选型","bocha_ms":null,"bocha_ok":false,"anysearch_ms":2130,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:22:14.712Z","query":"Tauri 和 Electron 桌面应用框架对比","bocha_ms":null,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:22:25.875Z","query":"Keil MDK JTAG 配置 步骤","bocha_ms":null,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:22:35.732Z","query":"FreeCAD 导出 STL 格式","bocha_ms":null,"bocha_ok":false,"anysearch_ms":4222,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:22:45.899Z","query":"LTspice 瞬态仿真 设置方法","bocha_ms":null,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:22:56.161Z","query":"STM32 HAL_UART_Transmit 阻塞 卡死","bocha_ms":null,"bocha_ok":false,"anysearch_ms":3066,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:23:06.873Z","query":"Altium Designer DRC clearance constraint 报错","bocha_ms":null,"bocha_ok":false,"anysearch_ms":3147,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:23:17.282Z","query":"ESP32 I2C 通信失败 无应答","bocha_ms":null,"bocha_ok":false,"anysearch_ms":4420,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:23:29.753Z","query":"今天A股行情","bocha_ms":null,"bocha_ok":false,"anysearch_ms":4244,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:23:38.840Z","query":"国产RISC-V芯片 最新进展","bocha_ms":null,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:23:47.743Z","query":"Tauri 框架 架构 技术栈","bocha_ms":null,"bocha_ok":false,"anysearch_ms":4374,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:23:56.549Z","query":"OpenWorker 项目 用途","bocha_ms":null,"bocha_ok":false,"anysearch_ms":3721,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:24:03.692Z","query":"北京今天天气","bocha_ms":null,"bocha_ok":false,"anysearch_ms":2982,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:24:10.183Z","query":"感冒了能不能吃鸡蛋","bocha_ms":null,"bocha_ok":false,"anysearch_ms":3740,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:24:19.684Z","query":"周末北京周边自驾游 推荐路线","bocha_ms":null,"bocha_ok":false,"anysearch_ms":4610,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:24:27.496Z","query":"最近有什么好看的电影推荐","bocha_ms":null,"bocha_ok":false,"anysearch_ms":2445,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:24:39.331Z","query":"个人所得税 专项附加扣除 怎么申报","bocha_ms":null,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true}
+{"ts":"2026-08-12T16:24:43.609Z","query":"劳动合同到期不续签 经济补偿金 标准","bocha_ms":null,"bocha_ok":false,"anysearch_ms":3243,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:24:53.601Z","query":"高血压 用药注意事项 禁忌","bocha_ms":null,"bocha_ok":false,"anysearch_ms":2825,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:25:02.600Z","query":"基金定投 和 一次性买入 哪个收益好","bocha_ms":null,"bocha_ok":false,"anysearch_ms":2081,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:25:10.245Z","query":"Altium Designer 怎么画四层板","bocha_ms":null,"bocha_ok":false,"anysearch_ms":3539,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:25:18.859Z","query":"51单片机 和 STM32 区别","bocha_ms":null,"bocha_ok":false,"anysearch_ms":2381,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:25:26.561Z","query":"嘉立创EDA 怎么导出Gerber","bocha_ms":null,"bocha_ok":false,"anysearch_ms":1808,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:26:43.757Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":293,"bocha_ok":true,"anysearch_ms":4608,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:26:49.131Z","query":"TPS5430 输入电压范围","bocha_ms":311,"bocha_ok":true,"anysearch_ms":1339,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:26:57.872Z","query":"IRF540N 最大漏极电流","bocha_ms":228,"bocha_ok":true,"anysearch_ms":4917,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:27:06.083Z","query":"STM32F103 ADC 多通道采集 踩坑 经验","bocha_ms":247,"bocha_ok":true,"anysearch_ms":4214,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:27:17.278Z","query":"ESP32 WiFi 频繁断连重连 解决方案","bocha_ms":229,"bocha_ok":true,"anysearch_ms":3664,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:27:27.449Z","query":"MOSFET 栅极驱动电阻 选型 注意事项","bocha_ms":255,"bocha_ok":true,"anysearch_ms":1812,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:27:36.750Z","query":"BUCK电路 电感选型 经验 踩坑","bocha_ms":226,"bocha_ok":true,"anysearch_ms":3149,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:27:49.551Z","query":"KiCad 和 Altium Designer 对比 优缺点","bocha_ms":235,"bocha_ok":true,"anysearch_ms":4146,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:27:59.511Z","query":"STM32 vs ESP32 物联网方案选型","bocha_ms":222,"bocha_ok":true,"anysearch_ms":4213,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:28:07.672Z","query":"Tauri 和 Electron 桌面应用框架对比","bocha_ms":244,"bocha_ok":true,"anysearch_ms":4133,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:28:17.875Z","query":"Keil MDK JTAG 配置 步骤","bocha_ms":243,"bocha_ok":true,"anysearch_ms":4109,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:28:28.486Z","query":"FreeCAD 导出 STL 格式","bocha_ms":241,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:28:34.420Z","query":"LTspice 瞬态仿真 设置方法","bocha_ms":244,"bocha_ok":true,"anysearch_ms":1709,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:28:45.069Z","query":"STM32 HAL_UART_Transmit 阻塞 卡死","bocha_ms":245,"bocha_ok":true,"anysearch_ms":4012,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:28:55.374Z","query":"Altium Designer DRC clearance constraint 报错","bocha_ms":238,"bocha_ok":true,"anysearch_ms":4264,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:29:04.470Z","query":"ESP32 I2C 通信失败 无应答","bocha_ms":226,"bocha_ok":true,"anysearch_ms":1533,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:29:12.968Z","query":"今天A股行情","bocha_ms":315,"bocha_ok":true,"anysearch_ms":3152,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:29:22.714Z","query":"国产RISC-V芯片 最新进展","bocha_ms":265,"bocha_ok":true,"anysearch_ms":4875,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:29:31.166Z","query":"Tauri 框架 架构 技术栈","bocha_ms":222,"bocha_ok":true,"anysearch_ms":3555,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:29:39.128Z","query":"OpenWorker 项目 用途","bocha_ms":239,"bocha_ok":true,"anysearch_ms":2002,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:29:48.350Z","query":"北京今天天气","bocha_ms":218,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:29:53.666Z","query":"感冒了能不能吃鸡蛋","bocha_ms":232,"bocha_ok":true,"anysearch_ms":1919,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:30:00.603Z","query":"周末北京周边自驾游 推荐路线","bocha_ms":266,"bocha_ok":true,"anysearch_ms":1864,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:30:07.390Z","query":"最近有什么好看的电影推荐","bocha_ms":304,"bocha_ok":true,"anysearch_ms":1943,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:30:15.891Z","query":"个人所得税 专项附加扣除 怎么申报","bocha_ms":220,"bocha_ok":true,"anysearch_ms":3375,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:30:26.636Z","query":"劳动合同到期不续签 经济补偿金 标准","bocha_ms":293,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-12T16:30:35.259Z","query":"高血压 用药注意事项 禁忌","bocha_ms":217,"bocha_ok":true,"anysearch_ms":1920,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:30:43.330Z","query":"基金定投 和 一次性买入 哪个收益好","bocha_ms":287,"bocha_ok":true,"anysearch_ms":1343,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:30:50.728Z","query":"Altium Designer 怎么画四层板","bocha_ms":260,"bocha_ok":true,"anysearch_ms":2391,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:31:01.405Z","query":"51单片机 和 STM32 区别","bocha_ms":225,"bocha_ok":true,"anysearch_ms":4759,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:31:12.811Z","query":"嘉立创EDA 怎么导出Gerber","bocha_ms":323,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"both"}
