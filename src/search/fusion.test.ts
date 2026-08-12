@@ -22,6 +22,24 @@ test('fusion: 实体过滤器丢弃不匹配型号', () => {
   assert.equal(r.items[0].result.url, 'https://a.com/1');
 });
 
+test('fusion: 实体过滤器不把 TPS5430DDA 当 TPS5430', () => {
+  const items = [
+    item({
+      url: 'https://lcsc.example/dda',
+      title: 'TPS5430DDA 中文资料',
+      content: 'TPS5430DDA 4.5-60V 参数 说明 设计 文档 示例 完整 内容 足够 长',
+    }),
+    item({
+      url: 'https://lcsc.example/5430',
+      title: 'TPS5430 输入电压范围',
+      content: 'TPS5430 输入电压 4.5-36V 参数 说明 设计 文档 示例 完整 内容 足够 长',
+    }),
+  ];
+  const r = fuseResults('TPS5430 输入电压范围', items, 'factual');
+  assert.equal(r.items.some((f) => f.result.url.includes('dda')), false);
+  assert.equal(r.items.some((f) => f.result.url.includes('5430')), true);
+});
+
 test('fusion: 跨引擎同 URL 去重', () => {
   const items = [
     item({ url: 'https://same.example/1', title: 'x', content: 'STM32F103C8T6 72MHz 主频 说明' }),

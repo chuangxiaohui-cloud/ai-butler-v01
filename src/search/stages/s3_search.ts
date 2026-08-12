@@ -200,6 +200,8 @@ export async function runSearchStage(
     bocha_ok: bochaAttempt?.ok ?? false,
     anysearch_ms: anyAttempt && !anyAttempt.quotaSkipped ? anyAttempt.latencyMs : null,
     anysearch_ok: anyAttempt?.ok ?? false,
+    bocha_quota_skipped: bochaAttempt?.quotaSkipped,
+    anysearch_quota_skipped: anyAttempt?.quotaSkipped,
     timeout: timedOut,
     degraded,
     cacheEngines: engines ?? undefined,

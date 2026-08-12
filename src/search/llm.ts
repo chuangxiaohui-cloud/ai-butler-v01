@@ -70,12 +70,12 @@ export function createLightClient(): LLMClient {
   const apiKey =
     process.env.DEEPSEEK_API_KEY?.trim() || process.env.LLM_PRIMARY_API_KEY?.trim();
   if (!apiKey) throw new Error('未配置 LLM API Key（DEEPSEEK_API_KEY 或 LLM_PRIMARY_API_KEY）');
-  const timeoutMs = Number(process.env.LLM_CLASSIFY_TIMEOUT_MS ?? '500');
+  const timeoutMs = Number(process.env.LLM_CLASSIFY_TIMEOUT_MS ?? '2000');
   return new OpenAiCompatibleClient({
     baseUrl: process.env.LLM_PRIMARY_BASE_URL?.trim() || 'https://api.deepseek.com/v1',
     apiKey,
     model: process.env.LLM_LIGHT_MODEL?.trim() || 'deepseek-chat',
-    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 500,
+    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 2000,
   });
 }
 

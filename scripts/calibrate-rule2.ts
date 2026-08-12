@@ -10,6 +10,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 import { fuseResults } from '../src/search/fusion.js';
+import type { FusionItem } from '../src/search/fusion.js';
 import type { SearchResultItem } from '../src/search/providers/types.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -66,7 +67,7 @@ for (const l of labels) {
 }
 
 const files = readdirSync(rawDir).filter((f) => f.endsWith('.json'));
-const groups = new Map<string, SearchResultItem[]>();
+const groups = new Map<string, Array<{ intent: string; items: SearchResultItem[] }>>();
 for (const file of files) {
   const match = file.match(/^([A-Z0-9]+)_([a-z_]+)_rep\d+_(\w+)\.json$/);
   if (!match) continue;
@@ -80,44 +81,65 @@ for (const file of files) {
     ...r,
     provider: match[3] as SearchResultItem['provider'],
   }));
-  groups.set(key, items);
+  const reps = groups.get(key) ?? [];
+  reps.push({ intent, items });
+  groups.set(key, reps);
 }
 
 const samples: Array<{
   id: string;
+  query: string;
   group: string;
   intent: string;
   engine: string;
   label: number;
   positive: boolean;
   topScore: number;
+  bestScore: number;
+  topResult: FusionItem | null;
 }> = [];
 for (const [id, label] of labelById) {
   const intent = intentById.get(id) ?? 'factual';
   const query = label.query;
   const group = id.startsWith('S') ? '严肃' : id.startsWith('L') ? '生活' : id.startsWith('X') ? '黑话' : '工程';
   for (const engine of ['bocha', 'anysearch', 'tavily']) {
-    const items = [...(groups.get(`${id}_${intent}_${engine}`) ?? [])];
-    if (items.length === 0) continue;
-    const fused = fuseResults(query, items, intent as never);
+    const reps = groups.get(`${id}_${intent}_${engine}`) ?? [];
+    if (reps.length === 0) continue;
+    const repResults = reps.map((g) => {
+      const fused = fuseResults(query, g.items, g.intent as never);
+      return { score: fused.items[0]?.finalScore ?? 0, item: fused.items[0] ?? null };
+    });
+    const sorted = [...repResults].sort((a, b) => a.score - b.score);
     const rel = label.byEngine.get(engine) ?? 0;
     samples.push({
       id,
+      query,
       group,
       intent,
       engine,
       label: rel,
       positive: rel >= 2,
-      topScore: fused.items[0]?.finalScore ?? 0,
+      topScore: sorted[Math.floor(sorted.length / 2)]?.score ?? 0,
+      bestScore: sorted[sorted.length - 1]?.score ?? 0,
+      topResult: sorted[Math.floor(sorted.length / 2)]?.item ?? null,
     });
   }
 }
 
 function summarize(rows: Sample[]): { n: number; min: number; median: number; max: number; p90: number } {
   const scores = rows.map((r) => r.topScore).sort((a, b) => a - b);
-  if (scores.length === 0) return { n: 0, min: 0, median: 0, max: 0, p90: 0 };
-  const p = (q: number) => scores[Math.min(scores.length - 1, Math.floor(scores.length * q))];
-  return { n: scores.length, min: scores[0], median: p(0.5), max: scores[scores.length - 1], p90: p(0.9) };
+  const best = rows.map((r) => r.bestScore).sort((a, b) => a - b);
+  if (scores.length === 0) return { n: 0, min: 0, median: 0, max: 0, p90: 0, bestMedian: 0, bestMax: 0 };
+  const p = (arr: number[], q: number) => arr[Math.min(arr.length - 1, Math.floor(arr.length * q))];
+  return {
+    n: scores.length,
+    min: scores[0],
+    median: p(scores, 0.5),
+    max: scores[scores.length - 1],
+    p90: p(scores, 0.9),
+    bestMedian: p(best, 0.5),
+    bestMax: p(best, best.length - 1),
+  };
 }
 
 console.log('规则②校准（历史 31×5 raw + 93 人工分）\n');
@@ -132,5 +154,21 @@ for (const group of ['工程', '生活', '严肃', '黑话', '全部']) {
     const tp = pos.filter((r) => r.topScore >= threshold).length;
     const tn = neg.filter((r) => r.topScore < threshold).length;
     console.log(`  阈值 ${threshold}: 正例保留 ${tp}/${pos.length}，负例拦截 ${tn}/${neg.length}`);
+  }
+}
+
+if (process.argv.includes('--debug')) {
+  const risky = samples
+    .filter((s) => !s.positive && s.topScore >= 0.6)
+    .sort((a, b) => b.topScore - a.topScore);
+  console.log(`\n负例 topScore≥0.6：${risky.length} 条`);
+  for (const s of risky) {
+    const r = s.topResult;
+    console.log(`  ${s.id}/${s.engine} rel=${s.label} top=${s.topScore.toFixed(3)} best=${s.bestScore.toFixed(3)} ${s.query}`);
+    if (r) {
+      console.log(
+        `    title=${r.result.title.slice(0, 60)} | rel=${r.relevance.toFixed(2)} time=${r.timeliness.toFixed(2)} use=${r.usability.toFixed(2)} fact=${r.factConsistency.toFixed(2)} official=${r.official} seo=${r.seoNoise} score=${r.finalScore}`,
+      );
+    }
   }
 }

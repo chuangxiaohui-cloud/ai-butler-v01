@@ -13,6 +13,8 @@ export interface SearchRequestMetric {
   bocha_ok: boolean;
   anysearch_ms: number | null;
   anysearch_ok: boolean;
+  bocha_quota_skipped?: boolean;
+  anysearch_quota_skipped?: boolean;
   timeout: boolean;
   degraded: boolean;
   cacheEngines?: 'both' | 'single';

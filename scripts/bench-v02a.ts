@@ -111,8 +111,9 @@ ${rows}
 ## 遗留问题
 
 - [ ] 人工回填 31 条相关性评分后做 [P-12] 判定。
-- [ ] 规则② [P-16]/[P-17] 维持 provisional（校准报告见 bench/v02a-rule2-calibration.md）。
-- [ ] E2 复验门：n≥30 冷调用后复核 AnySearch/Bocha 超时率。
+- [ ] 规则② [P-16]/[P-17] 维持 provisional（修订校准报告见 bench/v02a-rule2-calibration.md）。
+- [x] E1 复验门首轮：n=30，2000ms 超时率 0%、准确率 80%，未触发重开（详见 bench/v02b-report.md）。
+- [x] E2 复验门首轮：n=62，AnySearch 8.1%、Bocha 0%，未触发重开（详见 bench/v02b-report.md）。
 `;
 
   writeFileSync(reportPath, report, 'utf-8');

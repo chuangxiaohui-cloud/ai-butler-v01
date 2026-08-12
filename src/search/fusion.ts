@@ -46,12 +46,26 @@ export interface FusedOutput {
   lowConfidence: boolean;
 }
 
-function queryTokens(query: string): string[] {
-  return query.split(/\s+/).filter((t) => t.length >= 2);
+function tokenizeText(text: string): string[] {
+  const tokens: string[] = [];
+  const ascii = text.match(/[a-z0-9][a-z0-9+#._/-]*/gi) ?? [];
+  for (const t of ascii) tokens.push(t.toLowerCase());
+  const cjk = text.match(/[\u4e00-\u9fff]+/g) ?? [];
+  for (const chunk of cjk) {
+    if (chunk.length <= 2) {
+      tokens.push(chunk);
+      continue;
+    }
+    if (chunk.length <= 6) tokens.push(chunk);
+    for (let i = 0; i + 2 <= chunk.length; i += 1) {
+      tokens.push(chunk.slice(i, i + 2));
+    }
+  }
+  return tokens;
 }
 
 function relevanceScore(query: string, item: SearchResultItem): number {
-  const tokens = queryTokens(query);
+  const tokens = [...new Set(tokenizeText(query))];
   if (tokens.length === 0) return 0.5;
   const text = `${item.title} ${item.content}`.toLowerCase();
   const hits = tokens.filter((t) => text.includes(t.toLowerCase())).length;
@@ -94,7 +108,9 @@ function dedupe(items: SearchResultItem[]): SearchResultItem[] {
 function entityFilter(query: string, items: SearchResultItem[]): SearchResultItem[] {
   const part = extractPartNumber(query);
   if (!part) return items;
-  return items.filter((item) => `${item.title} ${item.content}`.toUpperCase().includes(part));
+  const escaped = part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`(^|[^a-z0-9])${escaped}(?![a-z0-9])`, 'i');
+  return items.filter((item) => pattern.test(`${item.title} ${item.content}`));
 }
 
 export function fuseResults(

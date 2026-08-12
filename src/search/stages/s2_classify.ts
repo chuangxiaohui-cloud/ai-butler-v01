@@ -22,6 +22,7 @@ export interface ClassifiedQuery {
   timeWindow: string;
   domain: string;
   source: 'llm' | 'fallback';
+  timedOut?: boolean;
 }
 
 const INTENTS: readonly IntentKey[] = [
@@ -75,6 +76,15 @@ function extractJsonObject(text: string): Record<string, unknown> | null {
   }
 }
 
+function isAbortError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    (err.name === 'AbortError' ||
+      err.cause instanceof Error &&
+        err.cause.name === 'AbortError')
+  );
+}
+
 export async function classifyQuery(query: string, llm?: LLMClient): Promise<ClassifiedQuery> {
   try {
     const client = llm ?? createLightClient();
@@ -105,13 +115,14 @@ export async function classifyQuery(query: string, llm?: LLMClient): Promise<Cla
       domain: typeof parsed.domain === 'string' ? parsed.domain : '不限',
       source: 'llm',
     };
-  } catch {
+  } catch (err) {
     return {
       intent: 'factual',
       searchQuery: query,
       timeWindow: '不限',
       domain: '不限',
       source: 'fallback',
+      timedOut: isAbortError(err),
     };
   }
 }

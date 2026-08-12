@@ -29,6 +29,12 @@ const fakeError = new FakeLLM(() => {
   throw new Error('timeout');
 });
 
+const fakeAbort = new FakeLLM(() => {
+  const err = new Error('abort');
+  err.name = 'AbortError';
+  throw err;
+});
+
 test('s2: LLM 合法 JSON 解析为结构化意图', async () => {
   const r = await classifyQuery('KiCad 和 Altium Designer 对比 优缺点', fakeOk);
   assert.equal(r.intent, 'comparison');
@@ -48,6 +54,13 @@ test('s2: 超时/异常降级为 factual', async () => {
   const r = await classifyQuery('TPS5430 输入电压范围', fakeError);
   assert.equal(r.intent, 'factual');
   assert.equal(r.source, 'fallback');
+});
+
+test('s2: AbortError 记录 timedOut 并降级', async () => {
+  const r = await classifyQuery('TPS5430 输入电压范围', fakeAbort);
+  assert.equal(r.intent, 'factual');
+  assert.equal(r.source, 'fallback');
+  assert.equal(r.timedOut, true);
 });
 
 test('s2: WP1 10 条基准 query 分类解析链路 100% 命中', async () => {

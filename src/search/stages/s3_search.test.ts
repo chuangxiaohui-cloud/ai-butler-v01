@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 
 import { clearCacheForTests, getCache, setCache } from '../cache.js';
+import { readSearchMetrics } from '../metrics.js';
 import type { QuotaStoreLike } from '../quota.js';
 import type {
   ProviderId,
@@ -124,6 +125,8 @@ test('s3: 配额用尽的路跳过，不阻塞另一路', async () => {
   assert.equal(r.attempts.find((a) => a.provider === 'bocha')?.quotaSkipped, true);
   assert.equal(r.results.length, 2);
   assert.equal(r.degraded, false);
+  const metrics = readSearchMetrics();
+  assert.equal(metrics[metrics.length - 1]?.bocha_quota_skipped, true);
 });
 
 test('s3: 双路超时且无缓存 → degraded 无结果', async () => {

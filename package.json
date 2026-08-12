@@ -18,6 +18,7 @@
     "worksheet:v02a": "tsx scripts/export-v02a-answers.ts",
     "migrate:memorycore": "tsx scripts/migrate-to-memorycore.ts",
     "distill": "tsx scripts/distill-worker.ts",
+    "recheck:gates": "tsx scripts/recheck-gates.ts",
     "test": "node --test dist/**/*.test.js"
   },
   "keywords": [
