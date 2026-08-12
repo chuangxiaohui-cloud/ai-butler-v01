@@ -6,7 +6,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
 
-export const BOCHA_DAILY_LIMIT = 100; // [P-63]
+export const BOCHA_DAILY_LIMIT = Number(process.env.BOCHA_DAILY_LIMIT ?? '1000000'); // [P-63] 不设硬限，默认仅观察
 export const ANYSEARCH_DAILY_LIMIT = 1000; // [P-65]
 
 export interface QuotaState {

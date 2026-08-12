@@ -104,3 +104,4 @@
 {"ts":"2026-08-12T16:30:50.728Z","query":"Altium Designer 怎么画四层板","bocha_ms":260,"bocha_ok":true,"anysearch_ms":2391,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-12T16:31:01.405Z","query":"51单片机 和 STM32 区别","bocha_ms":225,"bocha_ok":true,"anysearch_ms":4759,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-12T16:31:12.811Z","query":"嘉立创EDA 怎么导出Gerber","bocha_ms":323,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"both"}
+{"ts":"2026-08-12T16:38:12.905Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":323,"bocha_ok":true,"anysearch_ms":3676,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}

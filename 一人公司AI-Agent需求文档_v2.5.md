@@ -562,7 +562,7 @@ Agent 尝试解决问题
 | P-60 | 最低硬件RAM | 512MB | numeric | 定稿 | |
 | P-61 | factual缓存TTL | 7天 | numeric | 定稿 | |
 | P-62 | experience缓存TTL | 30天 | numeric | 定稿 | |
-| P-63 | Bocha日配额 | 100次/日 | numeric | 定稿 | |
+| P-63 | Bocha日配额 | 不设硬限（余额自管理） | conditional | provisional@2026-08-13 | |
 | P-64 | Tavily月配额 | 1000次/月 | numeric | 定稿 | |
 | P-65 | AnySearch日配额 | 1000次/天 | numeric | 定稿 | |
 | P-66 | 月度软告警阈值 | 80% | numeric | 定稿 | |
@@ -1636,6 +1636,20 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **复验门**：v0.2b MemoryCoreStore 切换时重新决策正式依赖；若 v0.1 期间 node:sqlite API 出现 breaking 变更则提前升级。
 - **关联**：与 E1-E3 独立，无参数联动；搜索验收口径不受影响。
 - affects: §3.1,§13
+
+### 2026-08-13（P-63 单日配额调整 E5）
+
+- **变更**：[P-63] 由定稿值改为不设单日硬限（账户余额自管理），转 provisional@2026-08-13；保留日计数用于观察。
+- **理由**：Bocha 账户余额充足（详见下方），owner 拍板取消单日硬限；成本由账户余额与月度观测兜底，不再设日预算护栏。
+- **实现**：本地配额仍计数不拦截；`BOCHA_DAILY_LIMIT` 可配置覆盖。
+- affects: §5 | bench:B-20260813-01
+
+<details><summary>余额与观测（bench:B-20260813-01）</summary>
+
+2026-08-13 Bocha 账户余额 540 次；本地日计数 31 次（回归后）。
+后续以本地日计数 + 月度汇总观察用量，余额低于告警阈值时重新评估是否恢复硬限。
+
+</details>
 
 ### v2.5（2026-08-12）
 
