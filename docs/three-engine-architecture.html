@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>三引擎搜索架构 v0.2a</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #5b6b7b;
+      --line: #d5dde5;
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --blue: #2f6fed;
+      --teal: #0e9f8e;
+      --orange: #e8862e;
+      --red: #d64541;
+      --green: #2e9e5b;
+      --gray: #7f8c99;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      padding: 28px 34px;
+      width: 1180px;
+    }
+    h1 { font-size: 26px; font-weight: 700; letter-spacing: 0; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+    .flow {
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .stage {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px 10px;
+      text-align: center;
+      box-shadow: 0 1px 2px rgba(23,32,42,.06);
+    }
+    .stage .no { font-size: 11px; color: var(--muted); }
+    .stage .name { font-size: 14px; font-weight: 700; margin-top: 2px; }
+    .stage .detail { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+    .arrow { align-self: center; color: var(--gray); font-size: 20px; font-weight: 700; }
+    .engines { display: flex; gap: 14px; margin-top: 20px; }
+    .engine {
+      flex: 1;
+      border-radius: 8px;
+      padding: 16px;
+      color: #fff;
+      min-height: 178px;
+      position: relative;
+    }
+    .engine .tag {
+      display: inline-block;
+      background: rgba(255,255,255,.22);
+      border-radius: 20px;
+      font-size: 11px;
+      padding: 3px 10px;
+      margin-bottom: 8px;
+    }
+    .engine h2 { font-size: 20px; font-weight: 700; }
+    .engine ul { margin-top: 10px; list-style: none; font-size: 12px; line-height: 1.7; }
+    .engine ul b { font-weight: 700; }
+    .bocha { background: linear-gradient(135deg, #2f6fed, #1f4fc0); }
+    .anysearch { background: linear-gradient(135deg, #0e9f8e, #087d70); }
+    .tavily { background: linear-gradient(135deg, #e8862e, #c76718); border: 2px dashed rgba(255,255,255,.75); }
+    .note-band {
+      display: flex;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .note {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .note .k { font-weight: 700; color: var(--ink); }
+    .legend {
+      margin-top: 20px;
+      padding: 12px 16px;
+      background: #eef2f6;
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .pill { display: inline-block; padding: 1px 8px; border-radius: 12px; font-size: 11px; margin-right: 6px; }
+    .p-green { background: #d9f2e2; color: #1f7a44; }
+    .p-orange { background: #fdebd5; color: #b45f15; }
+    .p-red { background: #fadbd8; color: #b23b36; }
+    .p-blue { background: #dbe7fd; color: #2456b8; }
+  </style>
+</head>
+<body>
+  <h1>三引擎搜索架构（v0.2a）</h1>
+  <div class="sub">Bocha + AnySearch 常开，Tavily 条件并联；规则③安全阀独立部署</div>
+
+  <div class="flow">
+    <div class="stage"><div class="no">Stage 1</div><div class="name">预处理</div><div class="detail">黑话映射 · 脱敏 · 记忆<br/>缓存命中 → 直接返回</div></div>
+    <div class="arrow">→</div>
+    <div class="stage"><div class="no">Stage 2</div><div class="name">意图分类</div><div class="detail">8 意图 · Query 构造<br/>紧急安全短路</div></div>
+    <div class="arrow">→</div>
+    <div class="stage" style="border-color:#e8862e"><div class="no">Stage 3</div><div class="name" style="color:#b45f15">搜索执行</div><div class="detail">入口先过【规则③ 安全阀】<br/>命中 → Bocha+AnySearch 并联<br/>(从严) · Tavily 熔断 gate=safety<br/>未命中 → 三引擎条件并联</div></div>
+    <div class="arrow">→</div>
+    <div class="stage"><div class="no">Stage 4</div><div class="name">融合评分</div><div class="detail">4 过滤器 + 加权评分<br/>&lt;0.4 丢弃 · &lt;0.6 标低置信<br/>官方源 ×1.2 · usa=可用性</div></div>
+    <div class="arrow">→</div>
+    <div class="stage"><div class="no">Stage 5</div><div class="name">秘书合成</div><div class="detail">传递高置信事实<br/>证据 + 历史记忆注入</div></div>
+    <div class="arrow">→</div>
+    <div class="stage"><div class="no">Stage 6</div><div class="name">后处理</div><div class="detail">验证 · L0 记忆写入<br/>输出 gate_triggered 四字段</div></div>
+  </div>
+
+  <div class="engines">
+    <div class="engine bocha">
+      <span class="tag">常开补齐源</span>
+      <h2>Bocha 博查</h2>
+      <ul>
+        <li><b>角色</b>：中文语料 + publish_time 全覆盖；人工综合垫底(1.90)、0 分集中，但有 6 个独家赢局</li>
+        <li><b>配额</b>：日配额 [P-63]</li>
+        <li><b>实测</b>：P50 ≈ 235ms，最快</li>
+        <li><b>超时</b>：跟随总限时 ≤[P-02]</li>
+      </ul>
+    </div>
+    <div class="engine anysearch">
+      <span class="tag">常开可靠源</span>
+      <h2>AnySearch</h2>
+      <ul>
+        <li><b>角色</b>：0 分最少、最稳；通吃通用 + 严肃，综合 2.23</li>
+        <li><b>配额</b>：日配额 [P-65]</li>
+        <li><b>实测</b>：P50 ≈ 1.15s，P95 ≈ 4.2s</li>
+        <li><b>超时</b>：跟随总限时 ≤[P-02]</li>
+      </ul>
+    </div>
+    <div class="engine tavily">
+      <span class="tag">条件并联 · 质量增强</span>
+      <h2>Tavily</h2>
+      <ul>
+        <li><b>触发</b>：实时 / 英文 / 低置信提示</li>
+        <li><b>配额</b>：月配额 [P-64]，超时 ≤[P-35]=3s</li>
+        <li><b>实测</b>：综合最高 2.25，P50 ≈ 239ms，P95 ≈ 2.4s</li>
+        <li><b>AI Answer</b>：100% 覆盖，统一进 Stage 4 过滤</li>
+        <li><b>禁区</b>：医疗/政务严肃通道不触发</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note-band">
+    <div class="note"><span class="k">三路心跳 [P-37]</span><br/>Bocha / AnySearch / Tavily 持续健康探测；任一路掉线，另外两路无缝顶上，结果不阻塞管道。</div>
+    <div class="note"><span class="k">统一过滤原则</span><br/>所有引擎结果（含 Tavily AI Answer）统一进 Stage 4 过滤与打分；Stage 4 评定为高置信后才传给 Stage 5 优先采纳。</div>
+    <div class="note"><span class="k">规则③ 安全阀</span><br/>Stage 3 入口串行拦截器：命中 → 严肃通道（双引擎从严并联），Tavily 熔断；未命中 → 三引擎条件并联。</div>
+    <div class="note"><span class="k">配额熔断</span><br/>任一路日/月配额耗尽 = 当日熔断，等同心跳掉线；其余引擎撑住，不报错。日请求量级按几十级假设，流量增长时先复算配额。</div>
+  </div>
+
+  <div class="legend">
+    <span class="pill p-green">常开</span> 每次请求都执行
+    <span class="pill p-orange">条件触发</span> 满足触发条件才并联（虚线 = Tavily）
+    <span class="pill p-red">禁区</span> 严肃通道禁止
+    <span class="pill p-blue">兜底</span> 单路超时/掉线自动切换
+    契约：answer(query) → { answer, confidence, evidence[], gate_triggered }；gate 来源：规则③→safety / 门控→low_confidence / Stage2→emergency
+  </div>
+</body>
+</html>
