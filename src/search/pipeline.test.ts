@@ -5,7 +5,7 @@ import { test } from 'node:test';
 
 import type { ChatMessage, LLMClient } from './llm.js';
 import type { QuotaStoreLike } from './quota.js';
-import type { MemoryStore } from '../memory/store.js';
+import type { MemoryRecord, MemoryStore } from '../memory/store.js';
 import type { SearchProvider, SearchProviderResult, SearchResultItem } from './providers/types.js';
 import { pipeline } from './pipeline.js';
 
@@ -55,9 +55,22 @@ class FakeQuota implements QuotaStoreLike {
   }
 }
 
-class FakeMemoryStore implements Pick<MemoryStore, 'put'> {
+class FakeMemoryStore implements Pick<MemoryStore, 'put' | 'recall'> {
   async put(): Promise<string> {
     return '1';
+  }
+
+  async recall(): Promise<MemoryRecord[]> {
+    return [
+      {
+        session_id: 'v0.1-cli',
+        query: 'STM32F103C8T6 最大主频是多少',
+        answer: '72MHz',
+        confidence: 0.9,
+        evidence_hash: 'h',
+        timestamp: Date.now(),
+      },
+    ];
   }
 }
 

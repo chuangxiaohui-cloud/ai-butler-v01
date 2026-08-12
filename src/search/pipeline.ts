@@ -38,7 +38,7 @@ export interface PipelineDeps {
   llm?: LLMClient;
   providers?: SearchProvider[];
   quota?: QuotaStoreLike;
-  memoryStore?: Pick<MemoryStore, 'put'>;
+  memoryStore?: Pick<MemoryStore, 'put' | 'recall'>;
 }
 
 export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<AnswerResult> {
@@ -56,6 +56,19 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
       elapsed_ms: Date.now() - start,
     };
   }
+
+  // 记忆调用（L0/L1，§6.1.1）：读取最近历史问答作为上下文
+  const memoryStore = deps.memoryStore ?? defaultMemoryStore();
+  let memoryNotes: string[] = [];
+  try {
+    const history = await memoryStore.recall('v0.1-cli', 3);
+    memoryNotes = history.map(
+      (m) => `Q: ${m.query} → A: ${m.answer.slice(0, 120)}`,
+    );
+  } catch {
+    // 记忆读取失败不阻塞主对话
+  }
+  prepared.memoryNotes = memoryNotes;
 
   // Stage 2：意图分类 + Query 构造
   const classified = await classifyQuery(prepared.cleanQuery, deps.llm);
@@ -105,6 +118,7 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
   const synthesized = await synthesizeAnswer(prepared.cleanQuery, fused, classified, {
     llm: deps.llm,
     serious: rule3.serious,
+    memoryNotes,
   });
 
   // Stage 6：后处理 + L0 记忆写入

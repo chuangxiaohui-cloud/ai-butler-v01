@@ -96,3 +96,17 @@ test('s5: 严肃通道追加专业提示约束', async () => {
   });
   assert.ok(systemPrompt.includes('严肃领域'));
 });
+
+test('s5: 历史记忆注入合成上下文', async () => {
+  let userContent = '';
+  const fake = new FakeLLM((messages) => {
+    userContent = messages[1]?.content ?? '';
+    return '答案';
+  });
+  await synthesizeAnswer('STM32F103C8T6 最大主频是多少', fusedOk, classified, {
+    llm: fake,
+    memoryNotes: ['Q: 之前问过主频 → A: 72MHz'],
+  });
+  assert.ok(userContent.includes('历史记忆'));
+  assert.ok(userContent.includes('之前问过主频'));
+});

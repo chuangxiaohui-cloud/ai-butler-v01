@@ -11,6 +11,7 @@ import type { ClassifiedQuery } from './s2_classify.js';
 export interface SynthesizeOptions {
   llm?: LLMClient;
   serious?: boolean;
+  memoryNotes?: string[];
 }
 
 export interface SynthesizeResult {
@@ -52,11 +53,17 @@ export async function synthesizeAnswer(
         `[${i + 1}] ${f.result.title}（${f.result.url}）\n${f.result.content.slice(0, 300)}`,
     )
     .join('\n\n');
+  const memoryBlock =
+    (opts.memoryNotes ?? []).length > 0
+      ? `\n\n历史记忆（仅作参考，以最新证据为准）：\n${(opts.memoryNotes ?? [])
+          .map((n) => `- ${n}`)
+          .join('\n')}`
+      : '';
   const messages = [
     { role: 'system' as const, content: buildSystemPrompt(opts.serious ?? false) },
     {
       role: 'user' as const,
-      content: `问题：${query}\n意图：${classified.intent}\n\n证据：\n${evidenceBlock}`,
+      content: `问题：${query}\n意图：${classified.intent}${memoryBlock}\n\n证据：\n${evidenceBlock}`,
     },
   ];
 
