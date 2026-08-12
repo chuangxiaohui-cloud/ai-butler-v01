@@ -21,6 +21,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
 
 // ============================================================================
 // 类型定义
@@ -56,6 +57,8 @@ type SectionInfo = {
 // ============================================================================
 // 配置
 // ============================================================================
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const DOC_PATH = process.argv.includes('--doc')
   ? process.argv[process.argv.indexOf('--doc') + 1]

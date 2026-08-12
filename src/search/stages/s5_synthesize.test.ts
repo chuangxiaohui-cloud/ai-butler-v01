@@ -1,0 +1,98 @@
+import { strict as assert } from 'node:assert';
+import { test } from 'node:test';
+
+import type { ChatMessage, LLMClient } from '../llm.js';
+import type { FusedOutput, FusionItem } from '../fusion.js';
+import type { ClassifiedQuery } from './s2_classify.js';
+import { synthesizeAnswer } from './s5_synthesize.js';
+
+class FakeLLM implements LLMClient {
+  constructor(private readonly handler: (messages: ChatMessage[]) => string) {}
+
+  async complete(messages: ChatMessage[]): Promise<string> {
+    return this.handler(messages);
+  }
+}
+
+function fusedItem(url: string): FusionItem {
+  return {
+    result: {
+      title: 'STM32F103C8T6 主频',
+      url,
+      content: 'STM32F103C8T6 最大主频 72MHz 完整 参数 说明 步骤 示例 设计 文档 100A '.repeat(5),
+      provider: 'bocha',
+    },
+    domainAuthority: 0.75,
+    official: false,
+    seoNoise: false,
+    relevance: 1,
+    timeliness: 0.5,
+    usability: 0.8,
+    factConsistency: 1,
+    finalScore: 0.89,
+  };
+}
+
+const fusedOk: FusedOutput = {
+  items: [fusedItem('https://example.com/1')],
+  dropped: [],
+  gated: false,
+  lowConfidence: false,
+};
+
+const fusedEmpty: FusedOutput = {
+  items: [],
+  dropped: [],
+  gated: false,
+  lowConfidence: true,
+};
+
+const classified: ClassifiedQuery = {
+  intent: 'factual',
+  searchQuery: 'STM32F103C8T6 最大主频是多少',
+  timeWindow: '不限',
+  domain: '官方优先',
+  source: 'llm',
+};
+
+test('s5: LLM 合成答案并引用证据', async () => {
+  const fake = new FakeLLM(() => '根据证据，这颗芯片最大主频是 72MHz。');
+  const r = await synthesizeAnswer('STM32F103C8T6 最大主频是多少', fusedOk, classified, {
+    llm: fake,
+  });
+  assert.equal(r.source, 'llm');
+  assert.ok(r.answer.includes('72MHz'));
+});
+
+test('s5: 无证据时不硬答', async () => {
+  const fake = new FakeLLM(() => '编造的答案');
+  const r = await synthesizeAnswer('ESP32 I2C 通信失败 无应答', fusedEmpty, classified, {
+    llm: fake,
+  });
+  assert.equal(r.source, 'fallback');
+  assert.ok(!r.answer.includes('编造'));
+});
+
+test('s5: LLM 异常降级为证据摘要', async () => {
+  const fake = new FakeLLM(() => {
+    throw new Error('timeout');
+  });
+  const r = await synthesizeAnswer('STM32F103C8T6 最大主频是多少', fusedOk, classified, {
+    llm: fake,
+  });
+  assert.equal(r.source, 'fallback');
+  assert.ok(r.answer.includes('example.com'));
+});
+
+test('s5: 严肃通道追加专业提示约束', async () => {
+  let systemPrompt = '';
+  const fake = new FakeLLM((messages) => {
+    systemPrompt = messages[0]?.content ?? '';
+    return '答案';
+  });
+  await synthesizeAnswer('高血压 用药注意事项 禁忌', fusedOk, classified, {
+    llm: fake,
+    serious: true,
+  });
+  assert.ok(systemPrompt.includes('严肃领域'));
+});

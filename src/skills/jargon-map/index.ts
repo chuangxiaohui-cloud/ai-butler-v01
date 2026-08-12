@@ -6,8 +6,17 @@ export const skill = {
   name: 'jargon-map',
   version: '0.1.0',
   triggers: ['jargon', '黑话', 'Protel', '大殖子'],
-  handler: async (_query: string) => {
-    // WP9 实现
-    return null;
+  handler: async (query: string) => {
+    const map: Record<string, string> = {
+      protel: 'Altium Designer',
+    };
+    const matched = Object.entries(map)
+      .filter(([term]) => query.toLowerCase().includes(term.toLowerCase()))
+      .map(([term, normalized]) => ({ term, normalized }));
+    const normalizedQuery = matched.reduce(
+      (out, m) => out.replace(new RegExp(m.term, 'ig'), m.normalized),
+      query,
+    );
+    return { matched, normalizedQuery };
   },
 };

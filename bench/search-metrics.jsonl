@@ -1,0 +1,12 @@
+{"ts":"2026-08-12T09:49:54.970Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":337,"bocha_ok":true,"anysearch_ms":1228,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T09:49:58.436Z","query":"TPS5430 输入电压范围","bocha_ms":156,"bocha_ok":true,"anysearch_ms":559,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T09:50:01.545Z","query":"STM32F103 ADC 多通道采集 踩坑 经验","bocha_ms":144,"bocha_ok":true,"anysearch_ms":607,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T09:50:14.186Z","query":"MOSFET 栅极驱动电阻 选型 注意事项","bocha_ms":323,"bocha_ok":true,"anysearch_ms":4858,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T09:50:24.294Z","query":"KiCad 和 Altium Designer 对比 优缺点","bocha_ms":234,"bocha_ok":true,"anysearch_ms":3963,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T09:50:34.276Z","query":"Keil MDK JTAG 配置 步骤","bocha_ms":296,"bocha_ok":true,"anysearch_ms":3739,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T09:50:42.551Z","query":"STM32 HAL_UART_Transmit 阻塞 卡死","bocha_ms":309,"bocha_ok":true,"anysearch_ms":3330,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T09:50:52.006Z","query":"高血压 用药注意事项 禁忌","bocha_ms":258,"bocha_ok":true,"anysearch_ms":3467,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T09:51:01.105Z","query":"个人所得税 专项附加扣除 怎么申报","bocha_ms":324,"bocha_ok":true,"anysearch_ms":3062,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T09:51:13.927Z","query":"ESP32 I2C 通信失败 无应答","bocha_ms":216,"bocha_ok":true,"anysearch_ms":4774,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T10:03:08.499Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":290,"bocha_ok":true,"anysearch_ms":3635,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-12T10:03:33.098Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":353,"bocha_ok":true,"anysearch_ms":1161,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}

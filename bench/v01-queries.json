@@ -1,0 +1,84 @@
+{
+  "meta": {
+    "version": "v0.1",
+    "created_at": "2026-08-12",
+    "source": "v0.1_MVP_实施规划.md §5.2（老张 2026-08-12 审核通过，名单写死）",
+    "acceptance": "[P-07] 10 条中 ≥8 条相关性 ≥2 分且无 0 分硬答",
+    "replacements_note": "后续替换必须在 change_log 中写明理由",
+    "change_log": []
+  },
+  "queries": [
+    {
+      "id": "E01",
+      "query": "STM32F103C8T6 最大主频是多少",
+      "intent": "factual",
+      "verify": "实体精确匹配过滤器",
+      "expected": "实体精确匹配；官方源优先"
+    },
+    {
+      "id": "E02",
+      "query": "TPS5430 输入电压范围",
+      "intent": "factual",
+      "verify": "规则① fact_consistency 数值冲突仲裁（Bocha 赢局）",
+      "expected": "官方源 4.5-36V 胜出"
+    },
+    {
+      "id": "E04",
+      "query": "STM32F103 ADC 多通道采集 踩坑 经验",
+      "intent": "experience",
+      "verify": "经验类 Query 构造 + 时效过滤器",
+      "expected": "经验类意图；时效窗口 ≤2 年"
+    },
+    {
+      "id": "E06",
+      "query": "MOSFET 栅极驱动电阻 选型 注意事项",
+      "intent": "experience",
+      "verify": "AnySearch 赢局（附录C 3/3/3）",
+      "expected": "AnySearch 兜底给出可用答案"
+    },
+    {
+      "id": "E08",
+      "query": "KiCad 和 Altium Designer 对比 优缺点",
+      "intent": "comparison",
+      "verify": "对比意图权重 [P-23]",
+      "expected": "comparison 意图 fact_consistency 权重 0.3"
+    },
+    {
+      "id": "E11",
+      "query": "Keil MDK JTAG 配置 步骤",
+      "intent": "how_to",
+      "verify": "how_to 意图 + usability 权重 [P-23]",
+      "expected": "how_to 意图 usability 权重 0.4"
+    },
+    {
+      "id": "E14",
+      "query": "STM32 HAL_UART_Transmit 阻塞 卡死",
+      "intent": "troubleshooting",
+      "verify": "Bocha 赢局（附录C 2.67）",
+      "expected": "Bocha 兜底给出可用答案"
+    },
+    {
+      "id": "S02",
+      "query": "高血压 用药注意事项 禁忌",
+      "intent": "factual",
+      "rule3": true,
+      "verify": "规则③ 命中药品名 → 强制严肃通道",
+      "expected": "Bocha+AnySearch 兜底 + 从严阈值；不触发低置信硬答"
+    },
+    {
+      "id": "L05",
+      "query": "个人所得税 专项附加扣除 怎么申报",
+      "intent": "factual",
+      "rule3": true,
+      "verify": "规则③ 命中税率/法规 → 强制严肃通道",
+      "expected": "Bocha+AnySearch 兜底 + 从严阈值；不触发低置信硬答"
+    },
+    {
+      "id": "E16",
+      "query": "ESP32 I2C 通信失败 无应答",
+      "intent": "troubleshooting",
+      "verify": "诚实边界：Tavily 独家赢局，v0.1 无 Tavily",
+      "expected": "融合分低于门控时低置信标注/不硬答（[P-07] 无 0 分硬答验证点）"
+    }
+  ]
+}

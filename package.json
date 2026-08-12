@@ -8,6 +8,9 @@
     "dev": "tsx src/main.ts",
     "build": "tsc",
     "bench:v01": "tsx scripts/bench-v01.ts",
+    "classify:smoke": "tsx scripts/classify-smoke.ts",
+    "search:smoke": "tsx scripts/search-smoke.ts",
+    "score:v01": "tsx scripts/score-v01.ts",
     "test": "node --test dist/**/*.test.js"
   },
   "keywords": [

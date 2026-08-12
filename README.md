@@ -3,7 +3,7 @@
 面向嵌入式电子工程师的一人公司桌面助手。核心定位：五角色合一（贴身女秘书 / 老板 / 产品经理 / 项目经理 / 系统架构师）+ 三种工作模式（知识问答 / 项目协作 / 生活助手）。
 
 - **权威需求文档**：`一人公司AI-Agent需求文档_v2.5.md`（文档治理重构完成版，tag `v2.5`）
-- **当前开发**：v0.1 MVP 实施中（分支 `v0.1`，规划见 `v0.1_MVP_实施规划.md`）
+- **当前开发**：v0.1 MVP（分支 `v0.1`，WP1-WP11 已实施，待 `[P-07]` 人工评分验收；规划见 `v0.1_MVP_实施规划.md`）
 - **技术栈**：Tauri + Node.js/TypeScript + React（无 Docker 依赖）
 
 ---
@@ -15,7 +15,7 @@
 ### lint 命令（权威用法）
 
 ```bash
-cd E:/WorkBuddy_WorkSpace/scripts
+cd M:/202608111/scripts
 
 # ① 全量验收模式 —— 唯一验收口径（C1-C7 全激活，C3 无宽限）
 npx tsx doc-lint.ts
@@ -56,9 +56,10 @@ npx tsx doc-lint.ts --doc <文档路径>
 ## 🚀 v0.1 MVP 常用命令
 
 ```bash
-npm run dev -- "你的问题"   # 运行 CLI 搜索管道（输出结构化 JSON）
+npm run dev --silent -- "你的问题"   # 运行 CLI 搜索管道（--silent 保证 stdout 纯 JSON，npm header 与 warning 均走 stderr）
 npm run build               # TypeScript 构建
 npm run bench:v01           # 验收基准脚本（10 条 query）
+npm run score:v01           # [P-07] 评分判定（读取 bench/v01-scores.json）
 ```
 
 - API Key 放 `.env`（模板见 `.env.example`，已被 `.gitignore` 排除，不进 git）
@@ -73,11 +74,14 @@ npm run bench:v01           # 验收基准脚本（10 条 query）
 | `一人公司AI-Agent需求文档_vX.Y.md` | 需求文档版本链（v1.9 ~ v2.5，v2.5 为当前权威） |
 | `scripts/doc-lint.ts` | 文档宪法执法脚本（§0.6 七检查） |
 | `scripts/bench-v01.ts` | v0.1 验收基准脚本 |
+| `scripts/score-v01.ts` | [P-07] 评分判定脚本 |
 | `src/search/` | 搜索管道（Stage 1-6） |
 | `src/memory/` | 记忆存储（SqliteDirectStore + schema v1） |
 | `src/skills/` | 预置 Skill（2 核心 + 4 占位） |
 | `src/wiki/` | 冷启动知识种子 |
 | `bench/` | 基准数据（`raw_scores.csv` 人工打分，git 跟踪） |
+| `bench/v01-report.md` | v0.1 验收报告（含分引擎时延与逐条评分列） |
+| `bench/search-metrics.jsonl` | 分引擎时延日志（bench schema） |
 | `v0.1_MVP_实施规划.md` | v0.1 实施规划（WBS 11 工作包） |
 
 ---
