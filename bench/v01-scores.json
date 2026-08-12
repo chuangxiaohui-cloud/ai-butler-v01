@@ -1,0 +1,14 @@
+{
+  "scores": [
+    { "id": "E01", "score": 3, "hardAnswer": true },
+    { "id": "E02", "score": 3, "hardAnswer": true },
+    { "id": "E04", "score": 2, "hardAnswer": false },
+    { "id": "E06", "score": 2, "hardAnswer": false },
+    { "id": "E08", "score": 3, "hardAnswer": true },
+    { "id": "E11", "score": 2, "hardAnswer": true },
+    { "id": "E14", "score": 2, "hardAnswer": false },
+    { "id": "S02", "score": 2, "hardAnswer": false },
+    { "id": "L05", "score": 2, "hardAnswer": false },
+    { "id": "E16", "score": 3, "hardAnswer": true }
+  ]
+}
