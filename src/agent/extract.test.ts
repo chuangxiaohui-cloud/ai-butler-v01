@@ -46,3 +46,11 @@ test('extract: 无 LLM 时走 rule source', async () => {
   assert.equal(r.source, 'rule');
   assert.equal(r.features.targetDomain, 'schedule');
 });
+
+test('extract: 附件信号进入特征', async () => {
+  const r = await extractIntentFeature('这个图是什么', undefined, [
+    { type: 'image', mimeType: 'image/png', sizeBytes: 8, fileName: 'shot.png' },
+  ]);
+  assert.equal(r.features.hasImage, true);
+  assert.deepEqual(r.features.attachmentTypes, ['image/png']);
+});

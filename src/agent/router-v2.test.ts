@@ -87,6 +87,15 @@ test('router-v2: 规则特征提取可离线运行', () => {
   assert.equal(f.searchSourceHint, 'local_skill');
 });
 
+test('router-v2: 附件信号进入 IntentFeature', () => {
+  const f = extractIntentFeatureRuleBased('这个图是什么', [
+    { type: 'image', mimeType: 'image/png', sizeBytes: 8, fileName: 'shot.png' },
+  ]);
+  assert.equal(f.hasImage, true);
+  assert.equal(f.hasDocument, false);
+  assert.deepEqual(f.attachmentTypes, ['image/png']);
+});
+
 test('router-v2: 工作记忆参与选项式消歧', () => {
   const features = extractIntentFeatureRuleBased('这个方案成本多少，值不值');
   const r = routeFromFeatures('这个方案成本多少，值不值', features, 'rule', [

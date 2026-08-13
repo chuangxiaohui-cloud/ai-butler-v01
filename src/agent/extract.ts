@@ -10,6 +10,7 @@ import {
   validateIntentFeature,
   type IntentFeature,
 } from './intent-feature.js';
+import type { AttachmentSignal } from './multimodal-preprocessor.js';
 
 export interface ExtractionResult {
   features: IntentFeature;
@@ -31,17 +32,18 @@ function extractJsonObject(text: string): unknown {
 export async function extractIntentFeature(
   query: string,
   llm?: LLMClient,
+  attachments: AttachmentSignal[] = [],
 ): Promise<ExtractionResult> {
   if (!llm) {
     return {
-      features: extractIntentFeatureRuleBased(query),
+      features: extractIntentFeatureRuleBased(query, attachments),
       source: 'rule',
       issues: [],
     };
   }
   try {
     const raw = await llm.complete(
-      [{ role: 'user', content: buildIntentFeaturePrompt(query) }],
+      [{ role: 'user', content: buildIntentFeaturePrompt(query, attachments) }],
       { temperature: 0, maxTokens: 200, json: true },
     );
     const parsed = extractJsonObject(raw);
@@ -49,7 +51,7 @@ export async function extractIntentFeature(
     return { features, source: 'llm', issues: [] };
   } catch (err) {
     return {
-      features: extractIntentFeatureRuleBased(query),
+      features: extractIntentFeatureRuleBased(query, attachments),
       source: 'fallback',
       issues: [err instanceof Error ? err.message : String(err)],
     };

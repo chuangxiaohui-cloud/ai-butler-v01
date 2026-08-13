@@ -1885,6 +1885,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **状态**：旧 `handler` 仅作为 `LegacySkillDef` 输入存在，对外接口已统一为 `ExecutableSkill`。
 - affects: §8.2 | bench:na(new-param) 理由：Skill 注册表接口迁移，无 §5/§6 参数变更
 
+### 2026-08-13（Week 1 C4：IntentFeature 多模态字段 E29）
+
+- **变更**：`IntentFeature` 新增 `hasImage / hasDocument / attachmentTypes / fastImageDescription`；`extractIntentFeatureRuleBased` 与 `extractIntentFeature` 均支持附件信号；`buildIntentFeaturePrompt` 注入附件清单；`routeV2WithLLM` 支持附件参数；未扩枚举、未加路由。
+- **证据**：新增附件信号单测 2 条，126/126 单测 + 10/10 集成全绿。
+- **状态**：C4 完成；多模态路由规则 Week 2/3 再按枚举扩展落地。
+- affects: §2.2,§8.2 | bench:na(new-param) 理由：IntentFeature 字段扩展，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

@@ -11,6 +11,7 @@ import { extractIntentFeature } from './extract.js';
 import { ROUTING_TABLE, type RoutingRule } from './routing-table.js';
 import type { PrimaryLens } from './types.js';
 import type { LLMClient } from '../search/llm.js';
+import type { AttachmentSignal } from './multimodal-preprocessor.js';
 
 export const P80_ROUTE_CONFIDENCE_HIGH = 0.75; // [P-80]
 export const P81_ROUTE_CONFIDENCE_LOW = 0.45; // [P-81]
@@ -28,6 +29,10 @@ const FEATURE_WEIGHTS: Record<keyof IntentFeature, number> = {
   urgency: 0.05,
   rawEntities: 0,
   ambiguityFlags: 0.1,
+  hasImage: 0,
+  hasDocument: 0,
+  attachmentTypes: 0,
+  fastImageDescription: 0,
 };
 
 export interface RouteCandidate {
@@ -192,7 +197,8 @@ export async function routeV2WithLLM(
   query: string,
   llm?: LLMClient,
   contextHints: string[] = [],
+  attachments: AttachmentSignal[] = [],
 ): Promise<RouteResultV2> {
-  const extraction = await extractIntentFeature(query, llm);
+  const extraction = await extractIntentFeature(query, llm, attachments);
   return routeFromFeatures(query, extraction.features, extraction.source, contextHints);
 }

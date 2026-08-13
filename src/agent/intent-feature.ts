@@ -3,6 +3,8 @@
  * 只提取事实，不做路由决策；Phase 1 用确定性规则，后续可换 LLM。
  */
 
+import type { AttachmentSignal } from './multimodal-preprocessor.js';
+
 export const ACTION_TYPES = [
   'create',
   'modify',
@@ -44,6 +46,10 @@ export interface IntentFeature {
   urgency: Urgency;
   rawEntities: string[];
   ambiguityFlags: AmbiguityFlag[];
+  hasImage: boolean;
+  hasDocument: boolean;
+  attachmentTypes: string[];
+  fastImageDescription?: string;
 }
 
 const ACTION_RE: Array<[ActionType, RegExp]> = [
@@ -100,10 +106,20 @@ export function validateIntentFeature(input: unknown): IntentFeature {
       ? m.rawEntities.filter((e): e is string => typeof e === 'string')
       : [],
     ambiguityFlags: flags,
+    hasImage: m.hasImage === true,
+    hasDocument: m.hasDocument === true,
+    attachmentTypes: Array.isArray(m.attachmentTypes)
+      ? m.attachmentTypes.filter((t): t is string => typeof t === 'string')
+      : [],
+    fastImageDescription:
+      typeof m.fastImageDescription === 'string' ? m.fastImageDescription : undefined,
   };
 }
 
-export function extractIntentFeatureRuleBased(query: string): IntentFeature {
+export function extractIntentFeatureRuleBased(
+  query: string,
+  attachments: AttachmentSignal[] = [],
+): IntentFeature {
   const q = query.trim();
   let actionType: ActionType = 'unknown';
   for (const [type, re] of ACTION_RE) {
@@ -172,11 +188,23 @@ export function extractIntentFeatureRuleBased(query: string): IntentFeature {
     urgency,
     rawEntities,
     ambiguityFlags,
+    hasImage: attachments.some((a) => a.type === 'image'),
+    hasDocument: attachments.some((a) => a.type === 'document'),
+    attachmentTypes: attachments.map((a) => a.mimeType),
+    fastImageDescription: undefined,
   };
 }
 
-export function buildIntentFeaturePrompt(query: string): string {
+export function buildIntentFeaturePrompt(
+  query: string,
+  attachments: AttachmentSignal[] = [],
+): string {
+  const attachmentBlock =
+    attachments.length > 0
+      ? `\n附件信号：${attachments.map((a) => `${a.type}:${a.mimeType}:${a.fileName}`).join('、')}`
+      : '';
   return `你是一个意图特征提取器。只输出 JSON，不要做路由决策。
 字段：actionType(create|modify|query|send|analyze|clarify|emergency|unknown), targetDomain(code|document|schedule|message|search|finance|security|unknown), scope(atomic|multi_step|project_level|unknown), requiresExternalSearch(boolean), searchSourceHint(local_skill|web_search|internal_db|none), hasImplicitContext(boolean), urgency(normal|urgent|critical), rawEntities(string[]), ambiguityFlags(missing_referent|scope_unclear|target_ambiguous[])。
-用户输入：${query}`;
+hasImage(boolean), hasDocument(boolean), attachmentTypes(string[]), fastImageDescription(string|undefined)。
+用户输入：${query}${attachmentBlock}`;
 }
