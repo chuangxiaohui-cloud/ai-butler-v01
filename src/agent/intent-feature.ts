@@ -171,6 +171,6 @@ export function extractIntentFeatureRuleBased(query: string): IntentFeature {
 
 export function buildIntentFeaturePrompt(query: string): string {
   return `你是一个意图特征提取器。只输出 JSON，不要做路由决策。
-字段：actionType(create|modify|query|send|analyze|clarify|emergency|unknown), targetDomain(code|document|schedule|message|search|finance|security|unknown), scope(atomic|multi_step|project_level), requiresExternalSearch(boolean), searchSourceHint(local_skill|web_search|internal_db|none), hasImplicitContext(boolean), urgency(normal|urgent|critical), rawEntities(string[]), ambiguityFlags(missing_referent|scope_unclear|target_ambiguous[])。
+字段：actionType(create|modify|query|send|analyze|clarify|emergency|unknown), targetDomain(code|document|schedule|message|search|finance|security|unknown), scope(atomic|multi_step|project_level|unknown), requiresExternalSearch(boolean), searchSourceHint(local_skill|web_search|internal_db|none), hasImplicitContext(boolean), urgency(normal|urgent|critical), rawEntities(string[]), ambiguityFlags(missing_referent|scope_unclear|target_ambiguous[])。
 用户输入：${query}`;
 }

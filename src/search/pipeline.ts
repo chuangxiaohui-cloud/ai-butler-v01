@@ -15,7 +15,7 @@ import { getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
 import { applyRule3 } from './rule3.js';
 import { shouldTriggerTavily } from './tavily-trigger.js';
-import { routeV2 } from '../agent/router-v2.js';
+import { routeV2WithLLM } from '../agent/router-v2.js';
 import { prepareQuery } from './stages/s1_prepare.js';
 import { classifyQuery } from './stages/s2_classify.js';
 import { runSearchStage } from './stages/s3_search.js';
@@ -71,8 +71,21 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
     };
   }
 
-  // 主 Agent 意图路由（三层：特征 → 规则表 → 置信度门控）
-  const route = routeV2(prepared.cleanQuery);
+  // 记忆调用（L0/L1，§6.1.1）：读取最近历史问答作为上下文
+  const memoryStore = deps.memoryStore ?? defaultMemoryStore();
+  let memoryNotes: string[] = [];
+  try {
+    const history = await memoryStore.recall('v0.1-cli', 3);
+    memoryNotes = history.map(
+      (m) => `Q: ${m.query} → A: ${m.answer.slice(0, 120)}`,
+    );
+  } catch {
+    // 记忆读取失败不阻塞主对话
+  }
+  prepared.memoryNotes = memoryNotes;
+
+  // 主 Agent 意图路由（三层：特征 → 规则表 → 置信度门控；携带工作记忆做上下文消歧）
+  const route = await routeV2WithLLM(prepared.cleanQuery, deps.llm, memoryNotes);
   if (route.decision.type === 'option_clarify' || route.decision.type === 'must_clarify') {
     const options =
       route.decision.type === 'option_clarify'
@@ -126,19 +139,6 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
       elapsed_ms: Date.now() - start,
     };
   }
-
-  // 记忆调用（L0/L1，§6.1.1）：读取最近历史问答作为上下文
-  const memoryStore = deps.memoryStore ?? defaultMemoryStore();
-  let memoryNotes: string[] = [];
-  try {
-    const history = await memoryStore.recall('v0.1-cli', 3);
-    memoryNotes = history.map(
-      (m) => `Q: ${m.query} → A: ${m.answer.slice(0, 120)}`,
-    );
-  } catch {
-    // 记忆读取失败不阻塞主对话
-  }
-  prepared.memoryNotes = memoryNotes;
 
   // Experience/Skill 注入（v0.2b 遗留项，回灌期接入）
   const experienceNotes: string[] = [];

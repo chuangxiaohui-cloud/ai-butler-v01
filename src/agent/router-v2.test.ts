@@ -5,7 +5,7 @@ import {
   validateIntentFeature,
   extractIntentFeatureRuleBased,
 } from './intent-feature.js';
-import { routeV2 } from './router-v2.js';
+import { routeFromFeatures, routeV2 } from './router-v2.js';
 
 test('router-v2: 完整 App 前端 → PM plan 直接路由', () => {
   const r = routeV2('帮我做一个完整的 App 前端');
@@ -85,4 +85,16 @@ test('router-v2: 规则特征提取可离线运行', () => {
   assert.equal(f.actionType, 'send');
   assert.equal(f.targetDomain, 'message');
   assert.equal(f.searchSourceHint, 'local_skill');
+});
+
+test('router-v2: 工作记忆参与选项式消歧', () => {
+  const features = extractIntentFeatureRuleBased('这个方案成本多少，值不值');
+  const r = routeFromFeatures('这个方案成本多少，值不值', features, 'rule', [
+    '之前讨论过 STM32 选型方案',
+    '之前讨论过 App 前端方案',
+  ]);
+  assert.equal(r.decision.type, 'option_clarify');
+  if (r.decision.type === 'option_clarify') {
+    assert.ok(r.decision.options[0].label.includes('STM32'));
+  }
 });

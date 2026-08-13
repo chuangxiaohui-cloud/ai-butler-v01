@@ -1839,6 +1839,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **状态**：Phase 1 规格对齐完成；LLM 特征提取与工作记忆消歧待 Phase 2。
 - affects: §2.2,§4,§5,§6.7 | bench:na(new-param) 理由：路由规格对齐与参数新增，无 §6 参数变更
 
+### 2026-08-13（Phase 2：LLM 特征提取 + 工作记忆消歧 E24）
+
+- **变更**：Layer 1 编排为 LLM → 校验 → 规则 fallback，新增 `src/agent/extract.ts`；`routeV2WithLLM` 接入 pipeline 并携带工作记忆，`missing_referent` 消歧选项引用最近记忆候选；`createLightClient` 支持 `[P-83]` 超时覆盖。
+- **证据**：新增 extract 3 条、工作记忆消歧 1 条单测，118/118 全绿；`route:query --llm` 支持真实 LLM 冒烟。
+- **状态**：Phase 2 完成；规则自进化与置信度校准留待 Phase 3。
+- affects: §2.2,§4,§5,§6.7,§8.3 | bench:na(new-param) 理由：Phase 2 能力扩展，无 §6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

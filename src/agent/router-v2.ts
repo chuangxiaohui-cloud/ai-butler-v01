@@ -7,8 +7,10 @@ import {
   extractIntentFeatureRuleBased,
   type IntentFeature,
 } from './intent-feature.js';
+import { extractIntentFeature } from './extract.js';
 import { ROUTING_TABLE, type RoutingRule } from './routing-table.js';
 import type { PrimaryLens } from './types.js';
+import type { LLMClient } from '../search/llm.js';
 
 export const P80_ROUTE_CONFIDENCE_HIGH = 0.75; // [P-80]
 export const P81_ROUTE_CONFIDENCE_LOW = 0.45; // [P-81]
@@ -86,9 +88,12 @@ function scoreRule(feature: IntentFeature, rule: RoutingRule): { base: number; c
   };
 }
 
-export function routeV2(query: string): RouteResultV2 {
-  const features = extractIntentFeatureRuleBased(query);
-  const extractionSource = 'rule' as 'rule' | 'llm' | 'fallback';
+export function routeFromFeatures(
+  query: string,
+  features: IntentFeature,
+  extractionSource: 'rule' | 'llm' | 'fallback',
+  contextHints: string[] = [],
+): RouteResultV2 {
   const extractionDiscount = extractionSource === 'fallback' ? P84_FALLBACK_DISCOUNT : 1;
   const candidates: RouteCandidate[] = [];
   const reasoning: string[] = [];
@@ -136,7 +141,10 @@ export function routeV2(query: string): RouteResultV2 {
       question: '你提到的对象有歧义，你想让我处理哪个方向？',
       options: candidates.slice(0, 3).map((c, i) => ({
         id: String.fromCharCode(65 + i),
-        label: `${c.primaryLens} / ${c.intent}`,
+        label:
+          contextHints.length > 0
+            ? `候选：${contextHints[Math.min(i, contextHints.length - 1)].slice(0, 30)}`
+            : `${c.primaryLens} / ${c.intent}`,
         description: c.reasoning,
         candidate: c,
       })),
@@ -174,4 +182,17 @@ export function routeV2(query: string): RouteResultV2 {
     confidence: topConfidence,
     reasoning,
   };
+}
+
+export function routeV2(query: string): RouteResultV2 {
+  return routeFromFeatures(query, extractIntentFeatureRuleBased(query), 'rule');
+}
+
+export async function routeV2WithLLM(
+  query: string,
+  llm?: LLMClient,
+  contextHints: string[] = [],
+): Promise<RouteResultV2> {
+  const extraction = await extractIntentFeature(query, llm);
+  return routeFromFeatures(query, extraction.features, extraction.source, contextHints);
 }

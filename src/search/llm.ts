@@ -65,12 +65,13 @@ export class OpenAiCompatibleClient implements LLMClient {
   }
 }
 
-export function createLightClient(): LLMClient {
+export function createLightClient(opts?: { timeoutMs?: number }): LLMClient {
   loadEnvFile();
   const apiKey =
     process.env.DEEPSEEK_API_KEY?.trim() || process.env.LLM_PRIMARY_API_KEY?.trim();
   if (!apiKey) throw new Error('未配置 LLM API Key（DEEPSEEK_API_KEY 或 LLM_PRIMARY_API_KEY）');
-  const timeoutMs = Number(process.env.LLM_CLASSIFY_TIMEOUT_MS ?? '2000');
+  const timeoutMs =
+    opts?.timeoutMs ?? Number(process.env.LLM_CLASSIFY_TIMEOUT_MS ?? '2000');
   return new OpenAiCompatibleClient({
     baseUrl: process.env.LLM_PRIMARY_BASE_URL?.trim() || 'https://api.deepseek.com/v1',
     apiKey,

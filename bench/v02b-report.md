@@ -29,7 +29,7 @@
 |---|---|
 | 历史迁移 | `data/memory.db` 74 条 L0 → MemoryCore，零丢失校验 74/74（备份 `memory.db.bak-v0.2b`） |
 | 蒸馏冒烟 | L1/L2 调度、DeepSeek 调用、L1 complete、写入不阻塞 |
-| 模块测试 | 114/114 单测全绿（含实体变体、答案覆盖门控、软件官方源识别、错误主题/FAQ 降权、Experience/Skill 注入、Skill 深度输出、Skill 安装器、三层意图路由、执行器注册表等新增用例） |
+| 模块测试 | 118/118 单测全绿（含实体变体、答案覆盖门控、软件官方源识别、错误主题/FAQ 降权、Experience/Skill 注入、Skill 深度输出、Skill 安装器、三层意图路由、执行器注册表、LLM 特征提取、工作记忆消歧等新增用例） |
 | 回归 | `npm run bench:v02a` 31/31 |
 
 ## 3.1 E1/E2 复验门首轮复核（2026-08-13）
@@ -123,6 +123,14 @@
 - 6 条 case 精确 score 断言 + executor 单测，114/114 全绿。
 - 登记：需求文档附录 A E23（2026-08-13）。
 
+## 3.13 Phase 2：LLM 特征提取 + 工作记忆消歧（2026-08-13 续作）
+
+- 新增 `src/agent/extract.ts`：LLM → 校验 → 规则 fallback，fallback 走 `[P-84]` 折扣。
+- `routeV2WithLLM` 接入 pipeline，`missing_referent` 选项引用最近记忆候选。
+- `createLightClient` 支持 `[P-83]` 超时覆盖；`npm run route:query -- --llm` 可真实冒烟。
+- 118/118 单测全绿。
+- 登记：需求文档附录 A E24（2026-08-13）。
+
 ## 4. 遗留问题
 
 1. **L1 提取**：已缓解（E6）——项目侧 distill worker 全量 137 条 L0 → 191 条记忆；MemoryCore 内置 L1 不作为主路径。
@@ -134,4 +142,4 @@
 ## 5. 下一步
 
 - 日常使用积累回灌样本，推进 [P-16]/[P-17] 与 P-04/P-02 定稿。
-- v0.2b 已打 tag；后续变更按附录 A 登记（E7-E23 已入档）。
+- v0.2b 已打 tag；后续变更按附录 A 登记（E7-E24 已入档）。
