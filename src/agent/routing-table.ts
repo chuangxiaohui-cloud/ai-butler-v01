@@ -3,13 +3,13 @@
  * 确定性映射：特征 → 主镜片 + 意图 + 标签 + 搜索开关。
  */
 
-import type { AgentLens } from './router.js';
+import type { PrimaryLens } from './types.js';
 import type { IntentFeature } from './intent-feature.js';
 
 export interface RoutingRule {
   id: string;
   match: Partial<IntentFeature>;
-  primaryLens: AgentLens;
+  primaryLens: PrimaryLens;
   intent: string;
   tags: string[];
   searchNeed: boolean;
@@ -27,17 +27,17 @@ export const ROUTING_TABLE: RoutingRule[] = [
     tags: ['plan', 'craft', 'must'],
     searchNeed: false,
     executor: 'engineer',
-    confidenceBoost: 0.3,
+    confidenceBoost: 0.15,
   },
   {
     id: 'R002',
-    match: { actionType: 'create', targetDomain: 'document', scope: 'multi_step' },
+    match: { actionType: 'create', targetDomain: 'document' },
     primaryLens: 'product_manager',
     intent: 'write_doc',
     tags: [],
     searchNeed: false,
     executor: 'content_writer',
-    confidenceBoost: 0.3,
+    confidenceBoost: 0.2,
   },
   {
     id: 'R003',
@@ -47,7 +47,7 @@ export const ROUTING_TABLE: RoutingRule[] = [
     tags: ['craft'],
     searchNeed: false,
     executor: 'engineer',
-    confidenceBoost: 0.2,
+    confidenceBoost: 0.1,
   },
   {
     id: 'R004',
@@ -57,26 +57,26 @@ export const ROUTING_TABLE: RoutingRule[] = [
     tags: [],
     searchNeed: false,
     skill: 'calendar_skill',
-    confidenceBoost: 0.4,
+    confidenceBoost: 0.2,
   },
   {
     id: 'R005',
-    match: { actionType: 'send', targetDomain: 'message', searchSourceHint: 'local_skill' },
+    match: { actionType: 'send', targetDomain: 'message' },
     primaryLens: 'secretary',
     intent: 'send_message',
     tags: [],
     searchNeed: false,
     skill: 'im_dispatch',
-    confidenceBoost: 0.4,
+    confidenceBoost: 0.25,
   },
   {
     id: 'R006',
-    match: { actionType: 'analyze', targetDomain: 'finance', ambiguityFlags: ['missing_referent'] },
+    match: { actionType: 'analyze', ambiguityFlags: ['missing_referent'] },
     primaryLens: 'owner',
     intent: 'clarify',
     tags: [],
     searchNeed: false,
-    confidenceBoost: -0.08,
+    confidenceBoost: 0,
   },
   {
     id: 'R007',
@@ -113,20 +113,11 @@ export const ROUTING_TABLE: RoutingRule[] = [
     intent: 'cost_analysis',
     tags: [],
     searchNeed: false,
-    confidenceBoost: -0.1,
-  },
-  {
-    id: 'R011',
-    match: { actionType: 'unknown', targetDomain: 'unknown' },
-    primaryLens: 'secretary',
-    intent: 'web_search',
-    tags: ['search'],
-    searchNeed: true,
-    confidenceBoost: 0.3,
+    confidenceBoost: -0.15,
   },
   {
     id: 'R012',
-    match: { actionType: 'unknown', scope: 'atomic' },
+    match: { actionType: 'unknown' },
     primaryLens: 'secretary',
     intent: 'web_search',
     tags: ['search'],

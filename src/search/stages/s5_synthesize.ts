@@ -7,7 +7,7 @@ import type { LLMClient } from '../llm.js';
 import { createHeavyClient } from '../llm.js';
 import type { FusedOutput } from '../fusion.js';
 import type { ClassifiedQuery } from './s2_classify.js';
-import type { AgentLens } from '../../agent/router.js';
+import type { PrimaryLens } from '../../agent/types.js';
 
 export interface SynthesizeOptions {
   llm?: LLMClient;
@@ -17,7 +17,7 @@ export interface SynthesizeOptions {
   experienceNotes?: string[];
   skillHints?: string[];
   skillOutputs?: string[];
-  primaryLens?: AgentLens;
+  primaryLens?: PrimaryLens;
 }
 
 export interface SynthesizeResult {
@@ -25,7 +25,7 @@ export interface SynthesizeResult {
   source: 'llm' | 'fallback';
 }
 
-function buildSystemPrompt(serious: boolean, primaryLens?: AgentLens): string {
+function buildSystemPrompt(serious: boolean, primaryLens?: PrimaryLens): string {
   const lines = [
     '你是「她」，一位拥有三十年经验的老专家兼贴身女秘书。',
   ];

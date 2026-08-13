@@ -596,6 +596,8 @@ Agent 尝试解决问题
 | P-80 | 路由高置信阈值 | 0.75 | numeric | provisional@2026-08-13 | |
 | P-81 | 路由低置信阈值 | 0.45 | numeric | provisional@2026-08-13 | P-81 <= P-80 |
 | P-82 | 候选路由歧义差阈值 | 0.15 | numeric | provisional@2026-08-13 | |
+| P-83 | 路由特征提取 LLM 超时 | 1500ms | numeric | provisional@2026-08-13 | |
+| P-84 | 路由 fallback 置信度折扣 | 0.9 | numeric | provisional@2026-08-13 | |
 
 > **约束注解**（lint 可评估，语法为线性不等式）：
 > - `P-15+P-13 <= P-14`（分配之和 ≤ 约束）
@@ -1828,6 +1830,14 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **证据**：6 条冒烟 case 回归 + pipeline 消歧/执行器待接入单测，113/113 全绿。
 - **状态**：Phase 1 完成；LLM 特征提取、工作记忆消歧、规则自进化留待 Phase 2/3。
 - affects: §2.2,§4,§5,§6.7 | bench:na(new-param) 理由：路由参数与模块新增，无 §6 参数变更
+
+### 2026-08-13（三层路由规格对齐 E23）
+
+- **变更**：按审阅结论对齐规格：特征权重改为常数分母（action .30 / domain .25 / scope .15 / source .15 / ambiguity .10 / urgency .05）；`scope` 增加 `unknown` 且 unknown=0；R001-R006 boost 对齐为 .15/.20/.10/.20/.25/0；新增 `EXECUTOR_REGISTRY` 与 `not_wired` 诚实降级；新增 `extraction_source` 与 fallback 折扣；退役旧 `router.ts`。
+- **PARAM**：新增 `[P-83]` 路由特征提取 LLM 超时、`[P-84]` 路由 fallback 置信度折扣。
+- **证据**：6 条 case 精确 score 断言 + executor 注册表 + pipeline not_wired/消歧单测，114/114 全绿。
+- **状态**：Phase 1 规格对齐完成；LLM 特征提取与工作记忆消歧待 Phase 2。
+- affects: §2.2,§4,§5,§6.7 | bench:na(new-param) 理由：路由规格对齐与参数新增，无 §6 参数变更
 
 ### v2.5（2026-08-12）
 

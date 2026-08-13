@@ -8,27 +8,29 @@ import {
   type IntentFeature,
 } from './intent-feature.js';
 import { ROUTING_TABLE, type RoutingRule } from './routing-table.js';
-import type { AgentLens } from './router.js';
+import type { PrimaryLens } from './types.js';
 
 export const P80_ROUTE_CONFIDENCE_HIGH = 0.75; // [P-80]
 export const P81_ROUTE_CONFIDENCE_LOW = 0.45; // [P-81]
 export const P82_CANDIDATE_GAP = 0.15; // [P-82]
+export const P83_ROUTE_LLM_TIMEOUT_MS = 1500; // [P-83]
+export const P84_FALLBACK_DISCOUNT = 0.9; // [P-84]
 
 const FEATURE_WEIGHTS: Record<keyof IntentFeature, number> = {
   actionType: 0.3,
   targetDomain: 0.25,
-  scope: 0.2,
-  requiresExternalSearch: 0.1,
-  searchSourceHint: 0.1,
+  scope: 0.15,
+  requiresExternalSearch: 0,
+  searchSourceHint: 0.15,
   hasImplicitContext: 0,
-  urgency: 0,
+  urgency: 0.05,
   rawEntities: 0,
-  ambiguityFlags: 0.05,
+  ambiguityFlags: 0.1,
 };
 
 export interface RouteCandidate {
   rank: number;
-  primaryLens: AgentLens;
+  primaryLens: PrimaryLens;
   intent: string;
   tags: string[];
   searchNeed: boolean;
@@ -51,6 +53,7 @@ export type RouteDecision =
 export interface RouteResultV2 {
   query: string;
   features: IntentFeature;
+  extractionSource: 'rule' | 'llm' | 'fallback';
   candidates: RouteCandidate[];
   decision: RouteDecision;
   confidence: number;
@@ -85,12 +88,15 @@ function scoreRule(feature: IntentFeature, rule: RoutingRule): { base: number; c
 
 export function routeV2(query: string): RouteResultV2 {
   const features = extractIntentFeatureRuleBased(query);
+  const extractionSource = 'rule' as 'rule' | 'llm' | 'fallback';
+  const extractionDiscount = extractionSource === 'fallback' ? P84_FALLBACK_DISCOUNT : 1;
   const candidates: RouteCandidate[] = [];
   const reasoning: string[] = [];
 
   for (const rule of ROUTING_TABLE) {
-    const { base, confidence } = scoreRule(features, rule);
-    if (base < 0.5) continue;
+    const { base } = scoreRule(features, rule);
+    if (base < 0.29) continue;
+    const adjusted = Math.max(0, Math.min(1, (base + rule.confidenceBoost) * extractionDiscount));
     candidates.push({
       rank: 0,
       primaryLens: rule.primaryLens,
@@ -99,11 +105,11 @@ export function routeV2(query: string): RouteResultV2 {
       searchNeed: rule.searchNeed,
       skill: rule.skill,
       executor: rule.executor,
-      confidence,
+      confidence: adjusted,
       matchedRule: rule.id,
       reasoning: `${rule.id}: ${JSON.stringify(rule.match)}`,
     });
-    reasoning.push(`${rule.id}=${confidence.toFixed(2)}`);
+    reasoning.push(`${rule.id}=${adjusted.toFixed(2)}`);
   }
 
   candidates.sort((a, b) => b.confidence - a.confidence);
@@ -115,13 +121,25 @@ export function routeV2(query: string): RouteResultV2 {
   const topConfidence = top?.confidence ?? 0;
 
   let decision: RouteDecision;
+  const hasMissingReferent = features.ambiguityFlags.includes('missing_referent');
   if (top && topConfidence >= P80_ROUTE_CONFIDENCE_HIGH) {
     decision = { type: 'direct', selected: top };
-  } else if (topConfidence < P81_ROUTE_CONFIDENCE_LOW) {
+  } else if (topConfidence < P81_ROUTE_CONFIDENCE_LOW && !hasMissingReferent) {
     decision = {
       type: 'must_clarify',
       question: '我没把握你要做什么，能说得更具体一点吗？',
       candidates,
+    };
+  } else if (topConfidence < P81_ROUTE_CONFIDENCE_LOW && hasMissingReferent && candidates.length > 0) {
+    decision = {
+      type: 'option_clarify',
+      question: '你提到的对象有歧义，你想让我处理哪个方向？',
+      options: candidates.slice(0, 3).map((c, i) => ({
+        id: String.fromCharCode(65 + i),
+        label: `${c.primaryLens} / ${c.intent}`,
+        description: c.reasoning,
+        candidate: c,
+      })),
     };
   } else if (
     (second && topConfidence - second.confidence < P82_CANDIDATE_GAP) ||
@@ -150,6 +168,7 @@ export function routeV2(query: string): RouteResultV2 {
   return {
     query,
     features,
+    extractionSource,
     candidates,
     decision,
     confidence: topConfidence,

@@ -153,6 +153,6 @@ test('pipeline: 完整项目路由到 PM 执行器待接入', async () => {
 
 test('pipeline: 低置信路由返回选项式消歧', async () => {
   const r = await pipeline('这个方案成本多少，值不值', deps);
-  assert.ok(r.answer.includes('你想让我做哪个方向'));
+  assert.ok(r.answer.includes('你想让我处理哪个方向'));
   assert.ok(r.answer.includes('A.'));
 });

@@ -16,6 +16,7 @@ test('router-v2: 完整 App 前端 → PM plan 直接路由', () => {
   if (r.decision.type === 'direct') {
     assert.equal(r.decision.selected.primaryLens, 'project_manager');
     assert.equal(r.decision.selected.intent, 'plan');
+    assert.ok(Math.abs(r.decision.selected.confidence - 0.85) < 1e-6);
   }
 });
 
@@ -26,6 +27,7 @@ test('router-v2: PRD → product_manager write_doc 且关闭搜索', () => {
     assert.equal(r.decision.selected.primaryLens, 'product_manager');
     assert.equal(r.decision.selected.intent, 'write_doc');
     assert.equal(r.decision.selected.searchNeed, false);
+    assert.ok(Math.abs(r.decision.selected.confidence - 0.75) < 1e-6);
   }
 });
 
@@ -35,6 +37,7 @@ test('router-v2: 登录接口 → architect execute', () => {
   assert.equal(r.decision.type, 'direct');
   if (r.decision.type === 'direct') {
     assert.equal(r.decision.selected.intent, 'execute');
+    assert.ok(Math.abs(r.decision.selected.confidence - 0.8) < 1e-6);
   }
 });
 
@@ -46,6 +49,7 @@ test('router-v2: 查日程 → secretary local_query + calendar skill', () => {
   if (r.decision.type === 'direct') {
     assert.equal(r.decision.selected.intent, 'local_query');
     assert.equal(r.decision.selected.skill, 'calendar_skill');
+    assert.ok(Math.abs(r.decision.selected.confidence - 0.9) < 1e-6);
   }
 });
 
@@ -56,12 +60,14 @@ test('router-v2: 发消息 → secretary send_message + im skill', () => {
   if (r.decision.type === 'direct') {
     assert.equal(r.decision.selected.intent, 'send_message');
     assert.equal(r.decision.selected.skill, 'im_dispatch');
+    assert.ok(Math.abs(r.decision.selected.confidence - 0.8) < 1e-6);
   }
 });
 
 test('router-v2: 方案成本 → 选项式消歧而非硬猜', () => {
   const r = routeV2('这个方案成本多少，值不值');
   assert.ok(r.features.ambiguityFlags.includes('missing_referent'));
+  assert.ok(Math.abs(r.confidence - 0.4) < 1e-6);
   assert.equal(r.decision.type, 'option_clarify');
   if (r.decision.type === 'option_clarify') {
     assert.ok(r.decision.options.length >= 2);

@@ -10,6 +10,7 @@ import type { MemoryStore } from '../memory/store.js';
 import { defaultMemoryStore } from '../memory/store.js';
 import type { ExperienceEntry } from '../memory/experience.js';
 import { getSkills } from '../skills/registry.js';
+import { executorStatus } from '../agent/executors.js';
 import { getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
 import { applyRule3 } from './rule3.js';
@@ -111,9 +112,14 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
     };
   }
   if (!routeSelected.searchNeed && routeSelected.intent !== 'web_search') {
+    const executor = routeSelected.executor ?? 'executor';
+    const status = executorStatus(routeSelected.executor);
     return {
       query,
-      answer: `已识别为 ${routeSelected.primaryLens}/${routeSelected.intent}，对应执行器尚未接入。`,
+      answer:
+        `✅ 路由成功：${routeSelected.primaryLens}/${routeSelected.intent}（confidence ${route.confidence.toFixed(2)}）\n` +
+        `⚠️ 执行器尚未接入：${executor}（${status === 'available' ? '已登记，调度待接入' : 'not_wired'}），当前无法执行。\n` +
+        '降级替代：您可以先提供相关输入/文本，我帮你整理成可执行步骤。',
       confidence: route.confidence,
       evidence: [],
       gate_triggered: 'none',

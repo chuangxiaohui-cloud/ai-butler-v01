@@ -23,7 +23,7 @@ export type TargetDomain =
   | 'security'
   | 'unknown';
 
-export type Scope = 'atomic' | 'multi_step' | 'project_level';
+export type Scope = 'atomic' | 'multi_step' | 'project_level' | 'unknown';
 export type SearchSourceHint = 'local_skill' | 'web_search' | 'internal_db' | 'none';
 export type Urgency = 'normal' | 'urgent' | 'critical';
 export type AmbiguityFlag = 'missing_referent' | 'scope_unclear' | 'target_ambiguous';
@@ -120,7 +120,9 @@ export function extractIntentFeatureRuleBased(query: string): IntentFeature {
       ? 'project_level'
       : /PRD|文档|设计|规划|拆解|搭建/.test(q)
         ? 'multi_step'
-        : 'atomic';
+        : /单文件|一段|一个|登录接口/.test(q)
+          ? 'atomic'
+          : 'unknown';
 
   const hasImplicitContext = /(这个|那个|它|他|她|这项目|那项目)/.test(q);
   const requiresExternalSearch =
@@ -143,7 +145,7 @@ export function extractIntentFeatureRuleBased(query: string): IntentFeature {
 
   const ambiguityFlags: AmbiguityFlag[] = [];
   if (hasImplicitContext && !/[A-Z0-9]{4,}/.test(q)) ambiguityFlags.push('missing_referent');
-  if ((actionType === 'create' || actionType === 'modify') && scope === 'atomic' && !/单文件|一段|一个/.test(q)) {
+  if ((actionType === 'create' || actionType === 'modify') && scope === 'unknown') {
     ambiguityFlags.push('scope_unclear');
   }
 
