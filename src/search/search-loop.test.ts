@@ -62,6 +62,7 @@ test('search-loop: 无 LLM 时单次子搜索', async () => {
 });
 
 test('search-loop: LLM 追加子查询直到覆盖足够', async () => {
+  const records: Array<{ source: string; intent: string; ok: boolean; latencyMs: number }> = [];
   const r = await runSearchLoop('q', {
     intent: 'factual',
     providers: [new FakeProvider()],
@@ -69,9 +70,16 @@ test('search-loop: LLM 追加子查询直到覆盖足够', async () => {
     llm: new FakeLLM(),
     minResults: 3,
     maxSubSearches: 4,
+    sourceStats: {
+      record(source, intent, ok, latencyMs) {
+        records.push({ source, intent, ok, latencyMs });
+      },
+    },
   });
   assert.ok(r.subQueries.includes('q1'));
   assert.ok(r.subQueries.includes('q2'));
   assert.ok(r.subQueries.includes('q3'));
   assert.ok(r.results.length >= 3);
+  assert.ok(records.length >= 3);
+  assert.ok(records.every((x) => x.source === 'bocha'));
 });

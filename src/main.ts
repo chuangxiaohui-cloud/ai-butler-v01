@@ -2,6 +2,7 @@
 import { pipeline } from './search/pipeline.js';
 import { ExperienceManager } from './memory/experience.js';
 import { SkillLifecycle } from './skills/lifecycle.js';
+import { SearchSourceStats } from './search/source-stats.js';
 
 const arg = process.argv[2];
 
@@ -17,6 +18,7 @@ if (!arg || arg === '--help' || arg === '-h') {
 
 const experienceManager = new ExperienceManager();
 const skillLifecycle = new SkillLifecycle();
+const sourceStats = new SearchSourceStats();
 try {
   skillLifecycle.ensureRegistered();
 } catch {
@@ -27,6 +29,7 @@ pipeline(arg, {
   tavily: { enabled: true },
   experienceManager,
   skillLifecycle,
+  sourceStats,
 })
   .then((result) => {
     console.log(JSON.stringify(result, null, 2));
@@ -38,4 +41,5 @@ pipeline(arg, {
   .finally(() => {
     experienceManager.close();
     skillLifecycle.close();
+    sourceStats.close();
   });

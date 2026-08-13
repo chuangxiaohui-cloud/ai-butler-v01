@@ -9,6 +9,7 @@ import type { SearchProvider } from './providers/types.js';
 import type { MemoryStore } from '../memory/store.js';
 import { defaultMemoryStore } from '../memory/store.js';
 import type { ExperienceEntry } from '../memory/experience.js';
+import type { SearchSourceStats } from './source-stats.js';
 import { getSkills } from '../skills/registry.js';
 import { executorStatus } from '../agent/executors.js';
 import { getHostname } from './authority.js';
@@ -49,6 +50,7 @@ export interface PipelineDeps {
     search(query: string, opts?: { limit?: number }): ExperienceEntry[];
     recordUse?(id: string): void;
   };
+  sourceStats?: Pick<SearchSourceStats, 'record'>;
   skillLifecycle?: {
     findBest(query: string): { name: string } | null;
     recordUse?(name: string): void;
@@ -210,6 +212,7 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
     providers: deps.providers,
     quota: deps.quota,
     llm: deps.llm,
+    sourceStats: deps.sourceStats,
     tavily: { enabled: tavilyEnabled, trigger: tavilyTrigger },
   });
 

@@ -23,6 +23,7 @@
     "push:hosts": "tsx scripts/push-to-hosts.ts",
     "install:skill": "tsx scripts/install-skill.ts",
     "route:query": "tsx scripts/route-query.ts",
+    "sources:stats": "tsx scripts/source-stats.ts",
     "test": "node --test dist/**/*.test.js"
   },
   "keywords": [

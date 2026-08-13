@@ -13,6 +13,7 @@ import {
   type SearchStageResult,
 } from './stages/s3_search.js';
 import { rewriteQuery } from './query-rewrite.js';
+import type { SearchSourceStats } from './source-stats.js';
 
 export const DEFAULT_MAX_SUB_SEARCHES = 5; // [P-85]
 export const DEFAULT_MIN_RESULTS = 5; // [P-86]
@@ -22,6 +23,7 @@ export interface SearchLoopOptions extends Omit<SearchStageOptions, 'cacheKey'> 
   llm?: LLMClient;
   maxSubSearches?: number;
   minResults?: number;
+  sourceStats?: Pick<SearchSourceStats, 'record'>;
 }
 
 export interface SearchLoopResult extends SearchStageResult {
@@ -127,6 +129,9 @@ export async function runSearchLoop(
     results.push(...stage.results);
     attempts.push(...stage.attempts);
     aiAnswers.push(...stage.aiAnswers);
+    for (const attempt of stage.attempts) {
+      opts.sourceStats?.record(attempt.provider, opts.intent, attempt.ok, attempt.latencyMs);
+    }
     if (stage.cacheHit) cacheHit = true;
     if (stage.cacheEngines) cacheEngines = stage.cacheEngines;
     if (stage.degraded && results.length === 0) degraded = true;
