@@ -18,7 +18,7 @@ import { shouldTriggerTavily } from './tavily-trigger.js';
 import { routeV2WithLLM } from '../agent/router-v2.js';
 import { prepareQuery } from './stages/s1_prepare.js';
 import { classifyQuery } from './stages/s2_classify.js';
-import { runSearchStage } from './stages/s3_search.js';
+import { runSearchLoop } from './search-loop.js';
 import { synthesizeAnswer } from './stages/s5_synthesize.js';
 import { postProcess } from './stages/s6_post.js';
 
@@ -203,12 +203,13 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
   const tavilyTrigger = tavilyEnabled
     ? shouldTriggerTavily(prepared.cleanQuery, classified.intent, rule3.serious)
     : null;
-  const search = await runSearchStage(prepared.cleanQuery, {
+  const search = await runSearchLoop(prepared.cleanQuery, {
     intent: classified.intent,
     cacheKey: prepared.cacheKey,
     cachedValue: prepared.cachedValue,
     providers: deps.providers,
     quota: deps.quota,
+    llm: deps.llm,
     tavily: { enabled: tavilyEnabled, trigger: tavilyTrigger },
   });
 

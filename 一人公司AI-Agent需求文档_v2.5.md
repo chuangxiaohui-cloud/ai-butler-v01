@@ -598,6 +598,8 @@ Agent 尝试解决问题
 | P-82 | 候选路由歧义差阈值 | 0.15 | numeric | provisional@2026-08-13 | |
 | P-83 | 路由特征提取 LLM 超时 | 1500ms | numeric | provisional@2026-08-13 | |
 | P-84 | 路由 fallback 置信度折扣 | 0.9 | numeric | provisional@2026-08-13 | |
+| P-85 | 子搜索循环上限 | 5次 | numeric | provisional@2026-08-13 | 3 <= P-85 <= 10 |
+| P-86 | 子搜索覆盖度下限 | 5条 | numeric | provisional@2026-08-13 | |
 
 > **约束注解**（lint 可评估，语法为线性不等式）：
 > - `P-15+P-13 <= P-14`（分配之和 ≤ 约束）
@@ -1845,6 +1847,14 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **证据**：新增 extract 3 条、工作记忆消歧 1 条单测，118/118 全绿；`route:query --llm` 支持真实 LLM 冒烟。
 - **状态**：Phase 2 完成；规则自进化与置信度校准留待 Phase 3。
 - affects: §2.2,§4,§5,§6.7,§8.3 | bench:na(new-param) 理由：Phase 2 能力扩展，无 §6 参数变更
+
+### 2026-08-13（搜索管道：查询改写 + 子搜索循环 E25）
+
+- **变更**：新增 `src/search/query-rewrite.ts`（口语 → 1-4 条子查询，LLM 优先/规则兜底）与 `src/search/search-loop.ts`（子搜索循环 + LLM 覆盖度判断，最多 `[P-85]` 次、结果 `[P-86]` 条）；`pipeline.ts` Stage 3 切换为 `runSearchLoop`。
+- **PARAM**：新增 `[P-85]` 子搜索循环上限、`[P-86]` 子搜索覆盖度下限。
+- **证据**：rewrite 3 条、search-loop 2 条单测，123/123 全绿。
+- **状态**：搜索→摘要最小闭环已跑通；多源质量闭环与排序/脱敏/溯源扩展留待下一步。
+- affects: §5,§6.7 | bench:na(new-param) 理由：搜索管道能力扩展与参数新增，无 §6 参数变更
 
 ### v2.5（2026-08-12）
 

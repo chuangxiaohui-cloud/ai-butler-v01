@@ -1,4 +1,4 @@
-{"ts":"2026-08-12T09:49:54.970Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":337,"bocha_ok":true,"anysearch_ms":1228,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+﻿{"ts":"2026-08-12T09:49:54.970Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":337,"bocha_ok":true,"anysearch_ms":1228,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-12T09:49:58.436Z","query":"TPS5430 输入电压范围","bocha_ms":156,"bocha_ok":true,"anysearch_ms":559,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-12T09:50:01.545Z","query":"STM32F103 ADC 多通道采集 踩坑 经验","bocha_ms":144,"bocha_ok":true,"anysearch_ms":607,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-12T09:50:14.186Z","query":"MOSFET 栅极驱动电阻 选型 注意事项","bocha_ms":323,"bocha_ok":true,"anysearch_ms":4858,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
