@@ -201,24 +201,33 @@ async function main(): Promise<void> {
     run('git', ['commit', '-m', message]);
 
     console.log('[3/4] 推送 GitHub/Gitee');
+    let pushFailures = 0;
     for (const h of hosts) {
       if (!h.hasToken) {
         console.log(`跳过 ${h.host}（token 未配置）`);
         continue;
       }
-      if (!currentRemotes.includes(h.remote)) {
-        run('git', ['remote', 'add', h.remote, h.url]);
+      try {
+        if (!currentRemotes.includes(h.remote)) {
+          run('git', ['remote', 'add', h.remote, h.url]);
+        }
+        await ensureRemoteRepo(h);
+        const pushOut = run('git', ['push', h.remote, `HEAD:${branch}`]);
+        console.log(`  ${h.host}: push 完成`);
+        logEvent({ host: h.host, repo, branch, action: 'push', ok: true, output: pushOut.slice(0, 200) });
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        pushFailures += 1;
+        console.error(`  ${h.host}: 推送失败 - ${detail.split('\n').slice(0, 3).join(' ')}`);
+        logEvent({ host: h.host, repo, branch, action: 'push', ok: false, error: detail.slice(0, 300) });
       }
-      await ensureRemoteRepo(h);
-      const pushOut = run('git', ['push', h.remote, `HEAD:${branch}`]);
-      console.log(`  ${h.host}: push 完成`);
-      logEvent({ host: h.host, repo, branch, action: 'push', ok: true, output: pushOut.slice(0, 200) });
     }
 
     console.log('[4/4] 完成');
     for (const h of hosts) {
       if (h.hasToken) console.log(`  ${h.host}: https://${h.host}/${userOf(h.host)}/${repo}`);
     }
+    if (pushFailures > 0) process.exitCode = 1;
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error(`\n推送失败：${detail}`);
