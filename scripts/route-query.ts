@@ -4,7 +4,7 @@
  * 用法: npm run route:query -- "帮我分析 STM32 芯片性能"
  */
 
-import { routeQuery } from '../src/agent/router.js';
+import { routeV2 } from '../src/agent/router-v2.js';
 
 const query = process.argv[2];
 if (!query) {
@@ -12,4 +12,4 @@ if (!query) {
   process.exit(1);
 }
 
-console.log(JSON.stringify(routeQuery(query), null, 2));
+console.log(JSON.stringify(routeV2(query), null, 2));

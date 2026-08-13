@@ -14,7 +14,7 @@ import { getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
 import { applyRule3 } from './rule3.js';
 import { shouldTriggerTavily } from './tavily-trigger.js';
-import { routeQuery } from '../agent/router.js';
+import { routeV2 } from '../agent/router-v2.js';
 import { prepareQuery } from './stages/s1_prepare.js';
 import { classifyQuery } from './stages/s2_classify.js';
 import { runSearchStage } from './stages/s3_search.js';
@@ -70,13 +70,51 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
     };
   }
 
-  // 主 Agent 意图路由（§2.2 镜片模型 + §4 一刀测试）
-  const route = routeQuery(prepared.cleanQuery);
-  if (route.clarify) {
+  // 主 Agent 意图路由（三层：特征 → 规则表 → 置信度门控）
+  const route = routeV2(prepared.cleanQuery);
+  if (route.decision.type === 'option_clarify' || route.decision.type === 'must_clarify') {
+    const options =
+      route.decision.type === 'option_clarify'
+        ? `\n${route.decision.options.map((o) => `${o.id}. ${o.label} - ${o.description}`).join('\n')}`
+        : '';
     return {
       query,
-      answer: route.clarify,
-      confidence: 0,
+      answer: `${route.decision.question}${options}`,
+      confidence: route.confidence,
+      evidence: [],
+      gate_triggered: 'none',
+      elapsed_ms: Date.now() - start,
+    };
+  }
+  const routeSelected =
+    route.decision.type === 'direct' || route.decision.type === 'confirm'
+      ? route.decision.selected
+      : null;
+  if (!routeSelected) {
+    return {
+      query,
+      answer: '我没识别出你的意图，能重新描述一下吗？',
+      confidence: route.confidence,
+      evidence: [],
+      gate_triggered: 'none',
+      elapsed_ms: Date.now() - start,
+    };
+  }
+  if (routeSelected.intent === 'emergency') {
+    return {
+      query,
+      answer: '请立即拨打 120 / 119 / 110，以专业救援或医生判断为准。',
+      confidence: route.confidence,
+      evidence: [],
+      gate_triggered: 'emergency',
+      elapsed_ms: Date.now() - start,
+    };
+  }
+  if (!routeSelected.searchNeed && routeSelected.intent !== 'web_search') {
+    return {
+      query,
+      answer: `已识别为 ${routeSelected.primaryLens}/${routeSelected.intent}，对应执行器尚未接入。`,
+      confidence: route.confidence,
       evidence: [],
       gate_triggered: 'none',
       elapsed_ms: Date.now() - start,
@@ -196,7 +234,7 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
     experienceNotes,
     skillHints,
     skillOutputs,
-    primaryLens: route.primaryLens,
+    primaryLens: routeSelected.primaryLens,
   });
 
   if (synthesized.source === 'llm') {

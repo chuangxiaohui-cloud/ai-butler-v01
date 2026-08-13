@@ -1,14 +1,14 @@
 # 进度交接 2026-08-13（v0.2b）
 
 > 当前分支：`v0.2b`｜最新提交：`b0c3894`｜tag：`v0.2b`（分支与 tag 同名，git 有 ambiguous warning，不影响操作）
-> 续作更新（2026-08-13 同日）：E8 融合评分负例区分修正、E9 P-04/P-02 定稿评估、E10 错误主题/FAQ 降权、E11-E14 WP11 冷调用续采、E15 Experience/Skill 管道注入、E16 远程通道/代码托管/Skill 市场需求增补、E17 Skill handler 深度输出、E18/E19 GitHub/Gitee 代码托管、E20 Skill 市场安装器、E21 主 Agent 意图路由均已完成并登记附录 A；阈值 0.6 正例保留 67/75 持平、负例拦截 6/18（修订前 3/18），E1/E2 复验门评估 PASS（classify n=70），102/102 单测。Gitee 首推成功，GitHub 待补 Token 仓库创建权限。下一步仍按下方清单推进。
+> 续作更新（2026-08-13 同日）：E8 融合评分负例区分修正、E9 P-04/P-02 定稿评估、E10 错误主题/FAQ 降权、E11-E14 WP11 冷调用续采、E15 Experience/Skill 管道注入、E16 远程通道/代码托管/Skill 市场需求增补、E17 Skill handler 深度输出、E18/E19 GitHub/Gitee 代码托管、E20 Skill 市场安装器、E21/E22 主 Agent 三层意图路由均已完成并登记附录 A；阈值 0.6 正例保留 67/75 持平、负例拦截 6/18（修订前 3/18），E1/E2 复验门评估 PASS（classify n=70），113/113 单测。Gitee 首推成功，GitHub 待补 Token 仓库创建权限。下一步仍按下方清单推进。
 
 ## 当前状态
 
-- 单测 102/102 全绿；`npm run build` 通过。
+- 单测 113/113 全绿；`npm run build` 通过。
 - 31 条三引擎回归通过；`bench/v02a-report.md` 已基于最终代码更新。
 - doc-lint 全量 0 FAIL / 0 WARN。
-- E7-E21 已登记进需求文档附录 A（2026-08-13）。
+- E7-E22 已登记进需求文档附录 A（2026-08-13）。
 
 ## 今日已收口
 

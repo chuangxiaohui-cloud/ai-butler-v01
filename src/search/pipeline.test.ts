@@ -140,3 +140,19 @@ test('pipeline: Experience/Skill 注入合成上下文并记录使用', async ()
   assert.deepEqual(usedExperience, ['e1']);
   assert.deepEqual(usedSkill, ['chip-analysis']);
 });
+
+test('pipeline: 本地动作未接入执行器时明确返回', async () => {
+  const r = await pipeline('查一下我今天的日程', deps);
+  assert.ok(r.answer.includes('执行器尚未接入'));
+});
+
+test('pipeline: 完整项目路由到 PM 执行器待接入', async () => {
+  const r = await pipeline('帮我做一个完整的 App 前端', deps);
+  assert.ok(r.answer.includes('project_manager/plan'));
+});
+
+test('pipeline: 低置信路由返回选项式消歧', async () => {
+  const r = await pipeline('这个方案成本多少，值不值', deps);
+  assert.ok(r.answer.includes('你想让我做哪个方向'));
+  assert.ok(r.answer.includes('A.'));
+});
