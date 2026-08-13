@@ -22,6 +22,7 @@
     "finalize:gates": "tsx scripts/finalize-gates.ts",
     "push:hosts": "tsx scripts/push-to-hosts.ts",
     "install:skill": "tsx scripts/install-skill.ts",
+    "route:query": "tsx scripts/route-query.ts",
     "test": "node --test dist/**/*.test.js"
   },
   "keywords": [

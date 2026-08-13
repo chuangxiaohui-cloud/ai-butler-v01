@@ -142,3 +142,16 @@ test('s5: 技能深度输出注入合成上下文', async () => {
   assert.ok(userContent.includes('技能深度分析'));
   assert.ok(userContent.includes('STM32F103C8T6'));
 });
+
+test('s5: 主镜片注入系统提示', async () => {
+  let systemPrompt = '';
+  const fake = new FakeLLM((messages) => {
+    systemPrompt = messages[0]?.content ?? '';
+    return '答案';
+  });
+  await synthesizeAnswer('帮我分析 STM32 芯片性能', fusedOk, classified, {
+    llm: fake,
+    primaryLens: 'architect',
+  });
+  assert.ok(systemPrompt.includes('当前主镜片：architect'));
+});

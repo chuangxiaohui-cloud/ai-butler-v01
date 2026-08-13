@@ -14,6 +14,7 @@ import { getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
 import { applyRule3 } from './rule3.js';
 import { shouldTriggerTavily } from './tavily-trigger.js';
+import { routeQuery } from '../agent/router.js';
 import { prepareQuery } from './stages/s1_prepare.js';
 import { classifyQuery } from './stages/s2_classify.js';
 import { runSearchStage } from './stages/s3_search.js';
@@ -62,6 +63,19 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
     return {
       query,
       answer: prepared.clarify.question,
+      confidence: 0,
+      evidence: [],
+      gate_triggered: 'none',
+      elapsed_ms: Date.now() - start,
+    };
+  }
+
+  // 主 Agent 意图路由（§2.2 镜片模型 + §4 一刀测试）
+  const route = routeQuery(prepared.cleanQuery);
+  if (route.clarify) {
+    return {
+      query,
+      answer: route.clarify,
       confidence: 0,
       evidence: [],
       gate_triggered: 'none',
@@ -182,6 +196,7 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
     experienceNotes,
     skillHints,
     skillOutputs,
+    primaryLens: route.primaryLens,
   });
 
   if (synthesized.source === 'llm') {

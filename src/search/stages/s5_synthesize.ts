@@ -7,6 +7,7 @@ import type { LLMClient } from '../llm.js';
 import { createHeavyClient } from '../llm.js';
 import type { FusedOutput } from '../fusion.js';
 import type { ClassifiedQuery } from './s2_classify.js';
+import type { AgentLens } from '../../agent/router.js';
 
 export interface SynthesizeOptions {
   llm?: LLMClient;
@@ -16,6 +17,7 @@ export interface SynthesizeOptions {
   experienceNotes?: string[];
   skillHints?: string[];
   skillOutputs?: string[];
+  primaryLens?: AgentLens;
 }
 
 export interface SynthesizeResult {
@@ -23,15 +25,20 @@ export interface SynthesizeResult {
   source: 'llm' | 'fallback';
 }
 
-function buildSystemPrompt(serious: boolean): string {
+function buildSystemPrompt(serious: boolean, primaryLens?: AgentLens): string {
   const lines = [
     '你是「她」，一位拥有三十年经验的老专家兼贴身女秘书。',
+  ];
+  if (primaryLens) {
+    lines.push(`当前主镜片：${primaryLens}`);
+  }
+  lines.push(
     '回答要求：',
     '1. 结论先行，语气温暖自然，像跟老板说话；',
     '2. 只依据下方证据回答，不得编造事实、数字、来源；',
     '3. 证据不足时明确说明，不要硬答；',
     '4. 引用来源时自然带上链接。',
-  ];
+  );
   if (serious) {
     lines.push('5. 本问题属医疗/税务等严肃领域，必须谨慎，并在结尾提示以官方或专业人士判断为准。');
   }
@@ -87,7 +94,10 @@ export async function synthesizeAnswer(
           .join('\n')}`
       : '';
   const messages = [
-    { role: 'system' as const, content: buildSystemPrompt(opts.serious ?? false) },
+    {
+      role: 'system' as const,
+      content: buildSystemPrompt(opts.serious ?? false, opts.primaryLens),
+    },
     {
       role: 'user' as const,
       content: `问题：${query}\n意图：${classified.intent}${memoryBlock}${aiAnswerBlock}${experienceBlock}${skillBlock}${skillOutputBlock}\n\n证据：\n${evidenceBlock}`,
