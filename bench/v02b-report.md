@@ -90,7 +90,8 @@
 - 新增 `scripts/push-to-hosts.ts` 与 `npm run push:hosts`：dry-run 计划 → `npm test` + build 预检 → commit → push GitHub/Gitee。
 - 账号写入配置：GitHub `chuangxiaohui-cloud`、Gitee `cxv138`；Token 仅从环境变量读取，不落盘。
 - 已验证 `--dry-run` 输出变更清单与目标仓库；真实推送需显式 `--yes`。
-- 登记：需求文档附录 A E18（2026-08-13）。
+- 首推结果：Gitee `cxv138/ai-butler-v01` 私有仓库创建并推送成功；GitHub 因 Token 无创建仓库权限（403）待补权限后重推。
+- 登记：需求文档附录 A E18/E19（2026-08-13）。
 
 ## 4. 遗留问题
 

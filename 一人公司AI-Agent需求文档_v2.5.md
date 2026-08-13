@@ -1797,6 +1797,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **状态**：模块就绪，待配置 Token 后启用真实推送。
 - affects: §11.4 | bench:na(new-param) 理由：代码托管模块新增，无 §5/§6 参数变更
 
+### 2026-08-13（代码托管首推 E19）
+
+- **变更**：真实执行 `npm run push:hosts -- --yes --create --repo ai-butler-v01 --scope=project`。
+- **结果**：Gitee `cxv138/ai-butler-v01` 私有仓库创建并推送成功；GitHub 创建仓库返回 403（Token 无仓库创建权限），仓库未创建、推送未发生。
+- **处理**：`.gitignore` 增加 `TencentDB-Agent-Memory/`，避免嵌套 git 仓库被误提交；GitHub 待补仓库创建权限或指定已有仓库后重推。
+- affects: §11.4 | bench:na(new-param) 理由：运维执行记录，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
