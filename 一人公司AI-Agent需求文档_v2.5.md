@@ -1804,6 +1804,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **处理**：`.gitignore` 增加 `TencentDB-Agent-Memory/`，避免嵌套 git 仓库被误提交；GitHub 待补仓库创建权限或指定已有仓库后重推。
 - affects: §11.4 | bench:na(new-param) 理由：运维执行记录，无 §5/§6 参数变更
 
+### 2026-08-13（Skill 市场安装器 E20）
+
+- **变更**：新增 `src/skills/install.ts` 与 `npm run install:skill`，实现 §8.2.3 Skill 市场本地安装：manifest 校验 → 生成 Skill 目录 → 自动注册 registry。
+- **证据**：新增 4 条 Skill 安装单测，94/94 全绿；临时 `e2e-test-skill` 端到端安装验证通过后已清理。
+- **状态**：本地包安装可用；远程市场索引与安全审核 UI 留待 v1.0。
+- affects: §8.2 | bench:na(new-param) 理由：Skill 安装器新增，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
