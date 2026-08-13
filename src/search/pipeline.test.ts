@@ -12,6 +12,8 @@ import { pipeline } from './pipeline.js';
 process.env.SEARCH_METRICS_LOG = join(tmpdir(), 'pipeline-search-metrics-test.jsonl');
 
 class FakeLLM implements LLMClient {
+  lastUserContent = '';
+
   async complete(messages: ChatMessage[]): Promise<string> {
     const system = messages[0]?.content ?? '';
     if (system.includes('搜索意图分类器')) {
@@ -25,6 +27,7 @@ class FakeLLM implements LLMClient {
     if (system.includes('严肃领域')) {
       return '请遵医嘱，并以医生判断为准。';
     }
+    this.lastUserContent = messages[1]?.content ?? '';
     return '根据证据，这是一个测试答案。';
   }
 }
@@ -96,4 +99,44 @@ test('pipeline: 指代不明先澄清', async () => {
   const r = await pipeline('这个芯片怎么样？', deps);
   assert.ok(r.answer.includes('具体型号'));
   assert.equal(r.gate_triggered, 'none');
+});
+
+test('pipeline: Experience/Skill 注入合成上下文并记录使用', async () => {
+  const llm = new FakeLLM();
+  const usedExperience: string[] = [];
+  const usedSkill: string[] = [];
+  const r = await pipeline('STM32F103C8T6 最大主频是多少', {
+    ...deps,
+    llm,
+    experienceManager: {
+      search: () => [
+        {
+          id: 'e1',
+          skillName: 'chip-analysis',
+          content: 'STM32F103C8T6 最大主频 72MHz',
+          keywords: ['STM32', '主频'],
+          usageCount: 0,
+          thumbsDownCount: 0,
+          consecutiveDown: 0,
+          confidence: 0.8,
+          createdAt: Date.now(),
+          lastUsedAt: Date.now(),
+          needsReview: false,
+        },
+      ],
+      recordUse: (id) => usedExperience.push(id),
+    },
+    skillLifecycle: {
+      findBest: () => ({ name: 'chip-analysis' }),
+      recordUse: (name) => usedSkill.push(name),
+    },
+  });
+  assert.equal(r.gate_triggered, 'none');
+  assert.ok(llm.lastUserContent.includes('项目经验'));
+  assert.ok(llm.lastUserContent.includes('最大主频 72MHz'));
+  assert.ok(llm.lastUserContent.includes('命中技能'));
+  assert.ok(llm.lastUserContent.includes('技能深度分析'));
+  assert.ok(llm.lastUserContent.includes('STM32F103C8T6'));
+  assert.deepEqual(usedExperience, ['e1']);
+  assert.deepEqual(usedSkill, ['chip-analysis']);
 });

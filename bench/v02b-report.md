@@ -29,7 +29,7 @@
 |---|---|
 | 历史迁移 | `data/memory.db` 74 条 L0 → MemoryCore，零丢失校验 74/74（备份 `memory.db.bak-v0.2b`） |
 | 蒸馏冒烟 | L1/L2 调度、DeepSeek 调用、L1 complete、写入不阻塞 |
-| 模块测试 | 78/78 单测全绿（含新增实体精确匹配、AbortError timedOut、配额跳过日志用例） |
+| 模块测试 | 90/90 单测全绿（含实体变体、答案覆盖门控、软件官方源识别、错误主题/FAQ 降权、Experience/Skill 注入、Skill 深度输出等新增用例） |
 | 回归 | `npm run bench:v02a` 31/31 |
 
 ## 3.1 E1/E2 复验门首轮复核（2026-08-13）
@@ -39,15 +39,68 @@
 - 配套修复：分类默认超时 500ms → 2000ms（对齐 [P-04]）；metrics 增加配额跳过标记；新增 `recheck-gates` 与 `classify-metrics.jsonl`。
 - 登记：需求文档附录 A E7（2026-08-13）。
 
+## 3.2 E8 融合评分修正（2026-08-13 续作）
+
+- 校准脚本修正 `how → how_to`、`github → github_analysis` 意图映射，并补 `--debug` 正例误伤/负例漏拦输出。
+- 融合层新增意图化答案覆盖评分（answerCoverage），低词面相关性且无答案覆盖的非官方结果降权；官方源与高答案覆盖页面不受误伤。
+- 实体过滤器补齐 `TPS5430-Q1` 连字符变体；软件项目官方源识别覆盖 Tauri/OpenWorker 等 GitHub 官方仓库。
+- SEO 噪声识别扩展到聚合页、供应商页、词典页、热点清单。
+- 校准结果：阈值 0.6 正例保留 67/75（持平），负例拦截 5/18（修订前 3/18）；[P-16]/[P-17] 继续 provisional，阈值未调整。
+- 登记：需求文档附录 A E8（2026-08-13）。
+
+## 3.3 P-04/P-02 定稿评估（2026-08-13 续作）
+
+- 新增 `npm run finalize:gates`，输出 E1/E2 定稿评估证据。
+- E1：n=30，超时率 0.0%，准确率 80.0%，p95=1140ms，推荐 `[P-04]`=1500ms（原 provisional 2000ms）。
+- E2：Bocha n=105 超时率 5.7%，AnySearch n=125 超时率 12.0%；AnySearch p95=4577ms / max=4917ms，`[P-02]`=5s 保持成立。
+- 两个复验门均 PASS；[P-04]/[P-02] 仍为 provisional，等待 owner 签认后晋升。
+- 登记：需求文档附录 A E9（2026-08-13）。
+
+## 3.4 E10 错误主题/FAQ 降权（2026-08-13 续作）
+
+- troubleshooting 查询带具体错误词（DRC/clearance/constraint/NACK 等）时，标题未命中这些词的结果降权，E15 Bocha 铺铜报错页不再霸占 DRC clearance 报错查询。
+- how_to 查询中「常见疑问/FAQ」标题但无操作流程的结果降权。
+- 校准结果：阈值 0.6 正例保留 67/75（持平），负例拦截 6/18（E8 后 5/18、修订前 3/18）；[P-16]/[P-17] 继续 provisional，阈值未调整。
+- 登记：需求文档附录 A E10（2026-08-13）。
+
+## 3.5 WP11 冷调用续采（2026-08-13 续作）
+
+- 追加 4 轮 `classify:smoke`（n=70）与 4 轮 `search:smoke`（Bocha n=145 / AnySearch n=165）。
+- E1 复核：超时率 0.0%，准确率 80.0%，p95=1406ms，`[P-04]` 推荐值稳定在 1750ms。
+- E2 复核：Bocha 超时率 4.1%、AnySearch 9.1%，`[P-02]`=5s 保持成立。
+- 两个复验门仍 PASS；[P-04]/[P-02] 继续 provisional，等待 owner 签认。
+- 登记：需求文档附录 A E11/E12/E13/E14（2026-08-13）。
+
+## 3.6 Experience/Skill 管道注入（2026-08-13 续作）
+
+- `pipeline.ts` 接入本仓库的 `ExperienceManager` 与 `SkillLifecycle`：检索经验、命中技能，注入 Stage 5 合成上下文；LLM 合成成功后记录经验/技能使用。
+- `src/main.ts` CLI 默认启用注入；真实冒烟通过（`STM32F103C8T6 最大主频是多少` 正常返回）。
+- 新增单测：Stage 5 经验/技能上下文注入 + pipeline 注入与使用记录。
+- 登记：需求文档附录 A E15（2026-08-13）。
+
+## 3.7 Skill handler 深度输出（2026-08-13 续作）
+
+- `pipeline.ts` 命中 Skill 后调用 registry 对应 handler，结构化结果注入 Stage 5「技能深度分析」；占位 handler 返回 null 时跳过。
+- 真实 CLI 冒烟通过（`STM32F103C8T6 最大主频是多少` 正常返回）。
+- 新增 Stage 5 与 pipeline 深度输出单测。
+- 登记：需求文档附录 A E17（2026-08-13）。
+
+## 3.8 GitHub/Gitee 代码托管联动（2026-08-13 续作）
+
+- 新增 `scripts/push-to-hosts.ts` 与 `npm run push:hosts`：dry-run 计划 → `npm test` + build 预检 → commit → push GitHub/Gitee。
+- 账号写入配置：GitHub `chuangxiaohui-cloud`、Gitee `cxv138`；Token 仅从环境变量读取，不落盘。
+- 已验证 `--dry-run` 输出变更清单与目标仓库；真实推送需显式 `--yes`。
+- 登记：需求文档附录 A E18（2026-08-13）。
+
 ## 4. 遗留问题
 
 1. **L1 提取**：已缓解（E6）——项目侧 distill worker 全量 137 条 L0 → 191 条记忆；MemoryCore 内置 L1 不作为主路径。
-2. **[P-16]/[P-17] 维持 provisional**：融合评分已修复中文相关性、精确型号匹配与 5 轮校准聚合，正负例分布仍重叠（修订报告见 `bench/v02a-rule2-calibration.md`）；复验门不变。
+2. **[P-16]/[P-17] 维持 provisional**：E8/E10 已补答案覆盖门控、型号变体、官方源识别与错误主题/FAQ 降权，阈值 0.6 负例拦截 6/18、正例保留 67/75；复验门不变（修订报告见 `bench/v02a-rule2-calibration.md`）。
 3. **MemoryCore delete 缺口**：结论已定，局部清理不可靠，`--reset` 采用整目录重建（已验证 137/137）；排查结论见 `bench/v02b-memorycore-delete-issue.md`。
-4. **P-04/P-02 定稿**：E1/E2 复验门首轮未触发重开，维持 provisional；定稿继续等 WP11 回灌样本 n≥30。
-5. **Experience/Skill 集成**：模块已就绪，pipeline 注入经验到合成层待 v1.0 或回灌后接入。
+4. **P-04/P-02 定稿**：E1/E2 复验门样本已达标且评估 PASS（E9/E11-E14）；[P-04] 推荐 1750ms、[P-02] 保持 5s，等待 owner 签认后晋升。
+5. **Experience/Skill 集成**：最小闭环已接入（E15），Skill handler 深度输出已接入（E17）——经验/技能 + 深度结构化输出注入合成上下文并记录使用。
 
 ## 5. 下一步
 
 - 日常使用积累回灌样本，推进 [P-16]/[P-17] 与 P-04/P-02 定稿。
-- v0.2b 已打 tag；后续变更按附录 A 登记（E7 已入档）。
+- v0.2b 已打 tag；后续变更按附录 A 登记（E7-E18 已入档）。

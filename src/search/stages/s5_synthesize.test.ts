@@ -26,6 +26,7 @@ function fusedItem(url: string): FusionItem {
     official: false,
     seoNoise: false,
     relevance: 1,
+    answerCoverage: 1,
     timeliness: 0.5,
     usability: 0.8,
     factConsistency: 1,
@@ -109,4 +110,35 @@ test('s5: 历史记忆注入合成上下文', async () => {
   });
   assert.ok(userContent.includes('历史记忆'));
   assert.ok(userContent.includes('之前问过主频'));
+});
+
+test('s5: 项目经验与命中技能注入合成上下文', async () => {
+  let userContent = '';
+  const fake = new FakeLLM((messages) => {
+    userContent = messages[1]?.content ?? '';
+    return '答案';
+  });
+  await synthesizeAnswer('STM32F103C8T6 最大主频是多少', fusedOk, classified, {
+    llm: fake,
+    experienceNotes: ['[chip-analysis] 最大主频 72MHz'],
+    skillHints: ['chip-analysis'],
+  });
+  assert.ok(userContent.includes('项目经验'));
+  assert.ok(userContent.includes('最大主频 72MHz'));
+  assert.ok(userContent.includes('命中技能'));
+  assert.ok(userContent.includes('chip-analysis'));
+});
+
+test('s5: 技能深度输出注入合成上下文', async () => {
+  let userContent = '';
+  const fake = new FakeLLM((messages) => {
+    userContent = messages[1]?.content ?? '';
+    return '答案';
+  });
+  await synthesizeAnswer('STM32F103C8T6 最大主频是多少', fusedOk, classified, {
+    llm: fake,
+    skillOutputs: ['chip-analysis v0.1.0: {"partNumber":"STM32F103C8T6","supported":true}'],
+  });
+  assert.ok(userContent.includes('技能深度分析'));
+  assert.ok(userContent.includes('STM32F103C8T6'));
 });

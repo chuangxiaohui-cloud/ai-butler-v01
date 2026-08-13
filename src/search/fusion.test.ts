@@ -40,6 +40,119 @@ test('fusion: 实体过滤器不把 TPS5430DDA 当 TPS5430', () => {
   assert.equal(r.items.some((f) => f.result.url.includes('5430')), true);
 });
 
+test('fusion: 实体过滤器不把 TPS5430-Q1 当 TPS5430', () => {
+  const items = [
+    item({
+      url: 'https://www.ti.com.cn/q1',
+      title: 'TPS5430-Q1 汽车类3A 宽输入范围降压转换器',
+      content: 'TPS5430-Q1 5.5V 至 36V 参数 说明 设计 文档 示例 完整 内容 足够 长',
+    }),
+    item({
+      url: 'https://www.ti.com.cn/5430',
+      title: 'TPS5430 输入电压范围',
+      content: 'TPS5430 输入电压 4.5-36V 参数 说明 设计 文档 示例 完整 内容 足够 长',
+    }),
+  ];
+  const r = fuseResults('TPS5430 输入电压范围', items, 'factual');
+  assert.equal(r.items.some((f) => f.result.url.includes('q1')), false);
+  assert.equal(r.items.some((f) => f.result.url.includes('5430')), true);
+});
+
+test('fusion: 软件项目官方 GitHub 源识别为官方', () => {
+  const items = [
+    item({
+      url: 'https://github.com/tauri-apps/tauri',
+      title: 'Build smaller, faster, and more secure desktop applications',
+      content: 'Tauri framework architecture tech stack usage features 100A 完整 内容 足够 长',
+    }),
+    item({
+      url: 'https://medium.example/tauri',
+      title: 'Medium Tauri 框架 架构 技术栈',
+      content: 'Tauri 框架 架构 技术栈 完整 说明 内容 示例 足够 长 100A',
+    }),
+  ];
+  const r = fuseResults('Tauri 框架 架构 技术栈', items, 'github_analysis');
+  const github = r.items.find((f) => f.result.url.includes('github.com'));
+  const medium = r.items.find((f) => f.result.url.includes('medium.example'));
+  assert.ok(github);
+  assert.equal(github.official, true);
+  assert.ok(medium);
+  assert.ok(github.finalScore >= 0.4);
+  assert.ok(medium.finalScore >= 0.4);
+});
+
+test('fusion: 低相关性且无答案覆盖的页面降权', () => {
+  const items = [
+    item({
+      url: 'https://dictionary.example/gao',
+      title: '高',
+      content: '高血压 汉字 笔顺 字源 释义 读音 用法 例句 100A 完整 内容 足够 长',
+    }),
+    item({
+      url: 'https://health.example/answer',
+      title: '高血压 用药注意事项 禁忌',
+      content: '高血压 用药 注意事项 禁忌 血压 控制 建议 医生 完整 内容 足够 长 100A',
+    }),
+  ];
+  const r = fuseResults('高血压 用药注意事项 禁忌', items, 'factual');
+  const dictionary = r.items.find((f) => f.result.url.includes('dictionary.example'));
+  const health = r.items.find((f) => f.result.url.includes('health.example'));
+  assert.equal(dictionary, undefined);
+  assert.ok(health);
+  assert.ok(health.finalScore >= 0.4);
+});
+
+test('fusion: 高答案覆盖页面不被低词面相关性拖垮', () => {
+  const items = [
+    item({
+      url: 'https://datasheet.example/stm32',
+      title: 'STM32F103C8T6 Datasheet: Explained',
+      content:
+        'STM32F103C8T6 maximum frequency 72 MHz voltage current description features specifications 100A 完整 内容 足够 长 '.repeat(
+          5,
+        ),
+    }),
+  ];
+  const r = fuseResults('STM32F103C8T6 最大主频是多少', items, 'factual');
+  const top = r.items[0];
+  assert.ok(top);
+  assert.ok(top.answerCoverage >= 0.6);
+  assert.ok(top.finalScore >= 0.6);
+});
+
+test('fusion: troubleshooting 标题缺具体错误词降权', () => {
+  const copper = item({
+    url: 'https://php.example/copper',
+    title: 'Altium Designer 铺铜报错怎么办 AD 铺铜规则设置方法',
+    content:
+      'Altium Designer 铺铜报错 DRC Clearance Polygon 管理 清理 幽灵铜皮 完整 内容 足够 长 100A '.repeat(5),
+  });
+  const drc = item({
+    url: 'https://blog.example/drc',
+    title: 'Altium Designer DRC clearance constraint 报错 完整教程',
+    content:
+      'Altium Designer DRC clearance constraint 设计规则 检查 设置 排查 步骤 完整 内容 足够 长 100A '.repeat(5),
+  });
+  const r = fuseResults('Altium Designer DRC clearance constraint 报错', [copper, drc], 'troubleshooting');
+  assert.equal(r.items[0]?.result.url.includes('drc'), true);
+});
+
+test('fusion: how_to FAQ 无操作流程降权', () => {
+  const faq = item({
+    url: 'https://faq.example/50',
+    title: '个税6项专项附加扣除常见疑问50答',
+    content: '个税APP进不去怎么办 模板哪里下载 住房贷款利息怎么扣除 完整 内容 足够 长 100A '.repeat(5),
+  });
+  const guide = item({
+    url: 'https://guide.example/how',
+    title: '个税专项附加扣除如何填报 步骤',
+    content:
+      '登录 个人所得税APP 点击 填报 选择 继续教育 下一步 提交 完整 内容 足够 长 100A '.repeat(5),
+  });
+  const r = fuseResults('个人所得税 专项附加扣除 怎么申报', [faq, guide], 'how_to');
+  assert.equal(r.items[0]?.result.url.includes('guide'), true);
+});
+
 test('fusion: 跨引擎同 URL 去重', () => {
   const items = [
     item({ url: 'https://same.example/1', title: 'x', content: 'STM32F103C8T6 72MHz 主频 说明' }),

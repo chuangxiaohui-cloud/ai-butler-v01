@@ -35,6 +35,18 @@ const VENDOR_DOMAIN_MAP: Array<{ prefix: string; domain: string }> = [
   { prefix: 'LT', domain: 'analog.com' },
 ];
 
+const SOFTWARE_OFFICIAL_RULES: Array<{ names: string[]; hosts: string[] }> = [
+  { names: ['tauri'], hosts: ['github.com', 'v2.tauri.app'] },
+  { names: ['freecad'], hosts: ['freecadweb.org', 'github.com'] },
+  { names: ['kicad'], hosts: ['kicad.org', 'gitlab.com', 'github.com'] },
+  { names: ['altium'], hosts: ['altium.com', 'techdocs.altium.com'] },
+  { names: ['keil', 'mdk'], hosts: ['keil.com'] },
+  { names: ['ltspice'], hosts: ['analog.com'] },
+  { names: ['electron'], hosts: ['electronjs.org', 'github.com'] },
+  { names: ['arduino'], hosts: ['arduino.cc', 'github.com'] },
+  { names: ['openworker'], hosts: ['github.com'] },
+];
+
 export function getHostname(url: string): string {
   try {
     return new URL(url).hostname.toLowerCase();
@@ -58,10 +70,16 @@ export function extractPartNumber(query: string): string | null {
 }
 
 export function isOfficialForQuery(url: string, query: string): boolean {
+  const q = query.toLowerCase();
+  const hostname = getHostname(url);
+  for (const rule of SOFTWARE_OFFICIAL_RULES) {
+    const nameHit = rule.names.some((name) => new RegExp(`\\b${name}\\b`).test(q));
+    const hostHit = rule.hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`));
+    if (nameHit && hostHit) return true;
+  }
   const part = extractPartNumber(query);
   if (!part) return false;
   const vendor = VENDOR_DOMAIN_MAP.find((v) => part.toUpperCase().startsWith(v.prefix));
   if (!vendor) return false;
-  const hostname = getHostname(url);
   return hostname === vendor.domain || hostname.endsWith(`.${vendor.domain}`);
 }

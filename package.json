@@ -19,6 +19,8 @@
     "migrate:memorycore": "tsx scripts/migrate-to-memorycore.ts",
     "distill": "tsx scripts/distill-worker.ts",
     "recheck:gates": "tsx scripts/recheck-gates.ts",
+    "finalize:gates": "tsx scripts/finalize-gates.ts",
+    "push:hosts": "tsx scripts/push-to-hosts.ts",
     "test": "node --test dist/**/*.test.js"
   },
   "keywords": [

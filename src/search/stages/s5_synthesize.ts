@@ -13,6 +13,9 @@ export interface SynthesizeOptions {
   serious?: boolean;
   memoryNotes?: string[];
   aiAnswers?: string[];
+  experienceNotes?: string[];
+  skillHints?: string[];
+  skillOutputs?: string[];
 }
 
 export interface SynthesizeResult {
@@ -67,11 +70,27 @@ export async function synthesizeAnswer(
           .map((a) => `- ${a.slice(0, 500)}`)
           .join('\n')}`
       : '';
+  const experienceBlock =
+    (opts.experienceNotes ?? []).length > 0
+      ? `\n\n项目经验（仅作参考，以最新证据为准）：\n${(opts.experienceNotes ?? [])
+          .map((n) => `- ${n}`)
+          .join('\n')}`
+      : '';
+  const skillBlock =
+    (opts.skillHints ?? []).length > 0
+      ? `\n\n命中技能（可辅助回答）：${(opts.skillHints ?? []).join('、')}`
+      : '';
+  const skillOutputBlock =
+    (opts.skillOutputs ?? []).length > 0
+      ? `\n\n技能深度分析（仅作参考，须与证据核对）：\n${(opts.skillOutputs ?? [])
+          .map((n) => `- ${n}`)
+          .join('\n')}`
+      : '';
   const messages = [
     { role: 'system' as const, content: buildSystemPrompt(opts.serious ?? false) },
     {
       role: 'user' as const,
-      content: `问题：${query}\n意图：${classified.intent}${memoryBlock}${aiAnswerBlock}\n\n证据：\n${evidenceBlock}`,
+      content: `问题：${query}\n意图：${classified.intent}${memoryBlock}${aiAnswerBlock}${experienceBlock}${skillBlock}${skillOutputBlock}\n\n证据：\n${evidenceBlock}`,
     },
   ];
 

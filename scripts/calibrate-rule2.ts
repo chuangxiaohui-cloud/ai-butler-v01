@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url';
 import { fuseResults } from '../src/search/fusion.js';
 import type { FusionItem } from '../src/search/fusion.js';
 import type { SearchResultItem } from '../src/search/providers/types.js';
+import type { IntentKey } from '../src/search/stages/s2_classify.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const rawDir = join(root, 'Tavily+AnySearch+Bocha', 'results', 'raw');
@@ -66,14 +67,20 @@ for (const l of labels) {
   intentById.set(l.id, 'factual');
 }
 
+function normalizeIntent(intent: string): IntentKey {
+  if (intent === 'how') return 'how_to';
+  if (intent === 'github') return 'github_analysis';
+  return intent as IntentKey;
+}
+
 const files = readdirSync(rawDir).filter((f) => f.endsWith('.json'));
-const groups = new Map<string, Array<{ intent: string; items: SearchResultItem[] }>>();
+const groups = new Map<string, Array<{ intent: IntentKey; items: SearchResultItem[] }>>();
 for (const file of files) {
   const match = file.match(/^([A-Z0-9]+)_([a-z_]+)_rep\d+_(\w+)\.json$/);
   if (!match) continue;
   const id = match[1];
   const intent = match[2];
-  const key = `${id}_${match[2]}_${match[3]}`;
+  const key = `${id}_${intent}_${match[3]}`;
   intentById.set(id, intent);
   queryById.set(id, labelById.get(id)?.query ?? id);
   const data = JSON.parse(readFileSync(join(rawDir, file), 'utf-8'));
@@ -82,7 +89,7 @@ for (const file of files) {
     provider: match[3] as SearchResultItem['provider'],
   }));
   const reps = groups.get(key) ?? [];
-  reps.push({ intent, items });
+  reps.push({ intent: normalizeIntent(intent), items });
   groups.set(key, reps);
 }
 
@@ -106,7 +113,7 @@ for (const [id, label] of labelById) {
     const reps = groups.get(`${id}_${intent}_${engine}`) ?? [];
     if (reps.length === 0) continue;
     const repResults = reps.map((g) => {
-      const fused = fuseResults(query, g.items, g.intent as never);
+      const fused = fuseResults(query, g.items, g.intent);
       return { score: fused.items[0]?.finalScore ?? 0, item: fused.items[0] ?? null };
     });
     const sorted = [...repResults].sort((a, b) => a.score - b.score);
@@ -158,17 +165,28 @@ for (const group of ['工程', '生活', '严肃', '黑话', '全部']) {
 }
 
 if (process.argv.includes('--debug')) {
+  const describe = (s: (typeof samples)[number]): void => {
+    const r = s.topResult;
+    console.log(
+      `  ${s.id}/${s.engine} rel=${s.label} top=${s.topScore.toFixed(3)} best=${s.bestScore.toFixed(3)} ${s.query}`,
+    );
+    if (r) {
+      console.log(
+        `    title=${r.result.title.slice(0, 60)} | rel=${r.relevance.toFixed(2)} cov=${r.answerCoverage.toFixed(2)} time=${r.timeliness.toFixed(2)} use=${r.usability.toFixed(2)} fact=${r.factConsistency.toFixed(2)} official=${r.official} seo=${r.seoNoise} score=${r.finalScore}`,
+      );
+    }
+  };
+  const missed = samples
+    .filter((s) => s.positive && s.topScore < 0.6)
+    .sort((a, b) => a.topScore - b.topScore);
+  console.log(`\n正例 topScore<0.6：${missed.length} 条`);
+  for (const s of missed) describe(s);
+
   const risky = samples
     .filter((s) => !s.positive && s.topScore >= 0.6)
     .sort((a, b) => b.topScore - a.topScore);
   console.log(`\n负例 topScore≥0.6：${risky.length} 条`);
   for (const s of risky) {
-    const r = s.topResult;
-    console.log(`  ${s.id}/${s.engine} rel=${s.label} top=${s.topScore.toFixed(3)} best=${s.bestScore.toFixed(3)} ${s.query}`);
-    if (r) {
-      console.log(
-        `    title=${r.result.title.slice(0, 60)} | rel=${r.relevance.toFixed(2)} time=${r.timeliness.toFixed(2)} use=${r.usability.toFixed(2)} fact=${r.factConsistency.toFixed(2)} official=${r.official} seo=${r.seoNoise} score=${r.finalScore}`,
-      );
-    }
+    describe(s);
   }
 }

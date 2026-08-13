@@ -8,6 +8,8 @@ import type { QuotaStoreLike } from './quota.js';
 import type { SearchProvider } from './providers/types.js';
 import type { MemoryStore } from '../memory/store.js';
 import { defaultMemoryStore } from '../memory/store.js';
+import type { ExperienceEntry } from '../memory/experience.js';
+import { getSkills } from '../skills/registry.js';
 import { getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
 import { applyRule3 } from './rule3.js';
@@ -41,6 +43,14 @@ export interface PipelineDeps {
   quota?: QuotaStoreLike;
   memoryStore?: Pick<MemoryStore, 'put' | 'recall'>;
   tavily?: { enabled?: boolean };
+  experienceManager?: {
+    search(query: string, opts?: { limit?: number }): ExperienceEntry[];
+    recordUse?(id: string): void;
+  };
+  skillLifecycle?: {
+    findBest(query: string): { name: string } | null;
+    recordUse?(name: string): void;
+  };
 }
 
 export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<AnswerResult> {
@@ -71,6 +81,48 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
     // 记忆读取失败不阻塞主对话
   }
   prepared.memoryNotes = memoryNotes;
+
+  // Experience/Skill 注入（v0.2b 遗留项，回灌期接入）
+  const experienceNotes: string[] = [];
+  const usedExperienceIds: string[] = [];
+  let skillHints: string[] = [];
+  const skillOutputs: string[] = [];
+  let usedSkillName: string | null = null;
+  if (deps.experienceManager) {
+    try {
+      const hits = deps.experienceManager.search(prepared.cleanQuery, { limit: 3 });
+      for (const entry of hits) {
+        experienceNotes.push(`[${entry.skillName}] ${entry.content.slice(0, 200)}`);
+        usedExperienceIds.push(entry.id);
+      }
+    } catch {
+      // 经验检索失败不阻塞主对话
+    }
+  }
+  if (deps.skillLifecycle) {
+    try {
+      const best = deps.skillLifecycle.findBest(prepared.cleanQuery);
+      if (best) {
+        skillHints = [best.name];
+        usedSkillName = best.name;
+        const skill = getSkills().find((s) => s.name === best.name);
+        if (skill) {
+          try {
+            const output = await skill.handler(prepared.cleanQuery);
+            if (output !== null && output !== undefined) {
+              const text =
+                typeof output === 'string' ? output : JSON.stringify(output);
+              skillOutputs.push(`${skill.name} v${skill.version}: ${text.slice(0, 800)}`);
+            }
+          } catch {
+            // Skill handler 失败不阻塞主对话
+          }
+        }
+      }
+    } catch {
+      // 技能匹配失败不阻塞主对话
+    }
+  }
 
   // Stage 2：意图分类 + Query 构造
   const classified = await classifyQuery(prepared.cleanQuery, deps.llm);
@@ -127,7 +179,15 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
     serious: rule3.serious,
     memoryNotes,
     aiAnswers: search.aiAnswers,
+    experienceNotes,
+    skillHints,
+    skillOutputs,
   });
+
+  if (synthesized.source === 'llm') {
+    for (const id of usedExperienceIds) deps.experienceManager?.recordUse?.(id);
+    if (usedSkillName) deps.skillLifecycle?.recordUse?.(usedSkillName);
+  }
 
   // Stage 6：后处理 + L0 记忆写入
   const final = await postProcess(
