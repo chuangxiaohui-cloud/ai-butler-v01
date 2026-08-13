@@ -10,7 +10,8 @@ import type { MemoryStore } from '../memory/store.js';
 import { defaultMemoryStore } from '../memory/store.js';
 import type { ExperienceEntry } from '../memory/experience.js';
 import type { SearchSourceStats } from './source-stats.js';
-import { getSkills } from '../skills/registry.js';
+import { getSkills, toDisplayText } from '../skills/registry.js';
+import type { SkillDeps } from '../skills/deps.js';
 import { executorStatus } from '../agent/executors.js';
 import { getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
@@ -168,14 +169,22 @@ export async function pipeline(query: string, deps: PipelineDeps = {}): Promise<
         const skill = getSkills().find((s) => s.name === best.name);
         if (skill) {
           try {
-            const output = await skill.handler(prepared.cleanQuery);
-            if (output !== null && output !== undefined) {
-              const text =
-                typeof output === 'string' ? output : JSON.stringify(output);
+            const skillDeps: SkillDeps = { callVLM: async () => '' };
+            const output = await skill.execute(
+              {
+                query: prepared.cleanQuery,
+                attachmentSignals: [],
+                rawFiles: [],
+                memory: null,
+              },
+              skillDeps,
+            );
+            const text = toDisplayText(output.result);
+            if (text) {
               skillOutputs.push(`${skill.name} v${skill.version}: ${text.slice(0, 800)}`);
             }
           } catch {
-            // Skill handler 失败不阻塞主对话
+            // Skill execute 失败不阻塞主对话
           }
         }
       }

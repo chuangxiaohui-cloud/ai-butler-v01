@@ -38,7 +38,7 @@ test('skill-install: 生成 Skill 源码', () => {
 });
 
 test('skill-install: registry 自动注册且幂等', () => {
-  const registry = `import { skill as industryKits } from './industry-kits/index.js';\n\nconst SKILLS: Skill[] = [\n  industryKits,\n];\n`;
+  const registry = `import { skill as industryKits } from './industry-kits/index.js';\n\nconst SKILLS: LegacySkillDef[] = [\n  industryKits,\n];\n`;
   const manifest = { name: 'foo-skill', version: '0.1.0', triggers: ['foo'] };
   const first = buildRegistryInsertion(manifest, registry);
   assert.ok(first.updated.includes("from './foo-skill/index.js'"));

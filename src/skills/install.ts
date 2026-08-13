@@ -67,7 +67,7 @@ export function buildRegistryInsertion(
   if (lastImport < 0) throw new Error('registry.ts 未找到 import 区块');
   lines.splice(lastImport + 1, 0, importLine);
 
-  const arrayStart = lines.findIndex((line) => line.includes('const SKILLS: Skill[] = ['));
+  const arrayStart = lines.findIndex((line) => line.includes('const SKILLS: LegacySkillDef[] = ['));
   const closing = lines.findIndex(
     (line, i) => i > arrayStart && line.trim() === '];',
   );

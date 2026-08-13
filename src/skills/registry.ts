@@ -1,6 +1,6 @@
 /**
  * 预置 Skill 注册表（§12.2，WP9）
- * 核心 2 项（chip-analysis / jargon-map）可装备，其余 4 项占位。
+ * C3：旧 handler 注册点全部经 wrapLegacySkill 包装，对外只暴露 ExecutableSkill。
  */
 
 import { skill as chipAnalysis } from './chip-analysis/index.js';
@@ -14,14 +14,7 @@ import type { AttachmentSignal } from '../agent/multimodal-preprocessor.js';
 import type { RawFileLike, SkillDeps } from './deps.js';
 import type { UserContext } from '../memory/user-context.js';
 
-export interface Skill {
-  name: string;
-  version: string;
-  triggers: string[];
-  handler: (query: string) => Promise<unknown> | unknown;
-}
-
-const SKILLS: Skill[] = [
+const SKILLS: LegacySkillDef[] = [
   chipAnalysis,
   githubReader,
   jargonMap,
@@ -30,18 +23,20 @@ const SKILLS: Skill[] = [
   industryKits,
 ];
 
-export function getSkills(): Skill[] {
-  return [...SKILLS];
+const EXECUTABLE_SKILLS = SKILLS.map(wrapLegacySkill);
+
+export function getSkills(): ExecutableSkill[] {
+  return [...EXECUTABLE_SKILLS];
 }
 
-export function findSkill(query: string): Skill[] {
+export function findSkill(query: string): ExecutableSkill[] {
   const normalized = query.toLowerCase();
-  return SKILLS.filter((skill) =>
+  return EXECUTABLE_SKILLS.filter((skill) =>
     skill.triggers.some((trigger) => normalized.includes(trigger.toLowerCase())),
   );
 }
 
-// ── Week 1 增量（C1）：新接口先行，旧 Skill/handler 保持原样 ──
+// ── Week 1 增量（C1/C3）：新接口已转正，旧 handler 仅作为 LegacySkillDef 输入 ──
 
 export interface SkillInput {
   query: string;

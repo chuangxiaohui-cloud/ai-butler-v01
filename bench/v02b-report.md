@@ -154,6 +154,14 @@
 - `tests/integration/` 建成，集成 10/10，单测 124/124。
 - 登记：需求文档附录 A E27（2026-08-13）。
 
+## 3.17 Week 1 C3：Skill 注册表迁移（2026-08-13 续作）
+
+- `getSkills/findSkill` 返回 `ExecutableSkill`，6 项预置 Skill 全部过 `wrapLegacySkill`。
+- `pipeline.ts` Skill 深度输出切换为 `execute + toDisplayText`。
+- 安装器目标数组更新为 `LegacySkillDef[]`。
+- 124/124 单测 + 10/10 集成全绿。
+- 登记：需求文档附录 A E28（2026-08-13）。
+
 ## 4. 遗留问题
 
 1. **L1 提取**：已缓解（E6）——项目侧 distill worker 全量 137 条 L0 → 191 条记忆；MemoryCore 内置 L1 不作为主路径。
@@ -165,4 +173,4 @@
 ## 5. 下一步
 
 - 日常使用积累回灌样本，推进 [P-16]/[P-17] 与 P-04/P-02 定稿。
-- v0.2b 已打 tag；后续变更按附录 A 登记（E7-E27 已入档）。
+- v0.2b 已打 tag；后续变更按附录 A 登记（E7-E28 已入档）。

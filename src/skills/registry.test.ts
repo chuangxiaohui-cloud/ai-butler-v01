@@ -20,18 +20,27 @@ test('registry: 6 项预置 Skill 全量加载', () => {
   );
 });
 
-test('registry: 核心 2 项可装备（handler 返回结构化结果）', async () => {
+test('registry: 核心 2 项经 wrapLegacySkill 可执行', async () => {
   const chip = getSkills().find((s) => s.name === 'chip-analysis');
   const jargon = getSkills().find((s) => s.name === 'jargon-map');
   assert.ok(chip);
   assert.ok(jargon);
-  const chipResult = (await chip.handler('STM32F103C8T6 最大主频是多少')) as {
+  const deps = { callVLM: async () => '' };
+  const chipOut = await chip.execute(
+    { query: 'STM32F103C8T6 最大主频是多少', attachmentSignals: [], rawFiles: [], memory: null },
+    deps,
+  );
+  const chipResult = chipOut.result as {
     partNumber: string;
     supported: boolean;
   };
   assert.equal(chipResult.partNumber, 'STM32F103C8T6');
   assert.equal(chipResult.supported, true);
-  const jargonResult = (await jargon.handler('Protel 怎么画四层板')) as {
+  const jargonOut = await jargon.execute(
+    { query: 'Protel 怎么画四层板', attachmentSignals: [], rawFiles: [], memory: null },
+    deps,
+  );
+  const jargonResult = jargonOut.result as {
     matched: Array<{ term: string; normalized: string }>;
     normalizedQuery: string;
   };

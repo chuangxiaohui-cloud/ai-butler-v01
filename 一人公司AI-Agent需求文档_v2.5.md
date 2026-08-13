@@ -1878,6 +1878,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **状态**：Week 1 C1/C2 完成；C3/C4/C5 后续补。
 - affects: §5,§6.7,§8.2 | bench:na(new-param) 理由：多模态接入层与参数新增，无 §6 参数变更
 
+### 2026-08-13（Week 1 C3：Skill 注册表迁移 E28）
+
+- **变更**：`registry.ts` 的 `getSkills/findSkill` 改为返回 `ExecutableSkill`，6 项预置 Skill 全部经 `wrapLegacySkill` 包装；`pipeline.ts` Skill 深度输出改用 `execute + toDisplayText`；安装器目标数组更新为 `LegacySkillDef[]`。
+- **证据**：registry 全量回归 + 集成 10/10，124/124 单测全绿。
+- **状态**：旧 `handler` 仅作为 `LegacySkillDef` 输入存在，对外接口已统一为 `ExecutableSkill`。
+- affects: §8.2 | bench:na(new-param) 理由：Skill 注册表接口迁移，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
