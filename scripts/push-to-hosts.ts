@@ -74,6 +74,7 @@ function changedFiles(): string[] {
     'scripts/',
     'bench/',
     'docs/',
+    'tests/',
   ];
   return lines.filter((line) => prefixes.some((p) => line.includes(p)));
 }
@@ -142,7 +143,7 @@ async function main(): Promise<void> {
   ];
 
   console.log(`仓库: ${repo}`);
-  console.log(`范围: ${scope === 'all' ? '全部工作区' : '项目代码（src/scripts/bench/docs/需求文档/配置）'}`);
+  console.log(`范围: ${scope === 'all' ? '全部工作区' : '项目代码（src/scripts/bench/docs/tests/需求文档/配置）'}`);
   console.log(`分支: ${branch}`);
   console.log(`变更: ${changes.length} 个文件`);
   for (const line of changes.slice(0, 20)) console.log(`  ${line}`);
@@ -193,6 +194,7 @@ async function main(): Promise<void> {
         'scripts/',
         'bench/',
         'docs/',
+        'tests/',
       ]);
     }
     const staged = run('git', ['diff', '--cached', '--name-only']);

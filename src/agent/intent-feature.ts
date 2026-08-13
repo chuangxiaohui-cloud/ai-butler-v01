@@ -3,25 +3,31 @@
  * 只提取事实，不做路由决策；Phase 1 用确定性规则，后续可换 LLM。
  */
 
-export type ActionType =
-  | 'create'
-  | 'modify'
-  | 'query'
-  | 'send'
-  | 'analyze'
-  | 'clarify'
-  | 'emergency'
-  | 'unknown';
+export const ACTION_TYPES = [
+  'create',
+  'modify',
+  'query',
+  'send',
+  'analyze',
+  'clarify',
+  'emergency',
+  'unknown',
+] as const;
 
-export type TargetDomain =
-  | 'code'
-  | 'document'
-  | 'schedule'
-  | 'message'
-  | 'search'
-  | 'finance'
-  | 'security'
-  | 'unknown';
+export type ActionType = (typeof ACTION_TYPES)[number];
+
+export const TARGET_DOMAINS = [
+  'code',
+  'document',
+  'schedule',
+  'message',
+  'search',
+  'finance',
+  'security',
+  'unknown',
+] as const;
+
+export type TargetDomain = (typeof TARGET_DOMAINS)[number];
 
 export type Scope = 'atomic' | 'multi_step' | 'project_level' | 'unknown';
 export type SearchSourceHint = 'local_skill' | 'web_search' | 'internal_db' | 'none';
@@ -69,8 +75,8 @@ export function validateIntentFeature(input: unknown): IntentFeature {
   const scope = String(m.scope ?? 'atomic');
   const searchSourceHint = String(m.searchSourceHint ?? 'none');
   const urgency = String(m.urgency ?? 'normal');
-  const actions = ['create', 'modify', 'query', 'send', 'analyze', 'clarify', 'emergency', 'unknown'];
-  const domains = ['code', 'document', 'schedule', 'message', 'search', 'finance', 'security', 'unknown'];
+  const actions = ACTION_TYPES as readonly string[];
+  const domains = TARGET_DOMAINS as readonly string[];
   const scopes = ['atomic', 'multi_step', 'project_level'];
   const sources = ['local_skill', 'web_search', 'internal_db', 'none'];
   const urgencies = ['normal', 'urgent', 'critical'];

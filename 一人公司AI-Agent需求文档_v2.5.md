@@ -600,6 +600,14 @@ Agent 尝试解决问题
 | P-84 | 路由 fallback 置信度折扣 | 0.9 | numeric | provisional@2026-08-13 | |
 | P-85 | 子搜索循环上限 | 5次 | numeric | provisional@2026-08-13 | 3 <= P-85 <= 10 |
 | P-86 | 子搜索覆盖度下限 | 5条 | numeric | provisional@2026-08-13 | |
+| P-87 | 路由层 fast description 开关 | true | conditional | provisional@2026-08-13 | |
+| P-88 | fast description 超时 | 2000ms | numeric | provisional@2026-08-13 | |
+| P-89 | wrapLegacySkill 默认置信度 | 0.8 | numeric | provisional@2026-08-13 | |
+| P-90 | 长期事实注入最低置信度 | 0.6 | numeric | provisional@2026-08-13 | |
+| P-91 | 单次注入长期事实条数上限 | 10条 | numeric | provisional@2026-08-13 | |
+| P-92 | 30天未访问衰减系数 | 0.9 | numeric | provisional@2026-08-13 | |
+| P-93 | 90天未访问衰减系数 | 0.7 | numeric | provisional@2026-08-13 | |
+| P-94 | 长期事实归档阈值 | 0.3 | numeric | provisional@2026-08-13 | |
 
 > **约束注解**（lint 可评估，语法为线性不等式）：
 > - `P-15+P-13 <= P-14`（分配之和 ≤ 约束）
@@ -1862,6 +1870,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **证据**：source-stats 单测 + search-loop 统计记录断言，124/124 全绿。
 - **状态**：质量数据开始累积；后续用统计驱动源优先级与查询改写方向。
 - affects: §6.2,§12.3 | bench:na(new-param) 理由：多源质量闭环新增，无 §5/§6 参数变更
+
+### 2026-08-13（多模态接入层 Week 1 E27）
+
+- **变更**：新增 `src/config/params.ts`（P-87~P-94 双结构登记）、`src/skills/deps.ts`（RawFileLike / VLMClient / SkillDeps）、`src/memory/user-context.ts`（类型）、`src/agent/multimodal-preprocessor.ts`（零成本信号 + maybeFastDescribe）；registry 新增 `ExecutableSkill / SkillInput / SkillOutput / wrapLegacySkill / toDisplayText`，旧 Skill 接口保持不变。
+- **测试**：新增 `tests/integration/`（params 一致性、registry 兼容、枚举一致性、INT-005 零 VLM 成本），集成 10/10、单测 124/124 全绿。
+- **状态**：Week 1 C1/C2 完成；C3/C4/C5 后续补。
+- affects: §5,§6.7,§8.2 | bench:na(new-param) 理由：多模态接入层与参数新增，无 §6 参数变更
 
 ### v2.5（2026-08-12）
 

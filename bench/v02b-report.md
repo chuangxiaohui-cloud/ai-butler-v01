@@ -29,7 +29,7 @@
 |---|---|
 | 历史迁移 | `data/memory.db` 74 条 L0 → MemoryCore，零丢失校验 74/74（备份 `memory.db.bak-v0.2b`） |
 | 蒸馏冒烟 | L1/L2 调度、DeepSeek 调用、L1 complete、写入不阻塞 |
-| 模块测试 | 124/124 单测全绿（含实体变体、答案覆盖门控、软件官方源识别、错误主题/FAQ 降权、Experience/Skill 注入、Skill 深度输出、Skill 安装器、三层意图路由、执行器注册表、LLM 特征提取、工作记忆消歧、查询改写、子搜索循环、多源质量统计等新增用例） |
+| 模块测试 | 124/124 单测全绿（含实体变体、答案覆盖门控、软件官方源识别、错误主题/FAQ 降权、Experience/Skill 注入、Skill 深度输出、Skill 安装器、三层意图路由、执行器注册表、LLM 特征提取、工作记忆消歧、查询改写、子搜索循环、多源质量统计等新增用例）；集成测试 10/10（params/registry/枚举一致性/INT-005） |
 | 回归 | `npm run bench:v02a` 31/31 |
 
 ## 3.1 E1/E2 复验门首轮复核（2026-08-13）
@@ -146,6 +146,14 @@
 - 124/124 单测全绿。
 - 登记：需求文档附录 A E26（2026-08-13）。
 
+## 3.16 多模态接入层 Week 1（2026-08-13 续作）
+
+- 新增 params 双结构（P-87~P-94）、SkillDeps/RawFileLike/VLMClient 契约、UserContext 类型。
+- 新增 `multimodal-preprocessor.ts`：零成本信号提取 + maybeFastDescribe（P-87/P-88）。
+- registry 新增 `ExecutableSkill / wrapLegacySkill / toDisplayText`，旧接口未动。
+- `tests/integration/` 建成，集成 10/10，单测 124/124。
+- 登记：需求文档附录 A E27（2026-08-13）。
+
 ## 4. 遗留问题
 
 1. **L1 提取**：已缓解（E6）——项目侧 distill worker 全量 137 条 L0 → 191 条记忆；MemoryCore 内置 L1 不作为主路径。
@@ -157,4 +165,4 @@
 ## 5. 下一步
 
 - 日常使用积累回灌样本，推进 [P-16]/[P-17] 与 P-04/P-02 定稿。
-- v0.2b 已打 tag；后续变更按附录 A 登记（E7-E26 已入档）。
+- v0.2b 已打 tag；后续变更按附录 A 登记（E7-E27 已入档）。

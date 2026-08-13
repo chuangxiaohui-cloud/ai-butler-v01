@@ -24,7 +24,9 @@
     "install:skill": "tsx scripts/install-skill.ts",
     "route:query": "tsx scripts/route-query.ts",
     "sources:stats": "tsx scripts/source-stats.ts",
-    "test": "node --test dist/**/*.test.js"
+    "test": "node --test dist/**/*.test.js",
+    "test:integration": "node --import tsx --test tests/integration/**/*.test.ts",
+    "test:all": "npm run test && npm run test:integration"
   },
   "keywords": [
     "ai-agent",
