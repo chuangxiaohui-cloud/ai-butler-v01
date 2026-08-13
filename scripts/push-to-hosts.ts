@@ -62,6 +62,7 @@ function changedFiles(): string[] {
   if (scope === 'all') return lines;
   const prefixes = [
     '.env.example',
+    '.gitignore',
     'package.json',
     'tsconfig.json',
     'README.md',
@@ -180,6 +181,7 @@ async function main(): Promise<void> {
       run('git', [
         'add',
         '.env.example',
+        '.gitignore',
         'package.json',
         'tsconfig.json',
         'README.md',

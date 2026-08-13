@@ -19,6 +19,9 @@ benchmarks/results/
 # WorkBuddy内部目录
 .workbuddy/
 
+# 独立依赖仓库（含嵌套 .git，避免被当作 gitlink 提交）
+TencentDB-Agent-Memory/
+
 # Node.js / TypeScript
 node_modules/
 dist/
