@@ -20,6 +20,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 
 // ============================================================================
@@ -59,7 +60,7 @@ type SectionInfo = {
 
 const DOC_PATH = process.argv.includes('--doc')
   ? process.argv[process.argv.indexOf('--doc') + 1]
-  : path.join(__dirname, '..', '一人公司AI-Agent需求文档_v2.5.md');
+  : path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '一人公司AI-Agent需求文档_v2.5.md');
 
 const MIGRATION_MODE = process.argv.includes('--migration');
 
