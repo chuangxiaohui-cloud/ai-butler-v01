@@ -1892,6 +1892,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **状态**：C4 完成；多模态路由规则 Week 2/3 再按枚举扩展落地。
 - affects: §2.2,§8.2 | bench:na(new-param) 理由：IntentFeature 字段扩展，无 §5/§6 参数变更
 
+### 2026-08-13（Week 1 收口 C5 E30）
+
+- **变更**：Week 1 C1-C5 全部完成，`npm run test:all` 全绿；打基线 tag `v0.3-week1`。
+- **证据**：单测 126/126 + 集成 10/10，`doc-lint` 0 FAIL / 0 WARN。
+- **状态**：多模态接入层、Skill 统一接口、IntentFeature 多模态字段已入基线；Week 2 开始 cultural_reference 与镜片收敛。
+- affects: §2.2,§5,§6.7,§8.2 | bench:na(new-param) 理由：Week 1 收口与基线登记，无 §6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
