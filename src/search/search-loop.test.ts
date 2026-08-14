@@ -198,3 +198,32 @@ test('search-loop: 浏览器兜底失败后仍走 Tavily 官方域', async () =>
   assert.ok(r.attempts.some((a) => a.provider === 'browser' && !a.ok));
   assert.ok(r.attempts.some((a) => a.provider === 'tavily' && a.ok));
 });
+
+test('search-loop: 已有高可信源但证据不足时浏览器补证并跳过 Tavily', async () => {
+  const browser = {
+    calls: [] as string[],
+    async fetchPage(url: string, _timeoutMs?: number) {
+      this.calls.push(url);
+      return {
+        url: 'https://item.szlcsc.com/datasheet/GD32F103C8T6/79128.html',
+        title: 'GD32F103C8T6 数据手册',
+        text: 'GD32F103C8T6 完整数据手册，包含电气特性、引脚定义、存储器映射',
+      };
+    },
+  };
+  const r = await runSearchLoop('GD32F103C8T6 数据手册', {
+    intent: 'factual',
+    providers: [new FakeDomesticProvider()],
+    quota: new FakeQuota(),
+    tavily: { enabled: true },
+    tavilyMonthlyQuota: new FakeQuota(),
+    officialProvider: new FakeOfficialProvider(),
+    browserSession: browser,
+    minResults: 2,
+    maxSubSearches: 1,
+  });
+  assert.ok(browser.calls.length > 0);
+  assert.ok(r.results.length >= 2);
+  assert.ok(r.results.every((x) => x.url.includes('szlcsc.com')));
+  assert.ok(!r.attempts.some((a) => a.provider === 'tavily'));
+});

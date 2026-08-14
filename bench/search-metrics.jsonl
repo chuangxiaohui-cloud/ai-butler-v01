@@ -316,3 +316,5 @@
 {"ts":"2026-08-14T12:08:34.344Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":282,"bocha_ok":true,"anysearch_ms":2251,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-14T12:08:56.985Z","query":"GD32F103C8T6 site:szlcsc.com datasheet","bocha_ms":261,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"both"}
 {"ts":"2026-08-14T15:44:53.918Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":285,"bocha_ok":true,"anysearch_ms":3529,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T16:55:31.658Z","query":"GD32F103C8T6 site:szlcsc.com datasheet","bocha_ms":285,"bocha_ok":true,"anysearch_ms":3134,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T16:57:07.779Z","query":"GD32F103C8T6 site:szlcsc.com datasheet","bocha_ms":294,"bocha_ok":true,"anysearch_ms":3955,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}

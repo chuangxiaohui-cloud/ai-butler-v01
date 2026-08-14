@@ -132,4 +132,9 @@ npm run route:calibrate
    `npm run browser:launch -- thorium`（或 qq），然后 `npm run browser:cdp -- 9222`。
 6. 验证自动兜底：连接 QQ浏览器 CDP 后，直接问 Agent 一个需登录站点相关
    的型号/资料问题，确认证据里出现浏览器抓取的正文。
+7. 专项：融合后 `low_confidence` 二次取证——用浏览器抓高可信页/下载 PDF 提升证据质量。
 7. 下次推进按 `docs/plans/` 流程：先建日期计划文档，再动手，完成补结果。
+8. **datasheet 下载与证据补强（E79）**：新增 `npm run datasheet -- "URL" [型号]`，
+   从立创商品页自动提取 TI 官方 datasheet PDF 下载到 `data/datasheets/`；
+   浏览器兜底扩展为证据不足也补证。真实下载 TPS5430.pdf（2.48MB）成功；
+   GD32 查询置信度 0.414 → 0.505；单测 231/231 + 集成 17/17 全绿。

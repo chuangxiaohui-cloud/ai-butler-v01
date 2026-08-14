@@ -30,6 +30,7 @@ export interface FetchPageResult {
   title: string;
   text: string;
   sessionDomains: string[];
+  pdfLinks?: Array<{ url: string; text: string }>;
 }
 
 const DEFAULT_USER_DATA_DIR = resolve(process.cwd(), 'data', 'browser-session');
@@ -55,14 +56,41 @@ function resolveExecutable(executablePath?: string): string {
   return found;
 }
 
-function textFromPage(page: Page): Promise<string> {
+function extractPageData(
+  page: Page,
+): Promise<{ text: string; pdfLinks: Array<{ url: string; text: string }> }> {
   const extract = () => {
     const doc = (globalThis as { document?: unknown }).document as
-      | { querySelector(selector: string): { textContent: string | null } | null; body: { textContent: string | null } | null }
+      | {
+          querySelector(selector: string): { textContent: string | null } | null;
+          body: { textContent: string | null } | null;
+          location: { href: string };
+          querySelectorAll(selector: string): ArrayLike<unknown>;
+        }
       | undefined;
-    if (!doc) return '';
+    if (!doc) return { text: '', pdfLinks: [] };
     const main = doc.querySelector('main')?.textContent ?? doc.body?.textContent ?? '';
-    return main.replace(/\s+/g, ' ').trim().slice(0, 20_000);
+    const text = main.replace(/\s+/g, ' ').trim().slice(0, 20_000);
+    const pdfLinks: Array<{ url: string; text: string }> = [];
+    const anchors = doc.querySelectorAll('a[href]');
+    for (let i = 0; i < anchors.length; i += 1) {
+      const anchor = anchors[i] as {
+        href?: string;
+        getAttribute?(name: string): string | null;
+        textContent?: string | null;
+      };
+      const raw = anchor.href ?? anchor.getAttribute?.('href') ?? '';
+      try {
+        const url = new URL(raw, doc.location.href).href;
+        if (/\.pdf(\?|#|$)/i.test(url)) {
+          pdfLinks.push({ url, text: (anchor.textContent ?? '').trim().slice(0, 120) });
+        }
+      } catch {
+        // 非法 URL 跳过
+      }
+      if (pdfLinks.length >= 20) break;
+    }
+    return { text, pdfLinks };
   };
   return page.evaluate(extract);
 }
@@ -171,20 +199,43 @@ export class BrowserSessionManager {
   }
 
   /** 带会话状态抓取网页正文；登录后会话域内页面可直接读取。 */
-  async fetchPage(url: string, timeoutMs = 30_000): Promise<FetchPageResult> {
+  async fetchPage(url: string, timeoutMs = 30_000, waitMs = 0): Promise<FetchPageResult> {
     const context = await this.ensureContext();
     const page = await context.newPage();
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
-      const [title, text, sessionDomains] = await Promise.all([
+      if (waitMs > 0) await page.waitForTimeout(waitMs);
+      const [title, data, sessionDomains] = await Promise.all([
         page.title(),
-        textFromPage(page),
+        extractPageData(page),
         this.sessionDomains(),
       ]);
-      return { url: page.url(), title, text, sessionDomains };
+      return {
+        url: page.url(),
+        title,
+        text: data.text,
+        sessionDomains,
+        pdfLinks: data.pdfLinks,
+      };
     } finally {
       await page.close().catch(() => undefined);
     }
+  }
+
+  /** 用当前浏览器会话下载文件（含 CDP 登录态 Cookie），返回落盘结果。 */
+  async downloadFile(
+    url: string,
+    destPath: string,
+  ): Promise<{ ok: boolean; size: number; error?: string }> {
+    const context = await this.ensureContext();
+    const resp = await context.request.get(url, { timeout: 30_000 });
+    if (!resp.ok()) {
+      return { ok: false, size: 0, error: `HTTP ${resp.status()}` };
+    }
+    const body = await resp.body();
+    mkdirSync(dirname(destPath), { recursive: true });
+    writeFileSync(destPath, body);
+    return { ok: true, size: body.length };
   }
 
   async sessionDomains(): Promise<string[]> {

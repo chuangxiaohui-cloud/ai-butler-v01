@@ -175,45 +175,45 @@ export async function runSearchLoop(
   }
 
   const part = extractPartNumber(query);
-  const hasHighTrustSource = results.some((r) => isHighTrustDatasheetUrl(r.url, query));
-  if (part && !hasHighTrustSource) {
-    let browserCovered = false;
-    if (opts.browserSession) {
-      for (const url of uniqueUrls(results).slice(0, 2)) {
-        const attemptStart = Date.now();
-        try {
-          const page = await opts.browserSession.fetchPage(url, 8000);
-          const ok = page.text.trim().length > 0;
-          attempts.push({
+  const hasHighTrustSource = () => results.some((r) => isHighTrustDatasheetUrl(r.url, query));
+  const needsMoreEvidence = () => !hasHighTrustSource() || results.length < minResults;
+  let browserCovered = false;
+  if (part && needsMoreEvidence() && opts.browserSession) {
+    for (const url of uniqueUrls(results).slice(0, 2)) {
+      const attemptStart = Date.now();
+      try {
+        const page = await opts.browserSession.fetchPage(url, 8000);
+        const ok = page.text.trim().length > 0;
+        attempts.push({
+          provider: 'browser',
+          ok,
+          latencyMs: Date.now() - attemptStart,
+          error: ok ? undefined : '空正文',
+        });
+        opts.sourceStats?.record('browser', opts.intent, ok, Date.now() - attemptStart);
+        if (ok) {
+          results.push({
+            title: page.title || url,
+            url: page.url,
+            content: page.text.slice(0, 5000),
             provider: 'browser',
-            ok,
-            latencyMs: Date.now() - attemptStart,
-            error: ok ? undefined : '空正文',
           });
-          opts.sourceStats?.record('browser', opts.intent, ok, Date.now() - attemptStart);
-          if (ok) {
-            results.push({
-              title: page.title || url,
-              url: page.url,
-              content: page.text.slice(0, 5000),
-              provider: 'browser',
-            });
-          }
-        } catch (err) {
-          attempts.push({
-            provider: 'browser',
-            ok: false,
-            latencyMs: Date.now() - attemptStart,
-            error: err instanceof Error ? err.message : String(err),
-          });
-          opts.sourceStats?.record('browser', opts.intent, false, Date.now() - attemptStart);
         }
+      } catch (err) {
+        attempts.push({
+          provider: 'browser',
+          ok: false,
+          latencyMs: Date.now() - attemptStart,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        opts.sourceStats?.record('browser', opts.intent, false, Date.now() - attemptStart);
       }
-      browserCovered = results.some((r) => isHighTrustDatasheetUrl(r.url, query));
     }
+    browserCovered = hasHighTrustSource() && results.length >= minResults;
+  }
 
-    const officialHint = officialSourceHintForQuery(query);
-    if (opts.tavily?.enabled && !browserCovered) {
+  const officialHint = officialSourceHintForQuery(query);
+  if (opts.tavily?.enabled && part && !browserCovered && needsMoreEvidence()) {
     const officialProvider = opts.officialProvider ?? tavilyProvider;
     const monthly =
       opts.tavilyMonthlyQuota ??
@@ -253,7 +253,6 @@ export async function runSearchLoop(
         );
         if (fallbackSearch.ok) results.push(...fallbackSearch.results);
       }
-    }
     }
   }
 

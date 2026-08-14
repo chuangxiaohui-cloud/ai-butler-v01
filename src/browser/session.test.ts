@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -10,7 +10,12 @@ const fakePage = {
   goto: async () => undefined,
   url: () => 'https://item.szlcsc.com/515651.html',
   title: async () => 'STM32F103C8T6 数据手册',
-  evaluate: async () => '72MHz LQFP48 数据手册正文',
+  evaluate: async () => ({
+    text: '72MHz LQFP48 数据手册正文',
+    pdfLinks: [
+      { url: 'https://datasheet.szlcsc.com/stm32f103c8t6.pdf', text: '数据手册' },
+    ],
+  }),
   close: async () => undefined,
 };
 
@@ -30,6 +35,12 @@ const fakeContext = {
     closeCalls += 1;
   },
   browser: () => ({ isConnected: () => true }),
+  request: {
+    get: async () => ({
+      ok: () => true,
+      body: async () => Buffer.from('pdf-content'),
+    }),
+  },
 };
 
 const fakeChromium = {
@@ -119,5 +130,21 @@ test('browser-session: CDP 端口持久化后新实例自动复用', async () =>
   assert.equal(cdpCalls, 2);
   await m2.disconnectCdp();
   assert.equal(m2.savedCdpPort(), null);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('browser-session: 下载 PDF 到本地', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'browser-pdf-'));
+  const dest = join(dir, 'ds.pdf');
+  const manager = new (await import('./session.js')).BrowserSessionManager({
+    userDataDir: join(dir, 'profile'),
+    executablePath: 'C:/fake/chrome.exe',
+    launcher: fakeChromium as never,
+    cdpStatePath: join(dir, 'cdp.json'),
+  });
+  const result = await manager.downloadFile('https://datasheet.szlcsc.com/stm32f103c8t6.pdf', dest);
+  assert.equal(result.ok, true);
+  assert.ok(result.size > 0);
+  assert.equal(existsSync(dest), true);
   rmSync(dir, { recursive: true, force: true });
 });

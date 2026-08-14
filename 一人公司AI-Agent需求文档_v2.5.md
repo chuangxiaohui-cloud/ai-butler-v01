@@ -2222,6 +2222,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`docs/plans/README.md` 与 `_template.md` 已入库；doc-lint 0 FAIL/0 WARN。
 - affects: 附录A | bench:na(new-param) 理由：计划文档流程约定，无 §5/§6 参数变更
 
+### 2026-08-15（datasheet 下载与证据补强 E79）
+
+- **变更**：`BrowserSessionManager` 支持 PDF 链接提取（含可选等待异步渲染）与 `downloadFile`（带登录会话下载）；新增 `npm run datasheet -- "URL" [型号]`，从立创商城/芯查查商品页自动提取 datasheet PDF 下载到 `data/datasheets/`；`search-loop` 浏览器兜底扩展为“无高可信源**或**证据不足”时触发，抓高可信候选 URL 正文补证。
+- **验证**：真实冒烟 `TPS5430` 立创商品页自动挑中 TI 官方 datasheet 并下载 2.48MB PDF；`GD32F103C8T6 数据手册` 置信度 0.414 → 0.505、证据含立创资料页与兆易创新选型指南；新增 session/search-loop 单测；单测 231/231 + 集成 17/17 全绿。
+- affects: §6.5,§6.7,§8.2 | bench:na(new-param) 理由：资料下载能力与补证策略，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
