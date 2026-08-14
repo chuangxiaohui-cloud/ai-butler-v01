@@ -1,8 +1,9 @@
 # 一人公司 AI-Agent 需求文档
 
-> 版本：v2.5.1（需求登记） | 日期：2026-08-13 | 作者：老张 | 整理：小张
+> 版本：v2.5.2（需求登记 + agent-skills 吸收） | 日期：2026-08-14 | 作者：老张 | 整理：小张
 > **v2.5 变更**：文档治理重构——§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）+ §5 PARAM 注册表（数值单家）+ 章节骨架重组（§1-§13 + 附录 A-E）。v2.4 内容迁移完成（阶段 0-5），全量 lint 生效。
 > **v2.5.1 变更**：§1.4 登记三个未来需求（R-01 GitHub/Gitee 代码联动 / R-02 IM 远程对话 / R-03 Skill 市场安装），详细方案见 `v2.5_增补_IM远程对话与Skill市场.md`；对 v0.1 零影响，决策点待拍板。
+> **v2.5.2 变更**：吸收 agent-skills（Addy Osmani, GitHub, MIT）——§1.4 登记 R-04 质量门控子 Agent；§4.1.2 角色面板补"质量门控型"类别；§8.2 新增 8.2.3 Skill 内容格式（SKILL.md 基准）；§12.2 加可选门控包；§13 加 `src/agents/` 占位；增补文档 §2.3/§2.6/§5 同步（市场格式兼容 agent-skills）。
 
 ---
 
@@ -170,6 +171,7 @@ diff 基准 = git diff v2.4..HEAD（v2.4 = 迁移前最后版本标签）。
 | R-01 | GitHub/Gitee 代码联动 | 双 remote 推送（origin=Gitee / github=GitHub）；SSH over 443 已配置 | 随 v0.1 持续 | 进行中——仓库创建与公钥添加待老张手动完成后推送 |
 | R-02 | IM 远程对话 | 独立 IM Bridge 进程，适配器模式（飞书优先）；白名单校验 + 异步回复；仅知识问答模式 | v1.1 | 已登记（决策点待拍板） |
 | R-03 | Skill 市场安装 | §8.2 新增第三来源；浏览/下载/SHA-256 校验/权限确认/沙箱安装 | v1.2 | 已登记（决策点待拍板） |
+| R-04 | 质量门控子 Agent | 工程开发栏"审查/验收"环节接入 4 专家角色（code-reviewer / test-engineer / security-auditor / web-performance-auditor），来源 agent-skills（MIT）；§4.1.2 角色面板分类 + §13 `src/agents/` | v1.0 | 已登记（v0.1 仅接口占位，不影响 v0.1 范围） |
 
 **推进原则**：不影响 v0.1 范围（§4.4 切片与非目标均不变）；架构预留（HTTP API `/api/chat` 接口 + `SkillManager.install()` 方法签名）在 v0.1 骨架中只定义、不实现；v1.0 全功能验收后再实施。
 
@@ -326,7 +328,7 @@ prose 定义永远模糊，改用**一刀测试**：
 
 | 区域 | 内容 |
 |------|------|
-| 左侧：角色面板 | 当前角色标识（如"项目经理"）+ 已接入的子 Agent 列表（KiCad、Altium、FreeCAD、Keil、Cursor、LTspice 等），按类别标注（EDA/结构/编码/仿真） |
+| 左侧：角色面板 | 当前角色标识（如"项目经理"）+ 已接入的子 Agent 列表（工具型：KiCad、Altium、FreeCAD、Keil、Cursor、LTspice 等，按类别标注 EDA/结构/编码/仿真；质量门控型：code-reviewer 等 4 角色，见 R-04，v1.0 接入，v0.1 仅接口占位） |
 | 中间：对话区 | 用户消息 + Agent 回复（含任务拆解、审批按钮）+ 子 Agent 执行状态（实时进度）+ 输入框 |
 | 右侧：产物区 | 项目产物文件列表 + 变更记录 + 风险提示 |
 | 底部：内置终端 | 命令执行日志、编译/烧录/测试输出——**Agent 实时可读，自主诊断** |
@@ -1078,6 +1080,27 @@ memory-core 是**本地 HTTP sidecar 服务**（源码启动，非 Docker，非�
 
 > **与 §12.4 成熟度联动**：Skill 使用次数和活跃度是成熟度指标——四字段元数据是"Skill 不膨胀、不腐烂"的轻量保障。
 
+#### 8.2.3 Skill 内容格式（SKILL.md 基准）
+
+四字段元数据（8.2.1）管"何时触发、用没用"；内容格式管"Skill 怎么写"，两者正交。Skill 内容统一采用 SKILL.md 格式（参考实现：addyosmani/agent-skills，MIT，本地镜像 `agent-skills/`）：
+
+| 段落 | 作用 |
+|------|------|
+| frontmatter（name/description） | 机器可读标识与触发描述 |
+| Overview + When to Use | 何时启用（对齐四字段"触发模式"） |
+| Process | 分步工作流（Step 1..N），每步给问题清单 |
+| Red Flags | 反模式列表，出现即警惕 |
+| Verification | 证据要求（checkbox 清单，验证不可协商） |
+| Rationalizations | 反合理化表：跳步借口 + 反驳 |
+
+**三个机制（设计期吸收，与 §9/§8.3 同源）**：
+
+1. **反合理化**：借口表专治跳步——"我稍后加测试"→"测试是验收标准，不是可选步骤"
+2. **验证不可协商**：每个 Skill 以证据要求收尾（测试通过/构建输出/运行时数据），"看起来对"永远不够——呼应 §9 证据链
+3. **渐进式披露**：SKILL.md 是入口点，references/ 按需加载，控制 token 占用——呼应 §8.3 上下文预算
+
+> **R-03 市场兼容**：市场安装的 Skill 要求按此格式；v1.2 解析器直接兼容 SKILL.md frontmatter（见增补文档 §2.3）。
+
 ### 8.3 工作记忆与上下文压缩
 
 #### 8.3.1 上下文分层管理策略
@@ -1390,6 +1413,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | **Datasheet 速读 Skill** | 长 Datasheet | 抽取电源要求/关键引脚/禁忌，定位页码与表 |
 | **常见电路拓扑 Skill** | "最小系统怎么搭""BUCK 怎么选电感" | 通用拓扑要点 + 典型参数范围 |
 | **（用户可扩充）行业知识包** | 按安装软件动态加装 | 如汽车电子包、电力电子包 |
+| **（可选）软件工程质量门控包** | 工程开发栏审查/验收环节（R-04） | code-review / 安全 / 测试 / 性能四轴把关，来源 agent-skills（MIT） |
 
 ### 12.3 经验积累闭环（越用越懂）
 
@@ -1526,6 +1550,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/search/authority.ts` | 来源权威注入（域名权威度表 + 原厂域名映射） |
 | `src/memory/store.ts` | MemoryStore 接口 + SqliteDirectStore/MemoryCoreStore |
 | `src/memory/experience.ts` | ExperienceManager（embedding 检索 + 置信度演化） |
+| `src/agents/` | 质量门控子 Agent 角色定义（R-04 四角色，v1.0 实现，v0.1 仅接口占位） |
 
 > 完整代码目录为实施期产物：v0.1 落地后按 §0.1 文档治理规则补全并登记版本快照。当前仅列已定架构的关键模块。
 
@@ -1605,6 +1630,12 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | §1 产品概述 | §1.1-1.3 | 2026-08-12 | ✅ 归零 | 无裸数值直搬（"三十年"非 C1 单位） |
 | §12.2 可验证证据链 + §10.6 证据链交互 + §10.7 轻量反馈 | §9.1-9.3 | 2026-08-12 | ✅ 归零 | [hard]/[soft] 定义入 §9.1，联动 §6；👎降权引 [P-79]；界面 UI 结构入代码围栏 |
 | §0.4 重复条款压缩（"永远不要"清单） | §0 | 2026-08-12 | — | 与 0.1 规则2/0.2 规则1 重复，删除；行数 102→100 达标全量 C3 |
+
+### v2.5.2（2026-08-14）
+
+- 吸收 agent-skills（Addy Osmani, GitHub, MIT，本地镜像 `agent-skills/`）：§1.4 登记 R-04 质量门控子 Agent（4 专家角色，v1.0）；§4.1.2 角色面板补"质量门控型"类别；§8.2 新增 8.2.3 Skill 内容格式（SKILL.md 基准：frontmatter/Process/Red Flags/Verification/Rationalizations + 三机制）；§12.2 加可选门控包行；§13 加 `src/agents/` 占位
+- 增补文档 `v2.5_增补_IM远程对话与Skill市场.md` 同步：§2.3 SKILL.md 内容结构、§2.6 来源验证加 agent-skills、§5 决策点⑥
+- affects: §1,§4,§8,§12,§13,附录A,附录E | bench:na(typo) 无 §5/§6 数值变更
 
 ### v2.5.1（2026-08-13）
 
@@ -1962,5 +1993,6 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | **Wiki** | — | 记忆资产之一，结构化知识页面 |
 | **Zod** | — | TypeScript 结构校验库，用于约束 Agent 输出格式 |
 | **条件并联** | Parallel Conditional | 触发时 Tavily 与 Bocha/AnySearch 同处 Stage3 并联执行（取 max 不取 sum），区别于已废弃的"条件追加"（串行追加使 Tavily 延迟叠入关键路径爆预算）。见 §0.2 术语变更映射表 |
+| **质量门控子 Agent** | Quality-Gate Sub-Agent | 工程开发栏"审查/验收"环节的质量把关子 Agent（code-reviewer / test-engineer / security-auditor / web-performance-auditor，来源 agent-skills），见 R-04 |
 
-> **文档状态**：v2.5 迁移完成（阶段 0-5），全量 lint 生效（无豁免），v2.4 快照仅存 git tag 供追溯。
+> **文档状态**：v2.5.2（2026-08-14），全量 lint 生效（无豁免），v2.4 快照仅存 git tag 供追溯。
