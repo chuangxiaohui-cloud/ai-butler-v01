@@ -18,7 +18,7 @@ test('rewrite: LLM 返回多条子查询', async () => {
   );
   const r = await rewriteQuery('STM32F103C8T6 最大主频是多少', 'factual', llm);
   assert.equal(r.source, 'llm');
-  assert.equal(r.queries.length, 5);
+  assert.equal(r.queries.length, 7);
   assert.ok(r.queries.includes('STM32F103C8T6 最大主频'));
   assert.ok(r.queries.includes('STM32F103C8T6 72MHz 规格'));
 });
@@ -53,7 +53,15 @@ test('rewrite: 器件型号自动补官方源子查询', () => {
   const queries = ruleBasedRewrite('STM32F103C8T6 最大主频是多少');
   assert.ok(queries[0].includes('site:st.com'));
   assert.ok(queries[1].includes('st.com 官方 数据手册'));
+  assert.ok(queries.some((q) => q.includes('site:szlcsc.com')));
+  assert.ok(queries.some((q) => q.includes('site:xcc.com')));
   assert.ok(queries.includes('STM32F103C8T6 最大主频是多少'));
+});
+
+test('rewrite: 非知名前缀型号仍补国内资料站', () => {
+  const queries = ruleBasedRewrite('GD32F103C8T6 数据手册');
+  assert.ok(queries.some((q) => q.includes('site:szlcsc.com')));
+  assert.ok(queries.some((q) => q.includes('site:xcc.com')));
 });
 
 test('rewrite: 软件最新版本优先查 GitHub release 与 npm', () => {

@@ -2183,6 +2183,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`STM32F103C8T6 最大主频是多少` 复测证据变为 `community.st.com / www.st.com / estore.st.com`，答案 72MHz，confidence 0.888；新增 authority/rewrite/fusion/tavily/search-loop 单测，单测 217/217 + 集成 17/17 全绿。
 - affects: §6.1,§6.5,§6.7 | bench:B-20260814-03
 
+### 2026-08-14（国内资料站兜底 E73）
+
+- **变更**：查询改写对器件型号追加 `site:szlcsc.com datasheet` 与 `site:xcc.com datasheet` 子查询；`domainAuthority` 登记立创商城 0.8、芯查查 0.75、alldatasheet 0.7；搜索循环把“原厂域或国内资料站命中”视为高可信覆盖，未覆盖时才用 Tavily 兜底原厂域与国内资料站，避免券商/贴吧/淘宝等聚合页抢答。
+- **理由**：官网慢、需登录或验证时，人类会去立创商城、芯查查直接查 datasheet；Agent 通过国内可直连资料站模拟该路径，不依赖自动登录。
+- **验证**：新增 authority/rewrite/search-loop 单测；单测 221/221 + 集成 17/17 全绿。
+- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：来源权威表与兜底策略，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

@@ -20,7 +20,9 @@ const DOMAIN_RULES: DomainRule[] = [
   { pattern: /(^|\.)github\.com$/, authority: 0.9, official: true },
   { pattern: /wikipedia\.org$/, authority: 0.9, official: true },
   { pattern: /(docs\.python\.org|react\.dev|v2\.tauri\.app|keil\.com)$/, authority: 0.9, official: true },
-  { pattern: /(^|\.)(digikey|mouser|lcsc)\.(com|cn)$/, authority: 0.8 },
+  { pattern: /(^|\.)(digikey|mouser|lcsc|szlcsc)\.(com|cn)$/, authority: 0.8 },
+  { pattern: /(^|\.)xcc\.com$/, authority: 0.75 },
+  { pattern: /(^|\.)alldatasheet\.com$/, authority: 0.7 },
   { pattern: /(^|\.)(zhihu|csdn|bilibili)\.(com|net)$/, authority: 0.75 },
   { pattern: /(^|\.)(tencent|aliyun)\.(com|cn)$/, authority: 0.7 },
   { pattern: /(^|\.)elecfans\.com$/, authority: 0.6 },
@@ -75,11 +77,25 @@ export interface OfficialSourceHint {
   domain: string;
 }
 
+export const DOMESTIC_DATASHEET_DOMAINS = ['szlcsc.com', 'xcc.com'];
+
 export function officialSourceHintForQuery(query: string): OfficialSourceHint | null {
   const part = extractPartNumber(query);
   if (!part) return null;
   const vendor = VENDOR_DOMAIN_MAP.find((v) => part.toUpperCase().startsWith(v.prefix));
   return vendor ? { vendor: vendor.prefix, domain: vendor.domain } : null;
+}
+
+export function isDomesticDatasheetUrl(url: string): boolean {
+  const hostname = getHostname(url);
+  if (!hostname) return false;
+  return DOMESTIC_DATASHEET_DOMAINS.some(
+    (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
+  );
+}
+
+export function isHighTrustDatasheetUrl(url: string, query: string): boolean {
+  return isOfficialForQuery(url, query) || isDomesticDatasheetUrl(url);
 }
 
 export function isOfficialForQuery(url: string, query: string): boolean {

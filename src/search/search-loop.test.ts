@@ -3,12 +3,17 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 
+import { clearCacheForTests } from './cache.js';
 import type { ChatMessage, LLMClient } from './llm.js';
 import type { QuotaStoreLike } from './quota.js';
 import type { SearchProvider, SearchProviderResult, SearchResultItem } from './providers/types.js';
 import { runSearchLoop } from './search-loop.js';
 
 process.env.SEARCH_METRICS_LOG = join(tmpdir(), 'search-loop-metrics-test.jsonl');
+
+test.beforeEach(() => {
+  clearCacheForTests();
+});
 
 class FakeProvider implements SearchProvider {
   readonly id = 'bocha' as const;
@@ -47,6 +52,20 @@ class FakeOfficialProvider implements SearchProvider {
       ],
       latencyMs: 1,
     };
+  }
+}
+
+class FakeDomesticProvider implements SearchProvider {
+  readonly id = 'bocha' as const;
+
+  async search(query: string): Promise<SearchProviderResult> {
+    const item: SearchResultItem = {
+      title: 'STM32F103C8T6 数据手册',
+      url: 'https://item.szlcsc.com/515651.html',
+      content: '72MHz LQFP48',
+      provider: 'bocha',
+    };
+    return { provider: 'bocha', ok: true, results: [item], latencyMs: 1 };
   }
 }
 
@@ -102,6 +121,20 @@ test('search-loop: LLM 追加子查询直到覆盖足够', async () => {
   assert.ok(r.results.length >= 3);
   assert.ok(records.length >= 3);
   assert.ok(records.every((x) => x.source === 'bocha'));
+});
+
+test('search-loop: 已有立创商城结果时不重复消耗 Tavily', async () => {
+  const r = await runSearchLoop('STM32F103C8T6 立创商城数据手册', {
+    intent: 'factual',
+    providers: [new FakeDomesticProvider()],
+    quota: new FakeQuota(),
+    tavily: { enabled: true },
+    tavilyMonthlyQuota: new FakeQuota(),
+    officialProvider: new FakeOfficialProvider(),
+    minResults: 1,
+  });
+  assert.ok(r.results.some((x) => x.url.includes('szlcsc.com')));
+  assert.ok(!r.attempts.some((a) => a.provider === 'tavily'));
 });
 
 test('search-loop: 器件查询自动拉取官方域兜底', async () => {

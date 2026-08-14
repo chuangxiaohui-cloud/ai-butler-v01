@@ -14,7 +14,12 @@ import {
   type SearchStageResult,
 } from './stages/s3_search.js';
 import { rewriteQuery } from './query-rewrite.js';
-import { extractPartNumber, isOfficialForQuery, officialSourceHintForQuery } from './authority.js';
+import {
+  DOMESTIC_DATASHEET_DOMAINS,
+  extractPartNumber,
+  isHighTrustDatasheetUrl,
+  officialSourceHintForQuery,
+} from './authority.js';
 import { FileMonthlyQuotaStore } from './quota.js';
 import { tavilyProvider } from './providers/tavily.js';
 import type { SearchSourceStats } from './source-stats.js';
@@ -153,8 +158,8 @@ export async function runSearchLoop(
   }
 
   const officialHint = officialSourceHintForQuery(query);
-  const hasOfficial = results.some((r) => isOfficialForQuery(r.url, query));
-  if (opts.tavily?.enabled && officialHint && !hasOfficial) {
+  const hasHighTrustSource = results.some((r) => isHighTrustDatasheetUrl(r.url, query));
+  if (opts.tavily?.enabled && extractPartNumber(query) && !hasHighTrustSource) {
     const part = extractPartNumber(query) ?? query;
     const officialProvider = opts.officialProvider ?? tavilyProvider;
     const monthly =
@@ -162,23 +167,39 @@ export async function runSearchLoop(
       new FileMonthlyQuotaStore(join(process.cwd(), 'data', 'tavily-monthly.json'));
     const allowed = await monthly.take('tavily', TAVILY_MONTHLY_LIMIT);
     if (allowed) {
-      const officialSearch = await officialProvider.search(
-        `${part} ${officialHint.domain} datasheet`,
-        { includeDomains: [officialHint.domain], timeoutMs: 5000 },
-      );
-      attempts.push({
-        provider: officialSearch.provider,
-        ok: officialSearch.ok,
-        latencyMs: officialSearch.latencyMs,
-        error: officialSearch.error,
+      const fallbackSearches: Array<{
+        query: string;
+        includeDomains: string[];
+      }> = [];
+      if (officialHint) {
+        fallbackSearches.push({
+          query: `${part} ${officialHint.domain} datasheet`,
+          includeDomains: [officialHint.domain],
+        });
+      }
+      fallbackSearches.push({
+        query: `${part} 立创商城 芯查查 datasheet`,
+        includeDomains: DOMESTIC_DATASHEET_DOMAINS,
       });
-      opts.sourceStats?.record(
-        officialSearch.provider,
-        opts.intent,
-        officialSearch.ok,
-        officialSearch.latencyMs,
-      );
-      if (officialSearch.ok) results.push(...officialSearch.results);
+      for (const fallback of fallbackSearches) {
+        const fallbackSearch = await officialProvider.search(fallback.query, {
+          includeDomains: fallback.includeDomains,
+          timeoutMs: 5000,
+        });
+        attempts.push({
+          provider: fallbackSearch.provider,
+          ok: fallbackSearch.ok,
+          latencyMs: fallbackSearch.latencyMs,
+          error: fallbackSearch.error,
+        });
+        opts.sourceStats?.record(
+          fallbackSearch.provider,
+          opts.intent,
+          fallbackSearch.ok,
+          fallbackSearch.latencyMs,
+        );
+        if (fallbackSearch.ok) results.push(...fallbackSearch.results);
+      }
     }
   }
 

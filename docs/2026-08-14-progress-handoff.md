@@ -92,9 +92,18 @@ npm run route:calibrate
    Tavily `include_domains` 兜底；`domainAuthority` 参与非官方来源评分。
    STM32F103C8T6 主频查询证据已变为 `community.st.com / www.st.com /
    estore.st.com`，单测 217/217 + 集成 17/17 全绿。
+7. **国内资料站兜底（E73）**：器件型号追加 `site:szlcsc.com` 与
+   `site:xcc.com` 子查询；立创商城 0.8 / 芯查查 0.75 / alldatasheet 0.7
+   已登记权威度；搜索循环把“原厂或国内资料站命中”视为高可信覆盖，未覆盖
+   时才用 Tavily 兜底，避免券商/贴吧/淘宝聚合页抢答。对应人类找 datasheet
+   的路径：官网不可达/需登录时，去立创商城与芯查查。已补 authority/rewrite/
+   search-loop 测试，单测 221/221 + 集成 17/17 全绿。
 
 ## 下一步（按优先级）
 
 1. 继续用 `npm run route:feedback` 攒够 10 条 accept/reject 后跑
    `npm run route:apply-calibration`。
 2. 继续按 `push:hosts` 流程同步后续改动。
+3. 真实复测 `npm run dev -- "STM32F103C8T6 最大主频是多少"` 与
+   `npm run dev -- "GD32F103C8T6 数据手册"`，确认国内资料站来源出现在
+   结果集；后续可把立创商城/芯查查的商品页 datasheet 下载纳入 MCP 工具。

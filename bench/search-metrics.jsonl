@@ -310,3 +310,8 @@
 {"ts":"2026-08-14T03:59:40.254Z","query":"arduino GitHub release latest version","bocha_ms":529,"bocha_ok":true,"anysearch_ms":1220,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-14T04:00:09.294Z","query":"arduino GitHub release latest version","bocha_ms":376,"bocha_ok":true,"anysearch_ms":2870,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-14T04:01:39.277Z","query":"arduino GitHub release latest version","bocha_ms":358,"bocha_ok":true,"anysearch_ms":768,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T10:59:34.780Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":313,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-14T11:04:18.761Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":337,"bocha_ok":true,"anysearch_ms":2713,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T11:56:27.124Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-14T12:08:34.344Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":282,"bocha_ok":true,"anysearch_ms":2251,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T12:08:56.985Z","query":"GD32F103C8T6 site:szlcsc.com datasheet","bocha_ms":261,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"both"}

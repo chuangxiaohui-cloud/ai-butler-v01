@@ -1,7 +1,12 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { isOfficialForQuery, officialSourceHintForQuery } from './authority.js';
+import {
+  getDomainAuthority,
+  isHighTrustDatasheetUrl,
+  isOfficialForQuery,
+  officialSourceHintForQuery,
+} from './authority.js';
 
 test('authority: 器件型号前缀映射官方域', () => {
   assert.deepEqual(
@@ -47,6 +52,32 @@ test('authority: OpenClaw GitHub 与官方文档识别为官方源', () => {
 test('authority: 型号变体页面不误判为官方源', () => {
   assert.equal(
     isOfficialForQuery('https://item.szlcsc.com/515651.html', 'TPS5430 输入电压范围'),
+    false,
+  );
+});
+
+test('authority: 立创商城与芯查查评分高于默认值', () => {
+  assert.ok(getDomainAuthority('https://item.szlcsc.com/515651.html') >= 0.8);
+  assert.ok(getDomainAuthority('https://www.xcc.com/part/STM32F103C8T6') >= 0.75);
+  assert.ok(getDomainAuthority('https://item.szlcsc.com/515651.html') > 0.3);
+  assert.ok(getDomainAuthority('https://www.xcc.com/part/STM32F103C8T6') > 0.3);
+});
+
+test('authority: 原厂与国内资料站都算高可信资料源', () => {
+  assert.equal(
+    isHighTrustDatasheetUrl('https://www.st.com/zh/stm32f103c8.html', 'STM32F103C8T6 主频'),
+    true,
+  );
+  assert.equal(
+    isHighTrustDatasheetUrl('https://item.szlcsc.com/515651.html', 'STM32F103C8T6 主频'),
+    true,
+  );
+  assert.equal(
+    isHighTrustDatasheetUrl('https://www.xcc.com/part/stm32f103c8t6', 'STM32F103C8T6 主频'),
+    true,
+  );
+  assert.equal(
+    isHighTrustDatasheetUrl('https://guba.eastmoney.com/list/002465.html', '北斗芯片 上市公司'),
     false,
   );
 });

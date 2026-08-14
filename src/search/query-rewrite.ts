@@ -5,7 +5,11 @@
 
 import type { ChatMessage, LLMClient } from './llm.js';
 import type { IntentKey } from './stages/s2_classify.js';
-import { extractPartNumber, officialSourceHintForQuery } from './authority.js';
+import {
+  DOMESTIC_DATASHEET_DOMAINS,
+  extractPartNumber,
+  officialSourceHintForQuery,
+} from './authority.js';
 
 export interface RewriteResult {
   queries: string[];
@@ -56,9 +60,19 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
   const part = extractPartNumber(query);
   const officialHint = officialSourceHintForQuery(query);
   if (part && officialHint) {
+    const domesticQueries = DOMESTIC_DATASHEET_DOMAINS.map(
+      (domain) => `${part} site:${domain} datasheet`,
+    );
     return uniqueQueries([
       `${part} site:${officialHint.domain} datasheet`,
       `${part} ${officialHint.domain} 官方 数据手册`,
+      ...domesticQueries,
+      query,
+    ]);
+  }
+  if (part) {
+    return uniqueQueries([
+      ...DOMESTIC_DATASHEET_DOMAINS.map((domain) => `${part} site:${domain} datasheet`),
       query,
     ]);
   }
