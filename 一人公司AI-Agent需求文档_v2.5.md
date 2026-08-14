@@ -2197,6 +2197,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：新增 browser/session 单测 2 条 + browser-session skill 单测 2 条；真实抓取 `example.com` 成功；技能注册数 17 → 18；单测 225/225 + 集成 17/17 全绿。
 - affects: §1.2,§4.1.2,§8.2 | bench:na(new-param) 理由：浏览器会话能力新增，无 §5/§6 参数变更
 
+### 2026-08-14（CDP 直连复用日常浏览器 E75）
+
+- **变更**：`BrowserSessionManager` 新增 `connectCdp(port)`，通过 Chrome DevTools Protocol 连接用户正在运行的 QQ浏览器/Thorium/Chrome 等日常浏览器，直接复用其已登录会话，不需要独立 profile 重新登录；新增 `npm run browser:cdp -- <port>` 与 `npm run browser:launch -- thorium|qq`（以 `--remote-debugging-port` 启动，检测到浏览器在运行会提示先关闭）。
+- **边界**：Chromium 系浏览器同一 profile 只能被一个实例锁定，因此复用日常浏览器会话需先完全关闭该浏览器、再用调试端口启动；验证码/短信/主密码等强验证仍由用户本人完成。
+- **验证**：新增 CDP 连接单测 1 条；真实 CDP 冒烟：临时 Chromium 开调试端口 → `connectCdp` 连接成功 → 带会话抓取 `example.com` 成功；单测 226/226 + 集成 17/17 全绿。
+- affects: §1.2,§4.1.2,§8.2 | bench:na(new-param) 理由：CDP 直连复用会话，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

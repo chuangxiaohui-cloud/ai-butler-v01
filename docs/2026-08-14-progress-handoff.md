@@ -103,6 +103,10 @@ npm run route:calibrate
    可视登录一次，之后 Agent 复用 Session/Cookie 抓网页；`npm run
    browser:fetch -- "URL"` 可带会话取正文。技能 17 → 18，真实抓取
    example.com 成功；单测 225/225 + 集成 17/17 全绿。
+9. **CDP 直连复用日常浏览器（E75）**：新增 `browser:cdp -- 9222` 与
+   `browser:launch -- thorium|qq`；完全关闭 QQ浏览器/Thorium 后用调试
+   端口启动，Agent 直接复用其已登录会话，不需要在独立 profile 重登。
+   真实 CDP 冒烟连接成功；单测 226/226 + 集成 17/17 全绿。
 
 ## 下一步（按优先级）
 
@@ -114,3 +118,5 @@ npm run route:calibrate
    结果集；后续可把立创商城/芯查查的商品页 datasheet 下载纳入 MCP 工具。
 4. 执行 `npm run browser:open`，在打开窗口里登录立创商城/芯查查等站点后
    回车，再用 `npm run browser:fetch -- "需要登录的URL"` 验证会话继承。
+5. 若想直接复用 QQ浏览器/Thorium 现有登录：先完全关闭该浏览器，再
+   `npm run browser:launch -- thorium`（或 qq），然后 `npm run browser:cdp -- 9222`。

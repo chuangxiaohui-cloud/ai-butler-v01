@@ -10,6 +10,7 @@ import { join, resolve } from 'path';
 import { existsSync } from 'fs';
 import {
   chromium,
+  type Browser,
   type BrowserContext,
   type BrowserType,
   type Page,
@@ -65,6 +66,7 @@ function textFromPage(page: Page): Promise<string> {
 
 export class BrowserSessionManager {
   private context: BrowserContext | null = null;
+  private cdpBrowser: Browser | null = null;
   private readonly userDataDir: string;
   private readonly executablePath: string;
   private readonly headless: boolean;
@@ -82,6 +84,10 @@ export class BrowserSessionManager {
   }
 
   async ensureContext(headless = this.headless): Promise<BrowserContext> {
+    if (this.cdpBrowser) {
+      const contexts = this.cdpBrowser.contexts();
+      if (contexts[0]) return contexts[0];
+    }
     if (this.context && !this.context.browser()?.isConnected()) {
       await this.close();
     }
@@ -93,6 +99,13 @@ export class BrowserSessionManager {
       });
     }
     return this.context;
+  }
+
+  /** 连接用户正在运行的浏览器（需以 --remote-debugging-port 启动）。 */
+  async connectCdp(port = 9222): Promise<{ sessionDomains: string[]; contexts: number }> {
+    this.cdpBrowser = await this.launcher.connectOverCDP(`http://127.0.0.1:${port}`);
+    const sessionDomains = await this.sessionDomains();
+    return { sessionDomains, contexts: this.cdpBrowser.contexts().length };
   }
 
   /** 打开可视窗口让用户完成一次登录；返回后浏览器保持打开直到用户回车。 */
@@ -120,12 +133,18 @@ export class BrowserSessionManager {
   }
 
   async sessionDomains(): Promise<string[]> {
-    if (!this.context) return [];
-    const cookies = await this.context.cookies();
+    const cdpContexts = this.cdpBrowser ? await this.cdpBrowser.contexts() : [];
+    const context = cdpContexts[0] ?? this.context;
+    if (!context) return [];
+    const cookies = await context.cookies();
     return [...new Set(cookies.map((c) => c.domain.replace(/^\./, '')))].sort();
   }
 
   async close(): Promise<void> {
+    if (this.cdpBrowser) {
+      await this.cdpBrowser.close().catch(() => undefined);
+      this.cdpBrowser = null;
+    }
     if (this.context) {
       await this.context.close().catch(() => undefined);
       this.context = null;

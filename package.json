@@ -23,6 +23,8 @@
     "push:hosts": "tsx scripts/push-to-hosts.ts",
     "install:skill": "tsx scripts/install-skill.ts",
     "browser:open": "tsx scripts/browser-session.ts open",
+    "browser:launch": "tsx scripts/browser-launch.ts",
+    "browser:cdp": "tsx scripts/browser-session.ts cdp",
     "browser:fetch": "tsx scripts/browser-session.ts fetch",
     "browser:status": "tsx scripts/browser-session.ts status",
     "route:query": "tsx scripts/route-query.ts",

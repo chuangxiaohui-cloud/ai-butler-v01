@@ -29,6 +29,12 @@ const fakeContext = {
 
 const fakeChromium = {
   launchPersistentContext: async () => fakeContext,
+  connectOverCDP: async () => fakeCdpBrowser,
+};
+
+const fakeCdpBrowser = {
+  contexts: () => [fakeContext],
+  close: async () => undefined,
 };
 
 test('browser-session: 带会话抓取页面并返回会话域', async () => {
@@ -55,4 +61,19 @@ test('browser-session: 未登录时会话域为空', async () => {
     launcher: fakeChromium as never,
   });
   assert.deepEqual(await manager.sessionDomains(), []);
+});
+
+test('browser-session: CDP 连接复用正在运行的浏览器会话', async () => {
+  const { BrowserSessionManager } = await import('./session.js');
+  const manager = new BrowserSessionManager({
+    userDataDir: 'M:/tmp/browser-session-cdp',
+    executablePath: 'C:/fake/chrome.exe',
+    launcher: fakeChromium as never,
+  });
+  const info = await manager.connectCdp(9222);
+  assert.deepEqual(info.sessionDomains, ['szlcsc.com', 'xcc.com']);
+  assert.equal(info.contexts, 1);
+  const page = await manager.fetchPage('https://item.szlcsc.com/515651.html');
+  assert.equal(page.title, 'STM32F103C8T6 数据手册');
+  await manager.close();
 });
