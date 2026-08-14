@@ -115,6 +115,8 @@ npm run route:calibrate
    `data/browser-session-cdp.json`，Agent 每次启动自动连接；新增
    `browser:cdp-off` 解除关联；浏览器未运行自动回退独立浏览器。
    真实端到端通过；单测 229/229 + 集成 17/17 全绿。
+12. **推进计划文档流程（E78）**：新增 `docs/plans/` 目录、README 与
+   `_template.md`；以后每次推进先写计划文档，完成后登记到当日交接。
 
 ## 下一步（按优先级）
 
@@ -130,3 +132,4 @@ npm run route:calibrate
    `npm run browser:launch -- thorium`（或 qq），然后 `npm run browser:cdp -- 9222`。
 6. 验证自动兜底：连接 QQ浏览器 CDP 后，直接问 Agent 一个需登录站点相关
    的型号/资料问题，确认证据里出现浏览器抓取的正文。
+7. 下次推进按 `docs/plans/` 流程：先建日期计划文档，再动手，完成补结果。

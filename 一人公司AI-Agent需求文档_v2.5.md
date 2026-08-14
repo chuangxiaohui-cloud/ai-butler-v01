@@ -2216,6 +2216,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：新增单测 1 条（端口持久化 + 新实例自动复用）；真实端到端：临时 Chromium 开调试端口 → `browser:cdp` 保存 → 新进程 `browser:fetch example.com` 通过自动连接成功；单测 229/229 + 集成 17/17 全绿。
 - affects: §1.2,§8.2 | bench:na(new-param) 理由：CDP 端口持久化，无 §5/§6 参数变更
 
+### 2026-08-15（推进计划文档流程 E78）
+
+- **变更**：新增 `docs/plans/` 目录与模板 `_template.md`，约定每次推进先写“目标 / 计划 / 执行过程 / 结果”，完成后在当日 `progress-handoff.md` 登记链接；与每日交接、附录 A 变更台账、机器轨迹日志分层，保证任何修改都有计划、执行、结果三段记录。
+- **验证**：`docs/plans/README.md` 与 `_template.md` 已入库；doc-lint 0 FAIL/0 WARN。
+- affects: 附录A | bench:na(new-param) 理由：计划文档流程约定，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
