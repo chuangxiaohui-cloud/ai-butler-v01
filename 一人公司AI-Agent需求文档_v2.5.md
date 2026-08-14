@@ -2190,6 +2190,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：新增 authority/rewrite/search-loop 单测；单测 221/221 + 集成 17/17 全绿。
 - affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：来源权威表与兜底策略，无 §5/§6 参数变更
 
+### 2026-08-14（浏览器会话继承 E74）
+
+- **变更**：新增 `src/browser/session.ts`（`BrowserSessionManager`），用独立持久化 Chromium profile（`data/browser-session/`）保存 Session/Cookie，首次用可视窗口登录一次，之后 Agent 通过 `browser-session` Skill 或 CLI 带会话抓取网页正文；新增 `npm run browser:open / browser:fetch / browser:status`；复用本机 Playwright Chromium 或 Chrome/Edge，不读取正在运行的浏览器锁定配置。
+- **落点**：落实 §1.2“联网时你的电脑网络能访问什么，她就能访问什么”——登录态由用户本人完成一次，验证码/短信等强验证不交给 Agent 自动处理。
+- **验证**：新增 browser/session 单测 2 条 + browser-session skill 单测 2 条；真实抓取 `example.com` 成功；技能注册数 17 → 18；单测 225/225 + 集成 17/17 全绿。
+- affects: §1.2,§4.1.2,§8.2 | bench:na(new-param) 理由：浏览器会话能力新增，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

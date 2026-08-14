@@ -3,13 +3,14 @@ import { test } from 'node:test';
 
 import { findSkill, getSkills } from './registry.js';
 
-test('registry: 17 项 Skill 全量加载', () => {
+test('registry: 18 项 Skill 全量加载', () => {
   const skills = getSkills();
-  assert.equal(skills.length, 17);
+  assert.equal(skills.length, 18);
   const names = skills.map((s) => s.name);
   assert.deepEqual(
     names.sort(),
     [
+      'browser-session',
       'chip-analysis',
       'circuit-topology',
       'calendar-skill',

@@ -22,6 +22,9 @@
     "finalize:gates": "tsx scripts/finalize-gates.ts",
     "push:hosts": "tsx scripts/push-to-hosts.ts",
     "install:skill": "tsx scripts/install-skill.ts",
+    "browser:open": "tsx scripts/browser-session.ts open",
+    "browser:fetch": "tsx scripts/browser-session.ts fetch",
+    "browser:status": "tsx scripts/browser-session.ts status",
     "route:query": "tsx scripts/route-query.ts",
     "route:calibrate": "tsx scripts/route-calibrate.ts",
     "seed:route-cases": "tsx scripts/seed-route-cases.ts",
@@ -48,7 +51,8 @@
   "dependencies": {
     "@esbuild/win32-x64": "^0.28.2",
     "better-sqlite3": "^12.0.0",
-    "express": "^4.21.0"
+    "express": "^4.21.0",
+    "playwright-core": "^1.62.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",

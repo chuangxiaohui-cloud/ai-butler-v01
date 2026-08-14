@@ -1,0 +1,141 @@
+/**
+ * BrowserSessionManager
+ *
+ * 让 Agent 继承“用户已登录的浏览器会话”：使用独立的持久化 Chromium profile，
+ * 用户首次用可视窗口登录一次，之后 Agent 的 fetch 复用同一份 Session/Cookie。
+ * 不读取用户正在运行的 Chrome 配置目录（浏览器锁定，直接读取会冲突）。
+ */
+
+import { join, resolve } from 'path';
+import { existsSync } from 'fs';
+import {
+  chromium,
+  type BrowserContext,
+  type BrowserType,
+  type Page,
+} from 'playwright-core';
+
+export interface BrowserSessionOptions {
+  userDataDir?: string;
+  executablePath?: string;
+  headless?: boolean;
+  launcher?: BrowserType;
+}
+
+export interface FetchPageResult {
+  url: string;
+  title: string;
+  text: string;
+  sessionDomains: string[];
+}
+
+const DEFAULT_USER_DATA_DIR = resolve(process.cwd(), 'data', 'browser-session');
+
+function defaultExecutablePath(): string | null {
+  const envPath = process.env.BROWSER_EXECUTABLE;
+  if (envPath && existsSync(envPath)) return envPath;
+  const candidates = [
+    'C:/Users/zhxh/AppData/Local/ms-playwright/chromium-1208/chrome-win64/chrome.exe',
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  ];
+  return candidates.find((p) => existsSync(p)) ?? null;
+}
+
+function resolveExecutable(executablePath?: string): string {
+  if (executablePath) return executablePath;
+  const found = defaultExecutablePath();
+  if (!found) {
+    throw new Error('未找到可用浏览器，请设置 BROWSER_EXECUTABLE 环境变量');
+  }
+  return found;
+}
+
+function textFromPage(page: Page): Promise<string> {
+  const extract = () => {
+    const doc = (globalThis as { document?: unknown }).document as
+      | { querySelector(selector: string): { textContent: string | null } | null; body: { textContent: string | null } | null }
+      | undefined;
+    if (!doc) return '';
+    const main = doc.querySelector('main')?.textContent ?? doc.body?.textContent ?? '';
+    return main.replace(/\s+/g, ' ').trim().slice(0, 20_000);
+  };
+  return page.evaluate(extract);
+}
+
+export class BrowserSessionManager {
+  private context: BrowserContext | null = null;
+  private readonly userDataDir: string;
+  private readonly executablePath: string;
+  private readonly headless: boolean;
+  private readonly launcher: BrowserType;
+
+  constructor(opts: BrowserSessionOptions = {}) {
+    this.userDataDir = opts.userDataDir ?? DEFAULT_USER_DATA_DIR;
+    this.executablePath = resolveExecutable(opts.executablePath);
+    this.headless = opts.headless ?? true;
+    this.launcher = opts.launcher ?? chromium;
+  }
+
+  get profileDir(): string {
+    return this.userDataDir;
+  }
+
+  async ensureContext(headless = this.headless): Promise<BrowserContext> {
+    if (this.context && !this.context.browser()?.isConnected()) {
+      await this.close();
+    }
+    if (!this.context) {
+      this.context = await this.launcher.launchPersistentContext(this.userDataDir, {
+        executablePath: this.executablePath,
+        headless,
+        viewport: { width: 1280, height: 900 },
+      });
+    }
+    return this.context;
+  }
+
+  /** 打开可视窗口让用户完成一次登录；返回后浏览器保持打开直到用户回车。 */
+  async openLoginWindow(): Promise<{ profileDir: string; sessionDomains: string[] }> {
+    await this.ensureContext(false);
+    const sessionDomains = await this.sessionDomains();
+    return { profileDir: this.userDataDir, sessionDomains };
+  }
+
+  /** 带会话状态抓取网页正文；登录后会话域内页面可直接读取。 */
+  async fetchPage(url: string): Promise<FetchPageResult> {
+    const context = await this.ensureContext();
+    const page = await context.newPage();
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      const [title, text, sessionDomains] = await Promise.all([
+        page.title(),
+        textFromPage(page),
+        this.sessionDomains(),
+      ]);
+      return { url: page.url(), title, text, sessionDomains };
+    } finally {
+      await page.close().catch(() => undefined);
+    }
+  }
+
+  async sessionDomains(): Promise<string[]> {
+    if (!this.context) return [];
+    const cookies = await this.context.cookies();
+    return [...new Set(cookies.map((c) => c.domain.replace(/^\./, '')))].sort();
+  }
+
+  async close(): Promise<void> {
+    if (this.context) {
+      await this.context.close().catch(() => undefined);
+      this.context = null;
+    }
+  }
+}
+
+export const browserSession = new BrowserSessionManager();
+
+/** 供 CLI/脚本使用：临时配置实例（不污染全局单例）。 */
+export function createBrowserSessionManager(opts: BrowserSessionOptions = {}): BrowserSessionManager {
+  return new BrowserSessionManager(opts);
+}

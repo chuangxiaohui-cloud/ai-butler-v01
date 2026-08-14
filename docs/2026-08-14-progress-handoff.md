@@ -98,6 +98,11 @@ npm run route:calibrate
    时才用 Tavily 兜底，避免券商/贴吧/淘宝聚合页抢答。对应人类找 datasheet
    的路径：官网不可达/需登录时，去立创商城与芯查查。已补 authority/rewrite/
    search-loop 测试，单测 221/221 + 集成 17/17 全绿。
+8. **浏览器会话继承（E74）**：新增 `src/browser/session.ts`（持久化
+   Chromium profile）与 `browser-session` Skill；首次 `npm run browser:open`
+   可视登录一次，之后 Agent 复用 Session/Cookie 抓网页；`npm run
+   browser:fetch -- "URL"` 可带会话取正文。技能 17 → 18，真实抓取
+   example.com 成功；单测 225/225 + 集成 17/17 全绿。
 
 ## 下一步（按优先级）
 
@@ -107,3 +112,5 @@ npm run route:calibrate
 3. 真实复测 `npm run dev -- "STM32F103C8T6 最大主频是多少"` 与
    `npm run dev -- "GD32F103C8T6 数据手册"`，确认国内资料站来源出现在
    结果集；后续可把立创商城/芯查查的商品页 datasheet 下载纳入 MCP 工具。
+4. 执行 `npm run browser:open`，在打开窗口里登录立创商城/芯查查等站点后
+   回车，再用 `npm run browser:fetch -- "需要登录的URL"` 验证会话继承。
