@@ -86,9 +86,13 @@ npm run route:calibrate
    `low_confidence`，已由 E71 修复：规则①不再把 Release 页面里的单位噪声
    当成版本冲突，复测 gate 已变 `none`。
 4. **case 库**：pipeline 累计 135 条，校准样本 3/10。
+5. **提交推送**：本地提交 `72e3e90`；Gitee `cxv138/ai-butler-v01` 推送成功；
+   GitHub `chuangxiaohui-cloud/ai-butler-v01` 仓库不存在，推送失败。
 
 ## 下一步（按优先级）
 
 1. 继续用 `npm run route:feedback` 攒够 10 条 accept/reject 后跑
    `npm run route:apply-calibration`。
-2. Review 当前未提交工作区，确认后按 `push:hosts` 流程提交推送。
+2. 在 GitHub 创建 `ai-butler-v01` 私有仓库（或改指已有仓库）后重推
+   `origin-github`，当前 GitHub Token 仍缺少仓库创建权限。
+3. 继续按 `push:hosts` 流程同步后续改动。
