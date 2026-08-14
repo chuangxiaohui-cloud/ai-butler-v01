@@ -3,7 +3,7 @@
 > 版本：v2.5.2（需求登记 + agent-skills 吸收） | 日期：2026-08-14 | 作者：老张 | 整理：小张
 > **v2.5 变更**：文档治理重构——§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）+ §5 PARAM 注册表（数值单家）+ 章节骨架重组（§1-§13 + 附录 A-E）。v2.4 内容迁移完成（阶段 0-5），全量 lint 生效。
 > **v2.5.1 变更**：§1.4 登记三个未来需求（R-01 GitHub/Gitee 代码联动 / R-02 IM 远程对话 / R-03 Skill 市场安装），详细方案见 `v2.5_增补_IM远程对话与Skill市场.md`；对 v0.1 零影响，决策点待拍板。
-> **v2.5.2 变更**：吸收 agent-skills（Addy Osmani, GitHub, MIT）——§1.4 登记 R-04 质量门控子 Agent；§4.1.2 角色面板补"质量门控型"类别；§8.2 新增 8.2.3 Skill 内容格式（SKILL.md 基准）；§12.2 加可选门控包；§13 加 `src/agents/` 占位；增补文档 §2.3/§2.6/§5 同步（市场格式兼容 agent-skills）。
+> **v2.5.2 变更**：吸收 agent-skills（Addy Osmani, GitHub, MIT）——§1.4 登记 R-04 质量门控子 Agent；§4.1.2 角色面板补"质量门控型"类别；§8.2 新增 8.2.3 Skill 内容格式（SKILL.md 基准）；§12.2 加可选门控包；§13 加 `src/agents/` 占位；增补文档 §2.3/§2.6/§5 同步（市场格式兼容 agent-skills）。R-01 GitHub/Gitee 双远端仓库创建、公钥添加、v0.1 推送已完成。
 
 ---
 
@@ -164,11 +164,11 @@ diff 基准 = git diff v2.4..HEAD（v2.4 = 迁移前最后版本标签）。
 
 ### 1.4 已登记需求（未来版本推进）
 
-> 来源：老张 2026-08-13 提出的三个增量需求｜详细方案：`v2.5_增补_IM远程对话与Skill市场.md`｜决策点待拍板，拍板后更新本表。
+> 来源：老张 2026-08-13 提出三个增量需求（R-01/R-02/R-03），2026-08-14 追加 R-04｜详细方案：`v2.5_增补_IM远程对话与Skill市场.md`｜决策点待拍板（R-01 仓库/公钥/推送已完成）。
 
 | 编号 | 需求 | 描述摘要 | 版本落点 | 状态 |
 |------|------|---------|---------|------|
-| R-01 | GitHub/Gitee 代码联动 | 双 remote 推送（origin=Gitee / github=GitHub）；SSH over 443 已配置 | 随 v0.1 持续 | 进行中——仓库创建与公钥添加待老张手动完成后推送 |
+| R-01 | GitHub/Gitee 代码联动 | 双 remote 推送（origin=Gitee `cxv138/ai-butler` / github=GitHub `chuangxiaohui-cloud/ai-butler-v01`）；SSH over 443 已配置 | 随 v0.1 持续 | 已就绪——双远端仓库已创建、Gitee 公钥已添加、v0.1 已推送；后续提交自动同步 |
 | R-02 | IM 远程对话 | 独立 IM Bridge 进程，适配器模式（飞书优先）；白名单校验 + 异步回复；仅知识问答模式 | v1.1 | 已登记（决策点待拍板） |
 | R-03 | Skill 市场安装 | §8.2 新增第三来源；浏览/下载/SHA-256 校验/权限确认/沙箱安装 | v1.2 | 已登记（决策点待拍板） |
 | R-04 | 质量门控子 Agent | 工程开发栏"审查/验收"环节接入 4 专家角色（code-reviewer / test-engineer / security-auditor / web-performance-auditor），来源 agent-skills（MIT）；§4.1.2 角色面板分类 + §13 `src/agents/` | v1.0 | 已登记（v0.1 仅接口占位，不影响 v0.1 范围） |
@@ -1634,6 +1634,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 ### v2.5.2（2026-08-14）
 
 - 吸收 agent-skills（Addy Osmani, GitHub, MIT，本地镜像 `agent-skills/`）：§1.4 登记 R-04 质量门控子 Agent（4 专家角色，v1.0）；§4.1.2 角色面板补"质量门控型"类别；§8.2 新增 8.2.3 Skill 内容格式（SKILL.md 基准：frontmatter/Process/Red Flags/Verification/Rationalizations + 三机制）；§12.2 加可选门控包行；§13 加 `src/agents/` 占位
+- R-01 GitHub/Gitee 代码联动落地：Gitee 仓库 `cxv138/ai-butler`（私有）+ GitHub 仓库 `chuangxiaohui-cloud/ai-butler-v01`（public）已创建，Gitee 公钥已添加，v0.1 已双推
 - 增补文档 `v2.5_增补_IM远程对话与Skill市场.md` 同步：§2.3 SKILL.md 内容结构、§2.6 来源验证加 agent-skills、§5 决策点⑥
 - affects: §1,§4,§8,§12,§13,附录A,附录E | bench:na(typo) 无 §5/§6 数值变更
 
