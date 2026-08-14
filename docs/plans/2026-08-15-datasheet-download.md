@@ -40,5 +40,5 @@
 
 - 验证：`npm run datasheet -- "https://item.szlcsc.com/515651.html" TPS5430` 从立创商品页自动挑中 TI 官方 datasheet 并下载 `data/datasheets/TPS5430.pdf`（2.48MB）；GD32 查询证据含立创商城与兆易创新选型指南。
 - 测试：单测 231/231 + 集成 17/17 全绿；doc-lint 0 FAIL/0 WARN。
-- 提交：待填 · 推送：Gitee / GitHub
+- 提交：`163e0f5` · 推送：Gitee ✅ / GitHub ✅
 - 遗留事项：融合后 `low_confidence` 二次取证（用浏览器抓高可信页/下载 PDF 提升证据）未做。
