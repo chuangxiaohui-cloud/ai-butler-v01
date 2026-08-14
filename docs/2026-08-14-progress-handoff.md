@@ -86,14 +86,11 @@ npm run route:calibrate
    `low_confidence`，已由 E71 修复：规则①不再把 Release 页面里的单位噪声
    当成版本冲突，复测 gate 已变 `none`。
 4. **case 库**：pipeline 累计 135 条，校准样本 3/10。
-5. **提交推送**：本地提交 `72e3e90` 与 `6e4593a`；Gitee `cxv138/ai-butler-v01`
-   推送成功；GitHub `chuangxiaohui-cloud/ai-butler-v01` 仓库已创建，但当前
-   GitHub Token 无推送权限（403），待授权后重推。
+5. **提交推送**：本地提交 `72e3e90`、`6e4593a`、`3d5af9a`；Gitee 与 GitHub
+   `v0.2b` 均已推送成功。
 
 ## 下一步（按优先级）
 
 1. 继续用 `npm run route:feedback` 攒够 10 条 accept/reject 后跑
    `npm run route:apply-calibration`。
-2. 给当前 GitHub Token 授予 `ai-butler-v01` 仓库 `Contents: Read and write`
-   权限（或换有 `repo` 权限的 Token）后，重推 `origin-github`。
-3. 继续按 `push:hosts` 流程同步后续改动。
+2. 继续按 `push:hosts` 流程同步后续改动。
