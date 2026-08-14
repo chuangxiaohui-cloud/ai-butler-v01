@@ -41,5 +41,5 @@
 
 - 验证：`GD32F103C8T6 数据手册` confidence 0.505 → 0.652，gate `low_confidence` → `none`，证据为二次取证抓取的立创完整页面。
 - 测试：单测 236/236 + 集成 17/17 全绿；doc-lint 0 FAIL/0 WARN。
-- 提交：待填 · 推送：Gitee / GitHub
+- 提交：`e609aaf` · 推送：Gitee ✅ / GitHub ✅
 - 遗留事项：PDF 解析仍是轻量文本提取，复杂排版/扫描件暂不支持。
