@@ -111,6 +111,10 @@ npm run route:calibrate
    浏览器会话抓取搜索结果前 2 个 URL 正文；抓到官方/立创/芯查查则跳过
    Tavily，失败继续走 Tavily。CLI 默认接入，已连 CDP 时自动复用登录态。
    单测 228/228 + 集成 17/17 全绿。
+11. **CDP 端口持久化自动复用（E77）**：`browser:cdp` 保存调试端口到
+   `data/browser-session-cdp.json`，Agent 每次启动自动连接；新增
+   `browser:cdp-off` 解除关联；浏览器未运行自动回退独立浏览器。
+   真实端到端通过；单测 229/229 + 集成 17/17 全绿。
 
 ## 下一步（按优先级）
 

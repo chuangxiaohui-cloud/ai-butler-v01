@@ -43,7 +43,7 @@ async function main(): Promise<void> {
     if (!Number.isInteger(port) || port <= 0) throw new Error('端口无效');
     const info = await browserSession.connectCdp(port);
     console.log(JSON.stringify({
-      message: '已连接浏览器调试端口；该浏览器正在运行的登录会话可直接被 Agent 使用。',
+      message: '已连接并保存调试端口；后续 Agent 会自动复用该浏览器会话。',
       port,
       sessionDomains: info.sessionDomains,
       contexts: info.contexts,
@@ -52,15 +52,22 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (subcommand === 'cdp-off') {
+    await browserSession.disconnectCdp();
+    console.log(JSON.stringify({ message: '已解除浏览器会话关联，Agent 将使用独立浏览器。' }));
+    return;
+  }
+
   if (subcommand === 'status') {
     console.log(JSON.stringify({
       profileDir: browserSession.profileDir,
+      savedCdpPort: browserSession.savedCdpPort(),
       sessionDomains: await browserSession.sessionDomains(),
     }, null, 2));
     return;
   }
 
-  throw new Error('用法：npm run browser:open | browser:cdp -- 9222 | browser:fetch -- "URL" | browser:status');
+  throw new Error('用法：npm run browser:open | browser:cdp -- 9222 | browser:cdp-off | browser:fetch -- "URL" | browser:status');
 }
 
 main()

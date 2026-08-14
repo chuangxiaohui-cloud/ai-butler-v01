@@ -7,7 +7,8 @@
  */
 
 import { join, resolve } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { dirname } from 'path';
 import {
   chromium,
   type Browser,
@@ -21,6 +22,7 @@ export interface BrowserSessionOptions {
   executablePath?: string;
   headless?: boolean;
   launcher?: BrowserType;
+  cdpStatePath?: string;
 }
 
 export interface FetchPageResult {
@@ -31,6 +33,7 @@ export interface FetchPageResult {
 }
 
 const DEFAULT_USER_DATA_DIR = resolve(process.cwd(), 'data', 'browser-session');
+const DEFAULT_CDP_STATE_PATH = resolve(process.cwd(), 'data', 'browser-session-cdp.json');
 
 function defaultExecutablePath(): string | null {
   const envPath = process.env.BROWSER_EXECUTABLE;
@@ -71,19 +74,62 @@ export class BrowserSessionManager {
   private readonly executablePath: string;
   private readonly headless: boolean;
   private readonly launcher: BrowserType;
+  private readonly cdpStatePath: string;
 
   constructor(opts: BrowserSessionOptions = {}) {
     this.userDataDir = opts.userDataDir ?? DEFAULT_USER_DATA_DIR;
     this.executablePath = resolveExecutable(opts.executablePath);
     this.headless = opts.headless ?? true;
     this.launcher = opts.launcher ?? chromium;
+    this.cdpStatePath = opts.cdpStatePath ?? DEFAULT_CDP_STATE_PATH;
   }
 
   get profileDir(): string {
     return this.userDataDir;
   }
 
+  savedCdpPort(): number | null {
+    try {
+      const raw = readFileSync(this.cdpStatePath, 'utf8');
+      const parsed = JSON.parse(raw) as { port?: unknown };
+      return typeof parsed.port === 'number' && Number.isInteger(parsed.port)
+        ? parsed.port
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private writeCdpState(port: number): void {
+    mkdirSync(dirname(this.cdpStatePath), { recursive: true });
+    writeFileSync(
+      this.cdpStatePath,
+      JSON.stringify({ port, connectedAt: new Date().toISOString() }, null, 2),
+      'utf8',
+    );
+  }
+
+  private clearCdpState(): void {
+    try {
+      rmSync(this.cdpStatePath, { force: true });
+    } catch {
+      // 状态文件不存在或不可删除时忽略
+    }
+  }
+
+  private async autoConnectCdp(): Promise<void> {
+    if (this.cdpBrowser) return;
+    const port = this.savedCdpPort();
+    if (!port) return;
+    try {
+      await this.connectCdp(port);
+    } catch {
+      this.clearCdpState();
+    }
+  }
+
   async ensureContext(headless = this.headless): Promise<BrowserContext> {
+    await this.autoConnectCdp();
     if (this.cdpBrowser) {
       const contexts = this.cdpBrowser.contexts();
       if (contexts[0]) return contexts[0];
@@ -104,8 +150,17 @@ export class BrowserSessionManager {
   /** 连接用户正在运行的浏览器（需以 --remote-debugging-port 启动）。 */
   async connectCdp(port = 9222): Promise<{ sessionDomains: string[]; contexts: number }> {
     this.cdpBrowser = await this.launcher.connectOverCDP(`http://127.0.0.1:${port}`);
+    this.writeCdpState(port);
     const sessionDomains = await this.sessionDomains();
     return { sessionDomains, contexts: this.cdpBrowser.contexts().length };
+  }
+
+  async disconnectCdp(): Promise<void> {
+    this.clearCdpState();
+    if (this.cdpBrowser) {
+      await this.cdpBrowser.close().catch(() => undefined);
+      this.cdpBrowser = null;
+    }
   }
 
   /** 打开可视窗口让用户完成一次登录；返回后浏览器保持打开直到用户回车。 */
@@ -133,6 +188,7 @@ export class BrowserSessionManager {
   }
 
   async sessionDomains(): Promise<string[]> {
+    await this.autoConnectCdp();
     const cdpContexts = this.cdpBrowser ? await this.cdpBrowser.contexts() : [];
     const context = cdpContexts[0] ?? this.context;
     if (!context) return [];
