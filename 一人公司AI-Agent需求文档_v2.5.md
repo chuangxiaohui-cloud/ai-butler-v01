@@ -2177,6 +2177,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`arduino最新版本号是多少` 复测 gate 由 `low_confidence` 变为 `none`，答案仍为 Arduino IDE `2.3.10`；新增 rule1 单测 1 条；单测 212/212 + 集成 17/17 全绿。
 - affects: §6.5,§6.6 | bench:B-20260814-02
 
+### 2026-08-14（官方源主动检索与权威度降权 E72）
+
+- **变更**：新增 `officialSourceHintForQuery`，把器件型号前缀映射到原厂域（STM32→st.com、ESP32→espressif.com、TPS→ti.com、IRF→infineon.com、LT→analog.com）；查询改写自动追加 `site:原厂域 datasheet` 与 `原厂域 官方 数据手册`；融合层让 `domainAuthority` 参与非官方来源评分（`0.9 + 0.1 × authority`），官方源仍保留 1.2 倍乘数；搜索循环检测到器件查询且结果无官方源时，用 Tavily `include_domains` 做官方域兜底搜索。
+- **验证**：`STM32F103C8T6 最大主频是多少` 复测证据变为 `community.st.com / www.st.com / estore.st.com`，答案 72MHz，confidence 0.888；新增 authority/rewrite/fusion/tavily/search-loop 单测，单测 217/217 + 集成 17/17 全绿。
+- affects: §6.1,§6.5,§6.7 | bench:B-20260814-03
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

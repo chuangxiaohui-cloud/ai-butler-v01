@@ -4,19 +4,24 @@
  */
 
 import { createHash } from 'crypto';
+import { join } from 'path';
 
 import type { LLMClient } from './llm.js';
-import type { SearchResultItem } from './providers/types.js';
+import type { SearchProvider, SearchResultItem } from './providers/types.js';
 import {
   runSearchStage,
   type SearchStageOptions,
   type SearchStageResult,
 } from './stages/s3_search.js';
 import { rewriteQuery } from './query-rewrite.js';
+import { extractPartNumber, isOfficialForQuery, officialSourceHintForQuery } from './authority.js';
+import { FileMonthlyQuotaStore } from './quota.js';
+import { tavilyProvider } from './providers/tavily.js';
 import type { SearchSourceStats } from './source-stats.js';
 
 export const DEFAULT_MAX_SUB_SEARCHES = 5; // [P-85]
 export const DEFAULT_MIN_RESULTS = 5; // [P-86]
+const TAVILY_MONTHLY_LIMIT = 1000; // [P-64]
 
 export interface SearchLoopOptions extends Omit<SearchStageOptions, 'cacheKey'> {
   cacheKey?: string;
@@ -24,6 +29,7 @@ export interface SearchLoopOptions extends Omit<SearchStageOptions, 'cacheKey'> 
   maxSubSearches?: number;
   minResults?: number;
   sourceStats?: Pick<SearchSourceStats, 'record'>;
+  officialProvider?: SearchProvider;
 }
 
 export interface SearchLoopResult extends SearchStageResult {
@@ -110,7 +116,7 @@ export async function runSearchLoop(
   const rewritten = await rewriteQuery(query, opts.intent, opts.llm);
   const queue = [...rewritten.queries];
   const seenQueries = new Set<string>(rewritten.queries);
-  const results: SearchResultItem[] = [];
+  let results: SearchResultItem[] = [];
   const attempts: SearchStageResult['attempts'] = [];
   const aiAnswers: string[] = [];
   const subQueries: string[] = [];
@@ -144,6 +150,36 @@ export async function runSearchLoop(
       }
     }
     if (judge.enough) break;
+  }
+
+  const officialHint = officialSourceHintForQuery(query);
+  const hasOfficial = results.some((r) => isOfficialForQuery(r.url, query));
+  if (opts.tavily?.enabled && officialHint && !hasOfficial) {
+    const part = extractPartNumber(query) ?? query;
+    const officialProvider = opts.officialProvider ?? tavilyProvider;
+    const monthly =
+      opts.tavilyMonthlyQuota ??
+      new FileMonthlyQuotaStore(join(process.cwd(), 'data', 'tavily-monthly.json'));
+    const allowed = await monthly.take('tavily', TAVILY_MONTHLY_LIMIT);
+    if (allowed) {
+      const officialSearch = await officialProvider.search(
+        `${part} ${officialHint.domain} datasheet`,
+        { includeDomains: [officialHint.domain], timeoutMs: 5000 },
+      );
+      attempts.push({
+        provider: officialSearch.provider,
+        ok: officialSearch.ok,
+        latencyMs: officialSearch.latencyMs,
+        error: officialSearch.error,
+      });
+      opts.sourceStats?.record(
+        officialSearch.provider,
+        opts.intent,
+        officialSearch.ok,
+        officialSearch.latencyMs,
+      );
+      if (officialSearch.ok) results.push(...officialSearch.results);
+    }
   }
 
   return {

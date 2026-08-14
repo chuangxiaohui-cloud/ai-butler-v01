@@ -105,7 +105,7 @@ test('fusion: 低相关性且无答案覆盖的页面降权', () => {
 test('fusion: 高答案覆盖页面不被低词面相关性拖垮', () => {
   const items = [
     item({
-      url: 'https://datasheet.example/stm32',
+      url: 'https://www.mouser.com/c/semiconductors/stm32f103c8',
       title: 'STM32F103C8T6 Datasheet: Explained',
       content:
         'STM32F103C8T6 maximum frequency 72 MHz voltage current description features specifications 100A 完整 内容 足够 长 '.repeat(
@@ -183,6 +183,29 @@ test('fusion: E02 官方源仲裁后综合分胜出', () => {
   assert.equal(ti.official, true);
   assert.equal(csdn.factConsistency, 0);
   assert.ok(ti.finalScore > csdn.finalScore);
+});
+
+test('fusion: 官方源优先于低权威“野史”来源', () => {
+  const items = [
+    item({
+      url: 'https://www.st.com/en/microcontrollers-microprocessors/stm32f103c8.html',
+      title: 'STM32F103C8T6 Datasheet',
+      content: 'STM32F103C8T6 maximum frequency 72 MHz voltage current datasheet specifications',
+    }),
+    item({
+      url: 'https://www.douban.com/group/topic/123',
+      title: 'STM32F103C8T6 最大主频',
+      content: 'STM32F103C8T6 最大主频 72MHz 百度贴吧 淘宝 商城 完整 内容 说明 参数 足够 长 100A',
+    }),
+  ];
+  const r = fuseResults('STM32F103C8T6 最大主频是多少', items, 'factual');
+  const st = r.items.find((f) => f.result.url.includes('st.com'));
+  const douban = r.items.find((f) => f.result.url.includes('douban.com'));
+  assert.ok(st);
+  assert.ok(douban);
+  assert.equal(st.official, true);
+  assert.ok(st.finalScore > douban.finalScore);
+  assert.ok(douban.domainAuthority < st.domainAuthority);
 });
 
 test('fusion: SEO 垃圾页降权', () => {

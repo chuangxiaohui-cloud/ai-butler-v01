@@ -70,6 +70,18 @@ export function extractPartNumber(query: string): string | null {
   return match?.[0] ?? null;
 }
 
+export interface OfficialSourceHint {
+  vendor: string;
+  domain: string;
+}
+
+export function officialSourceHintForQuery(query: string): OfficialSourceHint | null {
+  const part = extractPartNumber(query);
+  if (!part) return null;
+  const vendor = VENDOR_DOMAIN_MAP.find((v) => part.toUpperCase().startsWith(v.prefix));
+  return vendor ? { vendor: vendor.prefix, domain: vendor.domain } : null;
+}
+
 export function isOfficialForQuery(url: string, query: string): boolean {
   const q = query.toLowerCase();
   const hostname = getHostname(url);

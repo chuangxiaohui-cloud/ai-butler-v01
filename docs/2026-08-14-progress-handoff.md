@@ -88,6 +88,10 @@ npm run route:calibrate
 4. **case 库**：pipeline 累计 135 条，校准样本 3/10。
 5. **提交推送**：本地提交 `72e3e90`、`6e4593a`、`3d5af9a`；Gitee 与 GitHub
    `v0.2b` 均已推送成功。
+6. **官方源主动检索（E72）**：器件型号自动补原厂域查询；无官方源时用
+   Tavily `include_domains` 兜底；`domainAuthority` 参与非官方来源评分。
+   STM32F103C8T6 主频查询证据已变为 `community.st.com / www.st.com /
+   estore.st.com`，单测 217/217 + 集成 17/17 全绿。
 
 ## 下一步（按优先级）
 

@@ -5,6 +5,7 @@
 
 import type { ChatMessage, LLMClient } from './llm.js';
 import type { IntentKey } from './stages/s2_classify.js';
+import { extractPartNumber, officialSourceHintForQuery } from './authority.js';
 
 export interface RewriteResult {
   queries: string[];
@@ -49,6 +50,15 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
     return uniqueQueries([
       `${model} 入网型号 对应手机型号`,
       `${model} 手机型号`,
+      query,
+    ]);
+  }
+  const part = extractPartNumber(query);
+  const officialHint = officialSourceHintForQuery(query);
+  if (part && officialHint) {
+    return uniqueQueries([
+      `${part} site:${officialHint.domain} datasheet`,
+      `${part} ${officialHint.domain} 官方 数据手册`,
       query,
     ]);
   }

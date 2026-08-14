@@ -30,6 +30,26 @@ class FakeQuota implements QuotaStoreLike {
   }
 }
 
+class FakeOfficialProvider implements SearchProvider {
+  readonly id = 'tavily' as const;
+
+  async search(): Promise<SearchProviderResult> {
+    return {
+      provider: 'tavily',
+      ok: true,
+      results: [
+        {
+          title: 'STM32F103C8T6 Datasheet',
+          url: 'https://www.st.com/en/microcontrollers-microprocessors/stm32f103c8.html',
+          content: 'STM32F103C8T6 maximum frequency 72 MHz',
+          provider: 'tavily',
+        },
+      ],
+      latencyMs: 1,
+    };
+  }
+}
+
 class FakeLLM implements LLMClient {
   private judgeCalls = 0;
 
@@ -82,4 +102,18 @@ test('search-loop: LLM 追加子查询直到覆盖足够', async () => {
   assert.ok(r.results.length >= 3);
   assert.ok(records.length >= 3);
   assert.ok(records.every((x) => x.source === 'bocha'));
+});
+
+test('search-loop: 器件查询自动拉取官方域兜底', async () => {
+  const r = await runSearchLoop('STM32F103C8T6 最大主频是多少', {
+    intent: 'factual',
+    providers: [new FakeProvider()],
+    quota: new FakeQuota(),
+    tavily: { enabled: true },
+    tavilyMonthlyQuota: new FakeQuota(),
+    officialProvider: new FakeOfficialProvider(),
+    minResults: 1,
+  });
+  assert.ok(r.results.some((x) => x.url.includes('st.com')));
+  assert.ok(r.attempts.some((a) => a.provider === 'tavily' && a.ok));
 });

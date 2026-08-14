@@ -408,6 +408,7 @@ export function fuseResults(
     }
     if (!official && isFaqWithoutProcedure(result, intent)) score *= 0.75;
     if (!official && isErrorTopicMismatch(query, result, intent)) score *= 0.75;
+    if (!official) score *= 0.9 + 0.1 * domainAuthority;
     if (official) score *= OFFICIAL_MULTIPLIER;
     return {
       result,

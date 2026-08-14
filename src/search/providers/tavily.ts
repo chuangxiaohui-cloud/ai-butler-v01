@@ -59,6 +59,9 @@ export class TavilyProvider implements SearchProvider {
           search_depth: opts.topic === 'news' ? 'advanced' : 'basic',
           include_answer: true,
           include_raw_content: false,
+          ...(opts.includeDomains && opts.includeDomains.length > 0
+            ? { include_domains: opts.includeDomains }
+            : {}),
           ...(opts.topic === 'news'
             ? { topic: 'news', days: opts.days ?? 30 }
             : {}),

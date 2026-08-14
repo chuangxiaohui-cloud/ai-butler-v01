@@ -1,7 +1,19 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { isOfficialForQuery } from './authority.js';
+import { isOfficialForQuery, officialSourceHintForQuery } from './authority.js';
+
+test('authority: 器件型号前缀映射官方域', () => {
+  assert.deepEqual(
+    officialSourceHintForQuery('STM32F103C8T6 最大主频是多少'),
+    { vendor: 'STM32', domain: 'st.com' },
+  );
+  assert.deepEqual(
+    officialSourceHintForQuery('ESP32-C3-MINI-1 引脚'),
+    { vendor: 'ESP32', domain: 'espressif.com' },
+  );
+  assert.equal(officialSourceHintForQuery('世界杯战报'), null);
+});
 
 test('authority: Tauri GitHub 仓库识别为官方源', () => {
   assert.equal(

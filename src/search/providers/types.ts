@@ -25,6 +25,7 @@ export interface SearchOptions {
   timeoutMs?: number;
   topic?: 'general' | 'news';
   days?: number;
+  includeDomains?: string[];
 }
 
 export interface SearchProvider {
