@@ -29,7 +29,7 @@ import { culturalReplyPostProcess } from '../postprocess/cultural-reply.js';
 import type { RouteCaseStore } from '../agent/route-case-store.js';
 import { prepareQuery } from './stages/s1_prepare.js';
 import { classifyQuery } from './stages/s2_classify.js';
-import { runSearchLoop } from './search-loop.js';
+import { runSearchLoop, type BrowserFetcher } from './search-loop.js';
 import { synthesizeAnswer } from './stages/s5_synthesize.js';
 import { postProcess } from './stages/s6_post.js';
 
@@ -69,6 +69,7 @@ export interface PipelineDeps {
     recordUse?(name: string): void;
   };
   trajectory?: TrajectoryLogLike;
+  browserSession?: BrowserFetcher;
 }
 
 export interface PipelineOptions {
@@ -377,6 +378,7 @@ export async function pipeline(
     llm: deps.llm,
     sourceStats: deps.sourceStats,
     tavily: { enabled: tavilyEnabled, trigger: tavilyTrigger },
+    browserSession: deps.browserSession,
   });
   recordTrajectory({
     type: 'search',

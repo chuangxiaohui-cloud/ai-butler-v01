@@ -116,11 +116,11 @@ export class BrowserSessionManager {
   }
 
   /** 带会话状态抓取网页正文；登录后会话域内页面可直接读取。 */
-  async fetchPage(url: string): Promise<FetchPageResult> {
+  async fetchPage(url: string, timeoutMs = 30_000): Promise<FetchPageResult> {
     const context = await this.ensureContext();
     const page = await context.newPage();
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
       const [title, text, sessionDomains] = await Promise.all([
         page.title(),
         textFromPage(page),

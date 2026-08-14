@@ -28,6 +28,10 @@ export const DEFAULT_MAX_SUB_SEARCHES = 5; // [P-85]
 export const DEFAULT_MIN_RESULTS = 5; // [P-86]
 const TAVILY_MONTHLY_LIMIT = 1000; // [P-64]
 
+export interface BrowserFetcher {
+  fetchPage(url: string, timeoutMs?: number): Promise<{ url: string; title: string; text: string }>;
+}
+
 export interface SearchLoopOptions extends Omit<SearchStageOptions, 'cacheKey'> {
   cacheKey?: string;
   llm?: LLMClient;
@@ -35,6 +39,7 @@ export interface SearchLoopOptions extends Omit<SearchStageOptions, 'cacheKey'> 
   minResults?: number;
   sourceStats?: Pick<SearchSourceStats, 'record'>;
   officialProvider?: SearchProvider;
+  browserSession?: BrowserFetcher;
 }
 
 export interface SearchLoopResult extends SearchStageResult {
@@ -55,6 +60,18 @@ function dedupe(items: SearchResultItem[]): SearchResultItem[] {
 
 function hashQuery(query: string): string {
   return createHash('sha1').update(query).digest('hex').slice(0, 12);
+}
+
+function uniqueUrls(items: SearchResultItem[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of items) {
+    if (item.url && !seen.has(item.url)) {
+      seen.add(item.url);
+      out.push(item.url);
+    }
+  }
+  return out;
 }
 
 export function buildCoverageJudgeMessages(
@@ -157,10 +174,46 @@ export async function runSearchLoop(
     if (judge.enough) break;
   }
 
-  const officialHint = officialSourceHintForQuery(query);
+  const part = extractPartNumber(query);
   const hasHighTrustSource = results.some((r) => isHighTrustDatasheetUrl(r.url, query));
-  if (opts.tavily?.enabled && extractPartNumber(query) && !hasHighTrustSource) {
-    const part = extractPartNumber(query) ?? query;
+  if (part && !hasHighTrustSource) {
+    let browserCovered = false;
+    if (opts.browserSession) {
+      for (const url of uniqueUrls(results).slice(0, 2)) {
+        const attemptStart = Date.now();
+        try {
+          const page = await opts.browserSession.fetchPage(url, 8000);
+          const ok = page.text.trim().length > 0;
+          attempts.push({
+            provider: 'browser',
+            ok,
+            latencyMs: Date.now() - attemptStart,
+            error: ok ? undefined : '空正文',
+          });
+          opts.sourceStats?.record('browser', opts.intent, ok, Date.now() - attemptStart);
+          if (ok) {
+            results.push({
+              title: page.title || url,
+              url: page.url,
+              content: page.text.slice(0, 5000),
+              provider: 'browser',
+            });
+          }
+        } catch (err) {
+          attempts.push({
+            provider: 'browser',
+            ok: false,
+            latencyMs: Date.now() - attemptStart,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          opts.sourceStats?.record('browser', opts.intent, false, Date.now() - attemptStart);
+        }
+      }
+      browserCovered = results.some((r) => isHighTrustDatasheetUrl(r.url, query));
+    }
+
+    const officialHint = officialSourceHintForQuery(query);
+    if (opts.tavily?.enabled && !browserCovered) {
     const officialProvider = opts.officialProvider ?? tavilyProvider;
     const monthly =
       opts.tavilyMonthlyQuota ??
@@ -200,6 +253,7 @@ export async function runSearchLoop(
         );
         if (fallbackSearch.ok) results.push(...fallbackSearch.results);
       }
+    }
     }
   }
 

@@ -150,3 +150,51 @@ test('search-loop: 器件查询自动拉取官方域兜底', async () => {
   assert.ok(r.results.some((x) => x.url.includes('st.com')));
   assert.ok(r.attempts.some((a) => a.provider === 'tavily' && a.ok));
 });
+
+test('search-loop: 无高可信源时浏览器会话兜底并跳过 Tavily', async () => {
+  const browser = {
+    calls: [] as string[],
+    async fetchPage(url: string, _timeoutMs?: number) {
+      this.calls.push(url);
+      return {
+        url: 'https://www.st.com/en/microcontrollers-microprocessors/stm32f103c8.html',
+        title: 'STM32F103C8T6 Datasheet',
+        text: '72MHz maximum frequency LQFP48',
+      };
+    },
+  };
+  const r = await runSearchLoop('STM32F103C8T6 最大主频是多少', {
+    intent: 'factual',
+    providers: [new FakeProvider()],
+    quota: new FakeQuota(),
+    tavily: { enabled: true },
+    tavilyMonthlyQuota: new FakeQuota(),
+    officialProvider: new FakeOfficialProvider(),
+    browserSession: browser,
+    minResults: 1,
+  });
+  assert.ok(browser.calls.length > 0);
+  assert.ok(r.results.some((x) => x.url.includes('st.com')));
+  assert.ok(r.attempts.some((a) => a.provider === 'browser' && a.ok));
+  assert.ok(!r.attempts.some((a) => a.provider === 'tavily'));
+});
+
+test('search-loop: 浏览器兜底失败后仍走 Tavily 官方域', async () => {
+  const browser = {
+    async fetchPage() {
+      throw new Error('browser offline');
+    },
+  };
+  const r = await runSearchLoop('STM32F103C8T6 最大主频是多少', {
+    intent: 'factual',
+    providers: [new FakeProvider()],
+    quota: new FakeQuota(),
+    tavily: { enabled: true },
+    tavilyMonthlyQuota: new FakeQuota(),
+    officialProvider: new FakeOfficialProvider(),
+    browserSession: browser,
+    minResults: 1,
+  });
+  assert.ok(r.attempts.some((a) => a.provider === 'browser' && !a.ok));
+  assert.ok(r.attempts.some((a) => a.provider === 'tavily' && a.ok));
+});

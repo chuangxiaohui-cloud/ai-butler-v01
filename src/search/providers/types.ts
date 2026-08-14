@@ -2,7 +2,7 @@
  * 搜索引擎适配器统一类型（v0.1 仅 Bocha + AnySearch）
  */
 
-export type ProviderId = 'bocha' | 'anysearch' | 'tavily';
+export type ProviderId = 'bocha' | 'anysearch' | 'tavily' | 'browser';
 
 export interface SearchResultItem {
   title: string;

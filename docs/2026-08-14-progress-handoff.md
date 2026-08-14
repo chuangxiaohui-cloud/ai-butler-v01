@@ -107,6 +107,10 @@ npm run route:calibrate
    `browser:launch -- thorium|qq`；完全关闭 QQ浏览器/Thorium 后用调试
    端口启动，Agent 直接复用其已登录会话，不需要在独立 profile 重登。
    真实 CDP 冒烟连接成功；单测 226/226 + 集成 17/17 全绿。
+10. **浏览器会话自动兜底（E76）**：器件型号查询无高可信源时，自动用
+   浏览器会话抓取搜索结果前 2 个 URL 正文；抓到官方/立创/芯查查则跳过
+   Tavily，失败继续走 Tavily。CLI 默认接入，已连 CDP 时自动复用登录态。
+   单测 228/228 + 集成 17/17 全绿。
 
 ## 下一步（按优先级）
 
@@ -120,3 +124,5 @@ npm run route:calibrate
    回车，再用 `npm run browser:fetch -- "需要登录的URL"` 验证会话继承。
 5. 若想直接复用 QQ浏览器/Thorium 现有登录：先完全关闭该浏览器，再
    `npm run browser:launch -- thorium`（或 qq），然后 `npm run browser:cdp -- 9222`。
+6. 验证自动兜底：连接 QQ浏览器 CDP 后，直接问 Agent 一个需登录站点相关
+   的型号/资料问题，确认证据里出现浏览器抓取的正文。

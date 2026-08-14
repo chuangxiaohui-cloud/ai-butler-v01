@@ -126,6 +126,7 @@ export async function runSearchStage(
     bocha: BOCHA_DAILY_LIMIT,
     anysearch: ANYSEARCH_DAILY_LIMIT,
     tavily: 0, // v0.2a 启用月配额 [P-64] 后替换
+    browser: 0, // 浏览器兜底不走引擎配额
   };
 
   const attempts: SearchAttempt[] = [];

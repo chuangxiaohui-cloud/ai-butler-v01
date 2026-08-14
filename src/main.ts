@@ -9,6 +9,7 @@ import { createHeavyClient, createVisionClient } from './search/llm.js';
 import { parseDocumentFile } from './search/document-parser.js';
 import type { SkillDeps } from './skills/deps.js';
 import { TrajectoryLog } from './trajectory/trajectory-log.js';
+import { browserSession } from './browser/session.js';
 
 const arg = process.argv[2];
 
@@ -50,6 +51,7 @@ pipeline(arg, {
   routeCaseStore,
   skillDeps,
   trajectory: trajectoryLog,
+  browserSession,
 }, {
   userId: 'cli-user',
 })
