@@ -4,6 +4,7 @@
  */
 
 import { loadEnvFile } from '../config/env.js';
+import type { VLMClient } from '../skills/deps.js';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -92,4 +93,67 @@ export function createHeavyClient(): LLMClient {
     model: process.env.LLM_HEAVY_MODEL?.trim() || 'deepseek-chat',
     timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 8000,
   });
+}
+
+/**
+ * 视觉模型适配器（Week 3 契约落地）
+ * VLMClient：image 必须是 data URL；返回纯文本。
+ */
+export function createVisionClient(opts?: { timeoutMs?: number }): VLMClient {
+  loadEnvFile();
+  const apiKey =
+    process.env.VLM_API_KEY?.trim() || process.env.LLM_PRIMARY_API_KEY?.trim();
+  if (!apiKey) throw new Error('未配置 VLM API Key（VLM_API_KEY 或 LLM_PRIMARY_API_KEY）');
+  const baseUrl =
+    process.env.VLM_BASE_URL?.trim() ||
+    process.env.LLM_PRIMARY_BASE_URL?.trim() ||
+    'https://api.deepseek.com/v1';
+  const model =
+    process.env.VLM_MODEL?.trim() ||
+    process.env.LLM_HEAVY_MODEL?.trim() ||
+    process.env.LLM_LIGHT_MODEL?.trim() ||
+    'gpt-4o-mini';
+  const timeoutMs =
+    opts?.timeoutMs ?? Number(process.env.VLM_TIMEOUT_MS ?? '8000');
+
+  return async (input, options = {}) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const content = input.image
+        ? [
+            { type: 'text', text: input.prompt },
+            { type: 'image_url', image_url: { url: input.image } },
+          ]
+        : input.prompt;
+      const resp = await fetch(`${baseUrl.replace(/\/+$/, '')}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content }],
+          temperature: 0,
+          max_tokens: options.maxTokens,
+        }),
+        signal: controller.signal,
+      });
+      if (!resp.ok) {
+        const detail = await resp.text().catch(() => '');
+        throw new Error(`VLM HTTP ${resp.status}: ${detail.slice(0, 120)}`);
+      }
+      const data = (await resp.json()) as {
+        choices?: Array<{ message?: { content?: unknown } }>;
+      };
+      const contentOut = data.choices?.[0]?.message?.content;
+      if (typeof contentOut !== 'string' || !contentOut.trim()) {
+        throw new Error('VLM 返回空内容');
+      }
+      return contentOut.trim();
+    } finally {
+      clearTimeout(timer);
+    }
+  };
 }

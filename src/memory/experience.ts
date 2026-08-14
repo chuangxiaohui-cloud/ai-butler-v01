@@ -7,6 +7,7 @@
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { DatabaseSync } from 'node:sqlite';
+import { isColdAfter, weeklyDecayConfidence } from './confidence-decay.js';
 
 const P30_DECAY_PER_WEEK = 0.9; // [P-30]
 const P31_COLD_DAYS = 90; // [P-31]
@@ -157,9 +158,12 @@ export class ExperienceManager {
   }
 
   private decayConfidence(entry: ExperienceEntry, now: number): number {
-    const last = entry.lastUsedAt ?? entry.createdAt;
-    const weeks = Math.max(0, (now - last) / (7 * 24 * 3600 * 1000));
-    return Math.max(0.1, entry.confidence * Math.pow(P30_DECAY_PER_WEEK, weeks));
+    return weeklyDecayConfidence(
+      entry.confidence,
+      entry.lastUsedAt ?? entry.createdAt,
+      now,
+      P30_DECAY_PER_WEEK,
+    );
   }
 
   private decayEntry(entry: ExperienceEntry, now: number): ExperienceEntry {
@@ -167,8 +171,7 @@ export class ExperienceManager {
   }
 
   private isCold(entry: ExperienceEntry, now: number): boolean {
-    const last = entry.lastUsedAt ?? entry.createdAt;
-    return now - last > P31_COLD_DAYS * 24 * 3600 * 1000;
+    return isColdAfter(entry.lastUsedAt ?? entry.createdAt, now, P31_COLD_DAYS);
   }
 }
 

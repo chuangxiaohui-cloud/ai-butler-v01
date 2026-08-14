@@ -21,7 +21,13 @@ export interface SearchProviderResult {
   answer?: string;
 }
 
+export interface SearchOptions {
+  timeoutMs?: number;
+  topic?: 'general' | 'news';
+  days?: number;
+}
+
 export interface SearchProvider {
   id: ProviderId;
-  search(query: string, opts?: { timeoutMs?: number }): Promise<SearchProviderResult>;
+  search(query: string, opts?: SearchOptions): Promise<SearchProviderResult>;
 }

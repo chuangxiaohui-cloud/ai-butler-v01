@@ -9,6 +9,17 @@ import { skill as datasheetSpeed } from './datasheet-speed/index.js';
 import { skill as githubReader } from './github-reader/index.js';
 import { skill as industryKits } from './industry-kits/index.js';
 import { skill as jargonMap } from './jargon-map/index.js';
+import { createColorRecognitionSkill } from './color-recognition/index.js';
+import { createDocumentQaSkill } from './document-qa/index.js';
+import { createImageAnalysisSkill } from './image-analysis/index.js';
+import { createKnowledgeQaSkill } from './knowledge-qa/index.js';
+import { createContentWriterSkill } from './content-writer/index.js';
+import { createCalendarSkill } from './calendar-skill/index.js';
+import { createQuoteCompareSkill } from './quote-compare/index.js';
+import { createImDispatchSkill } from './im-dispatch/index.js';
+import { createEngineerSkill } from './engineer/index.js';
+import { createDeliveryWorkflowSkill } from './delivery-workflow/index.js';
+import { createPlanValidationSkill } from './plan-validation/index.js';
 import { PARAMS } from '../config/params.js';
 import type { AttachmentSignal } from '../agent/multimodal-preprocessor.js';
 import type { RawFileLike, SkillDeps } from './deps.js';
@@ -23,7 +34,20 @@ const SKILLS: LegacySkillDef[] = [
   industryKits,
 ];
 
-const EXECUTABLE_SKILLS = SKILLS.map(wrapLegacySkill);
+const EXECUTABLE_SKILLS = [
+  ...SKILLS.map(wrapLegacySkill),
+  createColorRecognitionSkill(),
+  createDocumentQaSkill(),
+  createImageAnalysisSkill(),
+  createKnowledgeQaSkill(),
+  createContentWriterSkill(),
+  createCalendarSkill(),
+  createQuoteCompareSkill(),
+  createImDispatchSkill(),
+  createEngineerSkill(),
+  createDeliveryWorkflowSkill(),
+  createPlanValidationSkill(),
+];
 
 export function getSkills(): ExecutableSkill[] {
   return [...EXECUTABLE_SKILLS];

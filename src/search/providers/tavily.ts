@@ -4,7 +4,13 @@
  */
 
 import { loadEnvFile } from '../../config/env.js';
-import type { ProviderId, SearchProvider, SearchProviderResult, SearchResultItem } from './types.js';
+import type {
+  ProviderId,
+  SearchOptions,
+  SearchProvider,
+  SearchProviderResult,
+  SearchResultItem,
+} from './types.js';
 
 const ENDPOINT = 'https://api.tavily.com/search';
 const DEFAULT_TIMEOUT_MS = 3000; // [P-35]
@@ -26,7 +32,7 @@ interface TavilyResponse {
 export class TavilyProvider implements SearchProvider {
   readonly id: ProviderId = 'tavily';
 
-  async search(query: string, opts: { timeoutMs?: number } = {}): Promise<SearchProviderResult> {
+  async search(query: string, opts: SearchOptions = {}): Promise<SearchProviderResult> {
     loadEnvFile();
     const start = Date.now();
     const apiKey = process.env.TAVILY_API_KEY?.trim();
@@ -50,9 +56,12 @@ export class TavilyProvider implements SearchProvider {
           api_key: apiKey,
           query,
           max_results: MAX_RESULTS,
-          search_depth: 'basic',
+          search_depth: opts.topic === 'news' ? 'advanced' : 'basic',
           include_answer: true,
           include_raw_content: false,
+          ...(opts.topic === 'news'
+            ? { topic: 'news', days: opts.days ?? 30 }
+            : {}),
         }),
         signal: controller.signal,
       });

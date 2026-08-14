@@ -42,6 +42,7 @@ function buildSystemPrompt(serious: boolean, primaryLens?: PrimaryLens): string 
   if (serious) {
     lines.push('5. 本问题属医疗/税务等严肃领域，必须谨慎，并在结尾提示以官方或专业人士判断为准。');
   }
+  lines.push('6. 若用户明确要求举例或写代码示例，请给出简短、可运行的示例代码，并标注为示例；不要只给文字描述。');
   return lines.join('\n');
 }
 

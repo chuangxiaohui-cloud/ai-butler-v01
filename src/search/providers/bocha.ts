@@ -4,7 +4,13 @@
  */
 
 import { loadEnvFile } from '../../config/env.js';
-import type { ProviderId, SearchProvider, SearchProviderResult, SearchResultItem } from './types.js';
+import type {
+  ProviderId,
+  SearchOptions,
+  SearchProvider,
+  SearchProviderResult,
+  SearchResultItem,
+} from './types.js';
 
 const ENDPOINT = 'https://api.bochaai.com/v1/web-search';
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -22,7 +28,7 @@ interface BochaWebPage {
 export class BochaProvider implements SearchProvider {
   readonly id: ProviderId = 'bocha';
 
-  async search(query: string, opts: { timeoutMs?: number } = {}): Promise<SearchProviderResult> {
+  async search(query: string, opts: SearchOptions = {}): Promise<SearchProviderResult> {
     loadEnvFile();
     const start = Date.now();
     const apiKey = process.env.BOCHA_API_KEY?.trim();

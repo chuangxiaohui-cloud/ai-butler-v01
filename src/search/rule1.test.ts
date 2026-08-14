@@ -52,3 +52,24 @@ test('rule1: 文本归一化后同值不判冲突', () => {
   assert.equal(r.factConsistency.get('u1'), 1);
   assert.equal(r.factConsistency.get('u2'), 1);
 });
+
+test('rule1: 版本查询忽略单位噪声，不误触发门控', () => {
+  const items = [
+    {
+      url: 'https://github.com/arduino/arduino-ide/releases',
+      title: 'Releases',
+      content: '48 A\n5.1 V',
+      query: 'arduino最新版本号是多少',
+    },
+    {
+      url: 'https://github.com/espressif/arduino-esp32/releases',
+      title: 'Releases',
+      content: '5.5 A\n33860 V',
+      query: 'arduino最新版本号是多少',
+    },
+  ];
+  const r = resolveFactConsistency(items);
+  assert.equal(r.conflicts.length, 0);
+  assert.equal(r.gated, false);
+  assert.equal(r.factConsistency.get('https://github.com/arduino/arduino-ide/releases'), 1);
+});

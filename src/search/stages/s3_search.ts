@@ -149,7 +149,10 @@ export async function runSearchStage(
         return;
       }
       try {
-        const result = await provider.search(query);
+        const result = await provider.search(query, {
+          topic: opts.intent === 'news' ? 'news' : undefined,
+          days: opts.intent === 'news' ? 30 : undefined,
+        });
         heartbeat.record(provider.id, result.ok);
         attempts.push({
           provider: result.provider,

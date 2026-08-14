@@ -1,12 +1,21 @@
 /**
- * §5 PARAM 登记中心（Week 1 新建）
+ * §5 PARAM 登记中心（Week 1 新建，Phase 2 迁移路由参数）
  * 纪律：
- *  - 只登记新参数，不迁移现有散落常量（迁移另立任务）；
  *  - 每个参数 = P-NN 编号 + camelCase key，编号全局唯一递增；
- *  - 本批起编 P-87（与现有最大编号衔接）。
+ *  - P-80~P-84 / P-95~P-104 为路由参数迁移，行为值不变。
  */
 
 export const PARAMS = {
+  /** P-80 路由高置信直接执行阈值 */
+  routeConfidenceHigh: 0.75,
+  /** P-81 路由低置信必须澄清阈值 */
+  routeConfidenceLow: 0.45,
+  /** P-82 候选分差低于此值判定歧义 */
+  routeCandidateGap: 0.15,
+  /** P-83 Layer 1 LLM 特征提取超时(ms) */
+  routeLlmTimeoutMs: 1500,
+  /** P-84 fallback 提取全局置信度折扣 */
+  fallbackDiscount: 0.9,
   /** P-87 路由层 fast description 总开关 */
   fastDescriptionEnabled: true,
   /** P-88 fast description 超时(ms)，超时静默降级 undefined */
@@ -23,12 +32,37 @@ export const PARAMS = {
   decayFactor90d: 0.7,
   /** P-94 低于此值归档、不再注入 */
   archiveThreshold: 0.3,
+  /** P-95 actionType 权重 */
+  actionTypeWeight: 0.3,
+  /** P-96 targetDomain 权重 */
+  targetDomainWeight: 0.25,
+  /** P-97 scope 权重 */
+  scopeWeight: 0.15,
+  /** P-98 searchSourceHint 权重 */
+  searchSourceHintWeight: 0.1,
+  /** P-99 urgency 权重 */
+  urgencyWeight: 0.03,
+  /** P-100 ambiguityFlags 权重 */
+  ambiguityFlagsWeight: 0.08,
+  /** P-101 hasImage 权重 */
+  hasImageWeight: 0.05,
+  /** P-102 hasDocument 权重 */
+  hasDocumentWeight: 0.04,
+  /** P-103 路由候选 base 最低分 */
+  routeBaseThreshold: 0.29,
+  /** P-104 单次路由最多候选数 */
+  routeMaxCandidates: 3,
 } as const;
 
 export type ParamKey = keyof typeof PARAMS;
 
 /** camelCase key → P-NN，供 §5 追溯；Record 类型在编译期强制全覆盖 */
 export const PARAM_IDS: Record<ParamKey, string> = {
+  routeConfidenceHigh: 'P-80',
+  routeConfidenceLow: 'P-81',
+  routeCandidateGap: 'P-82',
+  routeLlmTimeoutMs: 'P-83',
+  fallbackDiscount: 'P-84',
   fastDescriptionEnabled: 'P-87',
   fastDescriptionTimeoutMs: 'P-88',
   legacySkillConfidence: 'P-89',
@@ -37,4 +71,14 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   decayFactor30d: 'P-92',
   decayFactor90d: 'P-93',
   archiveThreshold: 'P-94',
+  actionTypeWeight: 'P-95',
+  targetDomainWeight: 'P-96',
+  scopeWeight: 'P-97',
+  searchSourceHintWeight: 'P-98',
+  urgencyWeight: 'P-99',
+  ambiguityFlagsWeight: 'P-100',
+  hasImageWeight: 'P-101',
+  hasDocumentWeight: 'P-102',
+  routeBaseThreshold: 'P-103',
+  routeMaxCandidates: 'P-104',
 };

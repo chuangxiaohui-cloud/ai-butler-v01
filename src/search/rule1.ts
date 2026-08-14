@@ -28,6 +28,7 @@ export interface Rule1Result {
 
 const RANGE_PATTERN = /(\d+(?:\.\d+)?)\s*(?:-|~|至|到)\s*(\d+(?:\.\d+)?)\s*(V|v|伏|MHz|kHz|Hz|A|mA|uA|μA|W|mW|%|℃)/g;
 const SINGLE_PATTERN = /(\d+(?:\.\d+)?)\s*(V|v|伏|MHz|kHz|Hz|A|mA|uA|μA|W|mW|%|℃)/g;
+const VERSION_QUERY_RE = /最新.*版本|版本.*最新|最新版本号|版本号|latest.*version|version.*latest/i;
 
 function normalizeValueText(text: string): string {
   return text.replace(/\s+/g, '').toLowerCase();
@@ -37,7 +38,8 @@ function normalizeUnit(unit: string): string {
   return unit.toLowerCase() === '伏' ? 'v' : unit.toLowerCase();
 }
 
-export function extractValueRanges(text: string): ExtractedValue[] {
+export function extractValueRanges(text: string, query = ''): ExtractedValue[] {
+  if (VERSION_QUERY_RE.test(query)) return [];
   const out: ExtractedValue[] = [];
   for (const match of text.matchAll(RANGE_PATTERN)) {
     out.push({
@@ -70,7 +72,7 @@ export function resolveFactConsistency(
   const valuesByUrl = new Map<string, ExtractedValue[]>();
 
   for (const item of items) {
-    valuesByUrl.set(item.url, extractValueRanges(`${item.title} ${item.content}`));
+    valuesByUrl.set(item.url, extractValueRanges(`${item.title} ${item.content}`, item.query));
   }
 
   let gated = false;

@@ -364,6 +364,7 @@ export function fuseResults(
   items: SearchResultItem[],
   intent: IntentKey,
   topK = SIMPLE_TOP_K,
+  relevanceQuery = query,
 ): FusedOutput {
   const dropped: string[] = [];
 
@@ -386,7 +387,7 @@ export function fuseResults(
     const official = isOfficialForQuery(result.url, query);
     const domainAuthority = getDomainAuthority(result.url);
     const seoNoise = isSeoNoise(result);
-    const relevance = relevanceScore(query, result);
+    const relevance = relevanceScore(relevanceQuery, result);
     const answerCoverage = answerCoverageScore(result, intent);
     const timeliness = timelinessScore(result);
     const usability = usabilityScore(result);

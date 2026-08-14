@@ -209,3 +209,104 @@
 {"ts":"2026-08-13T02:33:53.443Z","query":"ESP32 I2C 通信失败 无应答","bocha_ms":157,"bocha_ok":true,"anysearch_ms":2608,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-13T02:38:06.295Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":299,"bocha_ok":true,"anysearch_ms":1064,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-13T02:48:46.886Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":295,"bocha_ok":true,"anysearch_ms":2610,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T14:50:05.690Z","query":"查一下STM32F103C8T6的行情","bocha_ms":290,"bocha_ok":true,"anysearch_ms":3561,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T14:50:48.170Z","query":"查一下STM32F103C8T6的行情","bocha_ms":284,"bocha_ok":true,"anysearch_ms":1326,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T14:51:46.440Z","query":"查一下STM32F103C8T6的行情","bocha_ms":290,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"both"}
+{"ts":"2026-08-13T14:55:02.453Z","query":"查一下广州今日天气如何","bocha_ms":295,"bocha_ok":true,"anysearch_ms":3517,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T14:57:54.346Z","query":"目前在中国空间站的宇航员有哪些","bocha_ms":329,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-13T15:04:48.610Z","query":"型号是MRT-AL10的手机是系列","bocha_ms":296,"bocha_ok":true,"anysearch_ms":1137,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:05:47.544Z","query":"STM32F103C8T6的供电电压是多少","bocha_ms":280,"bocha_ok":true,"anysearch_ms":3396,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:07:55.859Z","query":"今年二月是多少天","bocha_ms":323,"bocha_ok":true,"anysearch_ms":2670,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:09:22.255Z","query":"国产大模型厂家有哪些","bocha_ms":317,"bocha_ok":true,"anysearch_ms":3499,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:11:43.574Z","query":"今天是几月几号","bocha_ms":328,"bocha_ok":true,"anysearch_ms":2534,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:12:49.405Z","query":"阿里千问最新模型是什么?","bocha_ms":331,"bocha_ok":true,"anysearch_ms":2820,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:13:53.932Z","query":"我国国歌的作曲作词人是谁","bocha_ms":308,"bocha_ok":true,"anysearch_ms":3597,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:16:00.196Z","query":"国产github是哪个","bocha_ms":319,"bocha_ok":true,"anysearch_ms":2596,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:16:51.833Z","query":"我国水稻之父是谁","bocha_ms":272,"bocha_ok":true,"anysearch_ms":2153,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:17:30.616Z","query":"国产EDA软件有哪些","bocha_ms":328,"bocha_ok":true,"anysearch_ms":2268,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:18:55.731Z","query":"Gitee和Github有什么关系吗？","bocha_ms":271,"bocha_ok":true,"anysearch_ms":3673,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:19:58.343Z","query":"deepseek官网是？","bocha_ms":303,"bocha_ok":true,"anysearch_ms":4496,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:21:55.861Z","query":"国防七子是指？","bocha_ms":276,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-13T15:22:54.811Z","query":"女人一般什么年龄会出月经","bocha_ms":314,"bocha_ok":true,"anysearch_ms":3196,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:23:46.726Z","query":"TPS5430的输入电压范围是多少","bocha_ms":334,"bocha_ok":true,"anysearch_ms":1948,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:26:00.656Z","query":"北京大学今年本科线是多少","bocha_ms":282,"bocha_ok":true,"anysearch_ms":4874,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:26:43.031Z","query":"广州有几所985？","bocha_ms":268,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-13T15:30:17.177Z","query":"STM32系列单片机一般用什么语言编程","bocha_ms":316,"bocha_ok":true,"anysearch_ms":3450,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:31:24.195Z","query":"MATLAB能干嘛","bocha_ms":289,"bocha_ok":true,"anysearch_ms":3715,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:32:51.227Z","query":"广州去上海坐高铁需要多长时间","bocha_ms":307,"bocha_ok":true,"anysearch_ms":3226,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:40:20.042Z","query":"玉皇大帝叫什么名","bocha_ms":290,"bocha_ok":true,"anysearch_ms":2465,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:42:17.287Z","query":"七号电池电压是多少","bocha_ms":301,"bocha_ok":true,"anysearch_ms":4869,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:45:22.826Z","query":"国产光刻机能做多少纳米芯片","bocha_ms":310,"bocha_ok":true,"anysearch_ms":1677,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:46:06.811Z","query":"全球最强无人机厂家是哪个","bocha_ms":277,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-13T15:49:12.717Z","query":"意法半导体总部在哪里","bocha_ms":304,"bocha_ok":true,"anysearch_ms":2169,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:52:23.169Z","query":"微波炉能烤番薯吗","bocha_ms":279,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-13T15:53:26.831Z","query":"运放是指什么","bocha_ms":292,"bocha_ok":true,"anysearch_ms":1921,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:54:07.389Z","query":"LM358是做什么用的","bocha_ms":293,"bocha_ok":true,"anysearch_ms":2606,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:56:35.544Z","query":"USB电压是多少","bocha_ms":280,"bocha_ok":true,"anysearch_ms":1850,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T15:57:17.642Z","query":"广州有海吗？","bocha_ms":306,"bocha_ok":true,"anysearch_ms":3810,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:00:55.942Z","query":"奥本海姆是谁","bocha_ms":317,"bocha_ok":true,"anysearch_ms":2879,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:01:57.465Z","query":"美国生产芯片吗？","bocha_ms":269,"bocha_ok":true,"anysearch_ms":4088,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:07:09.907Z","query":"什么是状态机？","bocha_ms":304,"bocha_ok":true,"anysearch_ms":2930,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:09:45.786Z","query":"什么是HAL库","bocha_ms":290,"bocha_ok":true,"anysearch_ms":2400,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:10:24.156Z","query":"FreeRTOS是什么","bocha_ms":324,"bocha_ok":true,"anysearch_ms":1713,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:11:07.178Z","query":"i.MX6UL/i.MX6ULL是什么","bocha_ms":317,"bocha_ok":true,"anysearch_ms":2075,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:11:54.928Z","query":"SolidWorks是什么","bocha_ms":277,"bocha_ok":true,"anysearch_ms":3543,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:12:46.007Z","query":"GD32F103C8T6是什么？","bocha_ms":317,"bocha_ok":true,"anysearch_ms":4984,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:13:48.758Z","query":"型号写：MRT -AL10是什么手机","bocha_ms":273,"bocha_ok":true,"anysearch_ms":1467,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:15:23.222Z","query":"GitHub和Gitee有什么区别","bocha_ms":290,"bocha_ok":true,"anysearch_ms":3764,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:16:41.106Z","query":"KiCad是什么？国产的还有哪些","bocha_ms":335,"bocha_ok":true,"anysearch_ms":3634,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:17:30.642Z","query":"那立创EDA呢","bocha_ms":315,"bocha_ok":true,"anysearch_ms":2506,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:18:10.269Z","query":"WorkBuddy是什么","bocha_ms":308,"bocha_ok":true,"anysearch_ms":2309,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:18:43.536Z","query":"函数指针是什么？在什么场合下使用，请举例","bocha_ms":359,"bocha_ok":true,"anysearch_ms":1545,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:20:16.810Z","query":"什么是shell","bocha_ms":294,"bocha_ok":true,"anysearch_ms":2141,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:21:33.365Z","query":"什么是shell编程","bocha_ms":323,"bocha_ok":true,"anysearch_ms":1927,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:22:21.450Z","query":"单片机能用C++编程吗？","bocha_ms":339,"bocha_ok":true,"anysearch_ms":4346,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:23:42.576Z","query":"南京理工大学为什么会被美国制裁","bocha_ms":315,"bocha_ok":true,"anysearch_ms":1672,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:24:30.484Z","query":"广东工业大学为什么会被美国制裁","bocha_ms":294,"bocha_ok":true,"anysearch_ms":4695,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:25:08.455Z","query":"STM32F103C8T6的供电电压是多少","bocha_ms":305,"bocha_ok":true,"anysearch_ms":4580,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:26:15.267Z","query":"openclaw是什么","bocha_ms":428,"bocha_ok":true,"anysearch_ms":3882,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:27:19.363Z","query":"openocta是什么，跟openclaw有什么区别","bocha_ms":431,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-13T16:28:18.535Z","query":"STC15W408AS是什么芯片","bocha_ms":290,"bocha_ok":true,"anysearch_ms":1648,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:29:26.662Z","query":"母鸡为什么不用公鸡也能生蛋","bocha_ms":307,"bocha_ok":true,"anysearch_ms":2967,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:31:10.031Z","query":"PaddleOCR这个是做什么用的","bocha_ms":326,"bocha_ok":true,"anysearch_ms":2737,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:32:04.257Z","query":"队列和环形缓冲区的区别是什么","bocha_ms":310,"bocha_ok":true,"anysearch_ms":2008,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:36:30.208Z","query":"https://github.com/PaddlePaddle/PaddleOCR这个项目是做什么用的","bocha_ms":315,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-13T16:39:18.648Z","query":"函数指针是什么，给我写个简单的代码例子","bocha_ms":336,"bocha_ok":true,"anysearch_ms":2461,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:39:37.797Z","query":"https://github.com/PaddlePaddle/PaddleOCR这个项目是做什么用的","bocha_ms":273,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:40:49.451Z","query":"[https://github.com/PaddlePaddle/PaddleOCR这个项目是做什么用的](https://github.com/PaddlePaddle/PaddleOCR这个项目是做什么用的)","bocha_ms":307,"bocha_ok":true,"anysearch_ms":2634,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:42:55.705Z","query":"https://github.com/PaddlePaddle/PaddleOCR这个项目是做什么用的","bocha_ms":297,"bocha_ok":true,"anysearch_ms":4058,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:43:19.509Z","query":"MRT-AL10手机","bocha_ms":271,"bocha_ok":true,"anysearch_ms":1485,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:47:33.990Z","query":"MRT-AL10??","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-13T16:47:51.134Z","query":"MRT-AL10??","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-13T16:48:14.454Z","query":"MRT-AL10??","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-13T16:49:48.436Z","query":"MRT-AL10 入网型号 对应手机型号","bocha_ms":276,"bocha_ok":true,"anysearch_ms":2191,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:52:43.683Z","query":"今天日期","bocha_ms":283,"bocha_ok":true,"anysearch_ms":3428,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T16:53:11.132Z","query":"2024年2月天数","bocha_ms":349,"bocha_ok":true,"anysearch_ms":3681,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:11:06.389Z","query":"MRT-AL10 入网型号 对应手机型号","bocha_ms":297,"bocha_ok":true,"anysearch_ms":1608,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:13:07.501Z","query":"PaddlePaddle PaddleOCR 项目 用途 架构 技术栈","bocha_ms":286,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-13T17:16:35.422Z","query":"ESP32-C3-WROOM-02 模块 规格 参数","bocha_ms":309,"bocha_ok":true,"anysearch_ms":4034,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:27:45.682Z","query":"信号与系统 定义 课程","bocha_ms":317,"bocha_ok":true,"anysearch_ms":2049,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:31:17.290Z","query":"奥本海姆 人物简介","bocha_ms":291,"bocha_ok":true,"anysearch_ms":1815,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:34:02.337Z","query":"公司拖欠工资 没钱请律师 怎么办","bocha_ms":312,"bocha_ok":true,"anysearch_ms":3888,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:36:46.731Z","query":"阴蒂刺激 高潮 快于 阴道插入 原因","bocha_ms":326,"bocha_ok":true,"anysearch_ms":1683,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:46:32.838Z","query":"世界杯战报","bocha_ms":380,"bocha_ok":true,"anysearch_ms":3887,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:47:52.541Z","query":"世界杯战报","bocha_ms":395,"bocha_ok":true,"anysearch_ms":1678,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:51:32.101Z","query":"2026 世界杯战报 赛果 比分","bocha_ms":380,"bocha_ok":true,"anysearch_ms":2734,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:53:02.953Z","query":"2026 世界杯战报 决赛 比分 冠军 最新","bocha_ms":409,"bocha_ok":true,"anysearch_ms":3152,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:54:27.363Z","query":"2026 世界杯 决赛 比分 冠军 最新","bocha_ms":427,"bocha_ok":true,"anysearch_ms":2656,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:57:09.845Z","query":"openclaw 最新版本号","bocha_ms":436,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
+{"ts":"2026-08-13T17:58:09.284Z","query":"openclaw GitHub release latest version","bocha_ms":418,"bocha_ok":true,"anysearch_ms":3023,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T17:59:19.152Z","query":"openclaw GitHub release latest version","bocha_ms":483,"bocha_ok":true,"anysearch_ms":3926,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T18:01:03.760Z","query":"openclaw GitHub release latest version","bocha_ms":464,"bocha_ok":true,"anysearch_ms":1414,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T18:03:10.696Z","query":"openclaw GitHub release latest version","bocha_ms":505,"bocha_ok":true,"anysearch_ms":833,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-13T18:07:47.218Z","query":"2026 世界杯 决赛 比分 冠军 最新","bocha_ms":402,"bocha_ok":true,"anysearch_ms":1300,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T03:50:08.674Z","query":"openworker GitHub release latest version","bocha_ms":425,"bocha_ok":true,"anysearch_ms":3121,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T03:50:23.483Z","query":"tauri GitHub release latest version","bocha_ms":397,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"both"}
+{"ts":"2026-08-14T03:50:35.419Z","query":"electron GitHub release latest version","bocha_ms":391,"bocha_ok":true,"anysearch_ms":3167,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T03:50:48.526Z","query":"arduino GitHub release latest version","bocha_ms":411,"bocha_ok":true,"anysearch_ms":4804,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T03:58:09.900Z","query":"arduino GitHub release latest version","bocha_ms":409,"bocha_ok":true,"anysearch_ms":1503,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T03:58:25.018Z","query":"arduino GitHub release latest version","bocha_ms":377,"bocha_ok":true,"anysearch_ms":1443,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T03:59:03.496Z","query":"arduino GitHub release latest version","bocha_ms":397,"bocha_ok":true,"anysearch_ms":2683,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T03:59:40.254Z","query":"arduino GitHub release latest version","bocha_ms":529,"bocha_ok":true,"anysearch_ms":1220,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T04:00:09.294Z","query":"arduino GitHub release latest version","bocha_ms":376,"bocha_ok":true,"anysearch_ms":2870,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T04:01:39.277Z","query":"arduino GitHub release latest version","bocha_ms":358,"bocha_ok":true,"anysearch_ms":768,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}

@@ -4,7 +4,13 @@
  */
 
 import { loadEnvFile } from '../../config/env.js';
-import type { ProviderId, SearchProvider, SearchProviderResult, SearchResultItem } from './types.js';
+import type {
+  ProviderId,
+  SearchOptions,
+  SearchProvider,
+  SearchProviderResult,
+  SearchResultItem,
+} from './types.js';
 
 const ENDPOINT = 'https://api.anysearch.com/v1/search';
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -23,7 +29,7 @@ interface AnysearchHit {
 export class AnySearchProvider implements SearchProvider {
   readonly id: ProviderId = 'anysearch';
 
-  async search(query: string, opts: { timeoutMs?: number } = {}): Promise<SearchProviderResult> {
+  async search(query: string, opts: SearchOptions = {}): Promise<SearchProviderResult> {
     loadEnvFile();
     const start = Date.now();
     const apiKey = process.env.ANYSEARCH_API_KEY?.trim();

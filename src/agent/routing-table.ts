@@ -15,7 +15,15 @@ export interface RoutingRule {
   searchNeed: boolean;
   skill?: string;
   executor?: string;
+  postProcess?: string;
   confidenceBoost: number;
+  /**
+   * 仅用于“门控规则”：match 全部命中时按此值计 base。
+   * 图片/文档这类零文本维度规则不能用部分权重评分，否则达不到门控阈值。
+   */
+  baseConfidence?: number;
+  /** 严格要求 match 全部命中，避免只命中高权重字段就产生候选 */
+  strictMatch?: boolean;
 }
 
 export const ROUTING_TABLE: RoutingRule[] = [
@@ -57,6 +65,7 @@ export const ROUTING_TABLE: RoutingRule[] = [
     tags: [],
     searchNeed: false,
     skill: 'calendar_skill',
+    executor: 'calendar_skill',
     confidenceBoost: 0.2,
   },
   {
@@ -67,6 +76,7 @@ export const ROUTING_TABLE: RoutingRule[] = [
     tags: [],
     searchNeed: false,
     skill: 'im_dispatch',
+    executor: 'im_dispatch',
     confidenceBoost: 0.25,
   },
   {
@@ -77,6 +87,69 @@ export const ROUTING_TABLE: RoutingRule[] = [
     tags: [],
     searchNeed: false,
     confidenceBoost: 0,
+  },
+  {
+    id: 'R_CULTURAL_REFERENCE',
+    match: { actionType: 'cultural_reference' },
+    primaryLens: 'secretary',
+    intent: 'cultural_reference',
+    tags: ['culture'],
+    searchNeed: false,
+    executor: 'knowledge_qa',
+    postProcess: 'cultural_reply',
+    confidenceBoost: 0.15,
+  },
+  {
+    id: 'R_IMAGE_COLOR',
+    match: { hasImage: true, actionType: 'analyze', targetDomain: 'color' },
+    primaryLens: 'architect',
+    intent: 'color_recognition',
+    tags: ['multimodal', 'color'],
+    searchNeed: false,
+    executor: 'color_recognition',
+    confidenceBoost: 0.25,
+    baseConfidence: 0.6,
+  },
+  {
+    id: 'R_IMAGE_GENERAL',
+    match: { hasImage: true },
+    primaryLens: 'secretary',
+    intent: 'image_analysis',
+    tags: ['multimodal'],
+    searchNeed: false,
+    executor: 'image_analysis',
+    confidenceBoost: 0.2,
+    baseConfidence: 0.55,
+  },
+  {
+    id: 'R_DOCUMENT_QA',
+    match: { hasDocument: true, actionType: 'qa' },
+    primaryLens: 'secretary',
+    intent: 'document_qa',
+    tags: ['document'],
+    searchNeed: false,
+    executor: 'document_qa',
+    confidenceBoost: 0.25,
+  },
+  {
+    id: 'R_DOCUMENT_SUMMARY',
+    match: { hasDocument: true, actionType: 'summarize' },
+    primaryLens: 'secretary',
+    intent: 'document_summary',
+    tags: ['document'],
+    searchNeed: false,
+    executor: 'document_qa',
+    confidenceBoost: 0.25,
+  },
+  {
+    id: 'R_DOCUMENT_STRUCTURE',
+    match: { hasDocument: true, actionType: 'extract_structure' },
+    primaryLens: 'architect',
+    intent: 'document_structure',
+    tags: ['document'],
+    searchNeed: false,
+    executor: 'document_qa',
+    confidenceBoost: 0.25,
   },
   {
     id: 'R007',
@@ -123,5 +196,54 @@ export const ROUTING_TABLE: RoutingRule[] = [
     tags: ['search'],
     searchNeed: true,
     confidenceBoost: 0.3,
+  },
+  {
+    id: 'R13',
+    match: { actionType: 'analyze', targetDomain: 'security' },
+    primaryLens: 'owner',
+    intent: 'risk_review',
+    tags: ['security'],
+    searchNeed: false,
+    confidenceBoost: 0.15,
+    strictMatch: true,
+  },
+  {
+    id: 'R14',
+    match: {
+      actionType: 'schedule',
+      targetDomain: 'schedule',
+      hasTimeExpression: true,
+    },
+    primaryLens: 'secretary',
+    intent: 'create_calendar',
+    tags: ['schedule'],
+    searchNeed: false,
+    executor: 'calendar_skill',
+    confidenceBoost: 0.15,
+    strictMatch: true,
+  },
+  {
+    id: 'R15',
+    match: {
+      actionType: 'compare',
+      targetDomain: 'finance',
+      searchSourceHint: 'vendor_db',
+    },
+    primaryLens: 'owner',
+    intent: 'compare_vendor_quotes',
+    tags: ['finance'],
+    searchNeed: false,
+    executor: 'quote_compare',
+    confidenceBoost: 0.15,
+    strictMatch: true,
+  },
+  {
+    id: 'R016',
+    match: { actionType: 'qa' },
+    primaryLens: 'secretary',
+    intent: 'web_search',
+    tags: ['search', 'qa'],
+    searchNeed: true,
+    confidenceBoost: 0.2,
   },
 ];

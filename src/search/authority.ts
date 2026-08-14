@@ -45,6 +45,7 @@ const SOFTWARE_OFFICIAL_RULES: Array<{ names: string[]; hosts: string[] }> = [
   { names: ['electron'], hosts: ['electronjs.org', 'github.com'] },
   { names: ['arduino'], hosts: ['arduino.cc', 'github.com'] },
   { names: ['openworker'], hosts: ['github.com'] },
+  { names: ['openclaw'], hosts: ['github.com', 'docs.openclaw.ai', 'docs2.openclaw.ai'] },
 ];
 
 export function getHostname(url: string): string {

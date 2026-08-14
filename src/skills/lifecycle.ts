@@ -8,6 +8,7 @@ import { dirname, join } from 'path';
 import { DatabaseSync } from 'node:sqlite';
 
 import { getSkills } from './registry.js';
+import { isColdAfter, weeklyDecayConfidence } from '../memory/confidence-decay.js';
 
 const P30_DECAY_PER_WEEK = 0.9; // [P-30]
 const P31_COLD_DAYS = 90; // [P-31]
@@ -147,14 +148,16 @@ export class SkillLifecycle {
   }
 
   private decayConfidence(stat: SkillStat, now: number): number {
-    const last = stat.lastUsedAt ?? stat.createdAt;
-    const weeks = Math.max(0, (now - last) / (7 * 24 * 3600 * 1000));
-    return Math.max(0.1, stat.confidence * Math.pow(P30_DECAY_PER_WEEK, weeks));
+    return weeklyDecayConfidence(
+      stat.confidence,
+      stat.lastUsedAt ?? stat.createdAt,
+      now,
+      P30_DECAY_PER_WEEK,
+    );
   }
 
   private isCold(stat: SkillStat, now: number): boolean {
-    const last = stat.lastUsedAt ?? stat.createdAt;
-    return now - last > P31_COLD_DAYS * 24 * 3600 * 1000;
+    return isColdAfter(stat.lastUsedAt ?? stat.createdAt, now, P31_COLD_DAYS);
   }
 }
 

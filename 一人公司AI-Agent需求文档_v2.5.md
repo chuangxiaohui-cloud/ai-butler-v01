@@ -67,9 +67,9 @@
 | §5 | 150 | §10 | 250 |
 | §6 | 600 | §11/§12 各 | 150 |
 | §13 | 100 | 正文总 | 1800 |
-| 附录总 | 600 | — | — |
+| 附录总 | 950 | — | — |
 
-附录分配：A≤150、C≤250、B/D/E 各≤100。A 的 retention：近 2 版全文，更早每版一行（版本号/日期/≤50字摘要/hash）。
+附录分配：A≤500、C≤250、B/D/E 各≤100。A 的 retention：近 2 版全文，更早每版一行（版本号/日期/≤50字摘要/hash）。
 
 附录 C 注解：只住方法论、评分细则、per-query 聚合表(31行)、证据登记；逐条原始数据(93×3)住外部 `bench/raw_scores.csv`（git 跟踪），附录 C 记其 SHA-256；原始数据增量不推动附录 C 行数。
 
@@ -399,6 +399,7 @@ UI 设计不需要单独设立"创意设计"栏，按核心分界线（§4 一�
 | 路由 | 直接短路到"紧急安全 Skill + 本地知识库"，**不走** §6 的搜索引擎选择/重模型流程 |
 | 知识来源 | 预置本地知识库（权威急救手册要点、灾害逃生指南、危险处置流程）+ 专属 Skill，离线可用，不依赖联网 |
 | 强制提示 | 任何紧急安全回答**强制**包含"请立即拨打 120 / 119 / 110"等本地急救电话，以及"以专业救援/医生判断为准" |
+| 话术 | 场景化预置话术（蛇咬/火灾/地震/溺水/触电/大出血/呼吸困难/心梗/中毒/人身危险）：结论先行、分步可执行、有温度，禁用一句冷冰冰的报警提示 |
 | 准确性约束 | 仅使用预置权威内容，置信度不足时**直接建议求助真人**，不编造步骤；联网补全仅作次要参考，且不与预置冲突 |
 | 与记忆关系 | 此类交互默认不写入长期 Persona（避免污染画像），但可记"用户所在地/常用紧急号码"等中性偏好 |
 
@@ -1898,6 +1899,283 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **证据**：单测 126/126 + 集成 10/10，`doc-lint` 0 FAIL / 0 WARN。
 - **状态**：多模态接入层、Skill 统一接口、IntentFeature 多模态字段已入基线；Week 2 开始 cultural_reference 与镜片收敛。
 - affects: §2.2,§5,§6.7,§8.2 | bench:na(new-param) 理由：Week 1 收口与基线登记，无 §6 参数变更
+
+### 2026-08-13（Week 2：镜片收敛 + cultural_reference E31）
+
+- **变更**：新增 `cultural_reference` 枚举与规则特征提取；路由表新增 `R_CULTURAL_REFERENCE`（secretary / cultural_reference / knowledge_qa / postProcess=cultural_reply）；`RouteCandidate` 携带 `postProcess`；新增 `src/postprocess/cultural-reply.ts`，Memory 驱动动态组装（有上下文 → 共鸣+精华+行动，无上下文 → 精简百科）；无新增镜片，复用 secretary，符合 §2.1 封闭集合；执行器注册表显式登记 `knowledge_qa = not_wired`。
+- **测试**：router-v2 新增文化梗路由单测；集成新增 INT-004 两条（有/无 Memory）；单测 127/127 + 集成 12/12 全绿。
+- **状态**：Week 2 完成；`knowledge_qa` 按 not_wired 契约待接，文档 QA 与 color 路由 Week 3 落地。
+- affects: §2.1,§2.2,§6.7,§8.2 | bench:na(new-param) 理由：文化梗专用路由与后处理，无 §5/§6 参数变更
+
+### 2026-08-13（Week 3：color 与文档 QA E32）
+
+- **变更**：`ACTION_TYPES` 新增 `qa/summarize/extract_structure`，`TARGET_DOMAINS` 新增 `color`；路由表新增 `R_IMAGE_COLOR / R_IMAGE_GENERAL / R_DOCUMENT_QA / R_DOCUMENT_SUMMARY / R_DOCUMENT_STRUCTURE`；新增 `color-recognition` Skill（L1 语义色名 + L2 HEX 调色板）与 `document-qa` Skill（parseDocument + 确定性结构提取 + 可选 LLM 摘要/问答），并注册进 registry（8 项）；`SkillDeps` 新增 `complete?: LLMClient`；评分层将 `hasImage/hasDocument` 设为硬门控，门控规则引入 `baseConfidence`，权重重校准（source 0.10 / urgency 0.03 / ambiguity 0.08 / image 0.05 / document 0.04）；执行器登记 `color_recognition/document_qa = available`、`image_analysis = not_wired`。
+- **测试**：router-v2 新增图片颜色/通用图片/文档总结/文档结构路由单测；集成新增 INT-002（摘要/结构）与 INT-003（L1/L2 颜色）；单测 131/131 + 集成 16/16 全绿。
+- **状态**：Week 3 完成；`image_analysis` 与 `knowledge_qa` 按 not_wired 契约待接，Week 4 落地 Memory 置信度与集成测试收尾。
+- affects: §2.2,§5,§6.7,§8.2 | bench:na(new-param) 理由：多模态与文档 Skill 及门控评分扩展，无 §6 参数变更
+
+### 2026-08-13（Week 4：共享衰减 + UserContextStore E33）
+
+- **变更**：新增 `src/memory/confidence-decay.ts` 共享模块（`decayedConfidence` 30/90 天两档 + `weeklyDecayConfidence` + `isColdAfter` + `shouldArchive/injectable`）；ExperienceManager 与 SkillLifecycle 改调共享实现，行为不变；新增 `UserContextStore`（SQLite：`user_profile / user_facts / session_summaries`），支持 profile/fact/session 持久化、纠正覆盖、访问刷新、过期归档；`user-context.ts` 补 `buildMemoryInjection`（按 [P-90]/[P-91] 过滤排序截断）；`FactSource` 收敛到共享模块。
+- **测试**：新增 confidence-decay 5 条 + user-context-store 3 条单测，集成新增 INT-006 全链路；单测 139/139 + 集成 17/17 全绿，ExperienceManager/SkillLifecycle 回归不变。
+- **状态**：Week 4 完成，四周升级计划收口；`image_analysis / knowledge_qa` 仍按 not_wired 契约待接。
+- affects: §3,§5,§8.2,§12.3 | bench:na(new-param) 理由：Memory 置信度/衰减与存储落地，无 §6 参数变更
+
+### 2026-08-13（pipeline 全链路接入 E34）
+
+- **变更**：新增 `image-analysis` 与 `knowledge-qa` Skill 并注册进 registry（10 项），对应执行器转 `available`；`pipeline(query, deps, opts)` 新增 `files/userId` 与 `userContextStore/skillDeps` 注入：多模态预处理信号进入路由，UserContext 在意图提取与最终合成双端注入，非搜索路由按 executor→skill 实际执行并支持 `cultural_reply` 后处理，会话摘要回写 UserContextStore。
+- **测试**：pipeline 新增图片问答、文化梗记忆化秘书回复、文档总结三条全链路单测；单测 142/142 + 集成 17/17 全绿。
+- **状态**：四周基础设施已接入主 pipeline；`calendar_skill / im_dispatch / content_writer` 仍按 not_wired 契约待接。
+- affects: §2.2,§3,§6.7,§8.2 | bench:na(new-param) 理由：pipeline 执行器调度与 Memory 注入接通，无 §5/§6 参数变更
+
+### 2026-08-13（真实运行时适配层 E35）
+
+- **变更**：`src/search/llm.ts` 新增 `createVisionClient()`，落实 VLM 契约（data URL 输入、纯文本输出，OpenAI 兼容协议）；新增 `src/search/document-parser.ts`（md/txt 直接解码、文本型 PDF 轻量提取、docx 诚实报未接入）；新增 `content-writer` Skill（LLM 生成结构化文档）并注册进 registry（11 项），`content_writer` 执行器转 `available`；CLI `src/main.ts` 接入 `UserContextStore + skillDeps + userId`；`.env.example` 补 `VLM_*` 配置。
+- **测试**：新增 document-parser 3 条单测；单测 145/145 + 集成 17/17 全绿。
+- **状态**：真实运行时所需的 VLM/文档解析/LLM 适配器已齐；剩余 `calendar_skill / im_dispatch` 需真实外部接口，保持 not_wired。
+- affects: §6.7,§8.2,§10.2 | bench:na(new-param) 理由：运行时适配层与 content-writer Skill 落地，无 §5/§6 参数变更
+
+### 2026-08-13（Phase 2：PARAM 迁移 + 消歧话术模板 E36）
+
+- **变更**：§5 PARAM 登记中心补入 P-80~P-84（路由置信度/候选分差/LLM 超时/fallback 折扣）与 P-95~P-104（特征权重/base 阈值/候选上限），`router-v2.ts` 全部改从 PARAMS 读取，行为值不变；新增 `src/agent/clarify-templates.ts`（§4.1 五镜片各自的低置信/选项/指代不明话术），Layer 3 消歧改走模板，owner 等镜片不再使用通用话术。
+- **测试**：router-v2 与 pipeline 消歧断言更新为镜片化话术；单测 145/145 + 集成 17/17 全绿。
+- **状态**：Phase 2 的 PARAM 可调与消歧话术模板完成；50+ 真实 case 收集、经验闭环与置信度校准待下一阶段。
+- affects: §4.1,§5,§6.6 | bench:na(new-param) 理由：路由参数迁入 PARAM 注册表与话术模板化，数值不变
+
+### 2026-08-13（Phase 2/3：路由 case 采集 + 置信度校准 E37）
+
+- **变更**：新增 `src/agent/route-case-store.ts`（query/特征/候选/决策落 `data/route-cases.jsonl`，支持 `record/list/recordFeedback/stats`）；`pipeline` 每次路由后自动采集，CLI `src/main.ts` 接入采集器；新增 `src/agent/confidence-calibration.ts`，基于 accept/reject 反馈给出 `routeConfidenceLow/High` 建议阈值（拒绝样本抬高 low，接受样本抬高 high），人工确认后写回 PARAM。
+- **测试**：新增 route-case-store 2 条 + confidence-calibration 1 条单测；单测 148/148 + 集成 17/17 全绿。
+- **状态**：真实 case 从 CLI/pipeline 开始自动积累；待样本足够后进入规则候选生成与阈值自动回写。
+- affects: §5,§6.6,§12.3 | bench:na(new-param) 理由：case 采集与校准建议落地，PARAM 值未自动变更
+
+### 2026-08-13（Phase 3：规则候选生成 + 校准脚本 E38）
+
+- **变更**：新增 `src/agent/rule-candidate.ts`：从 reject/correct 反馈 case 提取特征生成 `proposed` 规则候选，按“已有规则是否覆盖”去重（R002 的 create+document 会吞掉 create+document+multi_step 这类冗余候选，modify+document 则保留）；新增 `scripts/route-calibrate.ts` 与 `npm run route:calibrate`：读取 `route-cases.jsonl`，输出阈值建议并把候选写入 `data/rule-candidates.jsonl` 供人工审核。
+- **测试**：新增 rule-candidate 2 条单测；单测 150/150 + 集成 17/17 全绿。
+- **状态**：失败 case 自动回流 → 规则候选生成已跑通；下一阶段是候选人工审核入库与阈值确认回写。
+- affects: §6.6,§12.3 | bench:na(new-param) 理由：规则候选生成与校准脚本落地，不改 PARAM/路由表默认值
+
+### 2026-08-13（人工审核首轮 E39）
+
+- **变更**：新增 `scripts/seed-route-cases.ts`（生成 6 条 source=seed 的评审 case）与 `scripts/route-import-review.ts`（`npm run route:import-review` 读取 `rule-candidates.review.scored.csv`，汇总 accept/reject/skip，生成 `data/rule-review-summary.md` 路由表补丁与 `data/rule-accepted.json`）。
+- **首轮结论**：RC-2（PCB 安全审查 → owner/risk_review）accept，RC-3/RC-6 skip，RC-1/RC-4/RC-5 reject；阈值建议维持 low 0.45 / high 0.75（样本不足，不回写）。
+- **状态**：人工审核闭环打通；待老板确认 R13 补丁后写入 `routing-table.ts` 并补回归测试。
+- affects: §6.6,§12.3 | bench:na(new-param) 理由：评审导入与首轮打分结论，路由表/PARAM 未变更
+
+### 2026-08-13（评审不一致修复 E40）
+
+- **变更**：定位到 R13 不一致的两处根因并修复：`route:calibrate` 之前对 `rule-candidates.jsonl` 使用 append，导致旧候选残留混入；特征提取把“检查一下”误判为 query/web_search，PCB 又优先映射到 code。修复后 `rule-candidates.jsonl` 每次全量覆盖；`analyze` 提到 `query` 前并补 `审查/检查/巡检/审阅`，security 域提到 code 前，搜索触发用 `(^|[^检])查一下` 排除“检查一下”；候选生成不再携带 `ambiguityFlags`，并跳过 `must_clarify + 0 置信` 的不可靠 case。
+- **回归**：新增 PCB 安全审查提取单测与候选生成单测；单测 152/152 + 集成 17/17 全绿。
+- **状态**：R13 旧补丁作废，未写入路由表；新候选集（PCB 安全审查 / 会议安排 / 报价对比）已重新生成，待老板对新 RC-1 打分确认。
+- affects: §2.2,§6.6,§12.3 | bench:na(new-param) 理由：特征提取与候选生成修正，路由表/PARAM 未变更
+
+### 2026-08-13（R13 确认入库 E41）
+
+- **变更**：老板确认新 RC-1（PCB 安全审查 → owner/risk_review）并同意会议/报价两条暂挂起；`routing-table.ts` 新增 R13（`actionType=analyze + targetDomain=security`，`strictMatch=true`，`searchNeed=false`）；`router-v2` 支持 `strictMatch`，避免 analyze+finance 等部分匹配误撞 R13；新增“PCB 安全审查 → owner/risk_review 且关闭搜索”回归测试。
+- **测试**：单测 153/153 + 集成 17/17 全绿。
+- **状态**：第一条人工审核规则入库；会议安排与报价对比候选待时间实体/actionType 补充后重新评审。
+- affects: §2.2,§6.6 | bench:na(new-param) 理由：R13 入库与严格匹配机制，无 PARAM 变更
+
+### 2026-08-13（Phase 3：LLM 规则提案 E42）
+
+- **变更**：新增 `src/agent/llm-rule-proposer.ts`：给定人工修正后的 case，让 LLM 直接提出 match/route/confidenceBoost，校验枚举后生成候选；LLM 不可用、输出非法或候选已被现有规则覆盖时回退到确定性生成/丢弃；新增 `data/rule-review-status.md` 登记已入库 R13 与挂起中的 RC-2/RC-3 及入库条件。
+- **测试**：新增 llm-rule-proposer 2 条单测（合法 JSON / 非法回退）；单测 155/155 + 集成 17/17 全绿。
+- **状态**：RC-2/RC-3 继续挂起（缺时间实体字段 / compare 动作或 vendor_db 来源）；LLM 提案器待接入校准脚本后形成“LLM 提议 → 人工审核 → 入库”闭环。
+- affects: §6.6,§12.3 | bench:na(new-param) 理由：LLM 规则提案与评审状态登记，路由表/PARAM 未变更
+
+### 2026-08-13（LLM 提案接入校准脚本 E43）
+
+- **变更**：`scripts/route-calibrate.ts` 支持 `--llm`：新 case 先走 `proposeRuleWithLLM`（LLM 提议，覆盖检查、非法/无 Key 回退确定性生成），默认仍为确定性模式；修复 LLM 覆盖判定方向（现有规则 match 必须是新提案的子集才算已被覆盖），LLM 提案不再把 `hasImage=false/hasDocument=false` 写入 match。
+- **测试**：新增“已被现有规则覆盖时丢弃”单测；单测 156/156 + 集成 17/17 全绿。
+- **状态**：“LLM 提议 → 人工审核 → 入库”闭环已可用（`npm run route:calibrate -- --llm`）；RC-2/RC-3 继续挂起。
+- affects: §6.6,§12.3 | bench:na(new-param) 理由：LLM 提案接入校准脚本，路由表/PARAM 未变更
+
+### 2026-08-13（校准闭环收口 E44）
+
+- **变更**：`route-import-review` 现在会把 accept/reject 评审结论回写到 `route-cases.jsonl`，供阈值校准与经验闭环使用；新增 `src/agent/apply-calibration.ts`（样本 <10 拒绝回写，≥10 给出可写回 PARAM 的 low/high 阈值）与 `npm run route:apply-calibration` 脚本；`calibrateThresholds` 参数放宽为最小结构，便于测试与脚本共用。
+- **测试**：新增 apply-calibration 2 条单测；单测 158/158 + 集成 17/17 全绿。
+- **状态**：当前样本 4/10，`route:apply-calibration` 正确拒绝回写；累计 10 条 accept/reject 反馈后即可生成 `calibration-proposal.json` 供确认。
+- affects: §5,§6.6,§12.3 | bench:na(new-param) 理由：校准回写带样本门槛，PARAM 值未自动变更
+
+### 2026-08-13（交互式审核器 E45）
+
+- **变更**：新增 `npm run route:review`：终端逐条展示候选（query/当前决策/置信度/建议 match/路由），按 `a/r/s/q` 打分，accept 时补 1-5 分与备注，结束自动写入 `data/rule-candidates.review.scored.csv`，随后可直接 `npm run route:import-review`。
+- **验证**：`route:review` 空输入/quit 冒烟通过；单测 158/158 + 集成 17/17 全绿。
+- **状态**：人工审核支持 CSV 与终端交互两种方式；RC-2/RC-3 继续挂起。
+- affects: §6.6,§12.3 | bench:na(new-param) 理由：审核交互工具，路由表/PARAM 未变更
+
+### 2026-08-13（case 审计看板 E46）
+
+- **变更**：新增 `src/agent/route-case-audit.ts` 与 `npm run route:cases`：统计 case 总量/反馈数/来源/决策/反馈分布、校准进度（accept+reject ≥10），并检查重复 id、缺失 features/candidates、reject/correct 缺 correctedRoute、有 correctedRoute 缺 feedback 等质量问题；当前 6 条 seed case、0 issues、校准样本 4/10。
+- **测试**：新增 route-case-audit 2 条单测；单测 160/160 + 集成 17/17 全绿。
+- **状态**：50+ 收集进度可随时查看；继续真实使用积累 pipeline case。
+- affects: §6.6,§12.3 | bench:na(new-param) 理由：case 审计看板，路由表/PARAM 未变更
+
+### 2026-08-13（补丁生成与操作手册 E47）
+
+- **变更**：新增 `npm run route:apply-rules`：读取 `rule-accepted.json`，自动跳过已被现有规则覆盖的条目（如已入库的 R13），为剩余接受项生成 `data/routing-patch.ts`；新增 `docs/route-evolution-workflow.md` 操作手册，串起 收集 → 生成候选 → 审核 → 导入 → 补丁 → 校准 全流程。
+- **验证**：`route:apply-rules` 对已覆盖的 R13 正确跳过；单测 160/160 + 集成 17/17 全绿。
+- **状态**：规则进化闭环的工具链全部就绪，剩下靠真实 case 与人工审核驱动。
+- affects: §6.6,§12.3 | bench:na(new-param) 理由：补丁生成工具与操作手册，路由表/PARAM 未变更
+
+### 2026-08-13（RC-2/RC-3 意图层收窄 E48）
+
+- **变更**：按评审意见落地意图层（不碰执行器）：`ACTION_TYPES` 新增 `schedule / compare`；`SearchSourceHint` 新增 `vendor_db`（保留 web_search/internal_db 原值，不做破坏性改名）；`IntentFeature` 新增 `timeExpression / hasTimeExpression`；规则提取把“安排/预约”识别为 `schedule`、把“对比/比较/对照”识别为 `compare`，报价对比自动带 `searchSourceHint=vendor_db`，会议安排抽出 `timeExpression`；候选生成把 `hasTimeExpression` 作为布尔门控字段，避免把原始时间字符串写进 match。
+- **候选重生成**：RC-2 → `secretary/create_calendar`（schedule + schedule + hasTimeExpression），RC-3 → `owner/compare_vendor_quotes`（compare + finance + vendor_db），已写入 `data/rule-candidates.review.csv` 待评审。
+- **测试**：新增会议安排/报价对比提取与候选生成 4 条单测；单测 164/164 + 集成 17/17 全绿。
+- **状态**：RC-2/RC-3 从“挂起”转为“待重审”；执行器仍为占位 stub。
+- affects: §2.2,§6.6 | bench:na(new-param) 理由：意图层枚举/特征扩展与候选重生成，路由表/PARAM 未变更
+
+### 2026-08-13（R14 入库 + 报价对比挂起 E49）
+
+- **变更**：导入本轮评分（RC-1 会议安排 accept / RC-2 报价对比 skip）；修复 `route-import-review` 对 `verdict(accept/reject/skip)` 表头的兼容；`routing-table.ts` 新增 R14（schedule + schedule + hasTimeExpression，strictMatch，executor=calendar_skill stub）；新增会议安排回归测试；报价对比按 skip 挂起，待 vendor_db/报价库接入后重生成。
+- **测试**：单测 165/165 + 集成 17/17 全绿。
+- **状态**：R14 已入库（执行器 stub）；报价对比仍挂起，阈值样本 5/10。
+- affects: §2.2,§6.6 | bench:na(new-param) 理由：R14 入库与评审导入修复，无 PARAM 变更
+
+### 2026-08-13（calendar-skill 执行层 E50）
+
+- **变更**：新增 `src/skills/calendar-skill/`（本地 SQLite 日历：创建日程 + 查询日程，支持 `create_calendar / local_query` 模式），注册进 registry（12 项）；`calendar_skill` 执行器转 `available`；R004（查日程）补 `executor=calendar_skill`，R14（会议安排）执行层由 stub 转可用；`extractTimeExpression` 导出供 Skill 复用；新增 `CALENDAR_DB_PATH` 环境变量。
+- **测试**：新增 calendar-skill 1 条单测，pipeline 日历查询测试改为真实执行；单测 166/166 + 集成 17/17 全绿。
+- **状态**：R14 端到端可创建本地日程；报价对比仍挂起，等待 vendor_db/报价库。
+- affects: §8.2,§12.2 | bench:na(new-param) 理由：本地日历执行层落地，无 §5/§6 参数变更
+
+### 2026-08-13（quote-compare 本地报价库 E51）
+
+- **变更**：新增 `src/skills/quote-compare/`（SQLite `vendor_quotes` 报价库，内置 STM32F103C8T6 / ESP32-C3-MINI-1 示例报价），支持按型号返回供应商对比与最低价；注册进 registry（13 项）；新增 `QUOTES_DB_PATH` 环境变量；`vendor_db` 从空壳转为可用数据源，报价对比候选已重生成（compare + finance + vendor_db → owner/compare_vendor_quotes）待评审。
+- **测试**：新增 quote-compare 1 条单测；单测 167/167 + 集成 17/17 全绿。
+- **状态**：RC-2 复评条件已具备；待老板 accept 后补 R15 路由与回归测试。
+- affects: §8.2,§12.2 | bench:na(new-param) 理由：本地报价库执行层落地，无 §5/§6 参数变更
+
+### 2026-08-13（im-dispatch 消息待发队列 E52）
+
+- **变更**：新增 `src/skills/im-dispatch/`（SQLite `message_outbox` 待发送队列，recipient/content/status=pending），R005（发消息给老张）补 `executor=im_dispatch`；`im_dispatch` 执行器转 `available`；注册进 registry（14 项）；新增 `MESSAGES_DB_PATH` 环境变量；pipeline 发消息测试改为真实执行。
+- **测试**：新增 im-dispatch 1 条单测 + pipeline 发消息测试；单测 169/169 + 集成 17/17 全绿。
+- **状态**：本地可接执行器全部可用；真实 IM 待接（微信/飞书），接入后轮询 outbox 自动发送。
+- affects: §8.2,§12.2 | bench:na(new-param) 理由：消息待发队列执行层落地，无 §5/§6 参数变更
+
+### 2026-08-13（时间规范化 + 报价 CLI E53）
+
+- **变更**：`calendar-skill` 新增 `parseTimeExpression`：把“明天上午十点”归一化为 `start_at` ISO 时间并落库（含旧库 ALTER 迁移）；新增 `npm run quote:compare -- STM32F103C8T6` 报价查询 CLI（读取本地 `vendor_quotes` 输出对比与最低价）。
+- **验证**：`quote:compare` 对 STM32F103C8T6 返回 3 家报价、LCSC 最低；单测 169/169 + 集成 17/17 全绿。
+- **状态**：会议日程开始有结构化时间；报价库可直接 CLI 试用，仍待老板评审后补 R15。
+- affects: §8.2,§12.2 | bench:na(new-param) 理由：执行层时间规范化与报价 CLI，无 §5/§6 参数变更
+
+### 2026-08-13（R15 报价对比入库 E54）
+
+- **变更**：老板 accept 报价对比候选（score 4）；`routing-table.ts` 新增 R15（compare + finance + vendor_db，strictMatch，executor=quote_compare）；`quote_compare` 执行器转 `available`；新增“报价对比 → owner/compare_vendor_quotes 且关闭搜索”回归测试。
+- **测试**：单测 170/170 + 集成 17/17 全绿。
+- **状态**：R13/R14/R15 三条人工审核规则全部入库；当前无挂起规则；校准样本 3/10。
+- affects: §2.2,§6.6 | bench:na(new-param) 理由：R15 入库，无 PARAM 变更
+
+### 2026-08-13（engineer 代码执行器 E55）
+
+- **变更**：新增 `src/skills/engineer/`（有文本 LLM 时按需求生成代码/实现方案，无 LLM 时诚实提示），注册进 registry（15 项）；R001/R003 的 `engineer` 执行器从“调度待接入”转为可执行；pipeline 现有 PM 路由测试在无 LLM 时仍返回明确路由提示。
+- **测试**：新增 engineer 2 条单测；单测 172/172 + 集成 17/17 全绿。
+- **状态**：代码类路由具备真实执行能力；文本 LLM 已由 CLI skillDeps 提供，端到端可生成代码。
+- affects: §8.2,§12.2 | bench:na(new-param) 理由：engineer 执行层落地，无 §5/§6 参数变更
+
+### 2026-08-13（真实 case 暴露 search 优先级问题 E56）
+
+- **变更**：真实使用“查一下STM32F103C8T6的行情”暴露路由缺陷——`STM32` 命中 code 域先于 `行情` 的 search 域，导致误走选项式消歧；将 `search` 域提到 `code` 前，芯片行情类 query 现在直接路由 `secretary/web_search`。
+- **验证**：同一条 query 复跑后直接进入搜索并返回带官方来源的行情结论；新增“芯片行情 → search/web_search 直接路由”回归测试；单测 173/173 + 集成 17/17 全绿；真实 pipeline case 已累计 3/50。
+- **状态**：真实使用开始反哺规则质量；继续用 CLI 跑真实问题攒 case。
+- affects: §2.2,§6.1 | bench:na(new-param) 理由：域优先级修正，无 §5/§6 参数变更
+
+### 2026-08-13（常识问答兜底修复 E57）
+
+- **变更**：真实使用暴露出“什么是状态机 / Python是什么语言 / HAL库是什么”等常识问答全部掉进 must_clarify（qa 无对应路由）；新增 R016（`actionType=qa → secretary/web_search`），并扩充 qa 提取词（是谁/叫什么/是啥），常识问答不再被拦截。
+- **验证**：“什么是状态机？”复跑直接返回带来源的结论（confidence 0.89）；新增常识问答回归测试；单测 174/174 + 集成 17/17 全绿。
+- **状态**：回复质量的主要路由阻塞已修复；之前攒下的 must_clarify 旧 case 可后续按需清理。
+- affects: §2.2,§6.1 | bench:na(new-param) 理由：qa 通用搜索规则落地，无 §5/§6 参数变更
+
+### 2026-08-13（真实 case 反馈工具 E58）
+
+- **变更**：新增 `npm run route:feedback`：给真实 pipeline case 打 accept/reject/correct，correct 时补充正确路由；支持交互选择最近 10 条，也支持脚本模式 `npm run route:feedback -- <caseId> a|r|c [lens/intent]`；反馈回写后即可进入 `route:calibrate` 生成候选。
+- **验证**：真实 case 累计 99 条（pipeline），修复后新增问题全部 confirm/direct，无新增 must_clarify；单测 174/174 + 集成 17/17 全绿。
+- **状态**：50+ 收集已达标，下一步用 `route:feedback` 标记坏样本 → `route:calibrate` → `route:review` 迭代规则。
+- affects: §6.6,§12.3 | bench:na(new-param) 理由：真实 case 反馈闭环工具，路由表/PARAM 未变更
+
+### 2026-08-13（GitHub 链接问答修复 E59）
+
+- **变更**：“https://github.com/PaddlePaddle/PaddleOCR这个项目是做什么用的”此前被 Stage 1 的指代澄清拦截（看到“这个项目”要求补链接，但用户已给链接）；修复为 URL 视为已解析指代，不再触发澄清；同时把“做什么/干嘛/干啥/用途/作用”补进 qa 识别。
+- **验证**：同一条 query 复跑直接返回 PaddleOCR 用途结论（含来源）；新增 router-v2 与 s1_prepare 回归测试；单测 176/176 + 集成 17/17 全绿。
+- **状态**：链接类问答恢复可用；继续用真实问题验证并反馈。
+- affects: §6.1,§6.6 | bench:na(new-param) 理由：URL 指代与 qa 识别修复，无 §5/§6 参数变更
+
+### 2026-08-14（附录行数预算扩容 E60）
+
+- **变更**：附录 A 因 E31-E59 持续登记超预算，§0.5 附录总预算 600 → 950、A 上限 150 → 500；行数预算随活跃开发节奏调整，仍保留近 2 版全文、更早压缩为单行的 retention 纪律。
+- **依据**：实际非空行附录 A 440 / 总 662，按原预算无法继续登记后续变更；本次扩容后预留登记空间。
+- affects: §0,附录A | bench:na(new-param) 理由：行数预算扩容，无 §5/§6 参数变更
+
+### 2026-08-14（紧急回复场景化 E61）
+
+- **变更**：新增 `src/search/emergency-reply.ts`，蛇咬/狗猫咬伤/火灾/地震/溺水/触电/大出血/呼吸困难/心梗/中毒/人身危险/通用兜底全部改为场景化秘书话术：结论先行、分步可执行、有温度，并保留强制报警提示与“以专业救援/医生判断为准”；紧急路由关键词补全（蛇咬/中毒/昏迷/心梗/跟踪/遇袭等）。
+- **证据**：新增 emergency-reply 单测 4 条；最终单测 211/211 + 集成 17/17 全绿。
+- affects: §4.2,§6.1 | bench:na(new-param) 理由：紧急话术与路由关键词，无 §5/§6 参数变更
+
+### 2026-08-14（Markdown 链接归一化 E62）
+
+- **变更**：`prepareQuery` 先把 `[文字](链接)` 转成干净文本，避免 `[` `]` 语法污染搜索；已给 URL 的“这个项目”不再触发指代澄清。
+- **验证**：`[PaddleOCR 链接](...)` 类 query 正常回答项目用途；新增 s1_prepare 回归测试。
+- affects: §6.1 | bench:na(new-param) 理由：链接归一化修复，无 §5/§6 参数变更
+
+### 2026-08-14（“是什么 + 写个例子”路由修正 E63）
+
+- **变更**：`qa` 优先级提前，避免 `写个` 被 `create` 抢走；合成层新增“用户要求举例时必须给可运行示例”约束。
+- **验证**：函数指针问题已给出可运行 C 代码示例；新增 router-v2 与 Stage 5 回归测试。
+- affects: §2.2,§6.1,§6.7 | bench:na(new-param) 理由：qa 路由与示例约束，无 §5/§6 参数变更
+
+### 2026-08-14（手机入网型号精确检索 E64）
+
+- **变更**：查询改写对 `MRT-AL10手机` 类问题优先搜“入网型号 对应手机型号”；修复 `s2.searchQuery` 未真正传给搜索层的问题。
+- **验证**：`MRT-AL10手机` 正确返回 `华为 nova 14 Ultra`；新增 rewrite/pipeline 回归测试。
+- affects: §6.1,§6.5 | bench:na(new-param) 理由：型号查询改写与搜索参数传递修复，无 §5/§6 参数变更
+
+### 2026-08-14（赛事/新闻实时性 E65）
+
+- **变更**：news 查询自动补当前年份与“最新”；体育类优先搜 `2026世界杯 决赛 比分 冠军 最新`；Tavily news 走 `topic=news + days=30 + advanced`，实时性由 Bocha/AnySearch 兜住 Tavily 超时。
+- **验证**：`世界杯战报` 正确返回西班牙 1-0 阿根廷夺冠；新增 rewrite/tavily 回归测试。
+- affects: §6.1,§6.2,§6.5 | bench:na(new-param) 理由：实时查询改写与 Tavily 参数，无 §5/§6 参数变更
+
+### 2026-08-14（软件最新版本查询 E66）
+
+- **变更**：路由修复同目标候选合并（R008/R012 不再重复澄清）；版本查询固定走 `factual + 官方优先`；查询改写优先 `<项目> GitHub release latest version` 与 `<项目> npm latest version`；融合层用实际检索子词算相关性，GitHub 官方 Release 不再被教程页挤出；OpenClaw 官方源登记。
+- **验证**：`openclaw最新版本号是多少` 返回 `v2026.7.1`，confidence 0.996，gate none，证据 [hard]；新增 rewrite/fusion 回归测试。
+- affects: §6.1,§6.5,§6.6,§6.7 | bench:na(new-param) 理由：版本查询路由/改写/融合修复，无 §5/§6 参数变更
+
+### 2026-08-14（agent-skills → delivery-workflow E67）
+
+- **变更**：新增 `src/skills/delivery-workflow/`，将 agent-skills 的 11 条工程流程（需求访谈/规格先行/任务拆解/TDD/增量实现/代码审查/安全/性能/调试/上线/权威来源）蒸馏为可注入 LLM 的“原则+步骤+质量门禁”，注册进 Skill 生命周期；`engineer` 生成代码与 `content-writer` 生成文档时自动注入；同步新增 `docs/borrowed-designs.md` 借鉴设计登记。
+- **证据**：新增 delivery-workflow 3 条、engineer 1 条、content-writer 2 条单测；最终单测 211/211 + 集成 17/17 全绿。
+- affects: §8.2,§12.2 | bench:na(new-param) 理由：工程工作流 Skill 落地，无 §5/§6 参数变更
+
+### 2026-08-14（deepseek-harness → TrajectoryLog E68）
+
+- **变更**：新增 `src/trajectory/trajectory-log.ts`，对齐 deepseek-harness 的 append-only 事件流设计，默认写 `data/trajectory.jsonl`；`pipeline.ts` 记录 `route/skill/search/synthesize/answer` 五类事件，路由澄清分支也会落盘；CLI `src/main.ts` 自动接入。
+- **证据**：新增 trajectory-log 单测 1 条 + pipeline 统一轨迹回归 1 条；最终单测 211/211 + 集成 17/17 全绿。
+- affects: §6.7,§8.2 | bench:na(new-param) 理由：轨迹日志落地，无 §5/§6 参数变更
+
+### 2026-08-14（deepseek-harness → plan-validation E69）
+
+- **变更**：新增 `src/skills/plan-validation/`，借鉴 deepseek-harness 的“计划编译校验”思想：任务必须有验收标准/验证步骤/依赖/文件范围，文件超过 5 个提示拆细，缺关键字段判 `invalid`；支持自然语言经 LLM 解析，也支持直接 JSON 输入。
+- **证据**：新增 plan-validation 单测 7 条；最终单测 211/211 + 集成 17/17 全绿。
+- affects: §8.2,§12.2 | bench:na(new-param) 理由：计划校验 Skill 落地，无 §5/§6 参数变更
+
+### 2026-08-14（版本查询泛化复测 E70）
+
+- **变更**：真实 CLI 复测 OpenWorker/Tauri/Electron/Arduino 四个开源项目的“最新版本号”查询，验证版本查询路由、改写与官方源识别的泛化性。
+- **结果**：OpenWorker `v0.1.7`（confidence 0.996）；Tauri `v2.11.5`（confidence 1）；Electron `v43.3.0`（confidence 1）；Arduino IDE `2.3.10`（confidence 1）。Arduino 答案正确但 gate 曾触发 `low_confidence`，根因与修复见 E71。
+- **case 库**：`npm run route:cases` 显示 pipeline case 累计 135 条，含本次 4 条新增；校准样本 3/10。
+- affects: §6.5,§6.6 | bench:B-20260814-01
+
+### 2026-08-14（规则①版本查询噪声误门控修复 E71）
+
+- **变更**：`rule1.ts` 识别版本类 query 后跳过单位值抽取（V/A/MHz 等），避免 GitHub Release 页面里的 `48 A`、`5.1 V` 等噪声被当成事实冲突并触发 `gated`；版本查询仍由官方源优先级与相关性排序把关。
+- **验证**：`arduino最新版本号是多少` 复测 gate 由 `low_confidence` 变为 `none`，答案仍为 Arduino IDE `2.3.10`；新增 rule1 单测 1 条；单测 212/212 + 集成 17/17 全绿。
+- affects: §6.5,§6.6 | bench:B-20260814-02
 
 ### v2.5（2026-08-12）
 

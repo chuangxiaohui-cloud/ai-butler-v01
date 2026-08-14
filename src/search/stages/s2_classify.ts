@@ -21,7 +21,7 @@ export interface ClassifiedQuery {
   searchQuery: string;
   timeWindow: string;
   domain: string;
-  source: 'llm' | 'fallback';
+  source: 'llm' | 'fallback' | 'rule';
   timedOut?: boolean;
 }
 
@@ -35,6 +35,8 @@ const INTENTS: readonly IntentKey[] = [
   'github_analysis',
   'emergency',
 ];
+
+const VERSION_QUERY_RE = /最新.*版本|版本.*最新|最新版本号|版本号|latest.*version|version.*latest/;
 
 const CLASSIFY_SYSTEM_PROMPT = `你是搜索意图分类器。给定用户问题，只输出一个 JSON 对象，不要解释。
 JSON 字段：
@@ -86,6 +88,15 @@ function isAbortError(err: unknown): boolean {
 }
 
 export async function classifyQuery(query: string, llm?: LLMClient): Promise<ClassifiedQuery> {
+  if (VERSION_QUERY_RE.test(query)) {
+    return {
+      intent: 'factual',
+      searchQuery: query,
+      timeWindow: '≤6月',
+      domain: '官方优先',
+      source: 'rule',
+    };
+  }
   try {
     const client = llm ?? createLightClient();
     const raw = await client.complete(buildClassifyMessages(query), {

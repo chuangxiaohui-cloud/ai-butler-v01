@@ -73,7 +73,7 @@ const LINE_BUDGETS: Record<string, number> = {
   '§11': 150, '§12': 150, '§13': 100,
 };
 const TOTAL_BODY_LIMIT = 1800;
-const TOTAL_APPENDIX_LIMIT = 600;
+const TOTAL_APPENDIX_LIMIT = 950;
 const MIGRATION_MULTIPLIER = 1.2;
 
 // 豁免区

@@ -76,6 +76,7 @@ npm run score:v01           # [P-07] 评分判定（读取 bench/v01-scores.json
 | `scripts/doc-lint.ts` | 文档宪法执法脚本（§0.6 七检查） |
 | `scripts/bench-v01.ts` | v0.1 验收基准脚本 |
 | `scripts/score-v01.ts` | [P-07] 评分判定脚本 |
+| `docs/borrowed-designs.md` | 借鉴设计登记（agent-skills / deepseek-harness，开发前先读） |
 | `src/search/` | 搜索管道（Stage 1-6） |
 | `src/memory/` | 记忆存储（SqliteDirectStore + schema v1） |
 | `src/skills/` | 预置 Skill（2 核心 + 4 占位） |

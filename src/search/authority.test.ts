@@ -21,6 +21,17 @@ test('authority: OpenWorker GitHub 仓库识别为官方源', () => {
   );
 });
 
+test('authority: OpenClaw GitHub 与官方文档识别为官方源', () => {
+  assert.equal(
+    isOfficialForQuery('https://github.com/openclaw/openclaw/releases', 'openclaw最新版本号是多少'),
+    true,
+  );
+  assert.equal(
+    isOfficialForQuery('https://docs.openclaw.ai/releases', 'openclaw最新版本号是多少'),
+    true,
+  );
+});
+
 test('authority: 型号变体页面不误判为官方源', () => {
   assert.equal(
     isOfficialForQuery('https://item.szlcsc.com/515651.html', 'TPS5430 输入电压范围'),

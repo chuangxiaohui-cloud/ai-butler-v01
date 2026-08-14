@@ -12,27 +12,25 @@ import { ROUTING_TABLE, type RoutingRule } from './routing-table.js';
 import type { PrimaryLens } from './types.js';
 import type { LLMClient } from '../search/llm.js';
 import type { AttachmentSignal } from './multimodal-preprocessor.js';
-
-export const P80_ROUTE_CONFIDENCE_HIGH = 0.75; // [P-80]
-export const P81_ROUTE_CONFIDENCE_LOW = 0.45; // [P-81]
-export const P82_CANDIDATE_GAP = 0.15; // [P-82]
-export const P83_ROUTE_LLM_TIMEOUT_MS = 1500; // [P-83]
-export const P84_FALLBACK_DISCOUNT = 0.9; // [P-84]
+import { PARAMS } from '../config/params.js';
+import { clarifyTemplateFor } from './clarify-templates.js';
 
 const FEATURE_WEIGHTS: Record<keyof IntentFeature, number> = {
-  actionType: 0.3,
-  targetDomain: 0.25,
-  scope: 0.15,
+  actionType: PARAMS.actionTypeWeight,
+  targetDomain: PARAMS.targetDomainWeight,
+  scope: PARAMS.scopeWeight,
   requiresExternalSearch: 0,
-  searchSourceHint: 0.15,
+  searchSourceHint: PARAMS.searchSourceHintWeight,
   hasImplicitContext: 0,
-  urgency: 0.05,
+  urgency: PARAMS.urgencyWeight,
   rawEntities: 0,
-  ambiguityFlags: 0.1,
-  hasImage: 0,
-  hasDocument: 0,
+  ambiguityFlags: PARAMS.ambiguityFlagsWeight,
+  hasImage: PARAMS.hasImageWeight,
+  hasDocument: PARAMS.hasDocumentWeight,
   attachmentTypes: 0,
   fastImageDescription: 0,
+  timeExpression: 0,
+  hasTimeExpression: 0,
 };
 
 export interface RouteCandidate {
@@ -43,6 +41,7 @@ export interface RouteCandidate {
   searchNeed: boolean;
   skill?: string;
   executor?: string;
+  postProcess?: string;
   confidence: number;
   matchedRule: string;
   reasoning: string;
@@ -77,7 +76,32 @@ function featureMatch(actual: IntentFeature, expected: Partial<IntentFeature>, k
   return actual[key] === want;
 }
 
+const MULTIMODAL_GATE_KEYS: Array<keyof IntentFeature> = ['hasImage', 'hasDocument'];
+
+function allMatch(feature: IntentFeature, rule: RoutingRule): boolean {
+  for (const key of Object.keys(rule.match) as (keyof IntentFeature)[]) {
+    if (!featureMatch(feature, rule.match, key)) return false;
+  }
+  return true;
+}
+
 function scoreRule(feature: IntentFeature, rule: RoutingRule): { base: number; confidence: number } {
+  for (const key of MULTIMODAL_GATE_KEYS) {
+    const want = rule.match[key];
+    if (want !== undefined && feature[key] !== want) {
+      return { base: 0, confidence: 0 };
+    }
+  }
+  if (rule.strictMatch && !allMatch(feature, rule)) {
+    return { base: 0, confidence: 0 };
+  }
+  if (rule.baseConfidence !== undefined) {
+    const base = allMatch(feature, rule) ? rule.baseConfidence : 0;
+    return {
+      base,
+      confidence: Math.max(0, Math.min(1, base + rule.confidenceBoost)),
+    };
+  }
   let weightSum = 0;
   let hitWeight = 0;
   for (const weight of Object.values(FEATURE_WEIGHTS)) weightSum += weight;
@@ -99,13 +123,13 @@ export function routeFromFeatures(
   extractionSource: 'rule' | 'llm' | 'fallback',
   contextHints: string[] = [],
 ): RouteResultV2 {
-  const extractionDiscount = extractionSource === 'fallback' ? P84_FALLBACK_DISCOUNT : 1;
+  const extractionDiscount = extractionSource === 'fallback' ? PARAMS.fallbackDiscount : 1;
   const candidates: RouteCandidate[] = [];
   const reasoning: string[] = [];
 
   for (const rule of ROUTING_TABLE) {
     const { base } = scoreRule(features, rule);
-    if (base < 0.29) continue;
+    if (base < PARAMS.routeBaseThreshold) continue;
     const adjusted = Math.max(0, Math.min(1, (base + rule.confidenceBoost) * extractionDiscount));
     candidates.push({
       rank: 0,
@@ -115,6 +139,7 @@ export function routeFromFeatures(
       searchNeed: rule.searchNeed,
       skill: rule.skill,
       executor: rule.executor,
+      postProcess: rule.postProcess,
       confidence: adjusted,
       matchedRule: rule.id,
       reasoning: `${rule.id}: ${JSON.stringify(rule.match)}`,
@@ -122,48 +147,65 @@ export function routeFromFeatures(
     reasoning.push(`${rule.id}=${adjusted.toFixed(2)}`);
   }
 
-  candidates.sort((a, b) => b.confidence - a.confidence);
-  candidates.forEach((c, i) => {
+  const sorted = [...candidates].sort((a, b) => b.confidence - a.confidence);
+  const deduped: RouteCandidate[] = [];
+  const seenRoutes = new Set<string>();
+  for (const c of sorted) {
+    const key = [
+      c.primaryLens,
+      c.intent,
+      c.searchNeed,
+      c.skill ?? '',
+      c.executor ?? '',
+      c.postProcess ?? '',
+    ].join('|');
+    if (seenRoutes.has(key)) continue;
+    seenRoutes.add(key);
+    deduped.push(c);
+  }
+  deduped.forEach((c, i) => {
     c.rank = i + 1;
   });
-  const top = candidates[0];
-  const second = candidates[1];
+  const top = deduped[0];
+  const second = deduped[1];
   const topConfidence = top?.confidence ?? 0;
 
   let decision: RouteDecision;
   const hasMissingReferent = features.ambiguityFlags.includes('missing_referent');
-  if (top && topConfidence >= P80_ROUTE_CONFIDENCE_HIGH) {
+  if (top && topConfidence >= PARAMS.routeConfidenceHigh - 1e-9) {
     decision = { type: 'direct', selected: top };
-  } else if (topConfidence < P81_ROUTE_CONFIDENCE_LOW && !hasMissingReferent) {
+  } else if (topConfidence < PARAMS.routeConfidenceLow - 1e-9 && !hasMissingReferent) {
     decision = {
       type: 'must_clarify',
-      question: '我没把握你要做什么，能说得更具体一点吗？',
-      candidates,
+      question: clarifyTemplateFor(top?.primaryLens, 'lowConfidence').question,
+      candidates: deduped,
     };
-  } else if (topConfidence < P81_ROUTE_CONFIDENCE_LOW && hasMissingReferent && candidates.length > 0) {
+  } else if (topConfidence < PARAMS.routeConfidenceLow - 1e-9 && hasMissingReferent && deduped.length > 0) {
+    const tpl = clarifyTemplateFor(top.primaryLens, 'missingReferent');
     decision = {
       type: 'option_clarify',
-      question: '你提到的对象有歧义，你想让我处理哪个方向？',
-      options: candidates.slice(0, 3).map((c, i) => ({
+      question: tpl.question,
+      options: deduped.slice(0, PARAMS.routeMaxCandidates).map((c, i) => ({
         id: String.fromCharCode(65 + i),
         label:
           contextHints.length > 0
-            ? `候选：${contextHints[Math.min(i, contextHints.length - 1)].slice(0, 30)}`
+            ? `${tpl.optionPrefix}：${contextHints[Math.min(i, contextHints.length - 1)].slice(0, 30)}`
             : `${c.primaryLens} / ${c.intent}`,
         description: c.reasoning,
         candidate: c,
       })),
     };
   } else if (
-    (second && topConfidence - second.confidence < P82_CANDIDATE_GAP) ||
-    candidates.length > 1
+    (second && topConfidence - second.confidence < PARAMS.routeCandidateGap - 1e-9) ||
+    deduped.length > 1
   ) {
+    const tpl = clarifyTemplateFor(top?.primaryLens, 'options');
     decision = {
       type: 'option_clarify',
-      question: '你想让我做哪个方向？',
-      options: candidates.slice(0, 3).map((c, i) => ({
+      question: tpl.question,
+      options: deduped.slice(0, PARAMS.routeMaxCandidates).map((c, i) => ({
         id: String.fromCharCode(65 + i),
-        label: `${c.primaryLens} / ${c.intent}`,
+        label: `${tpl.optionPrefix}：${c.primaryLens} / ${c.intent}`,
         description: c.reasoning,
         candidate: c,
       })),
@@ -182,7 +224,7 @@ export function routeFromFeatures(
     query,
     features,
     extractionSource,
-    candidates,
+    candidates: deduped,
     decision,
     confidence: topConfidence,
     reasoning,

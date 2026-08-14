@@ -155,3 +155,16 @@ test('s5: 主镜片注入系统提示', async () => {
   });
   assert.ok(systemPrompt.includes('当前主镜片：architect'));
 });
+
+test('s5: 用户要求举例时系统提示要求给可运行示例', async () => {
+  let systemPrompt = '';
+  const fake = new FakeLLM((messages) => {
+    systemPrompt = messages[0]?.content ?? '';
+    return '答案';
+  });
+  await synthesizeAnswer('函数指针是什么，给我写个简单的代码例子', fusedOk, classified, {
+    llm: fake,
+  });
+  assert.ok(systemPrompt.includes('可运行'));
+  assert.ok(systemPrompt.includes('不要只给文字描述'));
+});

@@ -211,3 +211,27 @@ test('fusion: 无结果时低置信门控', () => {
   assert.equal(r.items.length, 0);
   assert.equal(r.lowConfidence, true);
 });
+
+test('fusion: 版本查询用检索子词算相关性，官方 release 胜出', () => {
+  const items = [
+    item({
+      url: 'https://www.php.cn/faq/2941376.html',
+      title: 'OpenClaw怎么更新到最新版本',
+      content: 'OpenClaw 更新 教程 最新 版本 步骤 说明 完整 内容 2026 参数 稳定 可靠',
+      published: '2026-08-05T00:00:00+08:00',
+    }),
+    item({
+      url: 'https://github.com/openclaw/openclaw/releases',
+      title: 'Releases · openclaw/openclaw · GitHub',
+      content: 'Releases openclaw openclaw GitHub openclaw 2026.7.1 release latest version',
+    }),
+  ];
+  const r = fuseResults(
+    'openclaw最新版本号是多少',
+    items,
+    'factual',
+    undefined,
+    'openclaw GitHub release latest version',
+  );
+  assert.ok(r.items[0].result.url.includes('github.com/openclaw'));
+});

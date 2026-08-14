@@ -8,9 +8,14 @@ export type ExecutorStatus = 'available' | 'not_wired' | 'degraded';
 export const EXECUTOR_REGISTRY: Record<string, { status: ExecutorStatus }> = {
   engineer: { status: 'available' },
   search_skill: { status: 'available' },
-  content_writer: { status: 'not_wired' },
-  calendar_skill: { status: 'not_wired' },
-  im_dispatch: { status: 'not_wired' },
+  color_recognition: { status: 'available' },
+  document_qa: { status: 'available' },
+  image_analysis: { status: 'available' },
+  knowledge_qa: { status: 'available' },
+  content_writer: { status: 'available' },
+  calendar_skill: { status: 'available' },
+  im_dispatch: { status: 'available' },
+  quote_compare: { status: 'available' },
 };
 
 export function executorStatus(name: string | undefined): ExecutorStatus {

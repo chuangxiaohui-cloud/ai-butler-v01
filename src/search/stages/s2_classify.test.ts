@@ -43,6 +43,13 @@ test('s2: LLM 合法 JSON 解析为结构化意图', async () => {
   assert.equal(r.source, 'llm');
 });
 
+test('s2: 软件版本查询固定走 factual + 官方优先', async () => {
+  const r = await classifyQuery('openclaw最新版本号是多少', fakeOk);
+  assert.equal(r.intent, 'factual');
+  assert.equal(r.domain, '官方优先');
+  assert.equal(r.source, 'rule');
+});
+
 test('s2: 非法 JSON 降级为 factual', async () => {
   const r = await classifyQuery('STM32F103C8T6 最大主频是多少', fakeBroken);
   assert.equal(r.intent, 'factual');
