@@ -67,4 +67,5 @@ pipeline(arg, {
     skillLifecycle.close();
     sourceStats.close();
     userContextStore.close();
+    browserSession.close();
   });

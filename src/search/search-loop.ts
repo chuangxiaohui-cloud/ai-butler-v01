@@ -29,7 +29,15 @@ export const DEFAULT_MIN_RESULTS = 5; // [P-86]
 const TAVILY_MONTHLY_LIMIT = 1000; // [P-64]
 
 export interface BrowserFetcher {
-  fetchPage(url: string, timeoutMs?: number): Promise<{ url: string; title: string; text: string }>;
+  fetchPage(
+    url: string,
+    timeoutMs?: number,
+    waitMs?: number,
+  ): Promise<{ url: string; title: string; text: string }>;
+  downloadFile(
+    url: string,
+    destPath: string,
+  ): Promise<{ ok: boolean; size: number; error?: string }>;
 }
 
 export interface SearchLoopOptions extends Omit<SearchStageOptions, 'cacheKey'> {

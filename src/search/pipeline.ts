@@ -4,6 +4,8 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import type { LLMClient } from './llm.js';
 import type { QuotaStoreLike } from './quota.js';
@@ -16,8 +18,9 @@ import type { TrajectoryEventBody, TrajectoryLogLike } from '../trajectory/traje
 import { getSkills, toDisplayText } from '../skills/registry.js';
 import type { RawFileLike, SkillDeps } from '../skills/deps.js';
 import { executorStatus } from '../agent/executors.js';
-import { getHostname } from './authority.js';
+import { extractPartNumber, getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
+import { pickSecondPassTarget, shouldSecondPass } from './second-pass.js';
 import { applyRule3 } from './rule3.js';
 import { shouldTriggerTavily } from './tavily-trigger.js';
 import { buildEmergencyReply } from './emergency-reply.js';
@@ -32,6 +35,7 @@ import { classifyQuery } from './stages/s2_classify.js';
 import { runSearchLoop, type BrowserFetcher } from './search-loop.js';
 import { synthesizeAnswer } from './stages/s5_synthesize.js';
 import { postProcess } from './stages/s6_post.js';
+import { parseDocumentFile } from './document-parser.js';
 
 export interface Evidence {
   title: string;
@@ -393,29 +397,94 @@ export async function pipeline(
 
   // Stage 4：四过滤器 + 加权评分 + 规则① + 来源权威注入
   const relevanceQuery = search.subQueries[0] ?? searchQuery;
-  const fused = fuseResults(
+  let fused = fuseResults(
     prepared.cleanQuery,
     search.results,
     classified.intent,
     undefined,
     relevanceQuery,
   );
-  const evidence = fused.items.map((f) => ({
+  let evidence = fused.items.map((f) => ({
     title: f.result.title,
     url: f.result.url,
     domain: getHostname(f.result.url),
     score: f.finalScore,
     type: f.official ? ('[hard]' as const) : ('[soft]' as const),
   }));
-  const confidence =
+  let confidence =
     fused.items.length > 0
       ? Math.max(...fused.items.map((f) => f.finalScore))
       : 0;
-  const gate: AnswerResult['gate_triggered'] = rule3.serious
+  let gate: AnswerResult['gate_triggered'] = rule3.serious
     ? 'safety'
     : fused.items.length === 0 || fused.gated || fused.lowConfidence
       ? 'low_confidence'
       : 'none';
+
+  // 低置信二次取证：器件/资料查询用浏览器抓高可信 HTML 页完整正文后重新融合
+  if (gate === 'low_confidence' && shouldSecondPass(prepared.cleanQuery) && deps.browserSession) {
+    const target = pickSecondPassTarget(search.results, prepared.cleanQuery, fused.items);
+    if (target) {
+      try {
+        let secondPassText = '';
+        if (/\.pdf(\?|#|$)/i.test(target.url)) {
+          const safeName = (extractPartNumber(prepared.cleanQuery) ?? 'datasheet').replace(
+            /[^a-zA-Z0-9_-]+/g,
+            '',
+          );
+          const dest = resolve(process.cwd(), 'data', 'datasheets', `${safeName}-${Date.now()}.pdf`);
+          const downloaded = await deps.browserSession.downloadFile(target.url, dest);
+          if (downloaded.ok && downloaded.size > 0) {
+            const buffer = readFileSync(dest);
+            secondPassText = await parseDocumentFile({
+              name: `${safeName}.pdf`,
+              type: 'application/pdf',
+              size: downloaded.size,
+              arrayBuffer: async () =>
+                buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer,
+            });
+          }
+        } else {
+          const page = await deps.browserSession.fetchPage(target.url, 8000, 3000);
+          secondPassText = page.text;
+        }
+        if (secondPassText.trim().length > 0) {
+          search.results.push({
+            title: target.url.includes('szlcsc.com') ? `${extractPartNumber(prepared.cleanQuery)} 数据手册` : target.url,
+            url: target.url,
+            content: secondPassText.slice(0, 5000),
+            provider: 'browser',
+          });
+          const refused = fuseResults(
+            prepared.cleanQuery,
+            search.results,
+            classified.intent,
+            undefined,
+            relevanceQuery,
+          );
+          fused = refused;
+          evidence = refused.items.map((f) => ({
+            title: f.result.title,
+            url: f.result.url,
+            domain: getHostname(f.result.url),
+            score: f.finalScore,
+            type: f.official ? ('[hard]' as const) : ('[soft]' as const),
+          }));
+          confidence =
+            refused.items.length > 0
+              ? Math.max(...refused.items.map((f) => f.finalScore))
+              : 0;
+          gate = rule3.serious
+            ? 'safety'
+            : refused.items.length === 0 || refused.gated || refused.lowConfidence
+              ? 'low_confidence'
+              : 'none';
+        }
+      } catch {
+        // 二次取证失败不改变原结果
+      }
+    }
+  }
 
   // Stage 5：秘书级合成
   const synthesized = await synthesizeAnswer(prepared.cleanQuery, fused, classified, {

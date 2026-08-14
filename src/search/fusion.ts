@@ -6,6 +6,7 @@
 import {
   extractPartNumber,
   getDomainAuthority,
+  isHighTrustDatasheetUrl,
   isOfficialForQuery,
   OFFICIAL_MULTIPLIER,
 } from './authority.js';
@@ -386,7 +387,8 @@ export function fuseResults(
   const fused: FusionItem[] = candidates.map((result) => {
     const official = isOfficialForQuery(result.url, query);
     const domainAuthority = getDomainAuthority(result.url);
-    const seoNoise = isSeoNoise(result);
+    const seoNoise =
+      isSeoNoise(result) && !(result.provider === 'browser' && isHighTrustDatasheetUrl(result.url, query));
     const relevance = relevanceScore(relevanceQuery, result);
     const answerCoverage = answerCoverageScore(result, intent);
     const timeliness = timelinessScore(result);

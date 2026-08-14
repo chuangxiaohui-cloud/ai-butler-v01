@@ -229,6 +229,30 @@ test('fusion: SEO 垃圾页降权', () => {
   assert.ok(ok && ok.finalScore > bad.finalScore);
 });
 
+test('fusion: 浏览器二次取证的高可信页不吃 SEO 降权', () => {
+  const browserPage = item({
+    url: 'https://item.szlcsc.com/datasheet/GD32F103C8T6/79128.html',
+    title: 'GD32F103C8T6 数据手册',
+    content:
+      'GD32F103C8T6 数据手册 108MHz 64KB Flash 20KB SRAM 在线客服 购物车 立即购买 参数 说明 设计 文档 100A '.repeat(5),
+    provider: 'browser',
+  });
+  const searchPage = item({
+    url: 'https://bad.example/1',
+    title: 'GD32F103C8T6 数据手册',
+    content:
+      'GD32F103C8T6 数据手册 108MHz 64KB Flash 20KB SRAM 在线客服 购物车 立即购买 参数 说明 设计 文档 100A '.repeat(5),
+    provider: 'bocha',
+  });
+  const r = fuseResults('GD32F103C8T6 数据手册', [browserPage, searchPage], 'factual');
+  const browser = r.items.find((f) => f.result.provider === 'browser');
+  const search = r.items.find((f) => f.result.provider === 'bocha');
+  assert.ok(browser && search);
+  assert.equal(browser.seoNoise, false);
+  assert.equal(search.seoNoise, true);
+  assert.ok(browser.finalScore > search.finalScore);
+});
+
 test('fusion: 无结果时低置信门控', () => {
   const r = fuseResults('ESP32 I2C 通信失败 无应答', [], 'troubleshooting');
   assert.equal(r.items.length, 0);

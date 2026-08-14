@@ -162,6 +162,7 @@ test('search-loop: 无高可信源时浏览器会话兜底并跳过 Tavily', asy
         text: '72MHz maximum frequency LQFP48',
       };
     },
+    downloadFile: async () => ({ ok: true, size: 1 }),
   };
   const r = await runSearchLoop('STM32F103C8T6 最大主频是多少', {
     intent: 'factual',
@@ -184,6 +185,7 @@ test('search-loop: 浏览器兜底失败后仍走 Tavily 官方域', async () =>
     async fetchPage() {
       throw new Error('browser offline');
     },
+    downloadFile: async () => ({ ok: true, size: 1 }),
   };
   const r = await runSearchLoop('STM32F103C8T6 最大主频是多少', {
     intent: 'factual',
@@ -210,6 +212,7 @@ test('search-loop: 已有高可信源但证据不足时浏览器补证并跳过 
         text: 'GD32F103C8T6 完整数据手册，包含电气特性、引脚定义、存储器映射',
       };
     },
+    downloadFile: async () => ({ ok: true, size: 1 }),
   };
   const r = await runSearchLoop('GD32F103C8T6 数据手册', {
     intent: 'factual',

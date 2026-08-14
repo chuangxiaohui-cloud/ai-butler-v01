@@ -318,3 +318,7 @@
 {"ts":"2026-08-14T15:44:53.918Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":285,"bocha_ok":true,"anysearch_ms":3529,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-14T16:55:31.658Z","query":"GD32F103C8T6 site:szlcsc.com datasheet","bocha_ms":285,"bocha_ok":true,"anysearch_ms":3134,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-14T16:57:07.779Z","query":"GD32F103C8T6 site:szlcsc.com datasheet","bocha_ms":294,"bocha_ok":true,"anysearch_ms":3955,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T17:10:54.329Z","query":"GD32F103C8T6 site:szlcsc.com datasheet","bocha_ms":293,"bocha_ok":true,"anysearch_ms":3787,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T17:16:18.912Z","query":"GD32F103C8T6 site:szlcsc.com datasheet","bocha_ms":299,"bocha_ok":true,"anysearch_ms":2421,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T17:18:07.631Z","query":"GD32F103C8T6 site:szlcsc.com datasheet","bocha_ms":279,"bocha_ok":true,"anysearch_ms":2223,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-14T17:20:23.073Z","query":"GD32F103C8T6 site:szlcsc.com datasheet","bocha_ms":303,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}

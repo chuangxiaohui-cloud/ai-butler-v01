@@ -118,6 +118,16 @@ npm run route:calibrate
 12. **推进计划文档流程（E78）**：新增 `docs/plans/` 目录、README 与
    `_template.md`；以后每次推进先写计划文档，完成后登记到当日交接。
 
+13. **datasheet 下载与证据补强（E79）**：新增 `npm run datasheet -- "URL" [型号]`，
+    从立创商品页自动提取 TI 官方 datasheet PDF 下载到 `data/datasheets/`；
+    浏览器兜底扩展为证据不足也补证。真实下载 TPS5430.pdf（2.48MB）成功；
+    GD32 查询置信度 0.414 → 0.505；单测 231/231 + 集成 17/17 全绿。
+
+14. **low_confidence 二次取证（E80）**：融合后低置信且含器件型号时，
+    用浏览器抓高可信 HTML 或下载解析 PDF 重新融合；浏览器取证页不再被
+    SEO 降权误伤。GD32 数据手册 confidence 0.505 → 0.652，gate 变 none；
+    单测 236/236 + 集成 17/17 全绿。
+
 ## 下一步（按优先级）
 
 1. 继续用 `npm run route:feedback` 攒够 10 条 accept/reject 后跑
@@ -132,9 +142,5 @@ npm run route:calibrate
    `npm run browser:launch -- thorium`（或 qq），然后 `npm run browser:cdp -- 9222`。
 6. 验证自动兜底：连接 QQ浏览器 CDP 后，直接问 Agent 一个需登录站点相关
    的型号/资料问题，确认证据里出现浏览器抓取的正文。
-7. 专项：融合后 `low_confidence` 二次取证——用浏览器抓高可信页/下载 PDF 提升证据质量。
-7. 下次推进按 `docs/plans/` 流程：先建日期计划文档，再动手，完成补结果。
-8. **datasheet 下载与证据补强（E79）**：新增 `npm run datasheet -- "URL" [型号]`，
-   从立创商品页自动提取 TI 官方 datasheet PDF 下载到 `data/datasheets/`；
-   浏览器兜底扩展为证据不足也补证。真实下载 TPS5430.pdf（2.48MB）成功；
-   GD32 查询置信度 0.414 → 0.505；单测 231/231 + 集成 17/17 全绿。
+
+7. 增强 PDF 解析（复杂排版/扫描件 OCR），支持 datasheet 全文二次取证。
