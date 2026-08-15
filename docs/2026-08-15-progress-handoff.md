@@ -25,12 +25,13 @@
 13. **QQ浏览器 CDP 登录态验证（E87）**：`browser:launch` 自动选最新 QQ 版本、PowerShell 进程检测、`detached+unref` 启动；9222 监听成功，新进程自动复用 QQ 会话，sessionDomains 含 szlcsc/xcc/taobao/jd/github 等大量登录域，详见 `docs/plans/2026-08-15-qq-browser-cdp.md`。
 14. **扫描件 OCR 页数上限（E88）**：`PDF_OCR_MAX_PAGES` 默认 8，超限扫描页跳过并暴露 `ocrSkippedPages`；3 页扫描 PDF + 上限 2 验证只 OCR 前 2 页，详见 `docs/plans/2026-08-15-ocr-page-limit.md`。
 15. **校准样本扩到 22**：新增 8 条 accept + 4 条 reject，校准样本 22/10（accept 15 / reject 7），提案仍稳定在 0.45/0.75，详见 `docs/plans/2026-08-15-calibration-more-samples.md`。
+16. **扫描件 OCR 单页缓存（E89）**：按页图 SHA-256 落盘 `data/ocr-cache/`，同一扫描页第二次直接读缓存；TPS5430 单页扫描第一次约 18s、第二次约 2s，详见 `docs/plans/2026-08-15-ocr-page-cache.md`。
 
 ## 明天继续（按优先级）
 
 1. 校准阈值保持 0.45/0.75（样本 22/10）；继续攒真实 accept/reject 样本，样本更多后再校准。
 2. `push:hosts` 本次未跑（已直接手动推送两端）；后续可整链演练。
-3. OCR 后续优化：单页 OCR 缓存（页图哈希）与 PaddleOCR 精度对比。
+3. OCR 后续优化：PaddleOCR 精度对比；缓存目录清理策略。
 4. QQ 浏览器当前保持 9222 运行，Agent 已自动复用；后续可继续验证需登录站点的完整抓取链路。
 
 ## 常用命令
@@ -49,5 +50,5 @@ npm run route:feedback
 
 - 每日交接：`docs/2026-08-15-progress-handoff.md`（本文件）
 - 推进计划：`docs/plans/YYYY-MM-DD-<主题>.md`
-- 权威变更台账：v2.5 附录 A（当前到 E88）
+- 权威变更台账：v2.5 附录 A（当前到 E89）
 - 机器轨迹：`data/trajectory.jsonl`、`bench/search-metrics.jsonl`

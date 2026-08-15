@@ -2,12 +2,14 @@
 """Extract text from a PDF using PyMuPDF; OCR scanned pages with RapidOCR."""
 
 import json
+import hashlib
 import os
 import pathlib
 import sys
 
 _ocr_engine = None
 _ocr_error = None
+OCR_CACHE_DIR = pathlib.Path(os.environ.get("PDF_OCR_CACHE_DIR", "data/ocr-cache"))
 
 
 def page_text(page) -> str:
@@ -47,13 +49,24 @@ def ocr_page(page) -> str:
         import numpy as np
 
         pix = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
+        digest = hashlib.sha256(pix.samples).hexdigest()
+        cache_file = OCR_CACHE_DIR / f"v1-{digest}.txt"
+        if cache_file.exists():
+            return cache_file.read_text(encoding="utf-8").strip()
         img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
         result, _ = engine(img)
     except Exception:
         return ""
     if not result:
         return ""
-    return "\n".join(item[1] for item in result if len(item) > 1 and item[1])
+    text = "\n".join(item[1] for item in result if len(item) > 1 and item[1])
+    if text.strip():
+        try:
+            OCR_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            cache_file.write_text(text, encoding="utf-8")
+        except Exception:
+            pass
+    return text
 
 
 def main() -> int:
