@@ -24,6 +24,8 @@ npm run dev
 
 聊天输入框支持直接粘贴图片，粘贴后显示缩略图，发送后随消息进入对话。
 
+提问框右下角提供模型切换器：DeepSeek Chat / DeepSeek Reasoner / MiniMax M2.7 / MiniMax M2.7 Highspeed / MiniMax M3，点击即切换。
+
 ## 验证
 
 - `npm run build` 通过。

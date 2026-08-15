@@ -564,6 +564,85 @@ button {
   gap: 10px;
 }
 
+.model-switch {
+  position: relative;
+  margin-left: auto;
+}
+
+.model-switch > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.model-switch > button.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(91, 141, 239, 0.4);
+}
+
+.model-switch > button strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.model-popover {
+  position: absolute;
+  right: 0;
+  bottom: 36px;
+  width: 260px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: var(--shadow);
+  z-index: 12;
+}
+
+.model-group + .model-group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.model-group-name {
+  font-size: 10px;
+  color: var(--muted);
+  padding: 4px 8px 3px;
+}
+
+.model-group button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 9px;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12px;
+}
+
+.model-group button:hover,
+.model-group button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.model-group button span {
+  font-weight: 600;
+}
+
+.model-group button small {
+  font-size: 9px;
+  color: var(--muted);
+}
+
 .attach-wrap {
   position: relative;
 }
@@ -616,7 +695,7 @@ button {
 }
 
 .composer-hint {
-  margin-left: auto;
+  margin-left: 8px;
   font-size: 10px;
   color: var(--muted);
 }

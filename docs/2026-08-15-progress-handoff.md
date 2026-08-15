@@ -37,7 +37,7 @@
 25. **PaddleOCR 精度对比（E97）**：`pdf_text.py` 支持 `PDF_OCR_ENGINE=rapid|paddle`，Paddle 自动关闭默认 MKLDNN；TPS5430 扫描样本冷启动 RapidOCR 17.16s/1299 字符、PaddleOCR 117.74s/1224 字符，关键词均命中；默认 RapidOCR，Paddle 为高质量慢速备选，详见 `docs/plans/2026-08-15-paddle-ocr-compare.md`。
 26. **路由校准样本扩到 26**：把 ST 数据手册、立创、芯查查、半导小芯 4 条真实查询补为 accept，反馈样本 26/10（accept 19 / reject 7）；`route:apply-calibration` 提案仍稳定在 0.45/0.75，详见 `docs/plans/2026-08-15-calibration-samples-26.md`。
 27. **需登录业务链路验证**：QQ CDP 会话直接读取立创“我的订单”（暂无订单）与“我的BOM”（暂无数据），半导小芯登录区含“我的BOM/我的样品/退出登录”，均未跳转登录中心，详见 `docs/plans/2026-08-15-logged-in-business-verify.md`。
-28. **v1.0 三栏 UI 原型（E98）**：新增独立 Vite + React 工程 `ui/prototype`，实现三栏 × Ask/Craft/Plan、工程开发三列布局、内置终端/浏览器、证据链与轻量反馈；按参考截图重排为深色 AI 工作台风格；提问框左下新增 `+` 上传菜单（图片/文件/工程文件夹）与 Ask/Craft/Plan，聊天输入框支持直接粘贴图片；开发服务器 `http://127.0.0.1:5173/`，详见 `docs/plans/2026-08-15-three-column-ui-prototype.md`。
+28. **v1.0 三栏 UI 原型（E98）**：新增独立 Vite + React 工程 `ui/prototype`，实现三栏 × Ask/Craft/Plan、工程开发三列布局、内置终端/浏览器、证据链与轻量反馈；按参考截图重排为深色 AI 工作台风格；提问框左下新增 `+` 上传菜单（图片/文件/工程文件夹）与 Ask/Craft/Plan，聊天输入框支持直接粘贴图片，提问框右下角提供 DeepSeek/MiniMax 模型切换器；开发服务器 `http://127.0.0.1:5173/`，详见 `docs/plans/2026-08-15-three-column-ui-prototype.md`。
 
 ## 明天继续（按优先级）
 

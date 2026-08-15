@@ -62,6 +62,14 @@ const MODES: Array<{ key: Mode; label: string; hint: string }> = [
   { key: 'plan', label: 'Plan', hint: '先出方案' },
 ];
 
+const MODELS = [
+  { id: 'deepseek-chat', provider: 'DeepSeek', label: 'DeepSeek Chat', note: 'V3 · 默认' },
+  { id: 'deepseek-reasoner', provider: 'DeepSeek', label: 'DeepSeek Reasoner', note: 'R1 · 推理' },
+  { id: 'MiniMax-M2.7', provider: 'MiniMax', label: 'MiniMax M2.7', note: '1M 上下文' },
+  { id: 'MiniMax-M2.7-highspeed', provider: 'MiniMax', label: 'MiniMax M2.7 Highspeed', note: '极速' },
+  { id: 'MiniMax-M3', provider: 'MiniMax', label: 'MiniMax M3', note: '新一代' },
+] as const;
+
 const INITIAL_MESSAGES: Record<TabKey, Message[]> = {
   engineering: [
     {
@@ -183,6 +191,7 @@ function App() {
   const [mode, setMode] = useState<Mode>('ask');
   const [messages, setMessages] = useState<Record<TabKey, Message[]>>(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
+  const [model, setModel] = useState<string>(MODELS[0].id);
   const [terminalOpen, setTerminalOpen] = useState(true);
   const [browserOpen, setBrowserOpen] = useState(false);
   const [liked, setLiked] = useState<Record<string, boolean>>({});
@@ -311,6 +320,8 @@ function App() {
                   onSend={send}
                   mode={mode}
                   onModeChange={setMode}
+                  model={model}
+                  onModelChange={setModel}
                 />
               </section>
 
@@ -404,6 +415,8 @@ function App() {
                   onSend={send}
                   mode={mode}
                   onModeChange={setMode}
+                  model={model}
+                  onModelChange={setModel}
                 />
               </section>
 
@@ -569,15 +582,21 @@ function Composer({
   onSend,
   mode,
   onModeChange,
+  model,
+  onModelChange,
 }: {
   value: string;
   onChange: (value: string) => void;
   onSend: (images: string[]) => void;
   mode: Mode;
   onModeChange: (mode: Mode) => void;
+  model: string;
+  onModelChange: (model: string) => void;
 }) {
   const [attachOpen, setAttachOpen] = useState(false);
+  const [modelOpen, setModelOpen] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
+  const currentModel = MODELS.find((item) => item.id === model) ?? MODELS[0];
   return (
     <div className="composer">
       {attachments.length > 0 && (
@@ -672,7 +691,41 @@ function Composer({
             </button>
           ))}
         </div>
-        <span className="composer-hint">推荐：工程开发 · Craft</span>
+        <div className="model-switch">
+          <button
+            className={modelOpen ? 'active' : ''}
+            onClick={() => setModelOpen((prev) => !prev)}
+            aria-label="切换模型"
+          >
+            <Sparkles size={14} />
+            <span>{currentModel.provider}</span>
+            <strong>{currentModel.label}</strong>
+            <ChevronDown size={14} />
+          </button>
+          {modelOpen && (
+            <div className="model-popover">
+              {['DeepSeek', 'MiniMax'].map((provider) => (
+                <div className="model-group" key={provider}>
+                  <div className="model-group-name">{provider}</div>
+                  {MODELS.filter((item) => item.provider === provider).map((item) => (
+                    <button
+                      key={item.id}
+                      className={model === item.id ? 'active' : ''}
+                      onClick={() => {
+                        onModelChange(item.id);
+                        setModelOpen(false);
+                      }}
+                    >
+                      <span>{item.label}</span>
+                      <small>{item.note}</small>
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <span className="composer-hint">{currentModel.note}</span>
       </div>
     </div>
   );
