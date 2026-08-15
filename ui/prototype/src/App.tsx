@@ -65,9 +65,11 @@ const MODES: Array<{ key: Mode; label: string; hint: string }> = [
 const MODELS = [
   { id: 'deepseek-v4-flash', provider: 'DeepSeek', label: 'DeepSeek V4 Flash', note: '快速 · 默认' },
   { id: 'deepseek-v4-pro', provider: 'DeepSeek', label: 'DeepSeek V4 Pro', note: '旗舰 · 推理' },
-  { id: 'MiniMax-M2.7', provider: 'MiniMax', label: 'MiniMax M2.7', note: '1M 上下文' },
-  { id: 'MiniMax-M2.7-highspeed', provider: 'MiniMax', label: 'MiniMax M2.7 Highspeed', note: '极速' },
   { id: 'MiniMax-M3', provider: 'MiniMax', label: 'MiniMax M3', note: '新一代' },
+  { id: 'MiniMax-M2.7', provider: 'MiniMax', label: 'MiniMax M2.7', note: '1M 上下文' },
+  { id: 'glm-5.3', provider: '智谱', label: 'GLM-5.3', note: '旗舰' },
+  { id: 'glm-5.2', provider: '智谱', label: 'GLM-5.2', note: '均衡' },
+  { id: 'glm-5-turbo', provider: '智谱', label: 'GLM-5-Turbo', note: '快速' },
 ] as const;
 
 const INITIAL_MESSAGES: Record<TabKey, Message[]> = {
@@ -704,7 +706,7 @@ function Composer({
           </button>
           {modelOpen && (
             <div className="model-popover">
-              {['DeepSeek', 'MiniMax'].map((provider) => (
+              {['DeepSeek', 'MiniMax', '智谱'].map((provider) => (
                 <div className="model-group" key={provider}>
                   <div className="model-group-name">{provider}</div>
                   {MODELS.filter((item) => item.provider === provider).map((item) => (
