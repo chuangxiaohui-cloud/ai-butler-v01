@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract text from a PDF using PyMuPDF; OCR scanned pages with RapidOCR."""
+"""Extract text from a PDF using PyMuPDF; OCR scanned pages with RapidOCR/PaddleOCR."""
 
 import json
 import hashlib
@@ -7,8 +7,8 @@ import os
 import pathlib
 import sys
 
-_ocr_engine = None
-_ocr_error = None
+_ocr_engines: dict[str, object] = {}
+_ocr_errors: dict[str, str] = {}
 OCR_CACHE_DIR = pathlib.Path(os.environ.get("PDF_OCR_CACHE_DIR", "data/ocr-cache"))
 
 
@@ -38,26 +38,58 @@ def page_text(page) -> str:
     return "\n".join(lines)
 
 
-def get_ocr_engine():
-    global _ocr_engine, _ocr_error
-    if _ocr_engine is not None:
-        return _ocr_engine
+def ocr_engine_name() -> str:
+    return os.environ.get("PDF_OCR_ENGINE", "rapid").strip().lower() or "rapid"
+
+
+def get_ocr_engine(engine: str):
+    global _ocr_engines, _ocr_errors
+    if engine in _ocr_engines:
+        return _ocr_engines[engine]
     if os.environ.get("PDF_OCR") == "0":
-        _ocr_error = "disabled by PDF_OCR=0"
+        _ocr_errors[engine] = "disabled by PDF_OCR=0"
         return None
     try:
-        from rapidocr_onnxruntime import RapidOCR
+        if engine == "paddle":
+            os.environ.setdefault("PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT", "False")
+            from paddleocr import PaddleOCR
 
-        _ocr_engine = RapidOCR()
+            _ocr_engines[engine] = PaddleOCR(lang="ch")
+        else:
+            from rapidocr_onnxruntime import RapidOCR
+
+            _ocr_engines[engine] = RapidOCR()
     except Exception as exc:
-        _ocr_error = f"rapidocr unavailable: {exc}"
-        _ocr_engine = None
-    return _ocr_engine
+        _ocr_errors[engine] = f"{engine} unavailable: {exc}"
+        _ocr_engines[engine] = None
+    return _ocr_engines[engine]
 
 
-def ocr_page(page) -> str:
-    engine = get_ocr_engine()
-    if engine is None:
+def extract_texts_from_result(engine_name: str, result) -> list[str]:
+    texts: list[str] = []
+    if engine_name == "paddle":
+        items = result if isinstance(result, list) else [result]
+        for item in items:
+            rec = None
+            if isinstance(item, dict):
+                rec = item.get("rec_texts") or item.get("texts")
+            else:
+                rec = getattr(item, "rec_texts", None) or getattr(item, "texts", None)
+            if isinstance(rec, (list, tuple)):
+                texts.extend(str(t) for t in rec if t)
+    else:
+        rows = result[0] if isinstance(result, tuple) else result
+        if isinstance(rows, list):
+            texts.extend(
+                str(item[1]) for item in rows if len(item) > 1 and item[1]
+            )
+    return texts
+
+
+def ocr_page(page, engine: str | None = None) -> str:
+    engine_name = engine or ocr_engine_name()
+    engine_obj = get_ocr_engine(engine_name)
+    if engine_obj is None:
         return ""
     try:
         import fitz
@@ -65,16 +97,19 @@ def ocr_page(page) -> str:
 
         pix = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
         digest = hashlib.sha256(pix.samples).hexdigest()
-        cache_file = OCR_CACHE_DIR / f"v1-{digest}.txt"
+        cache_file = OCR_CACHE_DIR / f"v1-{engine_name}-{digest}.txt"
         if cache_file.exists():
             return cache_file.read_text(encoding="utf-8").strip()
         img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
-        result, _ = engine(img)
+        if engine_name == "paddle":
+            result = engine_obj.predict(img)
+            if not result:
+                return ""
+        else:
+            result = engine_obj(img)
     except Exception:
         return ""
-    if not result:
-        return ""
-    text = "\n".join(item[1] for item in result if len(item) > 1 and item[1])
+    text = "\n".join(extract_texts_from_result(engine_name, result))
     if text.strip():
         try:
             OCR_CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -128,16 +163,18 @@ def main() -> int:
             else:
                 image_pages += 1
 
-    ocr_engine_available = max_ocr_pages > 0 and get_ocr_engine() is not None
+    engine_name = ocr_engine_name()
+    ocr_engine_available = max_ocr_pages > 0 and get_ocr_engine(engine_name) is not None
     result = {
         "ok": True,
         "text": "\n".join(parts),
         "scanned": image_pages > 0 or ocr_pages > 0,
         "ocr": ocr_pages > 0,
         "ocrAvailable": ocr_engine_available,
+        "ocrEngine": engine_name,
         "ocrMaxPages": max_ocr_pages,
         "ocrSkippedPages": ocr_skipped_pages,
-        "ocrError": _ocr_error,
+        "ocrError": _ocr_errors.get(engine_name),
         "pageCount": doc.page_count,
         "textPages": text_pages,
     }

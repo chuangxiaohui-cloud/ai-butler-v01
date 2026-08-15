@@ -2331,6 +2331,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：两条 `npm run dev` 并发冒烟均正常返回，无锁错误；新增多实例写同一库单测 1 条，单测 260/260 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-sqlite-wal.md`。
 - affects: §12.3 | bench:na(new-param) 理由：统计库并发写修复，无 §5/§6 参数变更
 
+### 2026-08-15（PaddleOCR 精度对比 E97）
+
+- **变更**：`scripts/pdf_text.py` 支持 `PDF_OCR_ENGINE=rapid|paddle`，缓存键带引擎前缀，Paddle 初始化自动关闭默认 MKLDNN（`PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT=False`）；新增 `scripts/ocr_benchmark.py` 与 `npm run ocr:benchmark`；`document-parser` 错误提示补充 PaddleOCR 安装说明。
+- **验证**：TPS5430 扫描样本第 1 页冷启动对比：RapidOCR 17.16s / 1299 字符，PaddleOCR 117.74s / 1224 字符，两者均命中 `TPS5430/5.5V/500kHz`；默认引擎保持 RapidOCR，PaddleOCR 作为高质量慢速备选；单测 260/260 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-paddle-ocr-compare.md`。
+- affects: §7 | bench:na(new-param) 理由：OCR 引擎可切换与基准，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
