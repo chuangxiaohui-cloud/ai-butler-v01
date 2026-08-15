@@ -2240,6 +2240,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`中国空间站现在有哪几个航天员在太空` 复测不再引用 2025-04-26 神舟十九/二十号旧闻，改为“截至今天暂无可靠更新”，证据为 2026-06-17 腾讯新闻，gate `low_confidence`；新增 recency/fusion/s2/s5 单测 6 条；单测 242/242 + 集成 17/17 全绿。
 - affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：时效敏感查询分类、融合权重与合成红线，无 §5/§6 参数变更
 
+### 2026-08-15（Datasheet PDF 全文解析 E82）
+
+- **变更**：新增 `scripts/pdf_text.py`（PyMuPDF rawdict 逐字符重建文本，解决 Identity-H/CID 字体下 `get_text` 返回字形编号的问题；stdout 强制 UTF-8）；`document-parser.ts` PDF 分支优先调 Python/PyMuPDF，失败回退 FlateDecode + Tj/TJ 提取；无文本层明确报“扫描件暂不支持 OCR”；新增 `npm run pdf:text -- <路径> [关键词]` 验证脚本。
+- **验证**：`TPS5430.pdf` 提取 48,622 字符，命中 `TPS5430`/`500kHz`；新增 document-parser 单测 2 条；单测 244/244 + 集成 17/17 全绿。
+- affects: §7,§6.7 | bench:na(new-param) 理由：PDF 解析管道增强，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

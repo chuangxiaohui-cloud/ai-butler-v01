@@ -29,6 +29,7 @@
     "browser:fetch": "tsx scripts/browser-session.ts fetch",
     "browser:status": "tsx scripts/browser-session.ts status",
     "datasheet": "tsx scripts/datasheet.ts",
+    "pdf:text": "tsx scripts/pdf-text.ts",
     "route:query": "tsx scripts/route-query.ts",
     "route:calibrate": "tsx scripts/route-calibrate.ts",
     "seed:route-cases": "tsx scripts/seed-route-cases.ts",
