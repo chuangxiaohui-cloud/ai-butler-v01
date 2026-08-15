@@ -18,9 +18,12 @@ test('rewrite: LLM 返回多条子查询', async () => {
   );
   const r = await rewriteQuery('STM32F103C8T6 最大主频是多少', 'factual', llm);
   assert.equal(r.source, 'llm');
-  assert.equal(r.queries.length, 7);
+  assert.equal(r.queries.length, 11);
   assert.ok(r.queries.includes('STM32F103C8T6 最大主频'));
   assert.ok(r.queries.includes('STM32F103C8T6 72MHz 规格'));
+  assert.ok(r.queries.includes('STM32F103C8T6 立创商城 数据手册'));
+  assert.ok(r.queries.includes('STM32F103C8T6 芯查查 数据手册'));
+  assert.ok(r.queries.includes('STM32F103C8T6 半导小芯 数据手册'));
 });
 
 test('rewrite: LLM 非法输出时保留原 query', async () => {
@@ -55,6 +58,9 @@ test('rewrite: 器件型号自动补官方源子查询', () => {
   assert.ok(queries[1].includes('st.com 官方 数据手册'));
   assert.ok(queries.some((q) => q.includes('site:szlcsc.com')));
   assert.ok(queries.some((q) => q.includes('site:xcc.com')));
+  assert.ok(queries.some((q) => q.includes('site:semiee.com')));
+  assert.ok(queries.some((q) => q.includes('STM32F103C8T6 立创商城 数据手册')));
+  assert.ok(queries.some((q) => q.includes('STM32F103C8T6 半导小芯 数据手册')));
   assert.ok(queries.includes('STM32F103C8T6 最大主频是多少'));
 });
 
@@ -62,6 +68,9 @@ test('rewrite: 非知名前缀型号仍补国内资料站', () => {
   const queries = ruleBasedRewrite('GD32F103C8T6 数据手册');
   assert.ok(queries.some((q) => q.includes('site:szlcsc.com')));
   assert.ok(queries.some((q) => q.includes('site:xcc.com')));
+  assert.ok(queries.some((q) => q.includes('site:semiee.com')));
+  assert.ok(queries.some((q) => q.includes('GD32F103C8T6 立创商城 数据手册')));
+  assert.ok(queries.some((q) => q.includes('GD32F103C8T6 半导小芯 数据手册')));
 });
 
 test('rewrite: 软件最新版本优先查 GitHub release 与 npm', () => {

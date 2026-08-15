@@ -2301,6 +2301,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：QQ CDP 会话带 5 秒等待复测三站：立创会员中心显示“账户信息-立创商城”及已登录账户信息；半导小芯首页显示“退出登录/我的样品”；芯查查首页本地存储含 `PCuserInfo`、`PCtoken`、`SaasFrontToken` 用户凭据，无公开会员中心 URL，后续以“存在用户凭据”判登录态；单测 255/255 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-logged-in-sites-retest.md`。
 - affects: §1.2,§8.2 | bench:na(new-param) 理由：浏览器会话与登录态复用，无 §5/§6 参数变更
 
+### 2026-08-15（登录态完整链路 E2E 与国内资料站增强 E92）
+
+- **变更**：`DOMESTIC_DATASHEET_DOMAINS` 增加 `semiee.com`（权威度 0.75）；查询改写对器件型号同时生成“立创商城/芯查查/半导小芯 数据手册”自然词子查询与 `site:` 子查询；Tavily 国内资料站兜底查询补“半导小芯”。
+- **验证**：QQ CDP 9222 会话下真实查询 `STM32F103C8T6 数据手册` 返回 ST 官方证据（confidence 0.888）；`npm run datasheet -- "https://item.szlcsc.com/9243.html" STM32F103C8T6` 从立创商城下载 2.08MB PDF 且型号校验通过（179,070 字符）；authority/rewrite 单测更新，单测 255/255 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-logged-in-chain-e2e.md`。
+- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：国内资料站域名与查询改写，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

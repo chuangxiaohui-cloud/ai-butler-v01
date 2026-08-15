@@ -25,6 +25,12 @@ const SPORTS_NEWS_RE = /世界杯|足球|篮球|比赛|赛事|英超|西甲|欧�
 const VERSION_QUERY_RE = /最新.*版本|版本.*最新|最新版本号|版本号|latest.*version|version.*latest/;
 const VERSION_PROJECT_RE = /[A-Za-z][A-Za-z0-9_.-]+/;
 
+const DOMESTIC_SITE_NAMES: Record<string, string> = {
+  'szlcsc.com': '立创商城',
+  'xcc.com': '芯查查',
+  'semiee.com': '半导小芯',
+};
+
 export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
   if (intent === 'news') {
     const year = NEWS_YEAR_RE.test(query) ? '' : `${new Date().getFullYear()} `;
@@ -72,9 +78,13 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
   const part = extractPartNumber(query);
   const officialHint = officialSourceHintForQuery(query);
   if (part && officialHint) {
-    const domesticQueries = DOMESTIC_DATASHEET_DOMAINS.map(
-      (domain) => `${part} site:${domain} datasheet`,
-    );
+    const domesticQueries = DOMESTIC_DATASHEET_DOMAINS.flatMap((domain) => {
+      const siteName = DOMESTIC_SITE_NAMES[domain] ?? domain;
+      return [
+        `${part} ${siteName} 数据手册`,
+        `${part} site:${domain} datasheet`,
+      ];
+    });
     return uniqueQueries([
       `${part} site:${officialHint.domain} datasheet`,
       `${part} ${officialHint.domain} 官方 数据手册`,
@@ -84,7 +94,13 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
   }
   if (part) {
     return uniqueQueries([
-      ...DOMESTIC_DATASHEET_DOMAINS.map((domain) => `${part} site:${domain} datasheet`),
+      ...DOMESTIC_DATASHEET_DOMAINS.flatMap((domain) => {
+        const siteName = DOMESTIC_SITE_NAMES[domain] ?? domain;
+        return [
+          `${part} ${siteName} 数据手册`,
+          `${part} site:${domain} datasheet`,
+        ];
+      }),
       query,
     ]);
   }

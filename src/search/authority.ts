@@ -25,6 +25,7 @@ const DOMAIN_RULES: DomainRule[] = [
   { pattern: /(^|\.)news\.cn$/, authority: 0.9, official: true },
   { pattern: /(^|\.)(digikey|mouser|lcsc|szlcsc)\.(com|cn)$/, authority: 0.8 },
   { pattern: /(^|\.)xcc\.com$/, authority: 0.75 },
+  { pattern: /(^|\.)semiee\.com$/, authority: 0.75 },
   { pattern: /(^|\.)alldatasheet\.com$/, authority: 0.7 },
   { pattern: /(^|\.)(zhihu|csdn|bilibili)\.(com|net)$/, authority: 0.75 },
   { pattern: /(^|\.)(tencent|aliyun)\.(com|cn)$/, authority: 0.7 },
@@ -87,7 +88,7 @@ export interface OfficialSourceHint {
   domain: string;
 }
 
-export const DOMESTIC_DATASHEET_DOMAINS = ['szlcsc.com', 'xcc.com'];
+export const DOMESTIC_DATASHEET_DOMAINS = ['szlcsc.com', 'xcc.com', 'semiee.com'];
 
 export function officialSourceHintForQuery(query: string): OfficialSourceHint | null {
   const part = extractPartNumber(query);

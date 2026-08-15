@@ -85,11 +85,13 @@ test('authority: 航天官方域名权威度高于默认值', () => {
   assert.ok(getDomainAuthority('https://www.cnsa.gov.cn/') >= 0.9);
 });
 
-test('authority: 立创商城与芯查查评分高于默认值', () => {
+test('authority: 立创商城/芯查查/半导小芯评分高于默认值', () => {
   assert.ok(getDomainAuthority('https://item.szlcsc.com/515651.html') >= 0.8);
   assert.ok(getDomainAuthority('https://www.xcc.com/part/STM32F103C8T6') >= 0.75);
+  assert.ok(getDomainAuthority('https://www.semiee.com/') >= 0.75);
   assert.ok(getDomainAuthority('https://item.szlcsc.com/515651.html') > 0.3);
   assert.ok(getDomainAuthority('https://www.xcc.com/part/STM32F103C8T6') > 0.3);
+  assert.ok(getDomainAuthority('https://www.semiee.com/') > 0.3);
 });
 
 test('authority: 原厂与国内资料站都算高可信资料源', () => {
@@ -103,6 +105,10 @@ test('authority: 原厂与国内资料站都算高可信资料源', () => {
   );
   assert.equal(
     isHighTrustDatasheetUrl('https://www.xcc.com/part/stm32f103c8t6', 'STM32F103C8T6 主频'),
+    true,
+  );
+  assert.equal(
+    isHighTrustDatasheetUrl('https://www.semiee.com/datasheet/stm32f103c8t6', 'STM32F103C8T6 主频'),
     true,
   );
   assert.equal(

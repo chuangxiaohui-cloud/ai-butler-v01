@@ -239,7 +239,7 @@ export async function runSearchLoop(
         });
       }
       fallbackSearches.push({
-        query: `${part} 立创商城 芯查查 datasheet`,
+        query: `${part} 立创商城 芯查查 半导小芯 datasheet`,
         includeDomains: DOMESTIC_DATASHEET_DOMAINS,
       });
       for (const fallback of fallbackSearches) {
