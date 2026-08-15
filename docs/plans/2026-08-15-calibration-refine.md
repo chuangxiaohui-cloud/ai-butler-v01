@@ -36,5 +36,5 @@
 
 - 验证：10/10 校准样本重跑 `route:apply-calibration`，提案从 low=0.65 修正为 low=0.45 / high=0.75（与现值一致，不再误伤 0.6 搜索）。
 - 测试：单测 255/255 + 集成 17/17 全绿；doc-lint 0 FAIL/0 WARN。
-- 提交：<hash> · 推送：Gitee / GitHub
+- 提交：`23188ae` · 推送：Gitee / GitHub
 - 遗留事项：校准阈值保持 0.45/0.75；继续攒真实样本，样本更多后再校准。
