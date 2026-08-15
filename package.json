@@ -16,6 +16,7 @@
     "bench:v02a": "tsx scripts/bench-v02a.ts",
     "bench:devil-v25": "tsx scripts/bench-devil-v25.ts",
     "bench:devil-v25:reset": "node -e \"const fs=require('fs');fs.rmSync('bench/devil-v25',{recursive:true,force:true})\" && npm run bench:devil-v25",
+    "review:devil-v25": "tsx scripts/gen-devil-review-list.ts",
     "score:v02a": "tsx scripts/score-v02a.ts",
     "worksheet:v02a": "tsx scripts/export-v02a-answers.ts",
     "migrate:memorycore": "tsx scripts/migrate-to-memorycore.ts",
