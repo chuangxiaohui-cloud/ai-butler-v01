@@ -79,12 +79,18 @@ def main() -> int:
     text_pages = 0
     image_pages = 0
     ocr_pages = 0
+    ocr_skipped_pages = 0
+    max_ocr_pages = max(0, int(os.environ.get("PDF_OCR_MAX_PAGES", "8")))
     for page in doc:
         text = page_text(page)
         if text.strip():
             text_pages += 1
             parts.append(text)
         elif page.get_images(full=True):
+            if max_ocr_pages == 0 or ocr_pages >= max_ocr_pages:
+                image_pages += 1
+                ocr_skipped_pages += 1
+                continue
             ocr_text = ocr_page(page)
             if ocr_text.strip():
                 ocr_pages += 1
@@ -93,12 +99,15 @@ def main() -> int:
             else:
                 image_pages += 1
 
+    ocr_engine_available = max_ocr_pages > 0 and get_ocr_engine() is not None
     result = {
         "ok": True,
         "text": "\n".join(parts),
         "scanned": image_pages > 0 or ocr_pages > 0,
         "ocr": ocr_pages > 0,
-        "ocrAvailable": get_ocr_engine() is not None,
+        "ocrAvailable": ocr_engine_available,
+        "ocrMaxPages": max_ocr_pages,
+        "ocrSkippedPages": ocr_skipped_pages,
         "ocrError": _ocr_error,
         "pageCount": doc.page_count,
         "textPages": text_pages,

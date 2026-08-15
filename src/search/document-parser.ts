@@ -17,6 +17,8 @@ interface PdfTextResult {
   scanned?: boolean;
   ocr?: boolean;
   ocrAvailable?: boolean;
+  ocrMaxPages?: number;
+  ocrSkippedPages?: number;
   ocrError?: string;
   pageCount?: number;
   textPages?: number;

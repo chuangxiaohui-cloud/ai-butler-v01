@@ -2277,6 +2277,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`browser:launch -- qq` 后 9222 LISTENING；`browser:cdp -- 9222` 持久化端口；新进程 `browser:fetch` 自动复用 QQ 会话，sessionDomains 含 szlcsc/xcc/taobao/jd/github 等大量登录域；单测 255/255 + 集成 17/17 全绿。
 - affects: §1.2,§8.2 | bench:na(new-param) 理由：浏览器 CDP 启动与登录态复用，无 §5/§6 参数变更
 
+### 2026-08-15（扫描件 OCR 页数上限 E88）
+
+- **变更**：`scripts/pdf_text.py` 增加 `PDF_OCR_MAX_PAGES`（默认 8，`0` 关闭 OCR），超过上限的扫描页跳过并计为 `ocrSkippedPages`；返回 JSON 增加 `ocrMaxPages / ocrSkippedPages`；`document-parser.ts` 的 `PdfTextResult` 同步补字段。
+- **验证**：3 页扫描 PDF + `PDF_OCR_MAX_PAGES=2` 只 OCR 前 2 页，`ocrSkippedPages=1`；单测 255/255 + 集成 17/17 全绿。
+- affects: §7 | bench:na(new-param) 理由：OCR 页数上限，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
