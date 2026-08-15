@@ -2246,6 +2246,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`TPS5430.pdf` 提取 48,622 字符，命中 `TPS5430`/`500kHz`；新增 document-parser 单测 2 条；单测 244/244 + 集成 17/17 全绿。
 - affects: §7,§6.7 | bench:na(new-param) 理由：PDF 解析管道增强，无 §5/§6 参数变更
 
+### 2026-08-15（datasheet 下载内容校验 E83）
+
+- **变更**：新增 `src/search/datasheet-verify.ts`（型号归一化 + 最长前缀匹配，ST 家族手册用 `STM32F103` 前缀也能通过）；`scripts/datasheet.ts` 改为候选 PDF 逐个下载 → 解析 → 校验，不匹配删除误存文件并换下一个，全部不匹配明确报错并附尝试列表。
+- **验证**：`item.szlcsc.com/9243.html + STM32F103C8T6` 下载校验通过（179,070 字符）；`515651.html + STM32F103C8T6`（TPS5430DDA 页）拒绝误存并列出 6 次不匹配尝试，ISO/IEC 认证证书也被拦截；新增 datasheet-verify 单测 6 条；单测 250/250 + 集成 17/17 全绿。
+- affects: §7 | bench:na(new-param) 理由：datasheet 下载内容校验，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
