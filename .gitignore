@@ -13,6 +13,7 @@ C5183894/
 # Python脚本
 *.py
 !scripts/pdf_text.py
+__pycache__/
 
 # Benchmark原始数据（git跟踪bench/目录，不跟踪results/）
 benchmarks/results/
