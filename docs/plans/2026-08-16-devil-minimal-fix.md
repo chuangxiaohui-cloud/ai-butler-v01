@@ -54,3 +54,13 @@
 - C06 GitHub 项目分析、C08 复合指令拆分、E39 代码生成需注入 skillDeps 后重跑确认。
 - 全量重跑 `npm run bench:devil-v25:reset`，用新基线重打分并回归 35 条 Bug。
 
+## 5. 第二轮修复（2026-08-16）
+
+- **rewrite/pack 意图**：新增 `rewrite`（重写/润色/语气）与 `pack`（打包/压缩项目）actionType 与路由，管道层分别返回“请把要重写内容发我”和“请告诉我要打包哪个项目目录”，P08 不再误当发消息、C05 不再误回“哪个芯片”。
+- **GitHub 分析**：新增 `hasGithubLink` 特征与 R017，`分析 GitHub 项目 + URL` 直接走 web_search。
+- **compare 修正**：新增 R018（compare+code → web_search）与 R018A（通用 compare → web_search），并让“时间成本/学习成本”不再落入 finance/vendor 报价，ET06/SM07 从澄清/报价改回搜索回答。
+- **create 修正**：单文件代码（scope=atomic）优先直接执行（E39）；含“不方便说/先写个通用/不知道功能”先澄清（EC03）。
+- **词表补漏**：qa 增加 还能用吗/选什么/怎么选（P05/EC30）；query 增加 查查（P03 多意图的一部分）。
+- **周末休市**：新增 `weekend-market` 规则，周六/周日股市类问题直接回答“休市”（EC06）。
+- **规则硬门**：R017-R021 全部 strictMatch，避免 actionType 之外的字段部分匹配造成跨意图噪声。
+- 新增 10 条路由回归 + 3 条 weekend-market 单测；`npm run test:all` 全绿。

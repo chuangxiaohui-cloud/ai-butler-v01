@@ -28,6 +28,7 @@ import {
   buildPropertyEmergencyReply,
   buildSafetyRefusalReply,
 } from './emergency-reply.js';
+import { weekendMarketReply } from './weekend-market.js';
 import { routeV2WithLLM } from '../agent/router-v2.js';
 import { preprocessUserMessage } from '../agent/multimodal-preprocessor.js';
 import { buildMemoryInjection, type UserContext } from '../memory/user-context.js';
@@ -248,6 +249,26 @@ export async function pipeline(
       elapsed_ms: Date.now() - start,
     };
   }
+  if (routeSelected.intent === 'rewrite') {
+    return {
+      query,
+      answer: '请把要重写的内容发给我，我按更专业的语气润色。',
+      confidence: route.confidence,
+      evidence: [],
+      gate_triggered: 'none',
+      elapsed_ms: Date.now() - start,
+    };
+  }
+  if (routeSelected.intent === 'pack_project') {
+    return {
+      query,
+      answer: '请告诉我打包哪个项目目录；我会排除 .git、node_modules、build 后生成压缩包。',
+      confidence: route.confidence,
+      evidence: [],
+      gate_triggered: 'none',
+      elapsed_ms: Date.now() - start,
+    };
+  }
   if (!routeSelected.searchNeed && routeSelected.intent !== 'web_search') {
     const executor = routeSelected.executor ?? 'executor';
     const status = executorStatus(routeSelected.executor);
@@ -386,6 +407,17 @@ export async function pipeline(
       confidence: 0,
       evidence: [],
       gate_triggered: 'emergency',
+      elapsed_ms: Date.now() - start,
+    };
+  }
+  const weekendReply = weekendMarketReply(prepared.cleanQuery);
+  if (weekendReply) {
+    return {
+      query,
+      answer: weekendReply,
+      confidence: 0.8,
+      evidence: [],
+      gate_triggered: 'none',
       elapsed_ms: Date.now() - start,
     };
   }

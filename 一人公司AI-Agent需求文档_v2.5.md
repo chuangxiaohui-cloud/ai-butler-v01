@@ -2355,6 +2355,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`npm run test:all` 单测 276/276 + 集成 17/17 全绿；新增 11 条路由负样本回归 + 破解 WiFi 拒绝 + 手机进水财产止损 + 净化器单测；35 条 Bug 中 24 路由类大部分转正、7 JSON 泄露堵住、4 安全误匹配三分；全量重跑待下一轮；详见 `docs/plans/2026-08-16-devil-minimal-fix.md`。
 - affects: §5,§6 | bench:B-20260816-01 | E100 修复路由/安全/JSON 泄露三类核心故障
 
+### 2026-08-16（第二轮修复与全量验证 E101）
+
+- **变更**：新增 rewrite/pack 意图与管道分支、`hasGithubLink` 特征与 R017、compare+code/通用 compare 规则、create/modify 单文件直接执行与缺信息澄清、qa/query/modify 词表补漏、周末休市规则、R017-R021 strictMatch。
+- **验证**：`npm run test:all` 全绿；122 条全量重跑对比原始基线：路由选项 25→0、JSON 泄漏 7→0、35 条系统级 Bug 35/35 修复、8 条能力项 5/8 有进展；剩余为搜索质量、执行器运行时与多意图问题；详见 `docs/plans/2026-08-16-devil-fix-verify.md`。
+- affects: §5,§6 | bench:B-20260816-02 | E101 第二轮路由/搜索/执行器修复与全量验证
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

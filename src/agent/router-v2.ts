@@ -27,6 +27,7 @@ const FEATURE_WEIGHTS: Record<keyof IntentFeature, number> = {
   ambiguityFlags: PARAMS.ambiguityFlagsWeight,
   hasImage: PARAMS.hasImageWeight,
   hasDocument: PARAMS.hasDocumentWeight,
+  hasGithubLink: 0,
   attachmentTypes: 0,
   fastImageDescription: 0,
   timeExpression: 0,
@@ -175,8 +176,41 @@ export function routeFromFeatures(
 
   let decision: RouteDecision;
   const hasMissingReferent = features.ambiguityFlags.includes('missing_referent');
-  if (features.actionType === 'qa' && top?.intent === 'web_search') {
+  const searchLikeAction =
+    features.actionType === 'qa' ||
+    features.actionType === 'compare' ||
+    features.actionType === 'query' ||
+    features.actionType === 'summarize' ||
+    features.actionType === 'analyze';
+  if (searchLikeAction && top?.intent === 'web_search') {
     decision = { type: 'direct', selected: top };
+  } else if (
+    (features.actionType === 'rewrite' && top?.intent === 'rewrite') ||
+    (features.actionType === 'pack' && top?.intent === 'pack_project')
+  ) {
+    decision = { type: 'direct', selected: top };
+  } else if (
+    features.actionType === 'create' &&
+    /不方便|先写个通用|不知道.*(功能|做什么|怎么做)|不提供|没有.*(参考|资料|信息|设计)|字数不限|没有.*(范围|要求)/.test(query)
+  ) {
+    decision = {
+      type: 'must_clarify',
+      question: '请补充具体信息（功能/范围/格式/引脚连接等），我再帮您继续。',
+      candidates: deduped,
+    };
+  } else if (
+    features.actionType === 'create' &&
+    features.scope === 'atomic' &&
+    deduped.some((c) => c.intent === 'execute')
+  ) {
+    const execute = deduped.find((c) => c.intent === 'execute')!;
+    decision = { type: 'direct', selected: execute };
+  } else if (
+    features.actionType === 'modify' &&
+    deduped.some((c) => c.intent === 'execute')
+  ) {
+    const execute = deduped.find((c) => c.intent === 'execute')!;
+    decision = { type: 'direct', selected: execute };
   } else if (top && topConfidence >= PARAMS.routeConfidenceHigh - 1e-9) {
     decision = { type: 'direct', selected: top };
   } else if (topConfidence < PARAMS.routeConfidenceLow - 1e-9 && !hasMissingReferent) {

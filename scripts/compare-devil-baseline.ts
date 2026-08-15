@@ -17,8 +17,9 @@ interface Entry {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const newText = readFileSync(join(root, 'bench', 'devil-v25', 'results.jsonl'), 'utf-8');
+const ref = process.argv[2] ?? 'HEAD';
 const oldText = execSync(
-  `git show HEAD:bench/devil-v25/results.jsonl`,
+  `git show ${ref}:bench/devil-v25/results.jsonl`,
   { cwd: root, encoding: 'utf-8' },
 );
 

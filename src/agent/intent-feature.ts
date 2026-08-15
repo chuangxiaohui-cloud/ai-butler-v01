@@ -19,6 +19,8 @@ export const ACTION_TYPES = [
   'qa',
   'summarize',
   'extract_structure',
+  'rewrite',
+  'pack',
   'schedule',
   'compare',
   'unknown',
@@ -62,6 +64,7 @@ export interface IntentFeature {
   ambiguityFlags: AmbiguityFlag[];
   hasImage: boolean;
   hasDocument: boolean;
+  hasGithubLink: boolean;
   attachmentTypes: string[];
   fastImageDescription?: string;
   timeExpression?: string;
@@ -71,7 +74,7 @@ export interface IntentFeature {
 const ANALYZE_RE =
   /分析|评估|审查|检查|巡检|审阅|值不值|成本|收益|颜色|配色|色号|色彩|主色|取色/;
 const QA_RE =
-  /是什么|什么是|为什么|怎么|如何|怎样|怎么样|怎么办|哪些|哪种|哪几个|哪个|哪一种|推荐|选型|能不能|是否|好不好|要不要|该不该|适合|需要注意|注意什么|需要什么|有什么|做什么|干嘛|干啥|解释|说明|回答|含义|是谁|叫什么|是啥|用途|作用/;
+  /是什么|什么是|为什么|怎么|如何|怎样|怎么样|怎么办|哪些|哪种|哪几个|哪个|哪一种|推荐|选型|能不能|还能用吗|能用吗|可以用吗|是否|好不好|要不要|该不该|适合|需要注意|注意什么|需要什么|有什么|做什么|干嘛|干啥|解释|说明|回答|含义|是谁|叫什么|是啥|用途|作用|选什么|选一个|选哪|怎么选|怎么挑/;
 const COLOR_RE = /颜色|配色|色号|色彩|主色|取色/;
 
 const ACTION_RE: Array<[ActionType, RegExp]> = [
@@ -91,13 +94,15 @@ const ACTION_RE: Array<[ActionType, RegExp]> = [
   ['compare', /对比|比较|对照|PK/],
   ['analyze', ANALYZE_RE],
   ['qa', QA_RE],
-  ['query', /查一下|查询|看下|看看|问一下|帮我查/],
+  ['query', /查一下|查询|看下|看看|问一下|帮我查|查查/],
   ['summarize', /总结|摘要|提炼|要点|概述|概括/],
   ['extract_structure', /结构|大纲|目录|框架|拆解|分节|章节/],
+  ['rewrite', /重写|润色|改写|语气|风格/],
+  ['pack', /打包|压缩.*项目|项目.*压缩/],
   ['send', /发消息|发邮件|通知|发给|转发|发送|微信|QQ|飞书/],
   ['schedule', /安排|预约|预定|订个|约个|帮我订/],
+  ['modify', /修改|改下|更新|重构|修复|不对|改成|换成|我要的是|修正|调整/],
   ['create', /创建|生成|写个|写一个|做个|做一个|开发|搭建|实现|写一份|帮我写|设计|画/],
-  ['modify', /修改|改下|更新|重构|修复/],
 ];
 
 const DOMAIN_RE: Array<[TargetDomain, RegExp]> = [
@@ -105,8 +110,8 @@ const DOMAIN_RE: Array<[TargetDomain, RegExp]> = [
   ['message', /消息|邮件|微信|QQ|飞书|老张/],
   ['security', /安全|权限|危险|急救|病毒/],
   ['search', /搜索|最新|行情|天气|价格|库存|评测|资料/],
-  ['code', /代码|接口|函数|模块|App|前端|后端|PCB|固件|登录|芯片|STM32/],
-  ['finance', /成本|预算|收益|报价|值不值|ROI|利润/],
+  ['code', /代码|接口|函数|模块|App|前端|后端|PCB|固件|登录|芯片|STM32|原理图|算法|PID|位置式|积分限幅/],
+  ['finance', /(?<!时间)(?<!学习)(?<!人力)成本|预算|收益|报价|值不值|ROI|利润/],
   ['document', /PRD|文档|方案|报告|需求文档|说明|总结/],
   ['color', /颜色|配色|色号|色彩|主色|取色/],
 ];
@@ -148,6 +153,7 @@ export function validateIntentFeature(input: unknown): IntentFeature {
     ambiguityFlags: flags,
     hasImage: m.hasImage === true,
     hasDocument: m.hasDocument === true,
+    hasGithubLink: m.hasGithubLink === true,
     attachmentTypes: Array.isArray(m.attachmentTypes)
       ? m.attachmentTypes.filter((t): t is string => typeof t === 'string')
       : [],
@@ -200,6 +206,7 @@ export function extractIntentFeatureRuleBased(
           : 'unknown';
 
   const hasImplicitContext = /(这个|那个|它|他|她|这项目|那项目)/.test(q);
+  const hasGithubLink = /github\.com|github\.io|\/github\//i.test(q);
   const requiresExternalSearch =
     /最新|行情|天气|价格|库存|评测|报错|怎么解决|datasheet|github|搜索|(^|[^检])查一下|资料/.test(q) ||
     targetDomain === 'search';
@@ -242,6 +249,7 @@ export function extractIntentFeatureRuleBased(
     requiresExternalSearch,
     searchSourceHint,
     hasImplicitContext,
+    hasGithubLink,
     urgency,
     rawEntities,
     ambiguityFlags,

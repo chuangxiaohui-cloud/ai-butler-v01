@@ -329,3 +329,103 @@ for (const [id, query] of questionNegativeSamples) {
     }
   });
 }
+
+test('router-v2: 润色重写 → rewrite 而非发消息', () => {
+  const r = routeV2('把刚才那段话，用更专业的语气重写一遍，我要发给客户。');
+  assert.equal(r.features.actionType, 'rewrite');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'rewrite');
+  }
+});
+
+test('router-v2: 项目打包 → pack_project', () => {
+  const r = routeV2('把这个项目打包发给我。');
+  assert.equal(r.features.actionType, 'pack');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'pack_project');
+  }
+});
+
+test('router-v2: GitHub 链接分析 → web_search', () => {
+  const r = routeV2('帮我分析一下这个GitHub项目：https://github.com/zephyrproject-rtos/zephyr');
+  assert.equal(r.features.hasGithubLink, true);
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'web_search');
+  }
+});
+
+test('router-v2: 芯片对比 → web_search 而非澄清', () => {
+  const r = routeV2('对比 ESP32-S3 和 RP2040 在音频 I2S 应用上的功耗和 PSRAM 性能差异？');
+  assert.equal(r.features.actionType, 'compare');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'web_search');
+  }
+});
+
+test('router-v2: EDA 工具对比 → web_search 而非 vendor 报价', () => {
+  const r = routeV2('对比使用 KiCad 和 Altium Designer 做一个 4 层板的时间成本（学习+设计）差异？');
+  assert.equal(r.features.actionType, 'compare');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'web_search');
+  }
+});
+
+test('router-v2: 明确单文件代码 → execute 直接执行', () => {
+  const r = routeV2('帮我写一个I2C的软件模拟驱动。');
+  assert.equal(r.features.actionType, 'create');
+  assert.equal(r.features.scope, 'atomic');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'execute');
+  }
+});
+
+test('router-v2: 缺功能信息写代码 → 澄清功能/语言', () => {
+  const r = routeV2('帮我写一段代码，但我现在不方便说功能，你先写个通用的。');
+  assert.equal(r.decision.type, 'must_clarify');
+  if (r.decision.type === 'must_clarify') {
+    assert.ok(r.decision.question.includes('功能'));
+  }
+});
+
+test('router-v2: Protel 还能用吗 → qa/web_search', () => {
+  const r = routeV2('Protel 还能用吗？我想画个板子。');
+  assert.equal(r.features.actionType, 'qa');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'web_search');
+  }
+});
+
+test('router-v2: 选技术栈 → qa/web_search', () => {
+  const r = routeV2('我想开发一个 App，但不知道用什么技术栈，你帮我选一个最通用的。');
+  assert.equal(r.features.actionType, 'qa');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'web_search');
+  }
+});
+
+test('router-v2: 无参考设计画原理图 → 澄清', () => {
+  const r = routeV2('帮我在 KiCad 里画一个复杂 FPGA 原理图，但我不提供任何参考设计。');
+  assert.equal(r.decision.type, 'must_clarify');
+});
+
+test('router-v2: 综述字数不限 → 澄清范围/格式', () => {
+  const r = routeV2('帮我写一篇关于嵌入式发展的综述文章，字数不限。');
+  assert.equal(r.decision.type, 'must_clarify');
+});
+
+test('router-v2: 修正指令 → modify/execute 而非排期选项', () => {
+  const r = routeV2('不对，我要的是位置式 PID，而且积分限幅要 100。');
+  assert.equal(r.features.actionType, 'modify');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'execute');
+  }
+});
