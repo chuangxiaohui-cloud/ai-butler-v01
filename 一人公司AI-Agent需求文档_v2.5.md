@@ -2319,6 +2319,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：真实查询 `STM32F103C8T6 半导小芯 数据手册` evidence 含 `www.semiee.com/search?searchModel=STM32F103C8T6`；新增 search-loop/fusion 单测，单测 257/257 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-semiee-index-verify.md`。
 - affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：国内资料站站内搜索兜底，无 §5/§6 参数变更
 
+### 2026-08-15（立创/芯查查站内直达 E95）
+
+- **变更**：`authority.ts` 新增 `DOMESTIC_DATASHEET_SITES` 站点→站内搜索映射（立创 `so.szlcsc.com/global.html?k=<型号>`、芯查查 `www.xcc.com/chip/material/search?title=<型号>`、半导小芯 `searchModel`）；`search-loop` 用映射循环替代 E94 单站硬编码，任意点名的国内站未命中时都用浏览器会话直达站内搜索补证据。
+- **验证**：真实查询 `STM32F103C8T6 芯查查 数据手册` evidence 含 `www.xcc.com/chip/material/search?title=STM32F103C8T6`；`STM32F103C8T6 立创商城 数据手册` evidence 含 `so.szlcsc.com/global.html?k=STM32F103C8T6`；新增 search-loop 单测 2 条，单测 259/259 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-domestic-site-direct-search.md`。
+- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：国内资料站站内直达扩展，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

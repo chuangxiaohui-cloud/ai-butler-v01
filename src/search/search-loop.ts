@@ -16,6 +16,7 @@ import {
 import { rewriteQuery } from './query-rewrite.js';
 import {
   DOMESTIC_DATASHEET_DOMAINS,
+  DOMESTIC_DATASHEET_SITES,
   extractPartNumber,
   isDomesticDatasheetUrl,
   isHighTrustDatasheetUrl,
@@ -266,41 +267,45 @@ export async function runSearchLoop(
     }
   }
 
-  // 用户点名半导小芯时，若搜索引擎没命中 semiee.com，用浏览器直达站内搜索补证据
-  if (
-    part &&
-    /半导小芯|semiee/i.test(opts.originalQuery ?? query) &&
-    opts.browserSession &&
-    !results.some((r) => isDomesticDatasheetUrl(r.url) && r.url.includes('semiee.com'))
-  ) {
-    const searchUrl = `https://www.semiee.com/search?searchModel=${encodeURIComponent(part)}`;
-    const attemptStart = Date.now();
-    try {
-      const page = await opts.browserSession.fetchPage(searchUrl, 8_000, 3_000);
-      const ok = page.text.trim().length > 0;
-      attempts.push({
-        provider: 'browser',
-        ok,
-        latencyMs: Date.now() - attemptStart,
-        error: ok ? undefined : '空正文',
-      });
-      opts.sourceStats?.record('browser', opts.intent, ok, Date.now() - attemptStart);
-      if (ok) {
-        results.push({
-          title: `半导小芯 - ${part}`,
-          url: page.url,
-          content: page.text.slice(0, 5_000),
-          provider: 'browser',
-        });
+  // 用户点名国内资料站时，若搜索引擎没命中对应域名，用浏览器直达站内搜索补证据
+  if (part && opts.browserSession) {
+    const mentionQuery = opts.originalQuery ?? query;
+    for (const site of DOMESTIC_DATASHEET_SITES) {
+      if (!new RegExp(`${site.name}|${site.domain}`, 'i').test(mentionQuery)) continue;
+      if (
+        results.some((r) => isDomesticDatasheetUrl(r.url) && r.url.includes(site.domain))
+      ) {
+        continue;
       }
-    } catch (err) {
-      attempts.push({
-        provider: 'browser',
-        ok: false,
-        latencyMs: Date.now() - attemptStart,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      opts.sourceStats?.record('browser', opts.intent, false, Date.now() - attemptStart);
+      const searchUrl = site.searchUrl(part);
+      const attemptStart = Date.now();
+      try {
+        const page = await opts.browserSession.fetchPage(searchUrl, 8_000, 3_000);
+        const ok = page.text.trim().length > 0;
+        attempts.push({
+          provider: 'browser',
+          ok,
+          latencyMs: Date.now() - attemptStart,
+          error: ok ? undefined : '空正文',
+        });
+        opts.sourceStats?.record('browser', opts.intent, ok, Date.now() - attemptStart);
+        if (ok) {
+          results.push({
+            title: `${site.name} - ${part}`,
+            url: page.url,
+            content: page.text.slice(0, 5_000),
+            provider: 'browser',
+          });
+        }
+      } catch (err) {
+        attempts.push({
+          provider: 'browser',
+          ok: false,
+          latencyMs: Date.now() - attemptStart,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        opts.sourceStats?.record('browser', opts.intent, false, Date.now() - attemptStart);
+      }
     }
   }
 

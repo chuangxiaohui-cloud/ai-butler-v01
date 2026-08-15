@@ -90,6 +90,30 @@ export interface OfficialSourceHint {
 
 export const DOMESTIC_DATASHEET_DOMAINS = ['szlcsc.com', 'xcc.com', 'semiee.com'];
 
+export interface DomesticSiteSearchSpec {
+  domain: string;
+  name: string;
+  searchUrl: (part: string) => string;
+}
+
+export const DOMESTIC_DATASHEET_SITES: DomesticSiteSearchSpec[] = [
+  {
+    domain: 'szlcsc.com',
+    name: '立创商城',
+    searchUrl: (part) => `https://so.szlcsc.com/global.html?k=${encodeURIComponent(part)}`,
+  },
+  {
+    domain: 'xcc.com',
+    name: '芯查查',
+    searchUrl: (part) => `https://www.xcc.com/chip/material/search?title=${encodeURIComponent(part)}`,
+  },
+  {
+    domain: 'semiee.com',
+    name: '半导小芯',
+    searchUrl: (part) => `https://www.semiee.com/search?searchModel=${encodeURIComponent(part)}`,
+  },
+];
+
 export function officialSourceHintForQuery(query: string): OfficialSourceHint | null {
   const part = extractPartNumber(query);
   if (!part) return null;

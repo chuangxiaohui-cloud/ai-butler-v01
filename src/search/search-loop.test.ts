@@ -231,6 +231,64 @@ test('search-loop: 原始问题点名半导小芯时浏览器直达站内搜索'
   assert.ok(r.attempts.some((a) => a.provider === 'browser' && a.ok));
 });
 
+test('search-loop: 原始问题点名立创商城时浏览器直达站内搜索', async () => {
+  const browser = {
+    calls: [] as string[],
+    async fetchPage(url: string) {
+      this.calls.push(url);
+      return {
+        url,
+        title: '立创商城 - STM32F103C8T6',
+        text: 'STM32F103C8T6 立创商城 采购 72MHz LQFP48 完整 内容 足够 长',
+      };
+    },
+    downloadFile: async () => ({ ok: true, size: 1 }),
+  };
+  const r = await runSearchLoop('STM32F103C8T6 数据手册', {
+    originalQuery: 'STM32F103C8T6 立创商城 数据手册',
+    intent: 'factual',
+    providers: [new FakeProvider()],
+    quota: new FakeQuota(),
+    browserSession: browser,
+    minResults: 1,
+  });
+  assert.ok(
+    browser.calls.some((u) => u.includes('so.szlcsc.com/global.html?k=STM32F103C8T6')),
+  );
+  assert.ok(r.results.some((x) => x.url.includes('szlcsc.com')));
+  assert.ok(r.attempts.some((a) => a.provider === 'browser' && a.ok));
+});
+
+test('search-loop: 原始问题点名芯查查时浏览器直达站内搜索', async () => {
+  const browser = {
+    calls: [] as string[],
+    async fetchPage(url: string) {
+      this.calls.push(url);
+      return {
+        url,
+        title: '芯查查 - STM32F103C8T6',
+        text: 'STM32F103C8T6 数据手册 替代料 72MHz 完整 内容 足够 长',
+      };
+    },
+    downloadFile: async () => ({ ok: true, size: 1 }),
+  };
+  const r = await runSearchLoop('STM32F103C8T6 数据手册', {
+    originalQuery: 'STM32F103C8T6 芯查查 数据手册',
+    intent: 'factual',
+    providers: [new FakeProvider()],
+    quota: new FakeQuota(),
+    browserSession: browser,
+    minResults: 1,
+  });
+  assert.ok(
+    browser.calls.some((u) =>
+      u.includes('www.xcc.com/chip/material/search?title=STM32F103C8T6'),
+    ),
+  );
+  assert.ok(r.results.some((x) => x.url.includes('xcc.com')));
+  assert.ok(r.attempts.some((a) => a.provider === 'browser' && a.ok));
+});
+
 test('search-loop: 已有高可信源但证据不足时浏览器补证并跳过 Tavily', async () => {
   const browser = {
     calls: [] as string[],
