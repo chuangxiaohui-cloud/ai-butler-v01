@@ -253,6 +253,25 @@ test('fusion: 浏览器二次取证的高可信页不吃 SEO 降权', () => {
   assert.ok(browser.finalScore > search.finalScore);
 });
 
+test('fusion: 点名半导小芯时至少保留一条 semiee 证据', () => {
+  const official = item({
+    url: 'https://www.st.com/en/microcontrollers-microprocessors/stm32f103c8.html',
+    title: 'STM32F103C8 | Product - STMicroelectronics',
+    content: 'STM32F103C8T6 maximum frequency 72 MHz datasheet specifications'.repeat(5),
+  });
+  const semiee = item({
+    url: 'https://www.semiee.com/search?searchModel=STM32F103C8T6',
+    title: '半导小芯 - STM32F103C8T6',
+    content:
+      'STM32F103C8T6 半导小芯为你找到 0 条结果 你要查询的可能是 STM32F103C8 72MHz 参数 说明 文档 100A '.repeat(
+        5,
+      ),
+    provider: 'browser',
+  });
+  const r = fuseResults('STM32F103C8T6 半导小芯 数据手册', [official, semiee], 'factual');
+  assert.ok(r.items.some((f) => f.result.url.includes('semiee.com')));
+});
+
 test('fusion: 无结果时低置信门控', () => {
   const r = fuseResults('ESP32 I2C 通信失败 无应答', [], 'troubleshooting');
   assert.equal(r.items.length, 0);

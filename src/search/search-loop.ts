@@ -17,6 +17,7 @@ import { rewriteQuery } from './query-rewrite.js';
 import {
   DOMESTIC_DATASHEET_DOMAINS,
   extractPartNumber,
+  isDomesticDatasheetUrl,
   isHighTrustDatasheetUrl,
   officialSourceHintForQuery,
 } from './authority.js';
@@ -42,6 +43,7 @@ export interface BrowserFetcher {
 
 export interface SearchLoopOptions extends Omit<SearchStageOptions, 'cacheKey'> {
   cacheKey?: string;
+  originalQuery?: string;
   llm?: LLMClient;
   maxSubSearches?: number;
   minResults?: number;
@@ -261,6 +263,44 @@ export async function runSearchLoop(
         );
         if (fallbackSearch.ok) results.push(...fallbackSearch.results);
       }
+    }
+  }
+
+  // 用户点名半导小芯时，若搜索引擎没命中 semiee.com，用浏览器直达站内搜索补证据
+  if (
+    part &&
+    /半导小芯|semiee/i.test(opts.originalQuery ?? query) &&
+    opts.browserSession &&
+    !results.some((r) => isDomesticDatasheetUrl(r.url) && r.url.includes('semiee.com'))
+  ) {
+    const searchUrl = `https://www.semiee.com/search?searchModel=${encodeURIComponent(part)}`;
+    const attemptStart = Date.now();
+    try {
+      const page = await opts.browserSession.fetchPage(searchUrl, 8_000, 3_000);
+      const ok = page.text.trim().length > 0;
+      attempts.push({
+        provider: 'browser',
+        ok,
+        latencyMs: Date.now() - attemptStart,
+        error: ok ? undefined : '空正文',
+      });
+      opts.sourceStats?.record('browser', opts.intent, ok, Date.now() - attemptStart);
+      if (ok) {
+        results.push({
+          title: `半导小芯 - ${part}`,
+          url: page.url,
+          content: page.text.slice(0, 5_000),
+          provider: 'browser',
+        });
+      }
+    } catch (err) {
+      attempts.push({
+        provider: 'browser',
+        ok: false,
+        latencyMs: Date.now() - attemptStart,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      opts.sourceStats?.record('browser', opts.intent, false, Date.now() - attemptStart);
     }
   }
 

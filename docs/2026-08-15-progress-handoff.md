@@ -31,13 +31,14 @@
 19. **三站登录态重测（E91）**：`browser:fetch` 支持等待参数（`npm run browser:fetch -- "URL" 5000`），`browser:launch` 修复 `Get-Process -Name 'QQBrowser.exe'` 漏检导致调试端口未拉起的问题；立创会员中心显示已登录账户信息、半导小芯显示“退出登录/我的样品”、芯查查本地存储含 `PCuserInfo/PCtoken/SaasFrontToken` 用户凭据，详见 `docs/plans/2026-08-15-logged-in-sites-retest.md`。
 20. **登录态完整链路 E2E（E92）**：真实 `npm run dev` 查询自动复用 QQ 9222 会话，立创 datasheet 下载 2.08MB 且型号校验通过；同时把 `semiee.com` 纳入国内资料站、查询改写补“立创商城/芯查查/半导小芯 数据手册”自然词子查询，详见 `docs/plans/2026-08-15-logged-in-chain-e2e.md`。
 21. **push:hosts 整链演练（E93）**：dry-run 确认双 token；真实执行预检/add/commit/双端 push 成功，`data/hosting-events.jsonl` 双端 `ok: true`；顺带修复 `--message "..."` 空格写法不生效的问题，详见 `docs/plans/2026-08-15-push-hosts-rehearsal.md`。
+22. **半导小芯站内搜索兜底（E94）**：真实搜索引擎不索引 `semiee.com`，已补“点名半导小芯 → 浏览器直达 `searchModel` 站内搜索 → 融合保留该站证据”的完整链路；复测 evidence 含 `www.semiee.com`，详见 `docs/plans/2026-08-15-semiee-index-verify.md`。
 
 ## 明天继续（按优先级）
 
 1. 校准阈值保持 0.45/0.75（样本 22/10）；继续攒真实 accept/reject 样本，样本更多后再校准。
 2. `push:hosts` 整链演练已完成，参数解析已修复；后续改动可直接用脚本统一提交推送。
 3. OCR 后续优化：PaddleOCR 精度对比（缓存清理已完成）。
-4. QQ 浏览器当前保持 9222 运行，完整链路已验证；半导小芯纳入国内资料站后，观察真实搜索对 semiee.com 的索引命中。
+4. QQ 浏览器当前保持 9222 运行，完整链路已验证；半导小芯站内搜索兜底已落地，后续可扩展立创/芯查查的同类站内直达。
 
 ## 常用命令
 
@@ -59,5 +60,5 @@ npm run browser:status
 
 - 每日交接：`docs/2026-08-15-progress-handoff.md`（本文件）
 - 推进计划：`docs/plans/YYYY-MM-DD-<主题>.md`
-- 权威变更台账：v2.5 附录 A（当前到 E93）
+- 权威变更台账：v2.5 附录 A（当前到 E94）
 - 机器轨迹：`data/trajectory.jsonl`、`bench/search-metrics.jsonl`

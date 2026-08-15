@@ -6,6 +6,7 @@
 import {
   extractPartNumber,
   getDomainAuthority,
+  isDomesticDatasheetUrl,
   isHighTrustDatasheetUrl,
   isOfficialForQuery,
   OFFICIAL_MULTIPLIER,
@@ -363,6 +364,10 @@ const RELEVANCE_GATED_INTENTS = new Set<IntentKey>([
   'github_analysis',
 ]);
 
+function mentionsDomesticDatasheet(query: string): boolean {
+  return /立创|芯查查|半导小芯|szlcsc|xcc|semiee/i.test(query);
+}
+
 export function fuseResults(
   query: string,
   items: SearchResultItem[],
@@ -439,6 +444,16 @@ export function fuseResults(
   const sorted = [...kept].sort((a, b) => b.finalScore - a.finalScore).slice(0, topK);
   const lowConfidence =
     sorted.length === 0 || sorted[0].finalScore < LOW_CONFIDENCE_THRESHOLD;
+
+  // 用户点名国内资料站时，至少保留一条该站证据，避免被 top3 截断
+  if (mentionsDomesticDatasheet(query)) {
+    const domestic = fused
+      .filter((f) => isDomesticDatasheetUrl(f.result.url))
+      .sort((a, b) => b.finalScore - a.finalScore)[0];
+    if (domestic && !sorted.some((f) => f.result.url === domestic.result.url)) {
+      sorted.push(domestic);
+    }
+  }
 
   return {
     items: sorted,

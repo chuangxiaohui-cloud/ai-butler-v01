@@ -2313,6 +2313,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：dry-run 确认双 token 已配置；`push:hosts --yes` 双端 push 成功，`data/hosting-events.jsonl` 出现 github.com 与 gitee.com 各一条 `ok: true`；修复后 dry-run 能正确显示自定义提交信息；单测 255/255 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-push-hosts-rehearsal.md`。
 - affects: §11.4 | bench:na(new-param) 理由：发布脚本参数解析与整链演练，无 §5/§6 参数变更
 
+### 2026-08-15（半导小芯站内搜索兜底 E94）
+
+- **变更**：`search-loop` 在用户原始问题点名半导小芯且结果无 `semiee.com` 时，用浏览器会话直达 `https://www.semiee.com/search?searchModel=<型号>` 补证据；`runSearchLoop` 新增 `originalQuery`，避免 LLM 查询改写丢掉站点点名；融合层对“点名国内资料站”的查询至少保留一条该站证据，不再被 top3/阈值截断。
+- **验证**：真实查询 `STM32F103C8T6 半导小芯 数据手册` evidence 含 `www.semiee.com/search?searchModel=STM32F103C8T6`；新增 search-loop/fusion 单测，单测 257/257 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-semiee-index-verify.md`。
+- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：国内资料站站内搜索兜底，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

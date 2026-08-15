@@ -201,6 +201,36 @@ test('search-loop: 浏览器兜底失败后仍走 Tavily 官方域', async () =>
   assert.ok(r.attempts.some((a) => a.provider === 'tavily' && a.ok));
 });
 
+test('search-loop: 原始问题点名半导小芯时浏览器直达站内搜索', async () => {
+  const browser = {
+    calls: [] as string[],
+    async fetchPage(url: string) {
+      this.calls.push(url);
+      return {
+        url,
+        title: '半导小芯 - STM32F103C8T6',
+        text: '半导小芯为你找到 0 条结果 你要查询的可能是以下内容 STM32F103C8 72MHz',
+      };
+    },
+    downloadFile: async () => ({ ok: true, size: 1 }),
+  };
+  const r = await runSearchLoop('STM32F103C8T6 数据手册', {
+    originalQuery: 'STM32F103C8T6 半导小芯 数据手册',
+    intent: 'factual',
+    providers: [new FakeProvider()],
+    quota: new FakeQuota(),
+    browserSession: browser,
+    minResults: 1,
+  });
+  assert.ok(
+    browser.calls.some((u) =>
+      u.includes('semiee.com/search?searchModel=STM32F103C8T6'),
+    ),
+  );
+  assert.ok(r.results.some((x) => x.url.includes('semiee.com')));
+  assert.ok(r.attempts.some((a) => a.provider === 'browser' && a.ok));
+});
+
 test('search-loop: 已有高可信源但证据不足时浏览器补证并跳过 Tavily', async () => {
   const browser = {
     calls: [] as string[],

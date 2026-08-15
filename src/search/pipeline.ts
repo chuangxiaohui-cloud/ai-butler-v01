@@ -374,6 +374,7 @@ export async function pipeline(
     : null;
   const searchQuery = classified.searchQuery || prepared.cleanQuery;
   const search = await runSearchLoop(searchQuery, {
+    originalQuery: prepared.cleanQuery,
     intent: classified.intent,
     cacheKey: prepared.cacheKey,
     cachedValue: prepared.cachedValue,
