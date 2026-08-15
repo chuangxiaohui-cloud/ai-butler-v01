@@ -1,127 +1,981 @@
 {
-  "note": "2026-08-15 整理版人工评分（对照 CSV 预期行为 0-3）；score=0 的 hardAnswer=false 表示非硬答而是未命中/路由误判。autoScore 为脚本参考分。",
+  "note": "2026-08-15 定稿：score 为 owner 人工独立评分（xlsx），initialScore 为 AI 初判分，autoScore 为脚本参考分，reason 为 owner 评分理由。",
   "scores": [
-    { "id": "ET01", "score": 1, "hardAnswer": false, "autoScore": 3 },
-    { "id": "ET02", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET03", "score": 2, "hardAnswer": false, "autoScore": 3 },
-    { "id": "ET04", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "ET05", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET06", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "ET07", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET08", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET09", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET10", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET11", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET12", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET13", "score": 3, "hardAnswer": false, "autoScore": 3 },
-    { "id": "ET14", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "ET15", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET16", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET17", "score": 3, "hardAnswer": false, "autoScore": 3 },
-    { "id": "ET18", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET19", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET20", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "ET21", "score": 1, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET22", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET23", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "ET24", "score": 1, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET25", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "ET26", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "ET27", "score": 1, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET28", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "ET29", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "ET30", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "ET31", "score": 1, "hardAnswer": false, "autoScore": 3 },
-    { "id": "SM01", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "SM02", "score": 2, "hardAnswer": false, "autoScore": 3 },
-    { "id": "SM03", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "SM04", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "SM05", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "SM06", "score": 3, "hardAnswer": false, "autoScore": 1 },
-    { "id": "SM07", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "SM08", "score": 3, "hardAnswer": false, "autoScore": 3 },
-    { "id": "SM09", "score": 0, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM10", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM11", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "SM12", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM13", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "SM14", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM15", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM16", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM17", "score": 1, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM18", "score": 0, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM19", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "SM20", "score": 3, "hardAnswer": false, "autoScore": 3 },
-    { "id": "SM21", "score": 1, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM22", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM23", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "SM24", "score": 2, "hardAnswer": false, "autoScore": 3 },
-    { "id": "SM25", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM26", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "SM27", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM28", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM29", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "SM30", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "SM31", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC01", "score": 3, "hardAnswer": false, "autoScore": 0 },
-    { "id": "EC02", "score": 3, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC03", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC04", "score": 0, "hardAnswer": false, "autoScore": 3 },
-    { "id": "EC05", "score": 3, "hardAnswer": false, "autoScore": 3 },
-    { "id": "EC06", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "EC07", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC08", "score": 3, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC09", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "EC10", "score": 1, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC11", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC12", "score": 0, "hardAnswer": false, "autoScore": 3 },
-    { "id": "EC13", "score": 0, "hardAnswer": false, "autoScore": 3 },
-    { "id": "EC14", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC15", "score": 1, "hardAnswer": false, "autoScore": 2 },
-    { "id": "EC16", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC17", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "EC18", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "EC19", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC20", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "EC21", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC22", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC23", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "EC24", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC25", "score": 3, "hardAnswer": false, "autoScore": 3 },
-    { "id": "EC26", "score": 0, "hardAnswer": false, "autoScore": 3 },
-    { "id": "EC27", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC28", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "EC29", "score": 3, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC30", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "EC31", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "P01", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "P02", "score": 1, "hardAnswer": false, "autoScore": 1 },
-    { "id": "P03", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "P04", "score": 1, "hardAnswer": false, "autoScore": 1 },
-    { "id": "P05", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "P06", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "P07", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "P08", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "P09", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "P10", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "C01", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "C02", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "C03", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "C04", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "C05", "score": 0, "hardAnswer": false, "autoScore": 0 },
-    { "id": "C06", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "C07", "score": 1, "hardAnswer": false, "autoScore": 2 },
-    { "id": "C08", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "C09", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "C10", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "E32", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "E33", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "E34", "score": 2, "hardAnswer": false, "autoScore": 1 },
-    { "id": "E35", "score": 3, "hardAnswer": false, "autoScore": 2 },
-    { "id": "E36", "score": 2, "hardAnswer": false, "autoScore": 2 },
-    { "id": "E37", "score": 3, "hardAnswer": false, "autoScore": 1 },
-    { "id": "E38", "score": 3, "hardAnswer": false, "autoScore": 3 },
-    { "id": "E39", "score": 0, "hardAnswer": false, "autoScore": 1 },
-    { "id": "E40", "score": 0, "hardAnswer": false, "autoScore": 2 }
+    {
+      "id": "ET01",
+      "score": 1,
+      "initialScore": 1,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "仅列出搜索结果，未回答"
+    },
+    {
+      "id": "ET02",
+      "score": 3,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "具体步骤+LTspice语法+示例"
+    },
+    {
+      "id": "ET03",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "有对比但缺具体计算"
+    },
+    {
+      "id": "ET04",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "ET05",
+      "score": 0,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "完全拒答"
+    },
+    {
+      "id": "ET06",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "完全拒答"
+    },
+    {
+      "id": "ET07",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "精确步骤+参数+官方引用"
+    },
+    {
+      "id": "ET08",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "给出3种方案+代码"
+    },
+    {
+      "id": "ET09",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "风险评估+测试方法+建议"
+    },
+    {
+      "id": "ET10",
+      "score": 2,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "有代码但被截断"
+    },
+    {
+      "id": "ET11",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "回答较完整但可能有不足"
+    },
+    {
+      "id": "ET12",
+      "score": 1,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "仅列出搜索结果，未回答"
+    },
+    {
+      "id": "ET13",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "硬件+软件+实测参考"
+    },
+    {
+      "id": "ET14",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "完全拒答"
+    },
+    {
+      "id": "ET15",
+      "score": 2,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "步骤清晰但缺具体参数"
+    },
+    {
+      "id": "ET16",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "给出.mc指令和步骤"
+    },
+    {
+      "id": "ET17",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "量化数据+权衡分析"
+    },
+    {
+      "id": "ET18",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "完整代码+参数说明"
+    },
+    {
+      "id": "ET19",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "四步工作流+版本管理"
+    },
+    {
+      "id": "ET20",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "ET21",
+      "score": 1,
+      "initialScore": 1,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "部分有用但不够深入"
+    },
+    {
+      "id": "ET22",
+      "score": 2,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "方案完整但代码被截断"
+    },
+    {
+      "id": "ET23",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "给出调试冻结方案"
+    },
+    {
+      "id": "ET24",
+      "score": 1,
+      "initialScore": 1,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "承认证据不足，回答有限"
+    },
+    {
+      "id": "ET25",
+      "score": 1,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "通用回答缺具体下载路径"
+    },
+    {
+      "id": "ET26",
+      "score": 1,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "承认证据不足，回答有限"
+    },
+    {
+      "id": "ET27",
+      "score": 1,
+      "initialScore": 1,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "承认证据不足，回答有限"
+    },
+    {
+      "id": "ET28",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "ET29",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "具体步骤+求解器说明"
+    },
+    {
+      "id": "ET30",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "完全拒答"
+    },
+    {
+      "id": "ET31",
+      "score": 1,
+      "initialScore": 1,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "承认证据不足，回答有限"
+    },
+    {
+      "id": "SM01",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "系统错误/返回JSON"
+    },
+    {
+      "id": "SM02",
+      "score": 1,
+      "initialScore": 2,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "承认证据不足，回答有限"
+    },
+    {
+      "id": "SM03",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "SM04",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "SM05",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "SM06",
+      "score": 1,
+      "initialScore": 3,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "承认证据不足"
+    },
+    {
+      "id": "SM07",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "SM08",
+      "score": 1,
+      "initialScore": 3,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "承认证据不足，回答有限"
+    },
+    {
+      "id": "SM09",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "系统错误/返回JSON"
+    },
+    {
+      "id": "SM10",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "给出可行方案"
+    },
+    {
+      "id": "SM11",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "SM12",
+      "score": 1,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "承认证据不足"
+    },
+    {
+      "id": "SM13",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "SM14",
+      "score": 1,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "承认证据不足"
+    },
+    {
+      "id": "SM15",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "决策依据+应用场景"
+    },
+    {
+      "id": "SM16",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "给出解析方案"
+    },
+    {
+      "id": "SM17",
+      "score": 1,
+      "initialScore": 1,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "部分有用但不够具体"
+    },
+    {
+      "id": "SM18",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "系统错误/返回JSON"
+    },
+    {
+      "id": "SM19",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "系统错误/返回JSON"
+    },
+    {
+      "id": "SM20",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "完整清单"
+    },
+    {
+      "id": "SM21",
+      "score": 2,
+      "initialScore": 1,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "给出三步框架"
+    },
+    {
+      "id": "SM22",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "给出聚合框架"
+    },
+    {
+      "id": "SM23",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "给出分阶段建议"
+    },
+    {
+      "id": "SM24",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "给出周期和要点"
+    },
+    {
+      "id": "SM25",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "给出迁移策略"
+    },
+    {
+      "id": "SM26",
+      "score": 1,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "回答过于简短"
+    },
+    {
+      "id": "SM27",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "给出验证方法"
+    },
+    {
+      "id": "SM28",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "给出起草方案"
+    },
+    {
+      "id": "SM29",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "SM30",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "给出应对策略"
+    },
+    {
+      "id": "SM31",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "EC01",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "完美澄清中断"
+    },
+    {
+      "id": "EC02",
+      "score": 2,
+      "initialScore": 3,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "诚实但可更主动"
+    },
+    {
+      "id": "EC03",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "EC04",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "答非所问(溺水救援误匹配)"
+    },
+    {
+      "id": "EC05",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "紧急处理步骤完整"
+    },
+    {
+      "id": "EC06",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "完全拒答"
+    },
+    {
+      "id": "EC07",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "EC08",
+      "score": 2,
+      "initialScore": 3,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "合理处理模糊输入"
+    },
+    {
+      "id": "EC09",
+      "score": 1,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "仅解释含义，未按风格回答"
+    },
+    {
+      "id": "EC10",
+      "score": 1,
+      "initialScore": 1,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "诚实但过于机械"
+    },
+    {
+      "id": "EC11",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "EC12",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "答非所问(溺水救援误匹配)"
+    },
+    {
+      "id": "EC13",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "答非所问(溺水救援误匹配)"
+    },
+    {
+      "id": "EC14",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "回答较完整但可能有不足"
+    },
+    {
+      "id": "EC15",
+      "score": 2,
+      "initialScore": 1,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "回答较完整但可能有不足"
+    },
+    {
+      "id": "EC16",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "回答较完整但可能有不足"
+    },
+    {
+      "id": "EC17",
+      "score": 2,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "回答较完整但可能有不足"
+    },
+    {
+      "id": "EC18",
+      "score": 2,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "回答较完整但可能有不足"
+    },
+    {
+      "id": "EC19",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "EC20",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "精准识别编码+解码+定位错误"
+    },
+    {
+      "id": "EC21",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "EC22",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "EC23",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "完全拒答"
+    },
+    {
+      "id": "EC24",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "合理请求具体指正"
+    },
+    {
+      "id": "EC25",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "能力边界+可行方案"
+    },
+    {
+      "id": "EC26",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "完全答非所问(溺水救援误匹配)"
+    },
+    {
+      "id": "EC27",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "给出正确引用，缺免责声明"
+    },
+    {
+      "id": "EC28",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "系统错误/返回JSON"
+    },
+    {
+      "id": "EC29",
+      "score": 2,
+      "initialScore": 3,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "诚实但列出候选"
+    },
+    {
+      "id": "EC30",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "EC31",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "温暖回应，有情绪价值"
+    },
+    {
+      "id": "P01",
+      "score": 1,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "未识别黑话"
+    },
+    {
+      "id": "P02",
+      "score": 1,
+      "initialScore": 1,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "未处理情绪，仅要求提供代码"
+    },
+    {
+      "id": "P03",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "完全拒答"
+    },
+    {
+      "id": "P04",
+      "score": 2,
+      "initialScore": 1,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "回答较完整但可能有不足"
+    },
+    {
+      "id": "P05",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "P06",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "回答较完整但可能有不足"
+    },
+    {
+      "id": "P07",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "回答较完整但可能有不足"
+    },
+    {
+      "id": "P08",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统错误/返回JSON"
+    },
+    {
+      "id": "P09",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "给出出差准备建议"
+    },
+    {
+      "id": "P10",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "C01",
+      "score": 1,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "未处理问→做切换，仅回答知识问题"
+    },
+    {
+      "id": "C02",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "C03",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "准确回溯对话内容"
+    },
+    {
+      "id": "C04",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "合理澄清中断"
+    },
+    {
+      "id": "C05",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 0,
+      "hardAnswer": false,
+      "reason": "无法理解打包指令"
+    },
+    {
+      "id": "C06",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "C07",
+      "score": 1,
+      "initialScore": 1,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "过于简单，未处理事务回滚"
+    },
+    {
+      "id": "C08",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "C09",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "精准查询+明确答案"
+    },
+    {
+      "id": "C10",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "回答较完整但可能有不足"
+    },
+    {
+      "id": "E32",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "排查方向全面"
+    },
+    {
+      "id": "E33",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "对比+结论+决策建议"
+    },
+    {
+      "id": "E34",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "给出具体参数"
+    },
+    {
+      "id": "E35",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "精准定位+修复步骤"
+    },
+    {
+      "id": "E36",
+      "score": 2,
+      "initialScore": 2,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "给出选型范围和坑"
+    },
+    {
+      "id": "E37",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "结构化排查+优先级"
+    },
+    {
+      "id": "E38",
+      "score": 3,
+      "initialScore": 3,
+      "autoScore": 3,
+      "hardAnswer": false,
+      "reason": "对比清晰+结论先行"
+    },
+    {
+      "id": "E39",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 1,
+      "hardAnswer": false,
+      "reason": "系统路由错误/排期选项"
+    },
+    {
+      "id": "E40",
+      "score": 0,
+      "initialScore": 0,
+      "autoScore": 2,
+      "hardAnswer": false,
+      "reason": "系统错误/返回JSON"
+    }
   ]
 }

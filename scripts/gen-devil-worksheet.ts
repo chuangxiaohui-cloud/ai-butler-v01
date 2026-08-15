@@ -26,12 +26,12 @@ for (const line of readFileSync(jsonlPath, 'utf-8').split(/\r?\n/)) {
   if (line.trim()) entries.push(JSON.parse(line) as DevilWorksheetEntry);
 }
 
-const scoresById = new Map<string, number>();
+const scoresById = new Map<string, { score: number; initialScore?: number }>();
 if (existsSync(scoresPath)) {
   const scores = (JSON.parse(readFileSync(scoresPath, 'utf-8')) as {
-    scores: Array<{ id: string; score: number }>;
+    scores: Array<{ id: string; score: number; initialScore?: number }>;
   }).scores;
-  for (const s of scores) scoresById.set(s.id, s.score);
+  for (const s of scores) scoresById.set(s.id, { score: s.score, initialScore: s.initialScore });
 }
 
 writeFileSync(outPath, renderWorksheetV01(entries, scoresById), 'utf-8');

@@ -322,13 +322,13 @@ ${rows}
 }
 
 function renderWorksheet(entries: RunEntry[]): string {
-  const scoresById = new Map<string, number>();
+  const scoresById = new Map<string, { score: number; initialScore?: number }>();
   if (existsSync(scoresPath)) {
     try {
       const scores = (JSON.parse(readFileSync(scoresPath, 'utf-8')) as {
-        scores: Array<{ id: string; score: number }>;
+        scores: Array<{ id: string; score: number; initialScore?: number }>;
       }).scores;
-      for (const s of scores) scoresById.set(s.id, s.score);
+      for (const s of scores) scoresById.set(s.id, { score: s.score, initialScore: s.initialScore });
     } catch {
       // 评分未生成时保留空评分位
     }

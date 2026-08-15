@@ -15,7 +15,8 @@ interface SheetRow {
   query: string;
   expected: string;
   focus: string;
-  myScore: number;
+  initialScore: number;
+  finalScore: number;
 }
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,7 +46,7 @@ for (const line of readFileSync(jsonlPath, 'utf-8').split(/\r?\n/)) {
 }
 
 const scores = (JSON.parse(readFileSync(scoresPath, 'utf-8')) as {
-  scores: Array<{ id: string; score: number }>;
+  scores: Array<{ id: string; score: number; initialScore?: number }>;
 }).scores;
 
 const sheet: SheetRow[] = scores.map((s) => {
@@ -56,7 +57,8 @@ const sheet: SheetRow[] = scores.map((s) => {
     query: r?.query ?? '',
     expected: r?.expected ?? '',
     focus: r?.focus ?? '',
-    myScore: s.score,
+    initialScore: s.initialScore ?? s.score,
+    finalScore: s.score,
   };
 });
 
@@ -69,7 +71,7 @@ const header = ['ID', '卷册', '题目', '预期行为', '考察点', '我的�
 const csvLines = [
   header.map(escCsv).join(','),
   ...sheet.map((r) =>
-    [r.id, r.volume, r.query, r.expected, r.focus, String(r.myScore), '', '']
+    [r.id, r.volume, r.query, r.expected, r.focus, String(r.initialScore), String(r.finalScore), '']
       .map(escCsv)
       .join(','),
   ),
@@ -85,7 +87,7 @@ const md = [
   '|---|------|------|----------|--------|-----------|--------------|------|',
   ...sheet.map((r) => {
     const esc = (t: string) => t.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
-    return `| ${r.id} | ${esc(r.volume)} | ${esc(r.query)} | ${esc(r.expected)} | ${esc(r.focus)} | ${r.myScore} |  |  |`;
+    return `| ${r.id} | ${esc(r.volume)} | ${esc(r.query)} | ${esc(r.expected)} | ${esc(r.focus)} | ${r.initialScore} | ${r.finalScore} |  |`;
   }),
   '',
 ].join('\n');

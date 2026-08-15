@@ -31,12 +31,18 @@ export interface DevilWorksheetEntry {
 
 export function renderWorksheetV01(
   entries: DevilWorksheetEntry[],
-  scoresById: Map<string, number>,
+  scoresById: Map<string, { score: number; initialScore?: number }>,
 ): string {
   const sections = entries
     .map((e) => {
       const r = e.result;
       const score = scoresById.get(e.row.id);
+      const scoreLine =
+        score === undefined
+          ? '- 相关性(0-3)：____'
+          : score.initialScore === undefined
+            ? `- 相关性(0-3)：${score.score}`
+            : `- 相关性(0-3)：${score.score}（初判：${score.initialScore}）`;
       const evidenceLines = r && r.evidence.length > 0
         ? r.evidence
             .map(
@@ -56,7 +62,7 @@ export function renderWorksheetV01(
         `- 预期行为：${e.row.expected}\n` +
         `- 考察点：${e.row.focus}\n` +
         `- 证据来源：\n${evidenceLines}\n` +
-        `- 相关性(0-3)：____${score !== undefined ? `（我的初判分：${score}）` : ''}\n\n` +
+        `${scoreLine}\n\n` +
         `${answer}\n`;
     })
     .join('\n---\n\n');
