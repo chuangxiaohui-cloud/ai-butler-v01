@@ -1,0 +1,737 @@
+{
+  "note": "复制为 scores.json 后人工回填 0-3；score=0 时 hardAnswer 必须 false。",
+  "scores": [
+    {
+      "id": "ET01",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "ET02",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET03",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "ET04",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "ET05",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET06",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "ET07",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET08",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET09",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET10",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET11",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET12",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET13",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "ET14",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "ET15",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET16",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET17",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "ET18",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET19",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET20",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "ET21",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET22",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET23",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "ET24",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET25",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "ET26",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "ET27",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET28",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "ET29",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "ET30",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "ET31",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "SM01",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "SM02",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "SM03",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "SM04",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "SM05",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "SM06",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "SM07",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "SM08",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "SM09",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM10",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM11",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "SM12",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM13",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "SM14",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM15",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM16",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM17",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM18",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM19",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "SM20",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "SM21",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM22",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM23",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "SM24",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "SM25",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM26",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "SM27",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM28",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM29",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "SM30",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "SM31",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC01",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "EC02",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC03",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC04",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "EC05",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "EC06",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "EC07",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC08",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC09",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "EC10",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC11",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC12",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "EC13",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "EC14",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC15",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "EC16",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC17",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "EC18",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "EC19",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC20",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "EC21",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC22",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC23",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "EC24",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC25",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "EC26",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "EC27",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC28",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "EC29",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC30",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC31",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "P01",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "P02",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "P03",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "P04",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "P05",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "P06",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "P07",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "P08",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "P09",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "P10",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "C01",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "C02",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "C03",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "C04",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "C05",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "C06",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "C07",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "C08",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "C09",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "C10",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "E31",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "E32",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "E33",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "E34",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "E36",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    },
+    {
+      "id": "E37",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "E38",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 3
+    },
+    {
+      "id": "E39",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "E40",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    }
+  ]
+}

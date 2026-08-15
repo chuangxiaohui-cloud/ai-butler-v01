@@ -2343,6 +2343,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`npm run build` 通过；按参考截图重排为深色 AI 工作台风格（近黑面板 + 蓝色强调），提问框左下新增 `+` 上传菜单（图片/文件/工程文件夹）与 Ask/Craft/Plan，聊天输入框支持直接粘贴图片，提问框右下角提供 DeepSeek/MiniMax/智谱 模型切换器；模型名已按官方文档核对；Playwright 检查工程/知识/移动三个视口无横向溢出、控制台 0 错误；开发服务器 `http://127.0.0.1:5173/`；详见 `docs/plans/2026-08-15-three-column-ui-prototype.md`。
 - affects: §4.1,§9 | bench:na(new-param) 理由：三栏 UI 原型落地，无 §5/§6 参数变更
 
+### 2026-08-15（魔鬼训练 v2.5 全量跑分 E99）
+
+- **变更**：新增 `scripts/bench-devil-v25.ts` 与 `npm run bench:devil-v25`，读取 `AI-Agent_魔鬼训练_v2.5.csv`（122 条）批量跑 pipeline，增量落盘 `bench/devil-v25/results.jsonl`，输出报告/人工评分表/参考分模板；完成 122 条全量基线。
+- **验证**：122 条全部返回，0 超时，总耗时约 702s；人工对照“预期行为”评分 0-3：均分 1.36，≥2 分 61 条，0 分 44 条；发现路由误判（plan/write_doc/send_message 抢占回答型意图）、紧急模板误触（造核弹/rm -rf/破解 WiFi 返回触电急救话术）、记忆污染（EC10 把同轮会话冒充昨日记忆）；详见 `docs/plans/2026-08-15-devil-training-v25-review.md`。
+- affects: §3.1,§5,§6 | bench:B-20260815-01 | E99 新增 122 条魔鬼训练评测基线，暴露路由与安全规则缺口
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
