@@ -41,5 +41,5 @@
 
 - 验证：`npm run pdf:text -- data/datasheets/TPS5430.pdf TPS5430 500kHz` 提取 48,622 字符/3038 行，命中 `TPS5430`、`500kHz`；STM32 文件为证书 PDF，中文正常提取 1,361 字符。
 - 测试：单测 244/244 + 集成 17/17 全绿；doc-lint 0 FAIL/0 WARN。
-- 提交：<hash> · 推送：Gitee / GitHub
+- 提交：`0ebacd0` · 推送：Gitee / GitHub
 - 遗留事项：扫描件 OCR（PaddleOCR）仍未接入；`scripts/pdf_text.py` 已返回 `scanned` 标记，下一步可把 PyMuPDF 渲染页图 + PaddleOCR 接入。
