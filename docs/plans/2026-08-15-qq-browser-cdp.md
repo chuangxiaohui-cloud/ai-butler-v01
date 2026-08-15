@@ -36,5 +36,5 @@
 
 - 验证：`npm run browser:launch -- qq` 后 9222 LISTENING；`browser:cdp -- 9222` 持久化端口；新进程 `browser:fetch` 自动复用 QQ 会话，sessionDomains 含 szlcsc/xcc/taobao/jd/github 等大量登录域。
 - 测试：单测 255/255 + 集成 17/17 全绿；doc-lint 0 FAIL/0 WARN。
-- 提交：<hash> · 推送：Gitee / GitHub
+- 提交：`f0ed456` · 推送：Gitee / GitHub
 - 遗留事项：QQ 浏览器保持 9222 运行中，Agent 已自动复用；后续 QQ 升级路径变化时重跑 `browser:launch -- qq` 即可。
