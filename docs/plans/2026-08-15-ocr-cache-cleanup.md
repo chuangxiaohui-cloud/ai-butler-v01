@@ -32,5 +32,5 @@
 
 - 验证：临时缓存目录预置 2 个旧缓存 + 上限 2，OCR 后只保留 2 个文件（新缓存 + 较新旧缓存），最旧被淘汰。
 - 测试：单测 255/255 + 集成 17/17 全绿；doc-lint 0 FAIL/0 WARN。
-- 提交：<hash> · 推送：Gitee / GitHub
+- 提交：`ffba880` · 推送：Gitee / GitHub
 - 遗留事项：PaddleOCR 精度对比未做。
