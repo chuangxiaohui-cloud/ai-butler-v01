@@ -38,3 +38,6 @@ data/
 # 其他
 clean_*
 preview_*
+
+# Office 临时锁文件
+~$*
