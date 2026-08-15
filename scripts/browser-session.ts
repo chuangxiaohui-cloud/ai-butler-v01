@@ -26,8 +26,13 @@ async function main(): Promise<void> {
 
   if (subcommand === 'fetch') {
     const url = process.argv[3];
-    if (!url) throw new Error('用法：npm run browser:fetch -- "https://..."');
-    const page = await browserSession.fetchPage(url);
+    const waitMs = Number(process.argv[4] ?? 0);
+    if (!url) throw new Error('用法：npm run browser:fetch -- "https://..." [waitMs]');
+    const page = await browserSession.fetchPage(
+      url,
+      30_000,
+      Number.isFinite(waitMs) && waitMs > 0 ? waitMs : 0,
+    );
     console.log(JSON.stringify({
       url: page.url,
       title: page.title,

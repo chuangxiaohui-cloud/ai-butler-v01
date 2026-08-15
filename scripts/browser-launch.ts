@@ -42,8 +42,9 @@ const BROWSERS: Record<string, { exe: string; profile: string; processName: stri
 
 function isRunning(processName: string): boolean {
   try {
+    const name = processName.replace(/\.exe$/i, '');
     const out = execSync(
-      `powershell -NoProfile -Command "Get-Process -Name '${processName}' -ErrorAction SilentlyContinue | Select-Object -First 1"`,
+      `powershell -NoProfile -Command "Get-Process -Name '${name}' -ErrorAction SilentlyContinue | Select-Object -First 1"`,
       { encoding: 'utf8', windowsHide: true },
     );
     return out.trim().length > 0;

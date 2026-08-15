@@ -1,6 +1,6 @@
 # 进度交接 2026-08-15（v0.2b 续作）
 
-> 当前分支：`v0.2b`｜最新提交：`8072bda`｜Gitee 与 GitHub 均已同步。
+> 当前分支：`v0.2b`｜最新提交：`b1d6404`｜Gitee 与 GitHub 待同步。
 
 ## 当前状态
 
@@ -28,13 +28,14 @@
 16. **扫描件 OCR 单页缓存（E89）**：按页图 SHA-256 落盘 `data/ocr-cache/`，同一扫描页第二次直接读缓存；TPS5430 单页扫描第一次约 18s、第二次约 2s，详见 `docs/plans/2026-08-15-ocr-page-cache.md`。
 17. **OCR 缓存清理策略（E90）**：`PDF_OCR_CACHE_MAX_FILES` 默认 200，写缓存后按 mtime 淘汰最旧；上限 2 验证只保留 2 个文件，详见 `docs/plans/2026-08-15-ocr-cache-cleanup.md`。
 18. **需登录站点链路验证**：新进程自动连 QQ 9222 抓立创会员中心，正确跳转嘉立创统一登录页；当前该站未登录，会话复用机制生效，详见 `docs/plans/2026-08-15-logged-in-site-verify.md`。
+19. **三站登录态重测（E91）**：`browser:fetch` 支持等待参数（`npm run browser:fetch -- "URL" 5000`），`browser:launch` 修复 `Get-Process -Name 'QQBrowser.exe'` 漏检导致调试端口未拉起的问题；立创会员中心显示已登录账户信息、半导小芯显示“退出登录/我的样品”、芯查查本地存储含 `PCuserInfo/PCtoken/SaasFrontToken` 用户凭据，详见 `docs/plans/2026-08-15-logged-in-sites-retest.md`。
 
 ## 明天继续（按优先级）
 
 1. 校准阈值保持 0.45/0.75（样本 22/10）；继续攒真实 accept/reject 样本，样本更多后再校准。
 2. `push:hosts` 本次未跑（已直接手动推送两端）；后续可整链演练。
 3. OCR 后续优化：PaddleOCR 精度对比（缓存清理已完成）。
-4. QQ 浏览器当前保持 9222 运行，Agent 已自动复用；用户登录立创/芯查查后可复测完整链路。
+4. QQ 浏览器当前保持 9222 运行，Agent 已自动复用；立创/芯查查/半导小芯登录态已复测通过，可继续验证完整链路。
 
 ## 常用命令
 
@@ -46,11 +47,15 @@ npm run dev -- "你的问题"
 npm run datasheet -- "https://item.szlcsc.com/..." 型号
 npm run route:cases
 npm run route:feedback
+npm run browser:launch -- qq
+npm run browser:cdp -- 9222
+npm run browser:fetch -- "需要登录的URL" 5000
+npm run browser:status
 ```
 
 ## 记录位置
 
 - 每日交接：`docs/2026-08-15-progress-handoff.md`（本文件）
 - 推进计划：`docs/plans/YYYY-MM-DD-<主题>.md`
-- 权威变更台账：v2.5 附录 A（当前到 E90）
+- 权威变更台账：v2.5 附录 A（当前到 E91）
 - 机器轨迹：`data/trajectory.jsonl`、`bench/search-metrics.jsonl`
