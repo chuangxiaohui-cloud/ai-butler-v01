@@ -15,6 +15,9 @@ interface PdfTextResult {
   ok: boolean;
   text?: string;
   scanned?: boolean;
+  ocr?: boolean;
+  ocrAvailable?: boolean;
+  ocrError?: string;
   pageCount?: number;
   textPages?: number;
   error?: string;
@@ -110,7 +113,9 @@ export async function parseDocumentFile(file: RawFileLike): Promise<string> {
     if (text) return text;
     throw new Error(
       viaPython?.scanned
-        ? 'PDF 解析：扫描件无文本层，暂不支持 OCR（PaddleOCR 未接入）；建议改用厂商网页参数页或上传带文本层的 PDF'
+        ? viaPython.ocrAvailable === false
+          ? 'PDF 解析：扫描件无文本层，且 OCR 引擎未安装；请运行 `python -m pip install rapidocr_onnxruntime` 后重试'
+          : 'PDF 解析：扫描件无文本层，OCR 识别失败；建议改用厂商网页参数页或上传带文本层的 PDF'
         : 'PDF 解析暂不支持扫描件/无文本层/复杂版式',
     );
   }

@@ -2252,6 +2252,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`item.szlcsc.com/9243.html + STM32F103C8T6` 下载校验通过（179,070 字符）；`515651.html + STM32F103C8T6`（TPS5430DDA 页）拒绝误存并列出 6 次不匹配尝试，ISO/IEC 认证证书也被拦截；新增 datasheet-verify 单测 6 条；单测 250/250 + 集成 17/17 全绿。
 - affects: §7 | bench:na(new-param) 理由：datasheet 下载内容校验，无 §5/§6 参数变更
 
+### 2026-08-15（扫描件 OCR E84）
+
+- **变更**：`scripts/pdf_text.py` 对“有图片但无文本层”的页面用 PyMuPDF 渲染 2x 页图并调用 RapidOCR（ONNX）识别，识别文本并入返回；返回 `ocr/ocrAvailable/ocrError`；`document-parser.ts` 在 OCR 引擎缺失时给出 `pip install rapidocr_onnxruntime` 安装指引。
+- **依据**：本机未安装 PaddleOCR，且清华镜像缺包；改用官方 PyPI 可安装的 RapidOCR ONNX 轻量引擎，落实 §7.3“PDF 扫描件 OCR”能力。
+- **验证**：TPS5430 第一页渲染成纯图片 PDF，OCR 提取 1,299 字符并命中 `TPS5430`/`5.5V`/`500kHz`；`PDF_OCR=0` 时返回安装指引；单测 250/250 + 集成 17/17 全绿。
+- affects: §7 | bench:na(new-param) 理由：扫描件 OCR 引擎接入，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

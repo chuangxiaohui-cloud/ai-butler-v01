@@ -18,14 +18,15 @@
 6. **强时效查询旧闻防护（E81）**：`中国空间站现在有哪几个航天员在太空` 不再引用 2025-04-26 旧闻，复测回答“截至今天暂无可靠更新”，证据为 2026-06-17 腾讯新闻，gate `low_confidence`；新增时效敏感判定 + news 权重 + 合成时效红线，详见 `docs/plans/2026-08-15-freshness-guard.md`。
 7. **Datasheet PDF 全文解析（E82）**：新增 `scripts/pdf_text.py`（PyMuPDF rawdict 重建文本，解决 CID 字体乱码），`document-parser` PDF 分支优先走 PyMuPDF、失败回退 FlateDecode + Tj/TJ；新增 `npm run pdf:text`；TPS5430 真实 PDF 提取 48,622 字符并命中型号/频率关键词，详见 `docs/plans/2026-08-15-pdf-text-layer.md`。
 8. **datasheet 下载内容校验（E83）**：新增型号前缀校验，`npm run datasheet` 下载后解析文本确认内容匹配，不匹配就删除误存文件并换下一个候选；`515651.html + STM32F103C8T6`（TPS5430DDA 页）已拒绝误存，`9243.html` 正确下载 ST 官方 datasheet，详见 `docs/plans/2026-08-15-datasheet-verify.md`。
+9. **扫描件 OCR（E84）**：`scripts/pdf_text.py` 对无文本层扫描页渲染 2x 图并调用 RapidOCR（ONNX）识别；TPS5430 扫描版命中 `TPS5430`/`5.5V`/`500kHz`；OCR 引擎缺失时给出安装指引，详见 `docs/plans/2026-08-15-pdf-ocr.md`。
 
 ## 明天继续（按优先级）
 
-1. 扫描件 OCR：`scripts/pdf_text.py` 已返回 `scanned` 标记，接入 PyMuPDF 页图渲染 + PaddleOCR（本机尚未安装）后补全老旧 datasheet 场景。
-2. 继续用 `npm run route:feedback` 攒 accept/reject 样本，够 10 条后跑 `npm run route:apply-calibration`。
-3. 需要用户配合的浏览器项：关掉 QQ浏览器 → `npm run browser:launch -- qq` → `npm run browser:cdp -- 9222`，验证登录态自动兜底。
-4. 继续按 `push:hosts` 流程同步后续改动。
-5. 强时效查询可继续增强：把“载人航天小喇叭”/中国载人航天工程办公室官方发布登记为航天状态权威跟踪源，进一步压缩“暂无可靠更新”场景。
+1. 继续用 `npm run route:feedback` 攒 accept/reject 样本，够 10 条后跑 `npm run route:apply-calibration`。
+2. 需要用户配合的浏览器项：关掉 QQ浏览器 → `npm run browser:launch -- qq` → `npm run browser:cdp -- 9222`，验证登录态自动兜底。
+3. 继续按 `push:hosts` 流程同步后续改动。
+4. 强时效查询可继续增强：把“载人航天小喇叭”/中国载人航天工程办公室官方发布登记为航天状态权威跟踪源，进一步压缩“暂无可靠更新”场景。
+5. OCR 后续优化：多页扫描件限页数、单页缓存，避免二次取证超时；可与 PaddleOCR 再对比精度。
 
 ## 常用命令
 
@@ -43,5 +44,5 @@ npm run route:feedback
 
 - 每日交接：`docs/2026-08-15-progress-handoff.md`（本文件）
 - 推进计划：`docs/plans/YYYY-MM-DD-<主题>.md`
-- 权威变更台账：v2.5 附录 A（当前到 E83）
+- 权威变更台账：v2.5 附录 A（当前到 E84）
 - 机器轨迹：`data/trajectory.jsonl`、`bench/search-metrics.jsonl`
