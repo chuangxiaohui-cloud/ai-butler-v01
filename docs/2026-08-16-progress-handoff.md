@@ -1,6 +1,6 @@
 # 进度交接 2026-08-16（v0.2b 续作）
 
-> 当前分支：`v0.2b`｜最新提交：待同步。
+> 当前分支：`v0.2b`｜最新提交：`2563ba3`｜Gitee 与 GitHub 待同步。
 
 ## 今日已收口
 
@@ -21,4 +21,3 @@ npm run score-sheet:devil-v25
 npm run review:devil-v25
 npm run evidence:devil-v25
 ```
-
