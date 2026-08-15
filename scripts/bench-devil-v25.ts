@@ -22,6 +22,7 @@ import { fileURLToPath } from 'url';
 
 import type { AnswerResult } from '../src/search/pipeline.js';
 import { pipeline } from '../src/search/pipeline.js';
+import { renderWorksheetV01, type DevilWorksheetEntry } from './devil-worksheet-lib.js';
 
 interface DevilRow {
   volume: string;
@@ -321,22 +322,18 @@ ${rows}
 }
 
 function renderWorksheet(entries: RunEntry[]): string {
-  const rows = entries
-    .map((e) => {
-      const r = e.result;
-      return `| ${e.row.id} | ${escMd(e.row.volume)} | ${escMd(e.row.query)} | ${escMd(e.row.expected)} | ${
-        r ? escMd(r.answer) : e.error ?? '无回答'
-      } |  | ${e.autoScore ?? 0} |`;
-    })
-    .join('\n');
-  return `# 魔鬼训练 v2.5 人工评分表
-
-> 相关性口径 0-3：3=完整满足预期行为；2=基本满足；1=部分相关；0=未命中/硬答。
-
-| ID | 卷册 | 指令 | 预期行为 | Agent 回答 | 人工评分(0-3) | 参考分 |
-|---|------|------|----------|-----------|--------------|--------|
-${rows}
-`;
+  const scoresById = new Map<string, number>();
+  if (existsSync(scoresPath)) {
+    try {
+      const scores = (JSON.parse(readFileSync(scoresPath, 'utf-8')) as {
+        scores: Array<{ id: string; score: number }>;
+      }).scores;
+      for (const s of scores) scoresById.set(s.id, s.score);
+    } catch {
+      // 评分未生成时保留空评分位
+    }
+  }
+  return renderWorksheetV01(entries as unknown as DevilWorksheetEntry[], scoresById);
 }
 
 async function main(): Promise<void> {
