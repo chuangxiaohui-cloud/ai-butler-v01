@@ -22,13 +22,14 @@
 10. **路由校准样本达标（10/10）**：给 5 条 accept + 2 条 reject，`route:apply-calibration` 生成提案 `routeConfidenceLow 0.65` / `routeConfidenceHigh 0.75`，待人工确认后写回 PARAM，详见 `docs/plans/2026-08-15-route-calibration.md`。
 11. **航天状态权威源（E85）**：`cmse.gov.cn` / `cnsa.gov.cn` 等登记为航天官方源，航天员/空间站/在轨查询自动补 `site:` 子查询；复测证据变为 `www.cmse.gov.cn` [hard]，回答仍诚实“截至今天暂无可靠更新”，详见 `docs/plans/2026-08-15-space-official-source.md`。
 12. **校准按决策类型细分（E86）**：reject 分“该澄清却直答”与“该直答却澄清”，后者不再抬高 `routeConfidenceLow`；重跑校准提案修正为 0.45/0.75，不再误伤 0.6 搜索，详见 `docs/plans/2026-08-15-calibration-refine.md`。
+13. **QQ浏览器 CDP 登录态验证（E87）**：`browser:launch` 自动选最新 QQ 版本、PowerShell 进程检测、`detached+unref` 启动；9222 监听成功，新进程自动复用 QQ 会话，sessionDomains 含 szlcsc/xcc/taobao/jd/github 等大量登录域，详见 `docs/plans/2026-08-15-qq-browser-cdp.md`。
 
 ## 明天继续（按优先级）
 
 1. 校准阈值保持 0.45/0.75；继续攒真实 accept/reject 样本，样本更多后再校准。
-2. 需要用户配合的浏览器项：关掉 QQ浏览器 → `npm run browser:launch -- qq` → `npm run browser:cdp -- 9222`，验证登录态自动兜底。
-3. 继续按 `push:hosts` 流程同步后续改动。
-4. OCR 后续优化：多页扫描件限页数、单页缓存，避免二次取证超时；可与 PaddleOCR 再对比精度。
+2. 继续按 `push:hosts` 流程同步后续改动。
+3. OCR 后续优化：多页扫描件限页数、单页缓存，避免二次取证超时；可与 PaddleOCR 再对比精度。
+4. QQ 浏览器当前保持 9222 运行，Agent 已自动复用；后续可继续验证需登录站点的完整抓取链路。
 
 ## 常用命令
 
@@ -46,5 +47,5 @@ npm run route:feedback
 
 - 每日交接：`docs/2026-08-15-progress-handoff.md`（本文件）
 - 推进计划：`docs/plans/YYYY-MM-DD-<主题>.md`
-- 权威变更台账：v2.5 附录 A（当前到 E86）
+- 权威变更台账：v2.5 附录 A（当前到 E87）
 - 机器轨迹：`data/trajectory.jsonl`、`bench/search-metrics.jsonl`

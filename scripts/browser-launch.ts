@@ -4,6 +4,28 @@
  */
 
 import { execSync, spawn } from 'node:child_process';
+import { existsSync, readdirSync } from 'node:fs';
+
+const QQ_BROWSER_DIR = 'C:/Program Files/Tencent/QQBrowser';
+
+function latestQqExe(): string {
+  const dirs = readdirSync(QQ_BROWSER_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && /^\d+\.\d+\.\d+\.\d+$/.test(d.name))
+    .map((d) => d.name)
+    .sort((a, b) => {
+      const pa = a.split('.').map(Number);
+      const pb = b.split('.').map(Number);
+      for (let i = 0; i < 4; i += 1) {
+        if ((pb[i] ?? 0) !== (pa[i] ?? 0)) return (pb[i] ?? 0) - (pa[i] ?? 0);
+      }
+      return 0;
+    });
+  for (const dir of dirs) {
+    const exe = `${QQ_BROWSER_DIR}/${dir}/QQBrowser.exe`;
+    if (existsSync(exe)) return exe;
+  }
+  throw new Error('未找到 QQ浏览器可执行文件');
+}
 
 const BROWSERS: Record<string, { exe: string; profile: string; processName: string }> = {
   thorium: {
@@ -12,7 +34,7 @@ const BROWSERS: Record<string, { exe: string; profile: string; processName: stri
     processName: 'thorium.exe',
   },
   qq: {
-    exe: 'C:/Program Files/Tencent/QQBrowser/21.7.6019.400/QQBrowser.exe',
+    exe: latestQqExe(),
     profile: 'C:/Users/zhxh/AppData/Local/Tencent/QQBrowser/User Data',
     processName: 'QQBrowser.exe',
   },
@@ -20,11 +42,11 @@ const BROWSERS: Record<string, { exe: string; profile: string; processName: stri
 
 function isRunning(processName: string): boolean {
   try {
-    const list = execSync(`tasklist /FI "IMAGENAME eq ${processName}" /FO CSV /NH`, {
-      encoding: 'utf8',
-      windowsHide: true,
-    });
-    return list.includes(processName);
+    const out = execSync(
+      `powershell -NoProfile -Command "Get-Process -Name '${processName}' -ErrorAction SilentlyContinue | Select-Object -First 1"`,
+      { encoding: 'utf8', windowsHide: true },
+    );
+    return out.trim().length > 0;
   } catch {
     return false;
   }
@@ -49,8 +71,9 @@ const child = spawn(
     `--user-data-dir=${config.profile}`,
     '--no-first-run',
   ],
-  { stdio: 'ignore' },
+  { stdio: 'ignore', detached: true },
 );
+child.unref();
 
 child.on('error', (err) => {
   throw new Error(`${browser} 启动失败：${err.message}`);

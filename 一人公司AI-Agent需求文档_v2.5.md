@@ -2271,6 +2271,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：10/10 校准样本重跑 `route:apply-calibration`，提案从 low=0.65 修正为 low=0.45/high=0.75（与现值一致，不误伤 0.6 搜索）；新增单测 1 条；单测 255/255 + 集成 17/17 全绿。
 - affects: §12.3 | bench:na(new-param) 理由：校准算法修正，PARAM 值未变更
 
+### 2026-08-15（QQ浏览器 CDP 登录态验证 E87）
+
+- **变更**：`browser-launch.ts` 自动选择最新版 QQ浏览器（不再硬编码旧版本），进程检测改用 PowerShell `Get-Process`（避免受限环境 `tasklist` 拒绝访问误判未运行），`spawn` 加 `detached + unref` 让浏览器在命令退出后继续监听调试端口。
+- **验证**：`browser:launch -- qq` 后 9222 LISTENING；`browser:cdp -- 9222` 持久化端口；新进程 `browser:fetch` 自动复用 QQ 会话，sessionDomains 含 szlcsc/xcc/taobao/jd/github 等大量登录域；单测 255/255 + 集成 17/17 全绿。
+- affects: §1.2,§8.2 | bench:na(new-param) 理由：浏览器 CDP 启动与登录态复用，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
