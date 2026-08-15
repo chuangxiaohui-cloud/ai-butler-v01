@@ -35,10 +35,11 @@
 23. **立创/芯查查站内直达（E95）**：三站统一为 `DOMESTIC_DATASHEET_SITES` 站点→站内搜索映射（立创 `so.szlcsc.com/global.html?k=`、芯查查 `chip/material/search?title=`、半导小芯 `searchModel`）；真实查询 evidence 已含 `szlcsc.com` 与 `xcc.com`，详见 `docs/plans/2026-08-15-domestic-site-direct-search.md`。
 24. **source-stats SQLite WAL 并发修复（E96）**：`SearchSourceStats` 启用 WAL + busy_timeout，两条 `npm run dev` 并发冒烟不再报 `database is locked`；新增多实例写同一库单测，详见 `docs/plans/2026-08-15-sqlite-wal.md`。
 25. **PaddleOCR 精度对比（E97）**：`pdf_text.py` 支持 `PDF_OCR_ENGINE=rapid|paddle`，Paddle 自动关闭默认 MKLDNN；TPS5430 扫描样本冷启动 RapidOCR 17.16s/1299 字符、PaddleOCR 117.74s/1224 字符，关键词均命中；默认 RapidOCR，Paddle 为高质量慢速备选，详见 `docs/plans/2026-08-15-paddle-ocr-compare.md`。
+26. **路由校准样本扩到 26**：把 ST 数据手册、立创、芯查查、半导小芯 4 条真实查询补为 accept，反馈样本 26/10（accept 19 / reject 7）；`route:apply-calibration` 提案仍稳定在 0.45/0.75，详见 `docs/plans/2026-08-15-calibration-samples-26.md`。
 
 ## 明天继续（按优先级）
 
-1. 校准阈值保持 0.45/0.75（样本 22/10）；继续攒真实 accept/reject 样本，样本更多后再校准。
+1. 校准阈值保持 0.45/0.75（样本 26/10，accept 19 / reject 7）；继续攒真实 accept/reject 样本，样本更多后再校准。
 2. `push:hosts` 整链演练已完成，参数解析已修复；后续改动可直接用脚本统一提交推送。
 3. OCR 后续优化：PaddleOCR 精度对比（缓存清理已完成）。
 4. OCR 双引擎对比已完成，默认 RapidOCR；下一步按优先级回到路由校准样本积累（0.45/0.75）或继续验证需要登录业务。
