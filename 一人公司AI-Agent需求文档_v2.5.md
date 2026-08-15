@@ -2307,6 +2307,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：QQ CDP 9222 会话下真实查询 `STM32F103C8T6 数据手册` 返回 ST 官方证据（confidence 0.888）；`npm run datasheet -- "https://item.szlcsc.com/9243.html" STM32F103C8T6` 从立创商城下载 2.08MB PDF 且型号校验通过（179,070 字符）；authority/rewrite 单测更新，单测 255/255 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-logged-in-chain-e2e.md`。
 - affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：国内资料站域名与查询改写，无 §5/§6 参数变更
 
+### 2026-08-15（push:hosts 整链演练与参数解析修复 E93）
+
+- **变更**：`scripts/push-to-hosts.ts` 新增 `argValue()`，`--message/--repo/--scope` 同时支持 `--name=value` 与 `--name value` 两种写法；完成一次真实整链演练（npm test + build → add/commit → GitHub/Gitee 双 push）。
+- **验证**：dry-run 确认双 token 已配置；`push:hosts --yes` 双端 push 成功，`data/hosting-events.jsonl` 出现 github.com 与 gitee.com 各一条 `ok: true`；修复后 dry-run 能正确显示自定义提交信息；单测 255/255 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-push-hosts-rehearsal.md`。
+- affects: §11.4 | bench:na(new-param) 理由：发布脚本参数解析与整链演练，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

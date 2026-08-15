@@ -23,10 +23,18 @@ const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const yes = args.includes('--yes');
 const createRepo = args.includes('--create');
-const scope = args.find((a) => a.startsWith('--scope='))?.split('=')[1] ?? 'project';
-const repo = args.find((a) => a.startsWith('--repo='))?.split('=')[1] ?? 'ai-butler-v01';
-const message =
-  args.find((a) => a.startsWith('--message='))?.split('=')[1] ?? 'chore: sync from AI-Butler';
+
+function argValue(name: string): string | undefined {
+  const prefix = `--${name}=`;
+  const inline = args.find((a) => a.startsWith(prefix))?.slice(prefix.length);
+  if (inline) return inline;
+  const index = args.indexOf(`--${name}`);
+  return index >= 0 ? args[index + 1] : undefined;
+}
+
+const scope = argValue('scope') ?? 'project';
+const repo = argValue('repo') ?? 'ai-butler-v01';
+const message = argValue('message') ?? 'chore: sync from AI-Butler';
 
 const GITHUB_USER = process.env.GITHUB_USER ?? 'chuangxiaohui-cloud';
 const GITEE_USER = process.env.GITEE_USER ?? 'cxv138';
