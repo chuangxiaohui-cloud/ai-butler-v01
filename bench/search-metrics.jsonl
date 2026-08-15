@@ -327,3 +327,12 @@
 {"ts":"2026-08-15T04:06:55.524Z","query":"2026 中国空间站现在有哪几个航天员在太空 site:cmse.gov.cn","bocha_ms":355,"bocha_ok":true,"anysearch_ms":2982,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-15T06:40:44.017Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":321,"bocha_ok":true,"anysearch_ms":2414,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-15T06:41:37.674Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":278,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"both"}
+{"ts":"2026-08-15T07:33:10.003Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":303,"bocha_ok":true,"anysearch_ms":2462,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-15T07:35:55.991Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":316,"bocha_ok":true,"anysearch_ms":4161,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-15T07:37:21.170Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":276,"bocha_ok":true,"anysearch_ms":3189,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-15T07:39:11.228Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":293,"bocha_ok":true,"anysearch_ms":1687,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-15T07:40:04.179Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":313,"bocha_ok":true,"anysearch_ms":2928,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-15T07:41:23.172Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":315,"bocha_ok":true,"anysearch_ms":2182,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-15T07:42:22.267Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":315,"bocha_ok":true,"anysearch_ms":1253,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-15T07:43:05.221Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":280,"bocha_ok":true,"anysearch_ms":1339,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-15T07:45:06.248Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":315,"bocha_ok":true,"anysearch_ms":2183,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
