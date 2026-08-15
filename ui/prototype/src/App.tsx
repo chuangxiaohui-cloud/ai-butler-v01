@@ -28,6 +28,7 @@ import {
   ThumbsUp,
   User,
   Wrench,
+  X,
 } from 'lucide-react';
 
 type TabKey = 'engineering' | 'knowledge' | 'life';
@@ -44,6 +45,7 @@ interface Message {
   id: string;
   role: 'user' | 'agent';
   text: string;
+  images?: string[];
   evidence?: Evidence[];
   meta?: string;
 }
@@ -187,10 +189,15 @@ function App() {
 
   const activeMessages = messages[tab];
 
-  const send = () => {
+  const send = (images: string[] = []) => {
     const text = input.trim();
-    if (!text) return;
-    const userMsg: Message = { id: `user-${Date.now()}`, role: 'user', text };
+    if (!text && images.length === 0) return;
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      text: text || '已发送图片',
+      images,
+    };
     const reply = ReplyDraft(tab, mode, text);
     setMessages((prev) => ({
       ...prev,
@@ -508,6 +515,13 @@ function MessageItem({
       </div>
       <div className="message-body">
         {msg.meta && <div className="message-meta">{msg.meta}</div>}
+        {msg.images && msg.images.length > 0 && (
+          <div className="message-images">
+            {msg.images.map((src) => (
+              <img key={src} src={src} alt="粘贴图片" />
+            ))}
+          </div>
+        )}
         <div className="message-text">{msg.text}</div>
         {msg.evidence && msg.evidence.length > 0 && (
           <div className="evidence-list">
@@ -558,26 +572,65 @@ function Composer({
 }: {
   value: string;
   onChange: (value: string) => void;
-  onSend: () => void;
+  onSend: (images: string[]) => void;
   mode: Mode;
   onModeChange: (mode: Mode) => void;
 }) {
   const [attachOpen, setAttachOpen] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]);
   return (
     <div className="composer">
+      {attachments.length > 0 && (
+        <div className="attach-previews">
+          {attachments.map((src) => (
+            <div className="attach-preview" key={src}>
+              <img src={src} alt="待发送图片" />
+              <button
+                aria-label="移除图片"
+                onClick={() => setAttachments((prev) => prev.filter((item) => item !== src))}
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="composer-input-row">
         <textarea
           value={value}
-          placeholder="输入你的问题或任务…"
+          placeholder="输入问题，或直接粘贴图片…"
           onChange={(event) => onChange(event.target.value)}
+          onPaste={(event) => {
+            const items = Array.from(event.clipboardData?.items ?? []);
+            const image = items.find((item) => item.type.startsWith('image/'));
+            if (!image) return;
+            event.preventDefault();
+            const file = image.getAsFile();
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              if (typeof reader.result === 'string') {
+                setAttachments((prev) => [...prev, reader.result as string]);
+              }
+            };
+            reader.readAsDataURL(file);
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault();
-              onSend();
+              onSend(attachments);
+              setAttachments([]);
             }
           }}
         />
-        <button className="send-button" onClick={onSend} aria-label="发送">
+        <button
+          className="send-button"
+          onClick={() => {
+            onSend(attachments);
+            setAttachments([]);
+          }}
+          aria-label="发送"
+        >
           <Send size={17} />
         </button>
       </div>

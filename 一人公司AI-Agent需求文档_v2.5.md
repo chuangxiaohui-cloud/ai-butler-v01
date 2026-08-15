@@ -2340,7 +2340,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-15（v1.0 三栏 UI 原型 E98）
 
 - **变更**：新增独立前端工程 `ui/prototype`（Vite + React + lucide-react），实现 §4.1 三栏布局（工程开发/知识咨询/生活助手）与 Ask/Craft/Plan 正交、工程开发三列布局、内置终端/浏览器、§9 证据链（[hard]/[soft]）与轻量反馈。
-- **验证**：`npm run build` 通过；按参考截图重排为深色 AI 工作台风格（近黑面板 + 蓝色强调），提问框左下新增 `+` 上传菜单（图片/文件/工程文件夹）与 Ask/Craft/Plan；Playwright 检查工程/知识/移动三个视口无横向溢出、控制台 0 错误；开发服务器 `http://127.0.0.1:5173/`；详见 `docs/plans/2026-08-15-three-column-ui-prototype.md`。
+- **验证**：`npm run build` 通过；按参考截图重排为深色 AI 工作台风格（近黑面板 + 蓝色强调），提问框左下新增 `+` 上传菜单（图片/文件/工程文件夹）与 Ask/Craft/Plan，聊天输入框支持直接粘贴图片；Playwright 检查工程/知识/移动三个视口无横向溢出、控制台 0 错误；开发服务器 `http://127.0.0.1:5173/`；详见 `docs/plans/2026-08-15-three-column-ui-prototype.md`。
 - affects: §4.1,§9 | bench:na(new-param) 理由：三栏 UI 原型落地，无 §5/§6 参数变更
 
 ### v2.5（2026-08-12）
