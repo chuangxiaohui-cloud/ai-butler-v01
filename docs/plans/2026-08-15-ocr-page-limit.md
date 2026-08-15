@@ -34,5 +34,5 @@
 
 - 验证：3 页扫描 PDF + `PDF_OCR_MAX_PAGES=2`，只 OCR 前 2 页，`ocr=true`、`ocrMaxPages=2`、`ocrSkippedPages=1`、`textPages=2`。
 - 测试：单测 255/255 + 集成 17/17 全绿；doc-lint 0 FAIL/0 WARN。
-- 提交：<hash> · 推送：Gitee / GitHub
+- 提交：`6ce7fa0` · 推送：Gitee / GitHub
 - 遗留事项：单页 OCR 缓存（按页图哈希）未做；PaddleOCR 精度对比未做。
