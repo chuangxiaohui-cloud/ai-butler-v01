@@ -56,6 +56,35 @@ test('authority: 型号变体页面不误判为官方源', () => {
   );
 });
 
+test('authority: 航天状态问题识别官方域名', () => {
+  assert.equal(
+    isOfficialForQuery(
+      'https://www.cmse.gov.cn/n29/index.html',
+      '中国空间站现在有哪几个航天员在太空',
+    ),
+    true,
+  );
+  assert.equal(
+    isOfficialForQuery(
+      'https://www.cnsa.gov.cn/n6758823/n6758838/index.html',
+      '中国空间站现在有哪几个航天员在太空',
+    ),
+    true,
+  );
+  assert.equal(
+    isOfficialForQuery(
+      'https://news.qq.com/rain/a/20260617A09LP700',
+      '中国空间站现在有哪几个航天员在太空',
+    ),
+    false,
+  );
+});
+
+test('authority: 航天官方域名权威度高于默认值', () => {
+  assert.ok(getDomainAuthority('https://www.cmse.gov.cn/') >= 0.9);
+  assert.ok(getDomainAuthority('https://www.cnsa.gov.cn/') >= 0.9);
+});
+
 test('authority: 立创商城与芯查查评分高于默认值', () => {
   assert.ok(getDomainAuthority('https://item.szlcsc.com/515651.html') >= 0.8);
   assert.ok(getDomainAuthority('https://www.xcc.com/part/STM32F103C8T6') >= 0.75);

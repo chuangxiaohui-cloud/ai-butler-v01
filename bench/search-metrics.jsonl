@@ -324,3 +324,4 @@
 {"ts":"2026-08-14T17:20:23.073Z","query":"GD32F103C8T6 site:szlcsc.com datasheet","bocha_ms":303,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true,"cacheEngines":"single"}
 {"ts":"2026-08-15T02:30:25.619Z","query":"中国空间站 在轨航天员 名单","bocha_ms":273,"bocha_ok":true,"anysearch_ms":1103,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
 {"ts":"2026-08-15T02:38:06.589Z","query":"2026 中国空间站现在有哪几个航天员在太空 最新","bocha_ms":367,"bocha_ok":true,"anysearch_ms":2282,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-15T04:06:55.524Z","query":"2026 中国空间站现在有哪几个航天员在太空 site:cmse.gov.cn","bocha_ms":355,"bocha_ok":true,"anysearch_ms":2982,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}

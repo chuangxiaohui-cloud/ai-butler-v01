@@ -2259,6 +2259,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：TPS5430 第一页渲染成纯图片 PDF，OCR 提取 1,299 字符并命中 `TPS5430`/`5.5V`/`500kHz`；`PDF_OCR=0` 时返回安装指引；单测 250/250 + 集成 17/17 全绿。
 - affects: §7 | bench:na(new-param) 理由：扫描件 OCR 引擎接入，无 §5/§6 参数变更
 
+### 2026-08-15（航天状态权威源 E85）
+
+- **变更**：`authority.ts` 登记航天官方域名（`cmse.gov.cn`/`cnsa.gov.cn` 权威 1.0，`people.com.cn`/`news.cn` 0.9），`isOfficialForQuery` 对航天员/空间站/在轨类查询识别官方源；`query-rewrite.ts` 对航天状态问题（news/factual）自动追加 `site:cmse.gov.cn`、`site:cnsa.gov.cn` 与“载人航天小喇叭”子查询。
+- **验证**：复测“中国空间站现在有哪几个航天员在太空”，证据变为 `www.cmse.gov.cn`（[hard]）3 条，回答仍诚实为“截至今天暂无可靠更新”；新增 authority/rewrite 单测 4 条；单测 254/254 + 集成 17/17 全绿。
+- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：官方源登记与查询改写，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

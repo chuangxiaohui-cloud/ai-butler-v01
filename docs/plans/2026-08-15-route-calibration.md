@@ -35,4 +35,4 @@
 - 提案：`routeConfidenceLow = 0.65`、`routeConfidenceHigh = 0.75`，待人工确认后写回 PARAM。
 - 测试：无代码改动；doc-lint 0 FAIL/0 WARN。
 - 提交：`4dc4a2d` · 推送：Gitee / GitHub
-- 遗留事项：阈值提案未回写；建议确认后登记 v2.5 PARAM 并跑回归。
+- 遗留事项：**人工确认结论**——原始提案把 `routeConfidenceLow` 提到 0.65，会让已接受的 0.6 搜索案例（如 STM32 主频/数据手册）从 `confirm` 变成 `must_clarify`，误伤正常搜索；阈值暂不回写，待校准逻辑按决策类型细分（区分“该直答却澄清”与“该澄清却直答”）后重跑。

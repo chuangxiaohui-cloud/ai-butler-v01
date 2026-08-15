@@ -20,6 +20,9 @@ const DOMAIN_RULES: DomainRule[] = [
   { pattern: /(^|\.)github\.com$/, authority: 0.9, official: true },
   { pattern: /wikipedia\.org$/, authority: 0.9, official: true },
   { pattern: /(docs\.python\.org|react\.dev|v2\.tauri\.app|keil\.com)$/, authority: 0.9, official: true },
+  { pattern: /(^|\.)(cmse|cnsa)\.gov\.cn$/, authority: 1.0, official: true },
+  { pattern: /(^|\.)people\.com\.cn$/, authority: 0.9, official: true },
+  { pattern: /(^|\.)news\.cn$/, authority: 0.9, official: true },
   { pattern: /(^|\.)(digikey|mouser|lcsc|szlcsc)\.(com|cn)$/, authority: 0.8 },
   { pattern: /(^|\.)xcc\.com$/, authority: 0.75 },
   { pattern: /(^|\.)alldatasheet\.com$/, authority: 0.7 },
@@ -49,6 +52,13 @@ const SOFTWARE_OFFICIAL_RULES: Array<{ names: string[]; hosts: string[] }> = [
   { names: ['openworker'], hosts: ['github.com'] },
   { names: ['openclaw'], hosts: ['github.com', 'docs.openclaw.ai', 'docs2.openclaw.ai'] },
 ];
+
+const SPACE_STATUS_RE = /航天员|宇航员|空间站|在轨|载人航天/;
+export const SPACE_STATUS_DOMAINS = ['cmse.gov.cn', 'cnsa.gov.cn', 'people.com.cn', 'news.cn'];
+
+export function isSpaceStatusQuery(query: string): boolean {
+  return SPACE_STATUS_RE.test(query);
+}
 
 export function getHostname(url: string): string {
   try {
@@ -105,6 +115,11 @@ export function isOfficialForQuery(url: string, query: string): boolean {
     const nameHit = rule.names.some((name) => new RegExp(`\\b${name}\\b`).test(q));
     const hostHit = rule.hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`));
     if (nameHit && hostHit) return true;
+  }
+  if (isSpaceStatusQuery(q)) {
+    return SPACE_STATUS_DOMAINS.some(
+      (host) => hostname === host || hostname.endsWith(`.${host}`),
+    );
   }
   const part = extractPartNumber(query);
   if (!part) return false;

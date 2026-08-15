@@ -79,6 +79,20 @@ test('rewrite: 世界杯战报生成赛事精确改写', () => {
   assert.ok(queries.some((q) => /20\d{2}/.test(q)));
 });
 
+test('rewrite: 航天状态 news 查询优先官方域', () => {
+  const queries = ruleBasedRewrite('中国空间站现在有哪几个航天员在太空', 'news');
+  assert.ok(queries[0].includes('site:cmse.gov.cn'));
+  assert.ok(queries[1].includes('site:cnsa.gov.cn'));
+  assert.ok(queries.some((q) => q.includes('最新')));
+});
+
+test('rewrite: 航天状态非 news 查询也补官方域', () => {
+  const queries = ruleBasedRewrite('中国空间站现在有哪几个航天员在太空');
+  assert.ok(queries.some((q) => q.includes('site:cmse.gov.cn')));
+  assert.ok(queries.some((q) => q.includes('site:cnsa.gov.cn')));
+  assert.ok(queries.some((q) => q.includes('载人航天小喇叭')));
+});
+
 test('rewrite: 无 LLM 时手机型号仍走精确改写', async () => {
   const r = await rewriteQuery('MRT-AL10手机', 'factual');
   assert.equal(r.source, 'rule');

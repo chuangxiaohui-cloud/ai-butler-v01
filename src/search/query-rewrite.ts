@@ -8,6 +8,7 @@ import type { IntentKey } from './stages/s2_classify.js';
 import {
   DOMESTIC_DATASHEET_DOMAINS,
   extractPartNumber,
+  isSpaceStatusQuery,
   officialSourceHintForQuery,
 } from './authority.js';
 
@@ -29,6 +30,9 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
     const year = NEWS_YEAR_RE.test(query) ? '' : `${new Date().getFullYear()} `;
     const base = `${year}${query}`.trim();
     const queries = [`${base} 最新`, query];
+    if (isSpaceStatusQuery(query)) {
+      queries.unshift(`${base} site:cmse.gov.cn`, `${base} site:cnsa.gov.cn`);
+    }
     if (SPORTS_NEWS_RE.test(query)) {
       if (/世界杯/.test(query)) {
         queries.unshift(
@@ -40,6 +44,14 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
       }
     }
     return uniqueQueries(queries);
+  }
+  if (isSpaceStatusQuery(query)) {
+    return uniqueQueries([
+      `${query} site:cmse.gov.cn`,
+      `${query} site:cnsa.gov.cn`,
+      `${query} 载人航天小喇叭`,
+      query,
+    ]);
   }
   const versionProject = query.match(VERSION_PROJECT_RE)?.[0];
   if (versionProject && VERSION_QUERY_RE.test(query)) {
