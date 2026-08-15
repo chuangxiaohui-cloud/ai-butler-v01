@@ -32,6 +32,7 @@ const SENSITIVE_PATTERNS = [
 ];
 
 const PRONOUN_RE = /(这个|那个|这|那)(芯片|器件|项目|软件|型号|板子|板卡)/;
+const ACTION_VERB_RE = /打包|重写|改写|画|写|生成|导出|发给|发送|修改|查|分析|创建|新建|删除|压缩/;
 const PART_NUMBER_RE = /[A-Z]{2,}[0-9A-Z-]{2,}|[A-Z]{2,}[0-9]{2,}/;
 const URL_RE = /https?:\/\/\S+/;
 const MARKDOWN_LINK_RE = /\[([^\]]+)\]\(([^)\s]+)\)/g;
@@ -66,6 +67,8 @@ export function sanitizeQuery(query: string): string {
 export function detectClarify(query: string): ClarifySuggestion | null {
   // 已给出链接时视为指代已解决，不再要求补充型号/链接
   if (URL_RE.test(query)) return null;
+  // 有明确动作指令时，指代由执行链处理，不在此处澄清
+  if (ACTION_VERB_RE.test(query)) return null;
   if (PRONOUN_RE.test(query) && !PART_NUMBER_RE.test(query)) {
     return {
       reason: 'pronoun_unresolved',

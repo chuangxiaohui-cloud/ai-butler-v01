@@ -3,9 +3,9 @@ import { test } from 'node:test';
 
 import { findSkill, getSkills, toDisplayText } from './registry.js';
 
-test('registry: 18 项 Skill 全量加载', () => {
+test('registry: 19 项 Skill 全量加载', () => {
   const skills = getSkills();
-  assert.equal(skills.length, 18);
+  assert.equal(skills.length, 19);
   const names = skills.map((s) => s.name);
   assert.deepEqual(
     names.sort(),
@@ -27,6 +27,7 @@ test('registry: 18 项 Skill 全量加载', () => {
       'jargon-map',
       'knowledge-qa',
       'plan-validation',
+      'project-packager',
       'quote-compare',
     ].sort(),
   );

@@ -21,6 +21,7 @@ import { createEngineerSkill } from './engineer/index.js';
 import { createDeliveryWorkflowSkill } from './delivery-workflow/index.js';
 import { createPlanValidationSkill } from './plan-validation/index.js';
 import { createBrowserSessionSkill } from './browser-session/index.js';
+import { createProjectPackagerSkill } from './project-packager/index.js';
 import { PARAMS } from '../config/params.js';
 import type { AttachmentSignal } from '../agent/multimodal-preprocessor.js';
 import type { RawFileLike, SkillDeps } from './deps.js';
@@ -49,6 +50,7 @@ const EXECUTABLE_SKILLS = [
   createDeliveryWorkflowSkill(),
   createPlanValidationSkill(),
   createBrowserSessionSkill(),
+  createProjectPackagerSkill(),
 ];
 
 export function getSkills(): ExecutableSkill[] {

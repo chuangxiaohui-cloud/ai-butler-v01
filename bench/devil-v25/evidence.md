@@ -771,10 +771,6 @@
 | [soft] | 0.75 | blog.csdn.net | 二十三,AI代码生成的最佳实践：提示词模板与优化技巧 | [链接](https://blog.csdn.net/2401_88760782/article/details/146287310) |
 | [soft] | 0.68 | www.talkcody.com | AI Coding 最佳实践 | [链接](https://www.talkcody.com/zh/docs/guides/ai-coding-best-practices) |
 
-### P03 「我要去华强北，帮我看看天气，顺便查查那边有没有卖CH340的。」
-
-无搜索结果证据。
-
 ### P04 「老规矩，把这个原理图导出给嘉立创。」
 
 - gate: none | confidence: 0.74
@@ -861,14 +857,6 @@
 | [soft] | 0.77 | xiuchengzhen.blog.csdn.net | 【STM32】标准库与HAL库对照学习教程四--延时函数详解_hal库延时-CSDN博客 | [链接](https://xiuchengzhen.blog.csdn.net/article/details/121290384) |
 | [soft] | 0.73 | www.cnblogs.com | STM32延时函数的三种方法及各自的优缺点——最好掌握第三种 - FBshark - 博客园 | [链接](https://www.cnblogs.com/FBsharl/p/18087397) |
 | [soft] | 0.72 | devpress.csdn.net | 51单片机:生成精准的软件延时函数——以STC8演示_Belous-2048 AI社区 | [链接](https://devpress.csdn.net/v1/article/detail/105153114) |
-
-### C05 「把这个项目打包发给我。」
-
-无搜索结果证据。
-
-### C06 “帮我分析一下这个GitHub项目：`https://github.com/zephyrproject-rtos/zephyr`”
-
-无搜索结果证据。
 
 ### C07 “撤销刚才的操作，我感觉改错了。”
 
@@ -960,10 +948,6 @@
 | [hard] | 0.89 | community.st.com | Datasheet with Register description for Programming STM32 ... | [链接](https://community.st.com/stm32-mcus-products-25/datasheet-with-register-description-for-programming-stm32-st-nucleo-l432kc-79798) |
 | [hard] | 0.80 | www.st.com | STM32 Microcontrollers (MCUs) | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32-32-bit-arm-cortex-mcus.html) |
 
-### E39 “帮我写一个I2C的软件模拟驱动。”
-
-无搜索结果证据。
-
 ### E40 “FreeRTOS的任务通知和队列有什么区别，什么时候用哪个？”
 
 - gate: none | confidence: 0.87
@@ -980,7 +964,23 @@
 
 无搜索结果证据。
 
+### P03 「我要去华强北，帮我看看天气，顺便查查那边有没有卖CH340的。」
+
+无搜索结果证据。
+
 ### C02 「帮我写个 PID 算法。」 →（生成代码） → 「不对，我要的是位置式 PID，而且积分限幅要 100。」
+
+无搜索结果证据。
+
+### E39 “帮我写一个I2C的软件模拟驱动。”
+
+无搜索结果证据。
+
+### C05 「把这个项目打包发给我。」
+
+无搜索结果证据。
+
+### C06 “帮我分析一下这个GitHub项目：`https://github.com/zephyrproject-rtos/zephyr`”
 
 无搜索结果证据。
 

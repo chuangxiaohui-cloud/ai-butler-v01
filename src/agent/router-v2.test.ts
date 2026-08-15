@@ -348,12 +348,13 @@ test('router-v2: 项目打包 → pack_project', () => {
   }
 });
 
-test('router-v2: GitHub 链接分析 → web_search', () => {
+test('router-v2: GitHub 链接分析 → github_analysis skill', () => {
   const r = routeV2('帮我分析一下这个GitHub项目：https://github.com/zephyrproject-rtos/zephyr');
   assert.equal(r.features.hasGithubLink, true);
   assert.equal(r.decision.type, 'direct');
   if (r.decision.type === 'direct') {
-    assert.equal(r.decision.selected.intent, 'web_search');
+    assert.equal(r.decision.selected.intent, 'github_analysis');
+    assert.equal(r.decision.selected.skill, 'github-reader');
   }
 });
 

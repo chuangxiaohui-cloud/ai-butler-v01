@@ -74,6 +74,18 @@ test('s5: 无证据时不硬答', async () => {
   assert.ok(!r.answer.includes('编造'));
 });
 
+test('s5: 天气+芯片多意图无证据时拆分引导', async () => {
+  const r = await synthesizeAnswer(
+    '我要去华强北，帮我看看天气，顺便查查那边有没有卖CH340的。',
+    fusedEmpty,
+    classified,
+    { llm: new FakeLLM(() => '') },
+  );
+  assert.ok(r.answer.includes('两个部分'));
+  assert.ok(r.answer.includes('天气'));
+  assert.ok(r.answer.includes('芯片'));
+});
+
 test('s5: LLM 异常降级为证据摘要', async () => {
   const fake = new FakeLLM(() => {
     throw new Error('timeout');

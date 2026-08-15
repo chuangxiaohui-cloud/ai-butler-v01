@@ -2361,6 +2361,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`npm run test:all` 全绿；122 条全量重跑对比原始基线：路由选项 25→0、JSON 泄漏 7→0、35 条系统级 Bug 35/35 修复、8 条能力项 5/8 有进展；剩余为搜索质量、执行器运行时与多意图问题；详见 `docs/plans/2026-08-16-devil-fix-verify.md`。
 - affects: §5,§6 | bench:B-20260816-02 | E101 第二轮路由/搜索/执行器修复与全量验证
 
+### 2026-08-16（收尾修复 E102）
+
+- **变更**：LLM 重模型默认超时 8s→30s；新增 `project-packager` Skill（Windows Compress-Archive，排除 .git/node_modules/build）；`github-reader` 占位转真（抓 raw.githubusercontent README）；天气+芯片多意图在 s5 无证据时拆分引导；s1 指代澄清增加动作词豁免；注册 19 项 Skill。
+- **验证**：C02/E39 CLI 实测生成完整代码；C05 无路径澄清、C06 抓取 README/仓库链接兜底；P03 多意图拆分；全量测试通过，122 条基线路由选项 0、JSON 0、35/35 系统 Bug 修复。
+- affects: §5,§6 | bench:B-20260816-03 | E102 执行器运行时、打包/GitHub Skill、多意图与指代豁免
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

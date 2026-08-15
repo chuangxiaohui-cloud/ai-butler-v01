@@ -575,7 +575,7 @@
       "id": "P03",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 1
     },
     {
       "id": "P04",
@@ -629,7 +629,7 @@
       "id": "C02",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 1
     },
     {
       "id": "C03",
@@ -647,13 +647,13 @@
       "id": "C05",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 1
     },
     {
       "id": "C06",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 2
     },
     {
       "id": "C07",
@@ -725,7 +725,7 @@
       "id": "E39",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 1
     },
     {
       "id": "E40",

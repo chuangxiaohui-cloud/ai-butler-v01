@@ -13,13 +13,13 @@ function tempDb(): { path: string; dir: string } {
   return { path: join(dir, 'experience.db'), dir };
 }
 
-test('skill-lifecycle: 注册 18 项 Skill 并记录使用', () => {
+test('skill-lifecycle: 注册 19 项 Skill 并记录使用', () => {
   const { path, dir } = tempDb();
   const lc = new SkillLifecycle(path);
   try {
     const now = Date.now();
     lc.ensureRegistered(now);
-    assert.equal(lc.list(now).length, 18);
+    assert.equal(lc.list(now).length, 19);
     lc.recordUse('chip-analysis', now);
     const stat = lc.list(now).find((s) => s.name === 'chip-analysis');
     assert.equal(stat?.usageCount, 1);
@@ -71,7 +71,7 @@ test('skill-lifecycle: 90 天未用标记 cold', () => {
     lc.ensureRegistered(created);
     const later = created + 100 * DAY_MS;
     const list = lc.list(later);
-    assert.equal(list.filter((s) => s.state === 'cold').length, 18);
+    assert.equal(list.filter((s) => s.state === 'cold').length, 19);
     assert.equal(lc.findBest('芯片', later), null);
   } finally {
     lc.close();

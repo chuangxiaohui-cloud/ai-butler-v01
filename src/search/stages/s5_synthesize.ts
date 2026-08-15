@@ -34,6 +34,15 @@ function todayLabel(): string {
   return `${y}-${m}-${day}`;
 }
 
+function multiIntentFallback(query: string): string | null {
+  const hasWeather = /天气|气温|下雨|晴|阴/.test(query);
+  const hasChip = /芯片|元器件|CH\d|买|卖|库存|替代/.test(query);
+  if (!hasWeather || !hasChip) return null;
+  return `这个问题包含两个部分，我分开处理：\n` +
+    `1. 天气：需要您补充城市/地点（例如“华强北”在深圳福田），我按实时天气源查；\n` +
+    `2. 芯片库存/替代：我可以继续查立创商城、华强北渠道或原厂，您把具体型号和地区确认一下，我马上查。`;
+}
+
 function buildSystemPrompt(serious: boolean, primaryLens?: PrimaryLens, query?: string): string {
   const lines = [
     '你是「她」，一位拥有三十年经验的老专家兼贴身女秘书。',
@@ -70,8 +79,9 @@ export async function synthesizeAnswer(
   opts: SynthesizeOptions = {},
 ): Promise<SynthesizeResult> {
   if (fused.items.length === 0) {
+    const multi = multiIntentFallback(query);
     return {
-      answer: '我暂时无法确认这个问题。建议查阅官方源或补充更多信息，我再帮你查。',
+      answer: multi ?? '我暂时无法确认这个问题。建议查阅官方源或补充更多信息，我再帮你查。',
       source: 'fallback',
     };
   }

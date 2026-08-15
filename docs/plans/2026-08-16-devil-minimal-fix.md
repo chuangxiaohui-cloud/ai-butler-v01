@@ -64,3 +64,12 @@
 - **周末休市**：新增 `weekend-market` 规则，周六/周日股市类问题直接回答“休市”（EC06）。
 - **规则硬门**：R017-R021 全部 strictMatch，避免 actionType 之外的字段部分匹配造成跨意图噪声。
 - 新增 10 条路由回归 + 3 条 weekend-market 单测；`npm run test:all` 全绿。
+
+## 6. 收尾修复（2026-08-16 今日最后一批）
+
+- `createHeavyClient` 默认超时 8s → 30s，修复 C02/E39 的“代码生成失败”（CLI 实测可生成 I2C 软件驱动、位置式 PID + 积分限幅 100）。
+- 新增 `project-packager` Skill（Windows Compress-Archive，排除 .git/node_modules/build/dist），注册 19 项 Skill，路由 R021 接入；C05 无路径时澄清目录。
+- `github-reader` 从占位转真：抓 raw.githubusercontent README，失败给仓库链接兜底；路由 R017 接入，C06 不再“执行器未接入”。
+- 多意图兜底：s5 无证据时，天气+芯片类问题明确拆分引导（P03）。
+- s1 指代澄清加动作词豁免：打包/重写/改/画/写等明确指令不再被“哪个芯片”拦截。
+- 新增 project-packager/github-reader/s1/multi-intent 单测；全量测试通过。

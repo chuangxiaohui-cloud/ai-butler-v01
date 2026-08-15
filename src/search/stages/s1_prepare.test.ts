@@ -62,3 +62,8 @@ test('s1: prepareQuery 生成缓存 key 与澄清槽位', () => {
   assert.equal(prepared.clarify?.reason, 'pronoun_unresolved');
   assert.equal(prepared.cachedValue, null);
 });
+
+test('s1: 明确动作指令不触发指代澄清', () => {
+  const prepared = prepareQuery('把这个项目打包发给我');
+  assert.equal(prepared.clarify, null);
+});

@@ -16,6 +16,8 @@ export const EXECUTOR_REGISTRY: Record<string, { status: ExecutorStatus }> = {
   calendar_skill: { status: 'available' },
   im_dispatch: { status: 'available' },
   quote_compare: { status: 'available' },
+  github_reader: { status: 'available' },
+  project_packager: { status: 'available' },
 };
 
 export function executorStatus(name: string | undefined): ExecutorStatus {

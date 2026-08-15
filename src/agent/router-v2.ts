@@ -185,6 +185,12 @@ export function routeFromFeatures(
   if (searchLikeAction && top?.intent === 'web_search') {
     decision = { type: 'direct', selected: top };
   } else if (
+    features.actionType === 'analyze' &&
+    features.hasGithubLink &&
+    top?.intent === 'github_analysis'
+  ) {
+    decision = { type: 'direct', selected: top };
+  } else if (
     (features.actionType === 'rewrite' && top?.intent === 'rewrite') ||
     (features.actionType === 'pack' && top?.intent === 'pack_project')
   ) {
