@@ -38,5 +38,5 @@
 
 - 验证：`item.szlcsc.com/9243.html + STM32F103C8T6` 下载校验通过（179,070 字符）；`515651.html + STM32F103C8T6` 拒绝误存，输出 6 次不匹配尝试，ISO/IEC 证书也被拦截。
 - 测试：单测 250/250 + 集成 17/17 全绿；doc-lint 0 FAIL/0 WARN。
-- 提交：<hash> · 推送：Gitee / GitHub
+- 提交：`5a37169` · 推送：Gitee / GitHub
 - 遗留事项：扫描件 OCR 仍未接入；未传型号参数时保持“不校验直接下载”的旧行为。
