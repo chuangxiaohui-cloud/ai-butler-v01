@@ -34,5 +34,5 @@
 - 校准样本 10/10（accept 7 / reject 3），`route:apply-calibration` 返回 `ok: true`。
 - 提案：`routeConfidenceLow = 0.65`、`routeConfidenceHigh = 0.75`，待人工确认后写回 PARAM。
 - 测试：无代码改动；doc-lint 0 FAIL/0 WARN。
-- 提交：<hash> · 推送：Gitee / GitHub
+- 提交：`4dc4a2d` · 推送：Gitee / GitHub
 - 遗留事项：阈值提案未回写；建议确认后登记 v2.5 PARAM 并跑回归。
