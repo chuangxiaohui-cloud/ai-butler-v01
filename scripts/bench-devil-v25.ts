@@ -41,7 +41,10 @@ interface RunEntry {
 }
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const csvPath = join(root, 'AI-Agent_魔鬼训练_v2.5.csv');
+const csvArg = process.argv.find((a) => a.startsWith('--csv='))?.split('=')[1];
+const csvPath = csvArg
+  ? join(process.cwd(), csvArg)
+  : join(root, 'AI-Agent_魔鬼训练_v2.5_整理版');
 const outDir = join(root, 'bench', 'devil-v25');
 const jsonlPath = join(outDir, 'results.jsonl');
 const reportPath = join(outDir, 'report.md');
@@ -285,9 +288,9 @@ function renderReport(entries: RunEntry[]): string {
     })
     .join('\n');
 
-  return `# 魔鬼训练 v2.5 跑分报告
+  return `# 魔鬼训练 v2.5（整理版）跑分报告
 
-> 日期：2026-08-15 | 数据源：AI-Agent_魔鬼训练_v2.5.csv | 单条超时：${timeoutMs}ms
+> 日期：2026-08-15 | 数据源：AI-Agent_魔鬼训练_v2.5_整理版 | 单条超时：${timeoutMs}ms
 > 参考分口径：gate/话术/回答长度/术语覆盖/权威域五维自动评分 0-3，需人工复核。
 
 ## 聚合

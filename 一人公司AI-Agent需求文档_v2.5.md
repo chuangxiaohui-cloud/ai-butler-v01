@@ -2345,8 +2345,8 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 
 ### 2026-08-15（魔鬼训练 v2.5 全量跑分 E99）
 
-- **变更**：新增 `scripts/bench-devil-v25.ts` 与 `npm run bench:devil-v25`，读取 `AI-Agent_魔鬼训练_v2.5.csv`（122 条）批量跑 pipeline，增量落盘 `bench/devil-v25/results.jsonl`，输出报告/人工评分表/参考分模板；完成 122 条全量基线。
-- **验证**：122 条全部返回，0 超时，总耗时约 702s；人工对照“预期行为”评分 0-3：均分 1.36，≥2 分 61 条，0 分 44 条；发现路由误判（plan/write_doc/send_message 抢占回答型意图）、紧急模板误触（造核弹/rm -rf/破解 WiFi 返回触电急救话术）、记忆污染（EC10 把同轮会话冒充昨日记忆）；详见 `docs/plans/2026-08-15-devil-training-v25-review.md`。
+- **变更**：新增 `scripts/bench-devil-v25.ts` 与 `npm run bench:devil-v25`，读取 `AI-Agent_魔鬼训练_v2.5_整理版`（122 条）批量跑 pipeline，增量落盘 `bench/devil-v25/results.jsonl`，输出报告/人工评分表/参考分模板；完成整理版 122 条全量基线。
+- **验证**：122 条全部返回，0 超时，总耗时约 647s；人工对照“预期行为”评分 0-3：均分 1.40，≥2 分 65 条，0 分 45 条；整理版乱码已清零（重写 P01-P05/C01-C05/E32-E34，删 E31 增 E35），E 卷提升至 2.00；仍存在路由误判（plan/write_doc/send_message 抢占回答型意图）、紧急模板误触（造核弹/rm -rf/破解 WiFi 返回触电急救话术）、记忆污染（EC10 把同轮会话冒充昨日记忆）；详见 `docs/plans/2026-08-15-devil-training-v25-review.md`。
 - affects: §3.1,§5,§6 | bench:B-20260815-01 | E99 新增 122 条魔鬼训练评测基线，暴露路由与安全规则缺口
 
 ### v2.5（2026-08-12）
