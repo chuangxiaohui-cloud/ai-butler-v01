@@ -12,6 +12,21 @@ _ocr_error = None
 OCR_CACHE_DIR = pathlib.Path(os.environ.get("PDF_OCR_CACHE_DIR", "data/ocr-cache"))
 
 
+def prune_ocr_cache(max_files: int) -> None:
+    if max_files <= 0:
+        return
+    try:
+        files = sorted(
+            OCR_CACHE_DIR.glob("v1-*.txt"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for old in files[max_files:]:
+            old.unlink()
+    except Exception:
+        pass
+
+
 def page_text(page) -> str:
     lines: list[str] = []
     for block in page.get_text("rawdict")["blocks"]:
@@ -64,6 +79,7 @@ def ocr_page(page) -> str:
         try:
             OCR_CACHE_DIR.mkdir(parents=True, exist_ok=True)
             cache_file.write_text(text, encoding="utf-8")
+            prune_ocr_cache(int(os.environ.get("PDF_OCR_CACHE_MAX_FILES", "200")))
         except Exception:
             pass
     return text
