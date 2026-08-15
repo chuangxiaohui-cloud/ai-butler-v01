@@ -44,10 +44,10 @@ interface Message {
   meta?: string;
 }
 
-const TABS: Array<{ key: TabKey; label: string; short: string; icon: typeof Code2 }> = [
-  { key: 'engineering', label: '工程开发', short: '工程', icon: Code2 },
-  { key: 'knowledge', label: '知识咨询', short: '知识', icon: BookOpen },
-  { key: 'life', label: '生活助手', short: '生活', icon: HeartPulse },
+const TABS: Array<{ key: TabKey; label: string; sub: string; icon: typeof Code2 }> = [
+  { key: 'engineering', label: '工程开发', sub: '架构师 + PM + 老板 · 项目协作', icon: Code2 },
+  { key: 'knowledge', label: '知识咨询', sub: '30年老专家 · 直接回答 + 联网补坑', icon: BookOpen },
+  { key: 'life', label: '生活助手', sub: '贴身女秘书 · 陪伴 + 紧急', icon: HeartPulse },
 ];
 
 const MODES: Array<{ key: Mode; label: string; hint: string }> = [
@@ -112,10 +112,12 @@ const INITIAL_MESSAGES: Record<TabKey, Message[]> = {
 };
 
 const SUBAGENTS = [
-  { name: 'KiCad', category: 'EDA', status: '运行中' },
-  { name: 'LTspice', category: '仿真', status: '待命' },
-  { name: 'Keil', category: '编码', status: '待命' },
-  { name: 'FreeCAD', category: '结构', status: '待命' },
+  { name: 'kicad-mcp', category: 'EDA', status: '运行中' },
+  { name: 'altium-mcp', category: 'EDA', status: '待命' },
+  { name: 'freecad-mcp', category: '结构', status: '待命' },
+  { name: 'ltspice-mcp', category: '仿真', status: '运行中' },
+  { name: 'stm32cubemx', category: '编码', status: '待命' },
+  { name: 'codex-agent', category: '执行', status: '运行中' },
 ];
 
 const PRODUCTS = [
@@ -180,8 +182,6 @@ function App() {
   const [liked, setLiked] = useState<Record<string, boolean>>({});
 
   const activeMessages = messages[tab];
-  const activeTab = TABS.find((t) => t.key === tab)!;
-  const ActiveIcon = activeTab.icon;
 
   const send = () => {
     const text = input.trim();
@@ -216,7 +216,35 @@ function App() {
             <div className="brand-sub">v1.0 三栏 UI 原型</div>
           </div>
         </div>
+        <nav className="header-tabs" aria-label="内容领域">
+          {TABS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                className={tab === item.key ? 'active' : ''}
+                onClick={() => setTab(item.key)}
+              >
+                <Icon size={17} />
+                <span>{item.label}</span>
+                <small>{item.sub}</small>
+              </button>
+            );
+          })}
+        </nav>
         <div className="top-actions">
+          <div className="mode-switch" role="group" aria-label="执行方式">
+            {MODES.map((m) => (
+              <button
+                key={m.key}
+                className={mode === m.key ? 'active' : ''}
+                onClick={() => setMode(m.key)}
+              >
+                {m.label}
+                <small>{m.hint}</small>
+              </button>
+            ))}
+          </div>
           <div className="status-pill">
             <ShieldCheck size={14} />
             QQ 会话已连接
@@ -234,43 +262,7 @@ function App() {
       </header>
 
       <div className="workspace">
-        <nav className="rail" aria-label="内容领域">
-          {TABS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.key}
-                className={`rail-item ${tab === item.key ? 'active' : ''}`}
-                onClick={() => setTab(item.key)}
-              >
-                <Icon size={19} />
-                <span>{item.label}</span>
-                <small>{stats[item.key]} 项</small>
-              </button>
-            );
-          })}
-        </nav>
-
         <main className="main">
-          <div className="workspace-head">
-            <div className="head-title">
-              <ActiveIcon size={20} />
-              <h1>{activeTab.label}</h1>
-            </div>
-            <div className="mode-switch" role="group" aria-label="执行方式">
-              {MODES.map((m) => (
-                <button
-                  key={m.key}
-                  className={mode === m.key ? 'active' : ''}
-                  onClick={() => setMode(m.key)}
-                >
-                  {m.label}
-                  <small>{m.hint}</small>
-                </button>
-              ))}
-            </div>
-          </div>
-
           {tab === 'engineering' ? (
             <div className="engineering-grid">
               <aside className="roles-panel panel">
@@ -466,6 +458,31 @@ function App() {
           )}
         </main>
       </div>
+      <footer className="statusbar">
+        <span>
+          <Cpu size={13} />
+          MCP ×6
+        </span>
+        <span>
+          <Wrench size={13} />
+          子 Agent：4 运行中
+        </span>
+        <span>
+          <FileText size={13} />
+          项目文件 {stats.engineering}
+        </span>
+        <span>
+          <BookOpen size={13} />
+          证据 {stats.knowledge}
+        </span>
+        <span>
+          <HeartPulse size={13} />
+          会话 {stats.life}
+        </span>
+        <span>Bocha 配额 34/1000</span>
+        <span>记忆：L1 装备 · L2 蒸馏</span>
+        <span>工作区 git: main</span>
+      </footer>
     </div>
   );
 }
