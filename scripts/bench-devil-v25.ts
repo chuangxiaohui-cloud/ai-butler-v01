@@ -61,6 +61,7 @@ const outDir = join(root, 'bench', 'devil-v25');
 const jsonlPath = join(outDir, 'results.jsonl');
 const reportPath = join(outDir, 'report.md');
 const worksheetPath = join(outDir, 'scoring-worksheet.md');
+const scoresPath = join(outDir, 'scores.json');
 const scoresExamplePath = join(outDir, 'scores.example.json');
 const timeoutArg = Number(process.argv[2]);
 const timeoutMs = Number.isFinite(timeoutArg) && timeoutArg > 0 ? timeoutArg : 120000;

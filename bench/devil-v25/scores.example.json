@@ -5,7 +5,7 @@
       "id": "ET01",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 3
     },
     {
       "id": "ET02",
@@ -23,13 +23,13 @@
       "id": "ET04",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 3
     },
     {
       "id": "ET05",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 3
     },
     {
       "id": "ET06",
@@ -83,7 +83,7 @@
       "id": "ET14",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 2
     },
     {
       "id": "ET15",
@@ -101,7 +101,7 @@
       "id": "ET17",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 3
     },
     {
       "id": "ET18",
@@ -119,7 +119,7 @@
       "id": "ET20",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 2
     },
     {
       "id": "ET21",
@@ -155,7 +155,7 @@
       "id": "ET26",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 3
     },
     {
       "id": "ET27",
@@ -167,7 +167,7 @@
       "id": "ET28",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 2
     },
     {
       "id": "ET29",
@@ -179,19 +179,19 @@
       "id": "ET30",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 3
     },
     {
       "id": "ET31",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 3
     },
     {
       "id": "SM01",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 1
     },
     {
       "id": "SM02",
@@ -203,19 +203,19 @@
       "id": "SM03",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 2
     },
     {
       "id": "SM04",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 3
     },
     {
       "id": "SM05",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 2
     },
     {
       "id": "SM06",
@@ -227,13 +227,13 @@
       "id": "SM07",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 0
     },
     {
       "id": "SM08",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 3
+      "autoScore": 1
     },
     {
       "id": "SM09",
@@ -293,13 +293,13 @@
       "id": "SM18",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 3
     },
     {
       "id": "SM19",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 2
     },
     {
       "id": "SM20",
@@ -311,7 +311,7 @@
       "id": "SM21",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 3
+      "autoScore": 2
     },
     {
       "id": "SM22",
@@ -341,7 +341,7 @@
       "id": "SM26",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 2
     },
     {
       "id": "SM27",
@@ -371,7 +371,7 @@
       "id": "SM31",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 0
     },
     {
       "id": "EC01",
@@ -389,7 +389,7 @@
       "id": "EC03",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 0
     },
     {
       "id": "EC04",
@@ -467,7 +467,7 @@
       "id": "EC16",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 2
     },
     {
       "id": "EC17",
@@ -497,7 +497,7 @@
       "id": "EC21",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 3
     },
     {
       "id": "EC22",
@@ -527,7 +527,7 @@
       "id": "EC26",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 3
+      "autoScore": 2
     },
     {
       "id": "EC27",
@@ -551,19 +551,19 @@
       "id": "EC30",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 0
     },
     {
       "id": "EC31",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 0
     },
     {
       "id": "P01",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 0
     },
     {
       "id": "P02",
@@ -665,7 +665,7 @@
       "id": "C08",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 0
     },
     {
       "id": "C09",
@@ -731,7 +731,7 @@
       "id": "E40",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 3
     }
   ]
 }
