@@ -496,10 +496,79 @@ button {
 .composer {
   border-top: 1px solid var(--line);
   padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.composer-input-row {
   display: grid;
   grid-template-columns: 1fr 38px;
   gap: 10px;
   align-items: end;
+}
+
+.composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.attach-wrap {
+  position: relative;
+}
+
+.attach-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+
+.attach-button.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.attach-popover {
+  position: absolute;
+  left: 0;
+  bottom: 36px;
+  width: 190px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: var(--shadow);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attach-popover button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 9px;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12px;
+}
+
+.attach-popover button:hover {
+  background: var(--panel-2);
+  color: var(--ink);
+}
+
+.composer-hint {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--muted);
 }
 
 .composer textarea {

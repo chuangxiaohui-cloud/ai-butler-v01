@@ -10,10 +10,14 @@ import {
   Code2,
   Cpu,
   FileText,
+  FolderOpen,
   Globe,
   HeartPulse,
+  Image,
   PanelBottom,
+  Paperclip,
   PenLine,
+  Plus,
   Search,
   Send,
   Settings,
@@ -233,18 +237,6 @@ function App() {
           })}
         </nav>
         <div className="top-actions">
-          <div className="mode-switch" role="group" aria-label="执行方式">
-            {MODES.map((m) => (
-              <button
-                key={m.key}
-                className={mode === m.key ? 'active' : ''}
-                onClick={() => setMode(m.key)}
-              >
-                {m.label}
-                <small>{m.hint}</small>
-              </button>
-            ))}
-          </div>
           <div className="status-pill">
             <ShieldCheck size={14} />
             QQ 会话已连接
@@ -306,7 +298,13 @@ function App() {
                     />
                   ))}
                 </div>
-                <Composer value={input} onChange={setInput} onSend={send} />
+                <Composer
+                  value={input}
+                  onChange={setInput}
+                  onSend={send}
+                  mode={mode}
+                  onModeChange={setMode}
+                />
               </section>
 
               <aside className="products-panel panel">
@@ -393,7 +391,13 @@ function App() {
                     />
                   ))}
                 </div>
-                <Composer value={input} onChange={setInput} onSend={send} />
+                <Composer
+                  value={input}
+                  onChange={setInput}
+                  onSend={send}
+                  mode={mode}
+                  onModeChange={setMode}
+                />
               </section>
 
               <aside className="context-panel panel">
@@ -549,27 +553,74 @@ function Composer({
   value,
   onChange,
   onSend,
+  mode,
+  onModeChange,
 }: {
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
+  mode: Mode;
+  onModeChange: (mode: Mode) => void;
 }) {
+  const [attachOpen, setAttachOpen] = useState(false);
   return (
     <div className="composer">
-      <textarea
-        value={value}
-        placeholder="输入你的问题或任务…"
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            onSend();
-          }
-        }}
-      />
-      <button className="send-button" onClick={onSend} aria-label="发送">
-        <Send size={17} />
-      </button>
+      <div className="composer-input-row">
+        <textarea
+          value={value}
+          placeholder="输入你的问题或任务…"
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              onSend();
+            }
+          }}
+        />
+        <button className="send-button" onClick={onSend} aria-label="发送">
+          <Send size={17} />
+        </button>
+      </div>
+      <div className="composer-tools">
+        <div className="attach-wrap">
+          <button
+            className={`attach-button ${attachOpen ? 'active' : ''}`}
+            aria-label="添加"
+            onClick={() => setAttachOpen((prev) => !prev)}
+          >
+            <Plus size={17} />
+          </button>
+          {attachOpen && (
+            <div className="attach-popover">
+              <button>
+                <Image size={15} />
+                上传图片
+              </button>
+              <button>
+                <Paperclip size={15} />
+                上传文件
+              </button>
+              <button>
+                <FolderOpen size={15} />
+                设置工程文件夹
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="mode-switch" role="group" aria-label="执行方式">
+          {MODES.map((m) => (
+            <button
+              key={m.key}
+              className={mode === m.key ? 'active' : ''}
+              onClick={() => onModeChange(m.key)}
+            >
+              {m.label}
+              <small>{m.hint}</small>
+            </button>
+          ))}
+        </div>
+        <span className="composer-hint">推荐：工程开发 · Craft</span>
+      </div>
     </div>
   );
 }
