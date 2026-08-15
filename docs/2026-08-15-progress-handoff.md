@@ -33,13 +33,14 @@
 21. **push:hosts 整链演练（E93）**：dry-run 确认双 token；真实执行预检/add/commit/双端 push 成功，`data/hosting-events.jsonl` 双端 `ok: true`；顺带修复 `--message "..."` 空格写法不生效的问题，详见 `docs/plans/2026-08-15-push-hosts-rehearsal.md`。
 22. **半导小芯站内搜索兜底（E94）**：真实搜索引擎不索引 `semiee.com`，已补“点名半导小芯 → 浏览器直达 `searchModel` 站内搜索 → 融合保留该站证据”的完整链路；复测 evidence 含 `www.semiee.com`，详见 `docs/plans/2026-08-15-semiee-index-verify.md`。
 23. **立创/芯查查站内直达（E95）**：三站统一为 `DOMESTIC_DATASHEET_SITES` 站点→站内搜索映射（立创 `so.szlcsc.com/global.html?k=`、芯查查 `chip/material/search?title=`、半导小芯 `searchModel`）；真实查询 evidence 已含 `szlcsc.com` 与 `xcc.com`，详见 `docs/plans/2026-08-15-domestic-site-direct-search.md`。
+24. **source-stats SQLite WAL 并发修复（E96）**：`SearchSourceStats` 启用 WAL + busy_timeout，两条 `npm run dev` 并发冒烟不再报 `database is locked`；新增多实例写同一库单测，详见 `docs/plans/2026-08-15-sqlite-wal.md`。
 
 ## 明天继续（按优先级）
 
 1. 校准阈值保持 0.45/0.75（样本 22/10）；继续攒真实 accept/reject 样本，样本更多后再校准。
 2. `push:hosts` 整链演练已完成，参数解析已修复；后续改动可直接用脚本统一提交推送。
 3. OCR 后续优化：PaddleOCR 精度对比（缓存清理已完成）。
-4. QQ 浏览器当前保持 9222 运行，完整链路已验证；三站站内直达已落地，下一步可做 OCR PaddleOCR 精度对比；CLI 并发有 SQLite 写锁，建议串行执行。
+4. QQ 浏览器当前保持 9222 运行，完整链路已验证；三站站内直达已落地，CLI 并发写锁已修（WAL）；下一步可做 OCR PaddleOCR 精度对比。
 
 ## 常用命令
 
@@ -61,5 +62,5 @@ npm run browser:status
 
 - 每日交接：`docs/2026-08-15-progress-handoff.md`（本文件）
 - 推进计划：`docs/plans/YYYY-MM-DD-<主题>.md`
-- 权威变更台账：v2.5 附录 A（当前到 E95）
+- 权威变更台账：v2.5 附录 A（当前到 E96）
 - 机器轨迹：`data/trajectory.jsonl`、`bench/search-metrics.jsonl`

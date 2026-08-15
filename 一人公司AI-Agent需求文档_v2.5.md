@@ -2325,6 +2325,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：真实查询 `STM32F103C8T6 芯查查 数据手册` evidence 含 `www.xcc.com/chip/material/search?title=STM32F103C8T6`；`STM32F103C8T6 立创商城 数据手册` evidence 含 `so.szlcsc.com/global.html?k=STM32F103C8T6`；新增 search-loop 单测 2 条，单测 259/259 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-domestic-site-direct-search.md`。
 - affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：国内资料站站内直达扩展，无 §5/§6 参数变更
 
+### 2026-08-15（source-stats SQLite WAL 并发修复 E96）
+
+- **变更**：`SearchSourceStats` 连接后启用 `journal_mode=WAL`、`busy_timeout=5000`、`synchronous=NORMAL`，避免多条 CLI 并发写 `source-stats.db` 时报 `database is locked`。
+- **验证**：两条 `npm run dev` 并发冒烟均正常返回，无锁错误；新增多实例写同一库单测 1 条，单测 260/260 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-sqlite-wal.md`。
+- affects: §12.3 | bench:na(new-param) 理由：统计库并发写修复，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

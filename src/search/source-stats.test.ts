@@ -26,3 +26,25 @@ test('source-stats: 按源×意图累计调用/成功/耗时', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('source-stats: 多实例写同一库不锁死', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'source-stats-multi-')); 
+  const dbPath = join(dir, 'stats.db');
+  const a = new SearchSourceStats(dbPath);
+  const b = new SearchSourceStats(dbPath);
+  try {
+    a.record('bocha', 'factual', true, 100);
+    b.record('anysearch', 'news', true, 200);
+    a.record('bocha', 'factual', false, 50);
+    const rows = b.summary();
+    const bocha = rows.find((r) => r.source === 'bocha' && r.intent === 'factual');
+    const any = rows.find((r) => r.source === 'anysearch' && r.intent === 'news');
+    assert.equal(bocha?.calls, 2);
+    assert.equal(bocha?.okCalls, 1);
+    assert.equal(any?.calls, 1);
+  } finally {
+    a.close();
+    b.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -25,6 +25,9 @@ export class SearchSourceStats {
     mkdirSync(dirname(dbPath), { recursive: true });
     this.db = new DatabaseSync(dbPath);
     this.db.exec(`
+      PRAGMA journal_mode = WAL;
+      PRAGMA busy_timeout = 5000;
+      PRAGMA synchronous = NORMAL;
       CREATE TABLE IF NOT EXISTS source_stats (
         source TEXT NOT NULL,
         intent TEXT NOT NULL,
