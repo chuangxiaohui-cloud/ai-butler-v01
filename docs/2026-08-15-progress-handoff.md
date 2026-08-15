@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- `npm run build` 通过；`npm run test:all` 全绿：单测 236/236 + 集成 17/17。
+- `npm run build` 通过；`npm run test:all` 全绿：单测 242/242 + 集成 17/17。
 - `npm exec tsx scripts/doc-lint.ts`：0 FAIL / 0 WARN。
 - 浏览器会话体系已打通：独立持久化 profile、CDP 直连日常浏览器、端口持久化自动复用、搜索自动兜底、二次取证。
 
@@ -15,6 +15,7 @@
 3. **datasheet 下载与证据补强（E79）**：`npm run datasheet -- "URL" [型号]`，从立创商品页自动提取 TI 官方 datasheet 下载到 `data/datasheets/`；搜索循环证据不足时浏览器补证。
 4. **low_confidence 二次取证（E80）**：融合后低置信且含器件型号时，抓高可信 HTML 正文或下载解析 PDF 重新融合；浏览器取证的高可信页不再被 SEO 降权误伤。
 5. **真实指标**：`GD32F103C8T6 数据手册` confidence 0.505 → 0.652，gate `low_confidence` → `none`；`TPS5430` 立创商品页下载 datasheet PDF 2.48MB。
+6. **强时效查询旧闻防护（E81）**：`中国空间站现在有哪几个航天员在太空` 不再引用 2025-04-26 旧闻，复测回答“截至今天暂无可靠更新”，证据为 2026-06-17 腾讯新闻，gate `low_confidence`；新增时效敏感判定 + news 权重 + 合成时效红线，详见 `docs/plans/2026-08-15-freshness-guard.md`。
 
 ## 明天继续（按优先级）
 
@@ -22,6 +23,7 @@
 2. 继续用 `npm run route:feedback` 攒 accept/reject 样本，够 10 条后跑 `npm run route:apply-calibration`。
 3. 需要用户配合的浏览器项：关掉 QQ浏览器 → `npm run browser:launch -- qq` → `npm run browser:cdp -- 9222`，验证登录态自动兜底。
 4. 继续按 `push:hosts` 流程同步后续改动。
+5. 强时效查询可继续增强：把“载人航天小喇叭”/中国载人航天工程办公室官方发布登记为航天状态权威跟踪源，进一步压缩“暂无可靠更新”场景。
 
 ## 常用命令
 
@@ -39,5 +41,5 @@ npm run route:feedback
 
 - 每日交接：`docs/2026-08-15-progress-handoff.md`（本文件）
 - 推进计划：`docs/plans/YYYY-MM-DD-<主题>.md`
-- 权威变更台账：v2.5 附录 A（当前到 E80）
+- 权威变更台账：v2.5 附录 A（当前到 E81）
 - 机器轨迹：`data/trajectory.jsonl`、`bench/search-metrics.jsonl`

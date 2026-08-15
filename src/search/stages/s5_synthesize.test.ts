@@ -168,3 +168,35 @@ test('s5: 用户要求举例时系统提示要求给可运行示例', async () =
   assert.ok(systemPrompt.includes('可运行'));
   assert.ok(systemPrompt.includes('不要只给文字描述'));
 });
+
+test('s5: 系统提示注入今天日期', async () => {
+  let systemPrompt = '';
+  const fake = new FakeLLM((messages) => {
+    systemPrompt = messages[0]?.content ?? '';
+    return '答案';
+  });
+  await synthesizeAnswer('STM32F103C8T6 最大主频是多少', fusedOk, classified, {
+    llm: fake,
+  });
+  assert.match(systemPrompt, /\d{4}-\d{2}-\d{2}/);
+});
+
+test('s5: 强时效问题追加时效红线并暴露证据日期', async () => {
+  let systemPrompt = '';
+  let userContent = '';
+  const fresh = fusedItem('https://example.com/1');
+  fresh.result.published = '2026-08-10T00:00:00+08:00';
+  const fake = new FakeLLM((messages) => {
+    systemPrompt = messages[0]?.content ?? '';
+    userContent = messages[1]?.content ?? '';
+    return '答案';
+  });
+  await synthesizeAnswer(
+    '中国空间站现在有哪几个航天员在太空',
+    { ...fusedOk, items: [fresh] },
+    { ...classified, intent: 'news' },
+    { llm: fake },
+  );
+  assert.ok(systemPrompt.includes('时效红线'));
+  assert.ok(userContent.includes('发布于 2026-08-10'));
+});

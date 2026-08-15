@@ -282,3 +282,35 @@ test('fusion: 版本查询用检索子词算相关性，官方 release 胜出', 
   );
   assert.ok(r.items[0].result.url.includes('github.com/openclaw'));
 });
+
+test('fusion: 强时效问题旧闻按新闻权重压制', () => {
+  const fresh = item({
+    url: 'https://news.example/fresh',
+    title: '中国空间站 神舟二十一号 乘组',
+    content: '中国空间站现在有哪几个航天员在太空 神舟二十一号 乘组 在轨 张陆 武飞 张洪章 完整 内容 足够 长 100A '.repeat(5),
+    published: '2026-08-10T00:00:00+08:00',
+  });
+  const old = item({
+    url: 'https://news.example/old',
+    title: '神舟十九号 神舟二十号 航天员',
+    content: '中国空间站现在有哪几个航天员在太空 神舟十九号 神舟二十号 航天员 在轨 完整 内容 足够 长 100A '.repeat(5),
+    published: '2025-04-26T00:00:00+08:00',
+  });
+  const r = fuseResults('中国空间站现在有哪几个航天员在太空', [old, fresh], 'factual');
+  const freshItem = r.items.find((f) => f.result.url.includes('fresh'));
+  const oldItem = r.items.find((f) => f.result.url.includes('old'));
+  assert.ok(freshItem && oldItem);
+  assert.equal(oldItem.timeliness, 0);
+  assert.ok(freshItem.timeliness > oldItem.timeliness);
+  assert.ok(freshItem.finalScore > oldItem.finalScore);
+});
+
+test('fusion: 强时效问题缺失日期证据降权', () => {
+  const noDate = item({
+    url: 'https://news.example/no-date',
+    title: '中国空间站 航天员 在轨',
+    content: '中国空间站现在有哪几个航天员在太空 航天员 在轨 完整 内容 足够 长 100A '.repeat(5),
+  });
+  const r = fuseResults('中国空间站现在有哪几个航天员在太空', [noDate], 'factual');
+  assert.equal(r.items[0].timeliness, 0.15);
+});

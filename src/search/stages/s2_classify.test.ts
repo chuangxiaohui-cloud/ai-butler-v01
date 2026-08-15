@@ -50,6 +50,13 @@ test('s2: 软件版本查询固定走 factual + 官方优先', async () => {
   assert.equal(r.source, 'rule');
 });
 
+test('s2: 强时效状态问题规则优先为 news', async () => {
+  const r = await classifyQuery('中国空间站现在有哪几个航天员在太空', fakeOk);
+  assert.equal(r.intent, 'news');
+  assert.equal(r.timeWindow, '≤24h');
+  assert.equal(r.source, 'rule');
+});
+
 test('s2: 非法 JSON 降级为 factual', async () => {
   const r = await classifyQuery('STM32F103C8T6 最大主频是多少', fakeBroken);
   assert.equal(r.intent, 'factual');

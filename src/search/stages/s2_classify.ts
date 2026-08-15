@@ -5,6 +5,7 @@
 
 import type { ChatMessage, LLMClient } from '../llm.js';
 import { createLightClient } from '../llm.js';
+import { isRecencySensitiveQuery } from '../recency.js';
 
 export type IntentKey =
   | 'factual'
@@ -37,6 +38,8 @@ const INTENTS: readonly IntentKey[] = [
 ];
 
 const VERSION_QUERY_RE = /最新.*版本|版本.*最新|最新版本号|版本号|latest.*version|version.*latest/;
+const PRESENT_STATE_RE =
+  /今天|今日|实时|最新|行情|截至|进展|在轨|驻留|在位|现役|现任|在任|现状|现在有|现在在|现在谁|现在哪些|现在几个|目前有|目前谁|目前哪些|目前几个|当前有|当前谁|当前哪些|当前几个/;
 
 const CLASSIFY_SYSTEM_PROMPT = `你是搜索意图分类器。给定用户问题，只输出一个 JSON 对象，不要解释。
 JSON 字段：
@@ -94,6 +97,15 @@ export async function classifyQuery(query: string, llm?: LLMClient): Promise<Cla
       searchQuery: query,
       timeWindow: '≤6月',
       domain: '官方优先',
+      source: 'rule',
+    };
+  }
+  if (PRESENT_STATE_RE.test(query)) {
+    return {
+      intent: 'news',
+      searchQuery: query,
+      timeWindow: '≤24h',
+      domain: '新闻源',
       source: 'rule',
     };
   }

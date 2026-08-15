@@ -13,6 +13,7 @@ import {
 import { resolveFactConsistency } from './rule1.js';
 import type { SearchResultItem } from './providers/types.js';
 import type { IntentKey } from './stages/s2_classify.js';
+import { isRecencySensitiveQuery } from './recency.js';
 
 export const DISCARD_THRESHOLD = 0.4; // [P-16]
 export const LOW_CONFIDENCE_THRESHOLD = 0.6; // [P-17]
@@ -291,11 +292,13 @@ function isErrorTopicMismatch(
   return !specific.some((term) => title.includes(term));
 }
 
-function timelinessScore(item: SearchResultItem): number {
-  if (!item.published) return 0.5;
+function timelinessScore(item: SearchResultItem, recencySensitive = false): number {
+  const missing = recencySensitive ? 0.15 : 0.5;
+  if (!item.published) return missing;
   const days = (Date.now() - new Date(item.published).getTime()) / 86_400_000;
-  if (!Number.isFinite(days) || days < 0) return 0.5;
-  return Math.max(0, Math.min(1, 1 - days / 365));
+  if (!Number.isFinite(days) || days < 0) return missing;
+  const windowDays = recencySensitive ? 90 : 365;
+  return Math.max(0, Math.min(1, 1 - days / windowDays));
 }
 
 function usabilityScore(item: SearchResultItem): number {
@@ -382,7 +385,9 @@ export function fuseResults(
   const rule1 = resolveFactConsistency(
     candidates.map((c) => ({ url: c.url, title: c.title, content: c.content, query })),
   );
-  const weights = INTENT_WEIGHTS[intent] ?? INTENT_WEIGHTS.default;
+  const recencySensitive = isRecencySensitiveQuery(query);
+  const effectiveIntent = recencySensitive ? 'news' : intent;
+  const weights = INTENT_WEIGHTS[effectiveIntent] ?? INTENT_WEIGHTS.default;
 
   const fused: FusionItem[] = candidates.map((result) => {
     const official = isOfficialForQuery(result.url, query);
@@ -391,7 +396,7 @@ export function fuseResults(
       isSeoNoise(result) && !(result.provider === 'browser' && isHighTrustDatasheetUrl(result.url, query));
     const relevance = relevanceScore(relevanceQuery, result);
     const answerCoverage = answerCoverageScore(result, intent);
-    const timeliness = timelinessScore(result);
+    const timeliness = timelinessScore(result, recencySensitive);
     const usability = usabilityScore(result);
     const factConsistency = rule1.factConsistency.get(result.url) ?? 1;
     let score =

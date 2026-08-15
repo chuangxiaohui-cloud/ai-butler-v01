@@ -8,6 +8,7 @@ import { createHeavyClient } from '../llm.js';
 import type { FusedOutput } from '../fusion.js';
 import type { ClassifiedQuery } from './s2_classify.js';
 import type { PrimaryLens } from '../../agent/types.js';
+import { isRecencySensitiveQuery } from '../recency.js';
 
 export interface SynthesizeOptions {
   llm?: LLMClient;
@@ -25,9 +26,18 @@ export interface SynthesizeResult {
   source: 'llm' | 'fallback';
 }
 
-function buildSystemPrompt(serious: boolean, primaryLens?: PrimaryLens): string {
+function todayLabel(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function buildSystemPrompt(serious: boolean, primaryLens?: PrimaryLens, query?: string): string {
   const lines = [
     '你是「她」，一位拥有三十年经验的老专家兼贴身女秘书。',
+    `今天是 ${todayLabel()}。`,
   ];
   if (primaryLens) {
     lines.push(`当前主镜片：${primaryLens}`);
@@ -41,6 +51,13 @@ function buildSystemPrompt(serious: boolean, primaryLens?: PrimaryLens): string 
   );
   if (serious) {
     lines.push('5. 本问题属医疗/税务等严肃领域，必须谨慎，并在结尾提示以官方或专业人士判断为准。');
+  }
+  if (query && isRecencySensitiveQuery(query)) {
+    lines.push(
+      '时效红线：本题询问“现在/当前/最新”状态，必须把每条证据的发布日期与今天对比；' +
+        '只有足够新的证据才能当现状，旧闻只能作背景；' +
+        '若没有足够新的证据，明确说明“截至今天暂无可靠更新”，不要拿旧闻冒充现状。',
+    );
   }
   lines.push('6. 若用户明确要求举例或写代码示例，请给出简短、可运行的示例代码，并标注为示例；不要只给文字描述。');
   return lines.join('\n');
@@ -62,7 +79,7 @@ export async function synthesizeAnswer(
   const evidenceBlock = fused.items
     .map(
       (f, i) =>
-        `[${i + 1}] ${f.result.title}（${f.result.url}）\n${f.result.content.slice(0, 300)}`,
+        `[${i + 1}] ${f.result.title}（${f.result.url}，发布于 ${f.result.published ?? '未知'}）\n${f.result.content.slice(0, 300)}`,
     )
     .join('\n\n');
   const memoryBlock =
@@ -97,7 +114,7 @@ export async function synthesizeAnswer(
   const messages = [
     {
       role: 'system' as const,
-      content: buildSystemPrompt(opts.serious ?? false, opts.primaryLens),
+      content: buildSystemPrompt(opts.serious ?? false, opts.primaryLens, query),
     },
     {
       role: 'user' as const,
