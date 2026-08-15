@@ -32,5 +32,5 @@
 - 验证：`browser:status` 确认 9222 与会话域 `member.szlcsc.com`；新进程 `browser:fetch https://member.szlcsc.com/` 自动连 QQ CDP 并正确跟随跳转到登录中心，链路机制生效。
 - 登录态结论：当前 QQ profile 未登录立创会员中心；用户在该站登录一次后，Agent 即可复用该会话。
 - 测试：无代码改动；doc-lint 0 FAIL/0 WARN。
-- 提交：<hash> · 推送：Gitee / GitHub
+- 提交：`8072bda` · 推送：Gitee / GitHub
 - 遗留事项：用户登录立创/芯查查后可再跑一次，确认可见个人订单/优惠等登录后内容。
