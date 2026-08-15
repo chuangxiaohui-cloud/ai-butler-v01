@@ -13,7 +13,7 @@
 - 按用户参考截图重排为深色 AI 工作台风格：近黑背景 `#141416/#1a1a1b/#212124`、蓝色强调 `#5b8def`，顶栏三栏 + Ask/Craft/Plan，左侧 MCP 子 Agent 列表，中间对话与审查报告，右侧产物/变更/风险，底部终端与状态栏。
 - 按用户反馈把 Ask/Craft/Plan 移到提问框左下方，并在左侧新增 `+` 弹出菜单：上传图片 / 上传文件 / 设置工程文件夹。
 - 聊天输入框支持直接粘贴图片：粘贴后显示预览，发送后随消息进入对话。
-- 提问框右下角新增模型切换器：DeepSeek Chat / DeepSeek Reasoner / MiniMax M2.7 / MiniMax M2.7 Highspeed / MiniMax M3，点击即无缝切换。
+- 提问框右下角新增模型切换器：DeepSeek V4 Flash / DeepSeek V4 Pro / MiniMax M2.7 / MiniMax M2.7 Highspeed / MiniMax M3，点击即无缝切换。
 - `npm run build` 通过。
 
 ## 结果

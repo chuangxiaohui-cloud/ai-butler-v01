@@ -63,8 +63,8 @@ const MODES: Array<{ key: Mode; label: string; hint: string }> = [
 ];
 
 const MODELS = [
-  { id: 'deepseek-chat', provider: 'DeepSeek', label: 'DeepSeek Chat', note: 'V3 · 默认' },
-  { id: 'deepseek-reasoner', provider: 'DeepSeek', label: 'DeepSeek Reasoner', note: 'R1 · 推理' },
+  { id: 'deepseek-v4-flash', provider: 'DeepSeek', label: 'DeepSeek V4 Flash', note: '快速 · 默认' },
+  { id: 'deepseek-v4-pro', provider: 'DeepSeek', label: 'DeepSeek V4 Pro', note: '旗舰 · 推理' },
   { id: 'MiniMax-M2.7', provider: 'MiniMax', label: 'MiniMax M2.7', note: '1M 上下文' },
   { id: 'MiniMax-M2.7-highspeed', provider: 'MiniMax', label: 'MiniMax M2.7 Highspeed', note: '极速' },
   { id: 'MiniMax-M3', provider: 'MiniMax', label: 'MiniMax M3', note: '新一代' },
