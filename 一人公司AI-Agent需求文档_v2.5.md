@@ -2337,6 +2337,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：TPS5430 扫描样本第 1 页冷启动对比：RapidOCR 17.16s / 1299 字符，PaddleOCR 117.74s / 1224 字符，两者均命中 `TPS5430/5.5V/500kHz`；默认引擎保持 RapidOCR，PaddleOCR 作为高质量慢速备选；单测 260/260 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-paddle-ocr-compare.md`。
 - affects: §7 | bench:na(new-param) 理由：OCR 引擎可切换与基准，无 §5/§6 参数变更
 
+### 2026-08-15（v1.0 三栏 UI 原型 E98）
+
+- **变更**：新增独立前端工程 `ui/prototype`（Vite + React + lucide-react），实现 §4.1 三栏布局（工程开发/知识咨询/生活助手）与 Ask/Craft/Plan 正交、工程开发三列布局、内置终端/浏览器、§9 证据链（[hard]/[soft]）与轻量反馈。
+- **验证**：`npm run build` 通过；Playwright 检查工程/知识/移动三个视口无横向溢出、控制台 0 错误；开发服务器 `http://127.0.0.1:5173/`；详见 `docs/plans/2026-08-15-three-column-ui-prototype.md`。
+- affects: §4.1,§9 | bench:na(new-param) 理由：三栏 UI 原型落地，无 §5/§6 参数变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

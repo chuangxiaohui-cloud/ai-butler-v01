@@ -37,13 +37,14 @@
 25. **PaddleOCR 精度对比（E97）**：`pdf_text.py` 支持 `PDF_OCR_ENGINE=rapid|paddle`，Paddle 自动关闭默认 MKLDNN；TPS5430 扫描样本冷启动 RapidOCR 17.16s/1299 字符、PaddleOCR 117.74s/1224 字符，关键词均命中；默认 RapidOCR，Paddle 为高质量慢速备选，详见 `docs/plans/2026-08-15-paddle-ocr-compare.md`。
 26. **路由校准样本扩到 26**：把 ST 数据手册、立创、芯查查、半导小芯 4 条真实查询补为 accept，反馈样本 26/10（accept 19 / reject 7）；`route:apply-calibration` 提案仍稳定在 0.45/0.75，详见 `docs/plans/2026-08-15-calibration-samples-26.md`。
 27. **需登录业务链路验证**：QQ CDP 会话直接读取立创“我的订单”（暂无订单）与“我的BOM”（暂无数据），半导小芯登录区含“我的BOM/我的样品/退出登录”，均未跳转登录中心，详见 `docs/plans/2026-08-15-logged-in-business-verify.md`。
+28. **v1.0 三栏 UI 原型（E98）**：新增独立 Vite + React 工程 `ui/prototype`，实现三栏 × Ask/Craft/Plan、工程开发三列布局、内置终端/浏览器、证据链与轻量反馈；开发服务器 `http://127.0.0.1:5173/`，详见 `docs/plans/2026-08-15-three-column-ui-prototype.md`。
 
 ## 明天继续（按优先级）
 
 1. 校准阈值保持 0.45/0.75（样本 26/10，accept 19 / reject 7）；继续攒真实 accept/reject 样本，样本更多后再校准。
 2. `push:hosts` 整链演练已完成，参数解析已修复；后续改动可直接用脚本统一提交推送。
 3. OCR 后续优化：PaddleOCR 精度对比（缓存清理已完成）。
-4. OCR 双引擎对比已完成，默认 RapidOCR；三站登录业务页已验证可读；下一步可做 v1.0 三栏 UI 原型或继续攒校准样本。
+4. v1.0 三栏 UI 原型已可运行；下一步把对话区接到真实 Agent 管道，或继续攒校准样本。
 
 ## 常用命令
 
@@ -65,5 +66,5 @@ npm run browser:status
 
 - 每日交接：`docs/2026-08-15-progress-handoff.md`（本文件）
 - 推进计划：`docs/plans/YYYY-MM-DD-<主题>.md`
-- 权威变更台账：v2.5 附录 A（当前到 E97）
+- 权威变更台账：v2.5 附录 A（当前到 E98）
 - 机器轨迹：`data/trajectory.jsonl`、`bench/search-metrics.jsonl`
