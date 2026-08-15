@@ -32,5 +32,5 @@
 
 - 校准样本 22/10（accept 15 / reject 7），`route:cases` issues 为空；`route:apply-calibration` 提案仍为 `routeConfidenceLow 0.45` / `routeConfidenceHigh 0.75`，未误伤 0.6 搜索。
 - 无代码改动；doc-lint 0 FAIL/0 WARN。
-- 提交：<hash> · 推送：Gitee / GitHub
+- 提交：`6bc6801` · 推送：Gitee / GitHub
 - 遗留事项：继续攒真实 accept/reject 样本。
