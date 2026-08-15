@@ -14,6 +14,7 @@
 - 按用户反馈把 Ask/Craft/Plan 移到提问框左下方，并在左侧新增 `+` 弹出菜单：上传图片 / 上传文件 / 设置工程文件夹。
 - 聊天输入框支持直接粘贴图片：粘贴后显示预览，发送后随消息进入对话。
 - 提问框右下角新增模型切换器：DeepSeek V4 Flash / DeepSeek V4 Pro / MiniMax M3 / MiniMax M2.7 / GLM-5.3 / GLM-5.2 / GLM-5-Turbo，点击即无缝切换。
+- 模型名按官方文档核对：DeepSeek 价格页确认 `deepseek-v4-flash/deepseek-v4-pro`；MiniMax 接口概览确认 `MiniMax-M3/MiniMax-M2.7`；智谱文档确认 `glm-5.3/glm-5.2/glm-5-turbo`（GLM-5.3 API 即将上线）。
 - `npm run build` 通过。
 
 ## 结果

@@ -26,6 +26,8 @@ npm run dev
 
 提问框右下角提供模型切换器：DeepSeek V4 Flash / DeepSeek V4 Pro / MiniMax M3 / MiniMax M2.7 / GLM-5.3 / GLM-5.2 / GLM-5-Turbo，点击即切换。
 
+模型名已按官方文档核对（2026-08-15）：DeepSeek 价格页 `deepseek-v4-flash/deepseek-v4-pro`；MiniMax 接口概览 `MiniMax-M3/MiniMax-M2.7`；智谱文档 `glm-5.3/glm-5.2/glm-5-turbo`。注意 GLM-5.3 官方标注“模型 API 即将上线”，Coding Plan 已全量可用。
+
 ## 验证
 
 - `npm run build` 通过。
