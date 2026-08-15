@@ -2349,6 +2349,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：122 条全部返回，0 超时，总耗时约 647s；owner 独立评分定稿（`AI-Agent_魔鬼训练_v2.5_AI独立评分表.xlsx`）：均分 1.28，≥2 分 58 条，0 分 43 条；分卷 ET 1.55、SM 1.06、EC 1.16、P 1.00、C 1.10、E 2.00；0 分大量为系统级故障（missing_time/create 排期选项/溺水救援误匹配），P 卷黑话/记忆/Skill 调用最弱；仍存在路由误判、紧急模板误触、记忆污染；详见 `docs/plans/2026-08-15-devil-training-v25-review.md`。
 - affects: §3.1,§5,§6 | bench:B-20260815-01 | E99 新增 122 条魔鬼训练评测基线，暴露路由与安全规则缺口
 
+### 2026-08-16（魔鬼训练最小修复包 E100）
+
+- **变更**：`toDisplayText` 增加 JSON 泄露净化；calendar/content-writer/im-dispatch 改为纯文本输出契约；`scoreRule` 增加 actionType 硬门，`qa` 优先于 `create/send/schedule`；新增 `illegal_request`/`property_emergency` 意图与 `safety_refusal`/财产止损分支；`bench:devil-v25` 注入与 CLI 同款依赖（记忆/技能/浏览器/LLM）。
+- **验证**：`npm run test:all` 单测 276/276 + 集成 17/17 全绿；新增 11 条路由负样本回归 + 破解 WiFi 拒绝 + 手机进水财产止损 + 净化器单测；35 条 Bug 中 24 路由类大部分转正、7 JSON 泄露堵住、4 安全误匹配三分；全量重跑待下一轮；详见 `docs/plans/2026-08-16-devil-minimal-fix.md`。
+- affects: §5,§6 | bench:B-20260816-01 | E100 修复路由/安全/JSON 泄露三类核心故障
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

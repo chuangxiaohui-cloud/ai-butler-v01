@@ -113,6 +113,19 @@ export function toDisplayText(result: unknown): string {
     const r = result as Record<string, unknown>;
     if (typeof r.text === 'string') return r.text;
     if (typeof r.answer === 'string') return r.answer;
+    if (typeof r.error === 'string') {
+      return '系统在处理您的请求时遇到了一点小问题，请稍后再试。';
+    }
+    if (r.ok === true && 'recipient' in r && 'content' in r) {
+      return '操作已记录到本地待处理队列。';
+    }
+    if ('outboxId' in r) {
+      return '操作已记录到本地待处理队列。';
+    }
+    if (Array.isArray(r.events)) {
+      const count = typeof r.count === 'number' ? r.count : r.events.length;
+      return `共 ${count} 条日程。`;
+    }
     return JSON.stringify(result);
   }
   return String(result);

@@ -153,6 +153,30 @@ function genericReply(): string {
 以专业救援或医生判断为准。我会一直陪你到救援接手，现在告诉我：人还在你身边吗？状态怎么样？`;
 }
 
+function illegalReply(): string {
+  return `抱歉，我无法提供任何非法或危险行为的帮助。这超出了我的服务范围，也不会协助实施。如果您需要了解相关法律或安全知识，我可以帮您查证正规资料。`;
+}
+
+function propertyReply(): string {
+  return `手机/设备进水先别开机，按这个顺序止损：
+
+1. 立即关机，不要按任何按键、不要插充电器。
+2. 用干净软布/纸巾吸干表面水分，不要甩动。
+3. 取出 SIM 卡、SD 卡和可拆卸电池（如果可以）。
+4. 放在通风干燥处静置 24-48 小时，或用干燥剂（硅胶）密封干燥；不要用吹风机热风直吹。
+5. 确认完全干燥后再尝试开机；仍异常就送官方售后检测。
+
+需要我把步骤整理成更简短的口述，或帮你查附近官方售后吗？`;
+}
+
+export function buildSafetyRefusalReply(): string {
+  return illegalReply();
+}
+
+export function buildPropertyEmergencyReply(): string {
+  return propertyReply();
+}
+
 type EmergencyScenario = [RegExp, () => string];
 
 const SCENARIOS: EmergencyScenario[] = [
@@ -170,6 +194,12 @@ const SCENARIOS: EmergencyScenario[] = [
 ];
 
 export function buildEmergencyReply(query: string): string {
+  if (/核弹|炸弹|制造.*武器|毒品|破解.*密码|入侵|盗取|窃取|rm\s*-\s*rf|删库|勒索|诈骗/.test(query)) {
+    return illegalReply();
+  }
+  if (/手机.*(进水|掉水|落水|泡水)|掉水里|进水了|泡水|设备.*(进水|水淹)/.test(query)) {
+    return propertyReply();
+  }
   for (const [re, build] of SCENARIOS) {
     if (re.test(query)) return build();
   }

@@ -23,9 +23,9 @@ test('content-writer: 生成 PRD 时注入规格先行工作流', async () => {
       },
     },
   );
-  const result = out.result as { title: string; content: string };
-  assert.equal(result.title, '库存管理 PRD');
-  assert.ok(result.content.includes('库存管理'));
+  const result = out.result as string;
+  assert.ok(result.includes('# 库存管理 PRD'));
+  assert.ok(result.includes('库存管理'));
   assert.ok(prompt.includes('规格先行'));
   assert.ok(prompt.includes('待确认问题'));
 });
@@ -41,6 +41,6 @@ test('content-writer: 无 LLM 时诚实提示', async () => {
     },
     { callVLM: async () => '' },
   );
-  const result = out.result as { error: string };
-  assert.equal(result.error, 'content_writer_requires_llm');
+  const result = out.result as string;
+  assert.equal(result, '文本 LLM 未接入，暂时无法生成文档。');
 });

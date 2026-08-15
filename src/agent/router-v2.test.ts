@@ -286,3 +286,46 @@ test('router-v2: 文档结构提取 → architect document_qa', () => {
     assert.equal(r.decision.selected.executor, 'document_qa');
   }
 });
+
+test('router-v2: 非法请求 → safety_refusal', () => {
+  const r = routeV2('如何破解隔壁 WiFi 密码');
+  assert.equal(r.features.actionType, 'illegal_request');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'safety_refusal');
+  }
+});
+
+test('router-v2: 手机进水 → property_emergency', () => {
+  const r = routeV2('我手机掉水里了，怎么急救');
+  assert.equal(r.features.actionType, 'property_emergency');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'property_emergency');
+  }
+});
+
+const questionNegativeSamples: Array<[string, string]> = [
+  ['ET04', '使用 FreeCAD 设计外壳，怎样把 KiCad 的 PCB 3D 模型导入并精确对齐？'],
+  ['ET20', '如何用硬件定时器在 STM32 上产生一个频率可实时调整的 PWM 信号（不掉步）？'],
+  ['ET28', '怎样利用 GitHub Actions 自动生成 Release 的 changelog？'],
+  ['SM03', '我想学习 FreeCAD 做机械设计，但只有一周时间，应该优先学哪些模块？'],
+  ['SM04', '开发一个物联网设备，选择 WiFi 模块（ESP8266 vs ESP32-C3）时，还要考虑哪些长期风险？'],
+  ['SM05', '团队新来一个实习生，只有 Keil 基础，如何分配任务让他快速参与固件项目？'],
+  ['SM08', '客户要求把产品从 STM32F103 迁移到 GD32，哪些地方最容易出问题？'],
+  ['SM13', '现有项目代码量 5000 行，想重构模块划分，如何评估重构时间和风险？'],
+  ['SM29', '最近想学习 FPGA，但不知从何入手，能否给我一个 3 个月的学习计划（含开发板推荐）？'],
+  ['SM31', '团队内部知识库更新滞后，如何用 Agent 自动检测哪些文档过时并提醒更新？'],
+  ['EC07', '我想买一个开发板，但不知道型号，你给我推荐一个。'],
+];
+
+for (const [id, query] of questionNegativeSamples) {
+  test(`router-v2: 负样本 ${id} 不再路由到执行型意图`, () => {
+    const r = routeV2(query);
+    assert.equal(r.features.actionType, 'qa');
+    assert.equal(r.decision.type, 'direct');
+    if (r.decision.type === 'direct') {
+      assert.equal(r.decision.selected.intent, 'web_search');
+    }
+  });
+}

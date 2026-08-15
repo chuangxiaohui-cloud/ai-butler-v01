@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { findSkill, getSkills } from './registry.js';
+import { findSkill, getSkills, toDisplayText } from './registry.js';
 
 test('registry: 18 项 Skill 全量加载', () => {
   const skills = getSkills();
@@ -58,6 +58,19 @@ test('registry: 核心 2 项经 wrapLegacySkill 可执行', async () => {
   };
   assert.equal(jargonResult.matched[0].normalized, 'Altium Designer');
   assert.equal(jargonResult.normalizedQuery, 'Altium Designer 怎么画四层板');
+});
+
+test('registry: toDisplayText 拦截 JSON 泄漏并输出友好文本', () => {
+  assert.equal(
+    toDisplayText({ error: 'missing_time' }),
+    '系统在处理您的请求时遇到了一点小问题，请稍后再试。',
+  );
+  assert.equal(
+    toDisplayText({ ok: true, recipient: '老张', content: '明天开会', outboxId: '1' }),
+    '操作已记录到本地待处理队列。',
+  );
+  assert.equal(toDisplayText({ events: [], count: 0 }), '共 0 条日程。');
+  assert.equal(toDisplayText('正常回答'), '正常回答');
 });
 
 test('registry: findSkill 按触发器匹配', () => {

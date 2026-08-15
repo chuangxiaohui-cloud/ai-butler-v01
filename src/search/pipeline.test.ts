@@ -370,7 +370,7 @@ test('pipeline: 统一轨迹记录路由/技能/搜索/合成/答案', async () 
 
 test('pipeline: 本地日历查询走 calendar-skill 执行', async () => {
   const r = await pipeline('查一下我今天的日程', deps);
-  assert.ok(r.answer.includes('count'));
+  assert.ok(r.answer.includes('日程'));
 });
 
 test('pipeline: 发消息走 im-dispatch 待发送队列', async () => {

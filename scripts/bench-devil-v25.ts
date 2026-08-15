@@ -23,6 +23,17 @@ import { fileURLToPath } from 'url';
 import type { AnswerResult } from '../src/search/pipeline.js';
 import { pipeline } from '../src/search/pipeline.js';
 import { renderWorksheetV01, type DevilWorksheetEntry } from './devil-worksheet-lib.js';
+import { ExperienceManager } from '../src/memory/experience.js';
+import { SkillLifecycle } from '../src/skills/lifecycle.js';
+import { SearchSourceStats } from '../src/search/source-stats.js';
+import { UserContextStore } from '../src/memory/user-context-store.js';
+import { RouteCaseStore } from '../src/agent/route-case-store.js';
+import { createHeavyClient, createVisionClient } from '../src/search/llm.js';
+import { parseDocumentFile } from '../src/search/document-parser.js';
+import type { SkillDeps } from '../src/skills/deps.js';
+import { TrajectoryLog } from '../src/trajectory/trajectory-log.js';
+import { browserSession } from '../src/browser/session.js';
+import type { PipelineDeps } from '../src/search/pipeline.js';
 
 interface DevilRow {
   volume: string;
@@ -223,7 +234,7 @@ function autoScore(row: DevilRow, result: AnswerResult | undefined, error?: stri
   return { score: capped, reason: bits.join('; ') || '信号弱' };
 }
 
-async function runOne(row: DevilRow): Promise<RunEntry> {
+async function runOne(row: DevilRow, deps: PipelineDeps): Promise<RunEntry> {
   const timer = new Promise<RunEntry>((resolve) =>
     setTimeout(
       () => resolve({ row, error: `timeout after ${timeoutMs}ms` }),
@@ -232,7 +243,7 @@ async function runOne(row: DevilRow): Promise<RunEntry> {
   );
   const run = (async () => {
     try {
-      const result = await pipeline(row.query, { tavily: { enabled: true } });
+      const result = await pipeline(row.query, deps);
       const scored = autoScore(row, result);
       return { row, result, autoScore: scored.score, autoReason: scored.reason };
     } catch (err) {
@@ -338,6 +349,30 @@ function renderWorksheet(entries: RunEntry[]): string {
 
 async function main(): Promise<void> {
   mkdirSync(outDir, { recursive: true });
+  const experienceManager = new ExperienceManager();
+  const skillLifecycle = new SkillLifecycle();
+  const sourceStats = new SearchSourceStats();
+  const userContextStore = new UserContextStore();
+  const routeCaseStore = new RouteCaseStore();
+  const trajectoryLog = new TrajectoryLog();
+  const skillDeps: SkillDeps = {
+    callVLM: async (input, opts) => createVisionClient()(input, opts),
+    complete: {
+      complete: async (messages, opts) => createHeavyClient().complete(messages, opts),
+    },
+    parseDocument: parseDocumentFile,
+  };
+  const pipelineDeps: PipelineDeps = {
+    tavily: { enabled: true },
+    experienceManager,
+    skillLifecycle,
+    sourceStats,
+    userContextStore,
+    routeCaseStore,
+    skillDeps,
+    trajectory: trajectoryLog,
+    browserSession,
+  };
   const rowsAll = loadRows();
   const rows = limit ? rowsAll.slice(0, limit) : rowsAll;
   const done = loadDone();
@@ -348,7 +383,7 @@ async function main(): Promise<void> {
   );
 
   for (const [i, row] of todo.entries()) {
-    const entry = await runOne(row);
+    const entry = await runOne(row, pipelineDeps);
     appendFileSync(jsonlPath, JSON.stringify(entry) + '\n', 'utf-8');
     const idx = entries.findIndex((e) => e.row.id === row.id);
     if (idx >= 0) entries[idx] = entry;
@@ -374,6 +409,11 @@ async function main(): Promise<void> {
   console.log(`\n已生成: ${reportPath}`);
   console.log(`已生成: ${worksheetPath}`);
   console.log(`已生成: ${scoresExamplePath}`);
+  experienceManager.close();
+  skillLifecycle.close();
+  sourceStats.close();
+  userContextStore.close();
+  browserSession.close();
 }
 
 main().catch((err) => {

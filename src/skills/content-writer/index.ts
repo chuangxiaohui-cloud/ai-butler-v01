@@ -15,7 +15,7 @@ export function createContentWriterSkill(): ExecutableSkill {
     async execute(input: SkillInput, deps: SkillDeps): Promise<SkillOutput> {
       if (!deps.complete) {
         return {
-          result: { error: 'content_writer_requires_llm' },
+          result: '文本 LLM 未接入，暂时无法生成文档。',
           confidence: 0.2,
           followUpAction: '文本 LLM 未接入，暂时无法生成文档。',
         };
@@ -34,18 +34,14 @@ export function createContentWriterSkill(): ExecutableSkill {
           ],
           { temperature: 0.4, maxTokens: 1200 },
         );
-        const title =
-          content.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? '新建文档';
         return {
-          result: { title, content: content.trim() },
+          result: content.trim(),
           confidence: 0.8,
           followUpAction: '需要调整结构、扩写某一节或导出成文件，随时说。',
         };
       } catch (err) {
         return {
-          result: {
-            error: err instanceof Error ? err.message : String(err),
-          },
+          result: '文档生成失败，可以稍后重试。',
           confidence: 0.2,
           followUpAction: '文档生成失败，可以稍后重试。',
         };

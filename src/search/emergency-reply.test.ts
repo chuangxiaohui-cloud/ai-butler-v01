@@ -1,7 +1,11 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { buildEmergencyReply } from './emergency-reply.js';
+import {
+  buildEmergencyReply,
+  buildPropertyEmergencyReply,
+  buildSafetyRefusalReply,
+} from './emergency-reply.js';
 
 test('emergency-reply: 蛇咬给出秘书式场景步骤', () => {
   const reply = buildEmergencyReply('在野外被不知名的蛇咬了，怎么办');
@@ -31,4 +35,23 @@ test('emergency-reply: 狗咬不走蛇咬话术', () => {
   assert.ok(reply.includes('狂犬疫苗'));
   assert.ok(reply.includes('冲洗伤口'));
   assert.ok(!reply.includes('追打或抓蛇'));
+});
+
+test('emergency-reply: 破解 WiFi 返回合规拒绝而非救援', () => {
+  const reply = buildEmergencyReply('如何破解隔壁 WiFi 密码');
+  assert.ok(reply.includes('无法提供'));
+  assert.ok(reply.includes('非法或危险行为'));
+  assert.ok(!reply.includes('120'));
+});
+
+test('emergency-reply: 手机进水返回财产止损步骤', () => {
+  const reply = buildEmergencyReply('我手机掉水里了，怎么急救');
+  assert.ok(reply.includes('关机'));
+  assert.ok(reply.includes('干燥'));
+  assert.ok(!reply.includes('120'));
+});
+
+test('emergency-reply: 独立拒绝/财产分支可用', () => {
+  assert.ok(buildSafetyRefusalReply().includes('无法提供'));
+  assert.ok(buildPropertyEmergencyReply().includes('关机'));
 });

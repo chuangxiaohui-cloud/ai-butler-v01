@@ -23,7 +23,11 @@ import { fuseResults } from './fusion.js';
 import { pickSecondPassTarget, shouldSecondPass } from './second-pass.js';
 import { applyRule3 } from './rule3.js';
 import { shouldTriggerTavily } from './tavily-trigger.js';
-import { buildEmergencyReply } from './emergency-reply.js';
+import {
+  buildEmergencyReply,
+  buildPropertyEmergencyReply,
+  buildSafetyRefusalReply,
+} from './emergency-reply.js';
 import { routeV2WithLLM } from '../agent/router-v2.js';
 import { preprocessUserMessage } from '../agent/multimodal-preprocessor.js';
 import { buildMemoryInjection, type UserContext } from '../memory/user-context.js';
@@ -213,6 +217,28 @@ export async function pipeline(
         elapsedMs: Date.now() - start,
       },
     });
+    return {
+      query,
+      answer,
+      confidence: route.confidence,
+      evidence: [],
+      gate_triggered: 'emergency',
+      elapsed_ms: Date.now() - start,
+    };
+  }
+  if (routeSelected.intent === 'safety_refusal') {
+    const answer = buildSafetyRefusalReply();
+    return {
+      query,
+      answer,
+      confidence: route.confidence,
+      evidence: [],
+      gate_triggered: 'safety',
+      elapsed_ms: Date.now() - start,
+    };
+  }
+  if (routeSelected.intent === 'property_emergency') {
+    const answer = buildPropertyEmergencyReply();
     return {
       query,
       answer,

@@ -13,6 +13,8 @@ export const ACTION_TYPES = [
   'analyze',
   'clarify',
   'emergency',
+  'illegal_request',
+  'property_emergency',
   'cultural_reference',
   'qa',
   'summarize',
@@ -66,22 +68,36 @@ export interface IntentFeature {
   hasTimeExpression: boolean;
 }
 
+const ANALYZE_RE =
+  /分析|评估|审查|检查|巡检|审阅|值不值|成本|收益|颜色|配色|色号|色彩|主色|取色/;
+const QA_RE =
+  /是什么|什么是|为什么|怎么|如何|怎样|怎么样|怎么办|哪些|哪种|哪几个|哪个|哪一种|推荐|选型|能不能|是否|好不好|要不要|该不该|适合|需要注意|注意什么|需要什么|有什么|做什么|干嘛|干啥|解释|说明|回答|含义|是谁|叫什么|是啥|用途|作用/;
+const COLOR_RE = /颜色|配色|色号|色彩|主色|取色/;
+
 const ACTION_RE: Array<[ActionType, RegExp]> = [
+  [
+    'illegal_request',
+    /核弹|炸弹|制造.*武器|毒品|破解.*密码|入侵|盗取|窃取|rm\s*-\s*rf|删库|勒索|诈骗/,
+  ],
+  [
+    'property_emergency',
+    /手机.*(进水|掉水|落水|泡水)|掉水里|进水了|泡水|设备.*(进水|水淹)/,
+  ],
   [
     'emergency',
     /急救|120|119|110|火灾|地震|溺水|落水|触电|电击|大出血|呼吸困难|窒息|蛇咬|毒蛇|咬伤|中毒|昏迷|心梗|胸痛|心肌梗死|跟踪|遇袭|抢劫|挟持/,
   ],
   ['cultural_reference', /小鸡啄米|唐伯虎|周星驰|星爷|梗|名场面|表情包|meme|经典桥段|鬼畜|抽象|玩梗/],
-  ['send', /发消息|发邮件|通知|发给|转发|发送|微信|QQ|飞书/],
-  ['schedule', /安排|预约|预定|订个|约个|帮我订/],
-  ['qa', /是什么|什么是|为什么|怎么|如何|解释|说明|回答|含义|是谁|叫什么|是啥|做什么|干嘛|干啥|用途|作用/],
-  ['create', /创建|生成|写个|写一个|做个|做一个|开发|搭建|实现|写一份|帮我写|设计|画/],
-  ['modify', /修改|改下|更新|重构|修复/],
   ['compare', /对比|比较|对照|PK/],
-  ['analyze', /分析|评估|审查|检查|巡检|审阅|值不值|怎么样|成本|收益|推荐|选型|颜色|配色|色号|色彩|主色|取色/],
+  ['analyze', ANALYZE_RE],
+  ['qa', QA_RE],
   ['query', /查一下|查询|看下|看看|问一下|帮我查/],
   ['summarize', /总结|摘要|提炼|要点|概述|概括/],
   ['extract_structure', /结构|大纲|目录|框架|拆解|分节|章节/],
+  ['send', /发消息|发邮件|通知|发给|转发|发送|微信|QQ|飞书/],
+  ['schedule', /安排|预约|预定|订个|约个|帮我订/],
+  ['create', /创建|生成|写个|写一个|做个|做一个|开发|搭建|实现|写一份|帮我写|设计|画/],
+  ['modify', /修改|改下|更新|重构|修复/],
 ];
 
 const DOMAIN_RE: Array<[TargetDomain, RegExp]> = [
@@ -157,10 +173,13 @@ export function extractIntentFeatureRuleBased(
   const q = query.trim();
   let actionType: ActionType = 'unknown';
   for (const [type, re] of ACTION_RE) {
-    if (re.test(q)) {
-      actionType = type;
-      break;
+    if (!re.test(q)) continue;
+    if (type === 'analyze' && QA_RE.test(q) && !COLOR_RE.test(q)) {
+      // 问句优先 qa，避免“如何评估风险”被 analyze 抢走
+      continue;
     }
+    actionType = type;
+    break;
   }
 
   let targetDomain: TargetDomain = 'unknown';

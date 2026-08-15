@@ -21,16 +21,11 @@ test('im-dispatch: 消息写入待发送队列', async () => {
       },
       deps,
     );
-    const result = out.result as {
-      ok: boolean;
-      recipient: string;
-      content: string;
-      status: string;
-    };
-    assert.equal(result.ok, true);
-    assert.equal(result.recipient, '老张');
-    assert.ok(result.content.includes('明天下午开会'));
-    assert.equal(result.status, 'pending');
+    const result = out.result as string;
+    assert.ok(result.includes('已写入待发送队列'));
+    assert.ok(result.includes('老张'));
+    assert.ok(result.includes('明天下午开会'));
+    assert.ok(result.includes('pending'));
   } finally {
     skill.close();
     rmSync(dir, { recursive: true, force: true });

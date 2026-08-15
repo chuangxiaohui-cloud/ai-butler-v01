@@ -92,6 +92,9 @@ function scoreRule(feature: IntentFeature, rule: RoutingRule): { base: number; c
       return { base: 0, confidence: 0 };
     }
   }
+  if (rule.match.actionType !== undefined && feature.actionType !== rule.match.actionType) {
+    return { base: 0, confidence: 0 };
+  }
   if (rule.strictMatch && !allMatch(feature, rule)) {
     return { base: 0, confidence: 0 };
   }
@@ -172,7 +175,9 @@ export function routeFromFeatures(
 
   let decision: RouteDecision;
   const hasMissingReferent = features.ambiguityFlags.includes('missing_referent');
-  if (top && topConfidence >= PARAMS.routeConfidenceHigh - 1e-9) {
+  if (features.actionType === 'qa' && top?.intent === 'web_search') {
+    decision = { type: 'direct', selected: top };
+  } else if (top && topConfidence >= PARAMS.routeConfidenceHigh - 1e-9) {
     decision = { type: 'direct', selected: top };
   } else if (topConfidence < PARAMS.routeConfidenceLow - 1e-9 && !hasMissingReferent) {
     decision = {

@@ -68,7 +68,7 @@ export function createCalendarSkill(
         const timeExpression = extractTimeExpression(input.query);
         if (!timeExpression) {
           return {
-            result: { error: 'missing_time' },
+            result: '请问您想安排在什么时间？例如“明天上午十点”。',
             confidence: 0.3,
             followUpAction: '请补充具体时间，例如“明天上午十点”。',
           };
@@ -84,13 +84,7 @@ export function createCalendarSkill(
           )
           .run('default', title, timeExpression, parsed.startAt, now);
         return {
-          result: {
-            ok: true,
-            title,
-            timeExpression,
-            startAt: parsed.startAt,
-            eventId: String(inserted.lastInsertRowid),
-          },
+          result: `已创建日程：${title}（${timeExpression}，${parsed.startAt}）`,
           confidence: 0.8,
           followUpAction: '需要我设置提醒或改成重复日程吗？',
         };
@@ -103,14 +97,22 @@ export function createCalendarSkill(
           )
           .all('default');
         return {
-          result: { events: rows, count: rows.length },
+          result:
+            rows.length === 0
+              ? '暂无日程。'
+              : `共 ${rows.length} 条日程：${rows
+                  .map(
+                    (row) =>
+                      `${row.title}（${row.time_expression}，${row.start_at || '时间未定'}）`,
+                  )
+                  .join('；')}`,
           confidence: 0.8,
           followUpAction: '要新建日程或调整已有安排，随时说。',
         };
       }
 
       return {
-        result: { error: 'unknown_mode' },
+        result: '暂不支持该日历操作。',
         confidence: 0.2,
         followUpAction: '暂不支持该日历操作。',
       };

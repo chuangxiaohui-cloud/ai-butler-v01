@@ -21,14 +21,9 @@ test('calendar-skill: 创建日程并查询', async () => {
       },
       deps,
     );
-    const result = created.result as {
-      ok: boolean;
-      timeExpression: string;
-      startAt: string;
-    };
-    assert.equal(result.ok, true);
-    assert.ok(result.timeExpression.includes('明天'));
-    assert.ok(result.startAt.includes('T'));
+    const result = created.result as string;
+    assert.ok(result.includes('已创建日程'));
+    assert.ok(result.includes('明天上午十点'));
 
     const listed = await skill.execute(
       {
@@ -40,8 +35,8 @@ test('calendar-skill: 创建日程并查询', async () => {
       },
       deps,
     );
-    const listedResult = listed.result as { count: number };
-    assert.equal(listedResult.count, 1);
+    const listedResult = listed.result as string;
+    assert.ok(listedResult.includes('共 1 条日程'));
   } finally {
     skill.close();
     rmSync(dir, { recursive: true, force: true });

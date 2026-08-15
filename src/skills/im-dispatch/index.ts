@@ -37,7 +37,7 @@ export function createImDispatchSkill(
       const mode = typeof input.params?.mode === 'string' ? input.params.mode : '';
       if (mode !== 'send_message' && !/发消息|发给|转发|发送|通知/.test(input.query)) {
         return {
-          result: { error: 'unknown_mode' },
+          result: '请说明发给谁、发什么内容。',
           confidence: 0.2,
           followUpAction: '请说明发给谁、发什么内容。',
         };
@@ -57,13 +57,7 @@ export function createImDispatchSkill(
         )
         .run(recipient, content, now);
       return {
-        result: {
-          ok: true,
-          recipient,
-          content,
-          status: 'pending',
-          outboxId: String(inserted.lastInsertRowid),
-        },
+        result: `已写入待发送队列：给 ${recipient}：${content}（状态：pending）`,
         confidence: 0.7,
         followUpAction: '真实 IM 未接入，消息已进入待发送队列；接入微信/飞书后我会自动发出。',
       };
