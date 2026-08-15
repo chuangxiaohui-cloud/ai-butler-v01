@@ -56,3 +56,21 @@ test('confidence-calibration: 拒绝样本抬高 low 阈值', () => {
   assert.ok(suggestion.suggestedLow > 0.45);
   assert.equal(suggestion.rejectedCount, 3);
 });
+
+test('confidence-calibration: 该直答却澄清的 reject 不抬高 low 阈值', () => {
+  const records = [
+    { result: { confidence: 0, decision: { type: 'must_clarify' } } },
+    { result: { confidence: 0, decision: { type: 'must_clarify' } } },
+    { result: { confidence: 0.7, decision: { type: 'option_clarify' } } },
+  ].map((r, i) => ({
+    id: `r${i}`,
+    timestamp: i,
+    query: `q${i}`,
+    result: r.result as never,
+    feedback: 'reject' as const,
+    correctedRoute: { primaryLens: 'secretary', intent: 'web_search' },
+  }));
+  const suggestion = calibrateThresholds(records as never);
+  assert.ok(suggestion.suggestedLow <= 0.45);
+  assert.equal(suggestion.rejectedCount, 3);
+});

@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- `npm run build` 通过；`npm run test:all` 全绿：单测 254/254 + 集成 17/17。
+- `npm run build` 通过；`npm run test:all` 全绿：单测 255/255 + 集成 17/17。
 - `npm exec tsx scripts/doc-lint.ts`：0 FAIL / 0 WARN。
 - 浏览器会话体系已打通：独立持久化 profile、CDP 直连日常浏览器、端口持久化自动复用、搜索自动兜底、二次取证。
 
@@ -21,10 +21,11 @@
 9. **扫描件 OCR（E84）**：`scripts/pdf_text.py` 对无文本层扫描页渲染 2x 图并调用 RapidOCR（ONNX）识别；TPS5430 扫描版命中 `TPS5430`/`5.5V`/`500kHz`；OCR 引擎缺失时给出安装指引，详见 `docs/plans/2026-08-15-pdf-ocr.md`。
 10. **路由校准样本达标（10/10）**：给 5 条 accept + 2 条 reject，`route:apply-calibration` 生成提案 `routeConfidenceLow 0.65` / `routeConfidenceHigh 0.75`，待人工确认后写回 PARAM，详见 `docs/plans/2026-08-15-route-calibration.md`。
 11. **航天状态权威源（E85）**：`cmse.gov.cn` / `cnsa.gov.cn` 等登记为航天官方源，航天员/空间站/在轨查询自动补 `site:` 子查询；复测证据变为 `www.cmse.gov.cn` [hard]，回答仍诚实“截至今天暂无可靠更新”，详见 `docs/plans/2026-08-15-space-official-source.md`。
+12. **校准按决策类型细分（E86）**：reject 分“该澄清却直答”与“该直答却澄清”，后者不再抬高 `routeConfidenceLow`；重跑校准提案修正为 0.45/0.75，不再误伤 0.6 搜索，详见 `docs/plans/2026-08-15-calibration-refine.md`。
 
 ## 明天继续（按优先级）
 
-1. 校准提案暂不回写：原始建议会把 `routeConfidenceLow` 提到 0.65，误伤已接受的 0.6 搜索；后续细分 reject 决策类型后再重跑校准。
+1. 校准阈值保持 0.45/0.75；继续攒真实 accept/reject 样本，样本更多后再校准。
 2. 需要用户配合的浏览器项：关掉 QQ浏览器 → `npm run browser:launch -- qq` → `npm run browser:cdp -- 9222`，验证登录态自动兜底。
 3. 继续按 `push:hosts` 流程同步后续改动。
 4. OCR 后续优化：多页扫描件限页数、单页缓存，避免二次取证超时；可与 PaddleOCR 再对比精度。
@@ -45,5 +46,5 @@ npm run route:feedback
 
 - 每日交接：`docs/2026-08-15-progress-handoff.md`（本文件）
 - 推进计划：`docs/plans/YYYY-MM-DD-<主题>.md`
-- 权威变更台账：v2.5 附录 A（当前到 E85）
+- 权威变更台账：v2.5 附录 A（当前到 E86）
 - 机器轨迹：`data/trajectory.jsonl`、`bench/search-metrics.jsonl`

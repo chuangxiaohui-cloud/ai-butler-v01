@@ -2265,6 +2265,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：复测“中国空间站现在有哪几个航天员在太空”，证据变为 `www.cmse.gov.cn`（[hard]）3 条，回答仍诚实为“截至今天暂无可靠更新”；新增 authority/rewrite 单测 4 条；单测 254/254 + 集成 17/17 全绿。
 - affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：官方源登记与查询改写，无 §5/§6 参数变更
 
+### 2026-08-15（校准按决策类型细分 E86）
+
+- **变更**：`confidence-calibration.ts` 的 `calibrateThresholds` 现在按 reject 的决策类型区分：只有 `direct/confirm`（或缺少修正路由）的 reject 才参与抬高 `routeConfidenceLow`；`must_clarify/option_clarify + correctedRoute` 的 reject（该直答却澄清）不再抬高澄清阈值。`CalibrationRecord` 扩展 `decision.type` 与 `correctedRoute`。
+- **验证**：10/10 校准样本重跑 `route:apply-calibration`，提案从 low=0.65 修正为 low=0.45/high=0.75（与现值一致，不误伤 0.6 搜索）；新增单测 1 条；单测 255/255 + 集成 17/17 全绿。
+- affects: §12.3 | bench:na(new-param) 理由：校准算法修正，PARAM 值未变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

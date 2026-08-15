@@ -6,8 +6,12 @@
 import { PARAMS } from '../config/params.js';
 
 export interface CalibrationRecord {
-  result: { confidence: number };
+  result: {
+    confidence: number;
+    decision?: { type: string };
+  };
   feedback?: 'accept' | 'reject' | 'correct';
+  correctedRoute?: { primaryLens?: string; intent?: string };
 }
 
 export interface CalibrationSuggestion {
@@ -28,6 +32,11 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function isClarifyDecision(record: CalibrationRecord): boolean {
+  const type = record.result.decision?.type;
+  return type === 'must_clarify' || type === 'option_clarify';
+}
+
 export function calibrateThresholds(
   records: CalibrationRecord[],
   current = PARAMS,
@@ -46,9 +55,19 @@ export function calibrateThresholds(
   const notes: string[] = [];
 
   if (rejected.length >= 3) {
-    const rejectedP75 = percentile(rejected, 0.75);
+    // 只有“该澄清却直答/确认”或缺少修正路由的 reject 才应抬高澄清阈值；
+    // “该直答却澄清”的 reject（must_clarify/option_clarify + correctedRoute）不参与抬高。
+    const rejectedClarify = records
+      .filter(
+        (r) =>
+          r.feedback === 'reject' &&
+          !(isClarifyDecision(r) && r.correctedRoute),
+      )
+      .map((r) => r.result.confidence)
+      .sort((a, b) => a - b);
+    const rejectedP75 = percentile(rejectedClarify, 0.75);
     suggestedLow = clamp(Math.max(suggestedLow, rejectedP75), 0.3, 0.65);
-    notes.push(`rejected=${rejected.length}`);
+    notes.push(`rejected=${rejected.length} clarify=${rejectedClarify.length}`);
   }
   if (accepted.length >= 3) {
     const acceptedP25 = percentile(accepted, 0.25);
