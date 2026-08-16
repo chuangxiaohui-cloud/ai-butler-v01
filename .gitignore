@@ -30,6 +30,11 @@ dist/
 .env
 desktop/resources/
 desktop/release/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+!desktop/src-tauri/icons/
+!desktop/src-tauri/icons/*.png
+desktop/src-tauri/icons/android/
 
 # 运行时数据（SQLite、JSONL、缓存）
 data/

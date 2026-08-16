@@ -2519,6 +2519,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：重新执行 `npm run dist`，打包日志不再出现默认图标警告，NSIS 与便携版重新产出；打包后 exe smoke 实测通过（退出码 0，`DESKTOP_READY`）；主项目与 UI build、`npm run test:all` 单测 340/340 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-16-app-icon.md`。
 - affects: §13 | bench:na(new-param) 理由：应用图标资源与打包配置新增，无 §5/§6 参数或行为变更
 
+### 2026-08-16（Tauri 瘦身迁移 E124）
+
+- **变更**：新增 `desktop/src-tauri`（Tauri v2 + Rust）：Rust 后端拉起 gateway、健康检查后创建 WebView2 窗口、退出时回收子进程；支持 dev/packaged 双模式（打包模式用内置 node.exe + 编译后 gateway，`\\?\` 长路径归一化）；新增 `tauri` / `tauri:dev` / `tauri:build` 脚本与 NSIS 打包配置。
+- **验证**：`cargo check` 通过；`--smoke` 实测打包资源分支拉起 gateway、加载 UI、打印 `TAURI_READY` 后退出码 0；`npm run tauri:build` 产出 `一人公司AI-Agent_0.1.0_x64-setup.exe`；主项目与 UI build、`npm run test:all` 单测 340/340 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-16-tauri-migration.md`。
+- affects: §13 | bench:na(new-param) 理由：Tauri 桌面壳新增，Electron 保留回退，无 §5/§6 参数或行为变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

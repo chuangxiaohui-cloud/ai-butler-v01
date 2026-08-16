@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "一人公司AI-Agent",
+  "version": "0.1.0",
+  "identifier": "com.one-person-agent.desktop",
+  "build": {
+    "beforeDevCommand": "",
+    "devUrl": "http://127.0.0.1:8787",
+    "beforeBuildCommand": "npm run prepare:resources",
+    "frontendDist": "../../ui/prototype/dist"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico"],
+    "resources": [
+      "../resources/gateway",
+      "../resources/node.exe"
+    ]
+  }
+}

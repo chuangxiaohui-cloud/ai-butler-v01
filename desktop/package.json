@@ -8,7 +8,10 @@
     "start": "electron .",
     "prepare:resources": "node scripts/prepare-resources.mjs",
     "pack": "npm run prepare:resources && electron-builder --dir",
-    "dist": "npm run prepare:resources && electron-builder --win"
+    "dist": "npm run prepare:resources && electron-builder --win",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "build": {
     "appId": "com.one-person-agent.desktop",
@@ -47,6 +50,7 @@
     }
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
     "electron": "^43.4.0",
     "electron-builder": "^26.15.3"
   }
