@@ -1,6 +1,6 @@
 # 魔鬼训练 v2.5 搜索结果证据来源
 
-> 由 `bench/devil-v25/results.jsonl` 生成：共 122 条，230 条证据。
+> 由 `bench/devil-v25/results.jsonl` 生成：共 122 条，278 条证据。
 
 ### ET01 STM32H7 与 STM32F4 的 FPU 差异对 PID 控制环计算延迟影响多大？实测应如何配置？
 
@@ -18,36 +18,37 @@
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.85 | www.szlcsc.com | BUCK 数据手册 | [链接](https://www.szlcsc.com/about.html) |
+| [soft] | 0.85 | item.szlcsc.com | BUCK 数据手册 | [链接](https://item.szlcsc.com/20558171.html) |
+| [soft] | 0.41 | coinmarketcap.com | Bucket Protocol BUCK Stablecoin (BUCK) 價格、圖表、市值及其他指標 | CoinMarketCap | [链接](https://coinmarketcap.com/zh-tw/currencies/bucket-protocol-buck-stablecoin/) |
 
 ### ET03 TPS5430 输出 5V/2A，电感选 10µH 还是 22µH？轻载和满载效率差异？
 
-- gate: none | confidence: 0.98
+- gate: none | confidence: 0.89
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [hard] | 0.98 | edgeworker.ti.com | TPS5430 data sheet, product information and support | TI.com | [链接](https://edgeworker.ti.com/product/TPS5430) |
-| [hard] | 0.89 | www.ti.com | TPS543x 3A, Wide Input Range, Step-Down Converter datasheet (Rev. L) | [链接](https://www.ti.com/lit/ds/symlink/tps5430.pdf) |
-| [hard] | 0.89 | e2echina.ti.com | TPS543x 3A、宽输入范围降压转换器 datasheet (Rev. K) | [链接](https://e2echina.ti.com/cfs-file/__key/communityserver-discussions-components-files/24/tps5430.pdf) |
+| [hard] | 0.89 | www.ti.com | TPS5430 | Buy TI Parts | TI.com | [链接](https://www.ti.com/product/TPS5430/part-details/TPS5430DDAR) |
+| [soft] | 0.69 | www.ti.com.cn | TPS5430 数据表、产品信息和支持 | 德州仪器 TI.com.cn | [链接](https://www.ti.com.cn/product/zh-cn/TPS5430) |
+| [soft] | 0.69 | www.ti.com.cn | TPS5430 | 购买 TI 器件 | 德州仪器 TI.com.cn | [链接](https://www.ti.com.cn/product/cn/TPS5430/part-details/TPS5430DDA) |
 
 ### ET04 使用 FreeCAD 设计外壳，怎样把 KiCad 的 PCB 3D 模型导入并精确对齐？
 
-- gate: none | confidence: 0.77
+- gate: none | confidence: 0.65
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.77 | www.eetree.cn | KiCad的常用插件工具 | [链接](https://www.eetree.cn/doc/detail/1536) |
-| [soft] | 0.77 | zhuanlan.zhihu.com | KiCad软件PCB设计流程 - 知乎 | [链接](https://zhuanlan.zhihu.com/p/458449881) |
-| [soft] | 0.77 | blog.csdn.net | KiCAD 6.0导入元件库及3D模型_jlcpcb kicad-CSDN博客 | [链接](https://blog.csdn.net/pocean2012/article/details/122520327) |
+| [soft] | 0.65 | blog.csdn.net | 别再到处找模型了！手把手教你用立创EDA专业版+FreeCAD为KiCad ... | [链接](https://blog.csdn.net/weixin_42548829/article/details/160466919) |
+| [soft] | 0.61 | pcbsync.com | KiCad 3D Integration: Complete Guide to Blender, FreeCAD, Fusion 360 & SolidWorks Workflows - PCBSync | [链接](https://pcbsync.com/kicad-3d-integration) |
+| [soft] | 0.58 | www.reddit.com | KiCad 可以将你的PCB 导出到3D 模型，这对于设计外壳很有帮助 | [链接](https://www.reddit.com/r/PrintedCircuitBoard/comments/16danr3/ysk_kicad_can_export_your_pcb_to_a_3d_model_which?tl=zh-hans) |
 
 ### ET05 如何用 Keil 的 Event Recorder 调试 FreeRTOS 任务切换抖动？需要哪些配置？
 
-- gate: none | confidence: 0.85
+- gate: none | confidence: 0.72
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.85 | item.szlcsc.com | RTOS 数据手册 | [链接](https://item.szlcsc.com/20558171.html) |
-| [soft] | 0.51 | help.aliyun.com | RTOS C SDK（License模式）-大模型服务平台百炼(Model Studio)-阿里云帮助中心 | [链接](https://help.aliyun.com/zh/model-studio/mmi-rtos-sdk) |
+| [soft] | 0.72 | item.szlcsc.com | RTOS 数据手册 | [链接](https://item.szlcsc.com/84059.html) |
+| [soft] | 0.30 | www.freertos.org | Free RTOS Book and Reference Manual | [链接](https://www.freertos.org/zh-cn-cmn-s/Documentation/RTOS_book.html) |
 
 ### ET06 对比 ESP32-S3 和 RP2040 在音频 I2S 应用上的功耗和 PSRAM 性能差异？
 
@@ -55,58 +56,59 @@
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
+| [hard] | 0.89 | www.espressif.com | ESP32-S3 Series Datasheet Version 2.2 | [链接](https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf) |
+| [hard] | 0.89 | documentation.espressif.com | ESP32-S3 Series Datasheet Version 2.2 | [链接](https://documentation.espressif.com/esp32-s3_datasheet_en.pdf) |
 | [hard] | 0.89 | documentation.espressif.com | ESP32-S3 Datasheet | [链接](https://documentation.espressif.com/esp32-s3_datasheet_en.html) |
-| [hard] | 0.80 | documentation.espressif.com | ESP32-S3 | [链接](https://documentation.espressif.com/esp32-s3_datasheet_cn.pdf) |
-| [hard] | 0.80 | docs.espressif.com | 修订历史 - ESP32-S3 -  — ESP 硬件设计指南 latest 文档 | [链接](https://docs.espressif.com/projects/esp-hardware-design-guidelines/zh_CN/latest/esp32s3/revision-history.html) |
 
 ### ET07 在 Altium Designer 中做高速 PCB（>100MHz），差分对等长规则如何设定？参考哪部分？
+
+- gate: none | confidence: 0.80
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [hard] | 0.80 | www.altium.com | 高速规则类型 | Altium Designer 技术文档 | [链接](https://www.altium.com/cn/documentation/altium-designer/pcb/design-rule-types/high-speed) |
+| [soft] | 0.74 | tsight.io | AD差分对等长？别抄作业了！老法师教你玩转高速PCB | TrueSight | [链接](https://tsight.io/articles/7785110) |
+| [soft] | 0.73 | blog.csdn.net | Altium Designer PCB 常用设计规则及详细说明（涉及普通与高速PCB）_ad设计规则-CSDN博客 | [链接](https://blog.csdn.net/lzxiaotu/article/details/155886481) |
+
+### ET08 用 PyMuPDF 解析 Datasheet 表格时，遇到合并单元格怎么处理？有现成工具吗？
 
 - gate: none | confidence: 0.68
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.68 | jingyan.baidu.com | Altium软件中差分线规则设置及差分线等长技巧-百... | [链接](https://jingyan.baidu.com/article/8275fc865f03cc46a03cf6f9.html) |
-| [soft] | 0.64 | blog.csdn.net | 【Altium Designer】差分对等长设置以及绕线_ad差分... | [链接](https://blog.csdn.net/XZ_ZC/article/details/145801394) |
-| [soft] | 0.62 | ask.csdn.net | 如何在Altium中实现差分对等长布线？_编程语言-C... | [链接](https://ask.csdn.net/questions/8646437) |
-
-### ET08 用 PyMuPDF 解析 Datasheet 表格时，遇到合并单元格怎么处理？有现成工具吗？
-
-- gate: low_confidence | confidence: 0.76
-
-| 类型 | 可信分 | 域名 | 标题 | URL |
-|------|--------|------|------|-----|
-| [soft] | 0.76 | blog.gitcode.com | PyMuPDF表格识别中合并单元格背景色干扰问题解析 - AtomGit | GitCode博客 | [链接](https://blog.gitcode.com/cbec7bb088d4c84a5d4488f531ba6977.html) |
-| [soft] | 0.66 | blog.csdn.net | 深入探索 PDF 数据提取：PyMuPDF 与 pdfplumber 的对比与实战 | [链接](https://blog.csdn.net/weixin_41544125/article/details/150074943) |
-| [soft] | 0.60 | www.aneasystone.com | 盘点 Python 中那些 PDF 解析库 - aneasystone's blog | [链接](https://www.aneasystone.com/archives/2025/03/pdf-parser-libraries.html) |
+| [soft] | 0.68 | www.cnblogs.com | 大模型RAG应用开发之PDF解析工具对比 - 深度学习机器 ... | [链接](https://www.cnblogs.com/deeplearningmachine/p/18383664) |
+| [soft] | 0.57 | zhuanlan.zhihu.com | Python PDF神器PyMuPDF使用指南 (八)——基础使用指南 ... | [链接](https://zhuanlan.zhihu.com/p/24216864067) |
+| [soft] | 0.55 | blog.csdn.net | 基于pymupdf的PDF的文本、图片和表格信息提取_pymupdf ... | [链接](https://blog.csdn.net/wxplol/article/details/109304946) |
 
 ### ET09 我有一块 STM32F103 的板子，晶振 8MHz，想用 PLL 超频到 128MHz，风险大吗？怎么测试稳定性？
 
-- gate: low_confidence | confidence: 0.59
+- gate: none | confidence: 0.74
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [hard] | 0.59 | www.st.com | STM32F103 - Documentation - STMicroelectronics | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103/documentation.html) |
-| [hard] | 0.59 | www.st.com | STM32F103 - Arm Cortex-M3 Microcontrollers (MCU) 72 MHz - ... | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103.html) |
+| [hard] | 0.74 | www.st.com | STM32F103 - Documentation - STMicroelectronics | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103/documentation.html) |
+| [hard] | 0.74 | estore.st.com | Buy STM32F103 - ST Online Store | [链接](https://estore.st.com/en/products/microcontrollers-microprocessors/stm32-32-bit-arm-174-cortex-174-mcus/stm32-mainstream-mcus/stm32f1-series/stm32f103.html) |
+| [hard] | 0.74 | estore.st.com | Buy STM32F103 - eStore - STMicroelectronics | [链接](https://estore.st.com/en/products/microcontrollers-microprocessors/stm32-32-bit-arm-cortex-mcus/stm32-mainstream-mcus/stm32f1-series/stm32f103.html?inStock=1) |
 
 ### ET10 如何通过 GitHub API 获取一个项目的贡献者数量和 star 趋势？并用图表展示？
 
-- gate: none | confidence: 0.71
+- gate: low_confidence | confidence: 0.53
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.71 | www.apiseven.com | 贡献者，是衡量开源项目的金指标 | 支流科技 | [链接](https://www.apiseven.com/blog/contributors-the-golden-metric-of-opensource-projects) |
-| [soft] | 0.66 | okmiku.com | GitHub Star 趋势图 · MikuTools | [链接](https://okmiku.com/t/github-star-history) |
-| [soft] | 0.56 | www.volcengine.com | 如何查询代码仓库贡献者数量？能否通过GitHub API获取该 ... | [链接](https://www.volcengine.com/article/554628) |
+| [soft] | 0.53 | support.huawei.com | 查看仓库的统计信息 - 代码托管(CodeArts Repo) 2.3.0.1 使用指南(for HCC Site)(for 华为云Stack 8.5.1) 02 - 华为 | [链接](https://support.huawei.com/enterprise/zh/doc/EDOC1100468527/76c888b5) |
+| [soft] | 0.51 | juejin.cn | 如何查看、生成 github 开源项目star 图表快速获取star 新项目更新了图表实现方式（@visactor/vc - 掘金 | [链接](https://juejin.cn/post/7584071941025628175) |
+| [soft] | 0.47 | www.jianshu.com | chrome插件开发 - github仓库star趋势图 - 简书 | [链接](https://www.jianshu.com/p/b407594c44cf) |
 
 ### ET11 用 JLink 烧录时，SWD 接口的 100kΩ 上拉电阻必须加吗？不加有什么后果？
 
-- gate: none | confidence: 0.66
+- gate: none | confidence: 0.78
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.66 | www.22fn.com | I2C上拉电阻怎么选？1KΩ和10KΩ不只是数值差异  - 22FN | [链接](https://www.22fn.com/d/14789) |
-| [soft] | 0.66 | bbs.21ic.com | Jlink四线SWD需不需要接上下拉电阻啊？ - 华芯微特MCU - 21ic电子技术开发论坛 | [链接](https://bbs.21ic.com/icview-3303572-1-1.html) |
-| [soft] | 0.50 | stmicroelectronics.cn | J-link V8 SWD 方式必须要用4线制吗？ | [链接](https://stmicroelectronics.cn/thread-604753-1-1.html) |
+| [soft] | 0.78 | aiot.csdn.net | JLink SWD接线错误导致无法连接？接线图核对清单_bert9linguist-AI硬件创业社区 | [链接](https://aiot.csdn.net/69bcf7b554b52172bc62d1f0.html) |
+| [soft] | 0.72 | shequ.stmicroelectronics.cn | J-Link调试问题 | [链接](https://shequ.stmicroelectronics.cn/thread-619680-1-1.html) |
+| [soft] | 0.72 | www.cnblogs.com | SWD接口和通信实现 - Yanye - 博客园 | [链接](https://www.cnblogs.com/yanye0xcc/p/17608599.html) |
 
 ### ET12 使用 Rust 编写嵌入式程序时，如何避免堆内存分配错误？有哪些最佳实践？
 
@@ -116,59 +118,65 @@
 |------|--------|------|------|-----|
 | [soft] | 0.67 | tsight.io | Rust 堆内存分配：从智能指针到分配器痕迹的底层解剖 | TrueSight | [链接](https://tsight.io/articles/11073780) |
 | [soft] | 0.63 | www.oryoy.com | 嵌入式Rust内存管理实践指南：如何避免常见陷阱并优化你的代码性能 - 云原生实践 | [链接](https://www.oryoy.com/news/qian-ru-shi-rust-nei-cun-guan-li-shi-jian-zhi-nan-ru-he-bi-mian-chang-jian-xian-jing-bing-you-hua-ni.html) |
-| [soft] | 0.54 | blog.51cto.com | 我在嵌入式开发中，如何成功避免 C 语言内存管理的 7 个常见坑_mob64ca14144dde的技术博客_51CTO博客 | [链接](https://blog.51cto.com/u_16213700/14749380) |
+| [soft] | 0.54 | www.bookstack.cn | 7. 集合 - 《Rust 嵌入式宝典（The Embedded Rust Book 2022 中文版）》 - 书栈网 · BookStack | [链接](https://www.bookstack.cn/read/rust-embedded-book-zh/6aa6d1c77e4b810d.md) |
 
 ### ET13 ESP32-C3 的 WiFi 和 BLE 同时工作，天线共用会不会互相干扰？怎么优化？
 
-- gate: low_confidence | confidence: 0.74
+- gate: none | confidence: 0.83
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [hard] | 0.74 | docs.espressif.com | ESP32-C3 | [链接](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c3/esp-dev-kits-en-master-esp32c3.pdf) |
-| [hard] | 0.74 | dl.espressif.com | ESP32-C3 Memory map | [链接](https://dl.espressif.com/public/esp32c3-mm.pdf) |
-| [hard] | 0.74 | docs.espressif.com | Schematic Checklist - ESP32-C3 -  — ESP Hardware Design Guidelines latest documentation | [链接](https://docs.espressif.com/projects/esp-hardware-design-guidelines/en/latest/esp32c3/schematic-checklist.html) |
+| [hard] | 0.83 | www.espressif.com | ESP32-C3 Series Datasheet Version 2.4 | [链接](https://www.espressif.com/sites/default/files/documentation/esp32-c3_datasheet_en.pdf) |
+| [hard] | 0.83 | documentation.espressif.com | ESP32-C3 Datasheet - Espressif Documentation | [链接](https://documentation.espressif.com/esp32-c3_datasheet_en.html) |
+| [hard] | 0.83 | documentation.espressif.com | ESP32-C3 Series Datasheet Version 2.4 | [链接](https://documentation.espressif.com/esp32-c3_datasheet_en.pdf) |
 
 ### ET14 用 OpenOCD 0.12 + ST-Link V2 调试 STM32F103 板子，在 attach 阶段报 Error: timed out while waiting for target halted，供电实测 3.3V 正常，怎么排查？
 
-- gate: none | confidence: 0.69
+- gate: none | confidence: 0.82
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.69 | item.szlcsc.com | ST-L 数据手册 | [链接](https://item.szlcsc.com/5996198.html) |
+| [soft] | 0.82 | www.szlcsc.com | ST-L 数据手册 | [链接](https://www.szlcsc.com/about.html) |
 
 ### ET15 在 KiCad 里怎么设置差分对阻抗匹配？需要用到什么插件？
 
-无搜索结果证据。
+- gate: none | confidence: 0.75
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.75 | blog.csdn.net | Altium Designer差分走线实战：从规则设置到阻抗匹配的完整流程-CSDN博客 | [链接](https://blog.csdn.net/weixin_29163857/article/details/158820448) |
+| [hard] | 0.72 | github.com | Steffen-W/KiCad-Parasitics | [链接](https://github.com/Steffen-W/KiCad-Parasitics) |
+| [soft] | 0.55 | www.cnblogs.com | [原创]差分放大器阻抗匹配计算+阻抗计算小工具 - 博乐Bar - 博客园 | [链接](https://www.cnblogs.com/huanzxj/p/5813543.html) |
 
 ### ET16 我想用 LTspice 做蒙特卡罗分析来评估电阻容差对输出电压的影响，怎么设置？
 
-- gate: none | confidence: 0.64
+- gate: none | confidence: 0.68
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.64 | techclass.rohm.com.cn | SPICE仿真类型：蒙特卡洛方法 - 电路设计学习指南R课堂 | [链接](https://techclass.rohm.com.cn/knowledge/simulation/s-simulation/01-s-simulation/8106) |
-| [hard] | 0.63 | www.analog.com | 如何使用LTspice获得出色的EMC仿真结果—第2部分 | [链接](https://www.analog.com/cn/resources/technical-articles/how-to-get-the-best-results-using-ltspice-for-emc-simulation-part-2.html) |
-| [soft] | 0.56 | community.infineon.com | 当改变1EDI60N12AF的延迟时间时，是否可以使用LTspice进行 ... | [链接](https://community.infineon.com/t5/%E5%8A%9F%E7%8E%87mosfet-Si-SiC/%E5%BD%93%E6%94%B9%E5%8F%981EDI60N12AF%E7%9A%84%E5%BB%B6%E8%BF%9F%E6%97%B6%E9%97%B4%E6%97%B6-%E6%98%AF%E5%90%A6%E5%8F%AF%E4%BB%A5%E4%BD%BF%E7%94%A8LTspice%E8%BF%9B%E8%A1%8C%E8%92%99%E7%89%B9%E5%8D%A1%E6%B4%9B%E5%88%86%E6%9E%90/td-p/1016229) |
+| [soft] | 0.68 | blog.csdn.net | LTspice基础教程-025.电路容差分析，蒙特卡罗分析(Monte ... | [链接](https://blog.csdn.net/gaoyong_wang/article/details/105185576) |
+| [hard] | 0.61 | www.analog.com | How to Model Statistical Tolerance Analysis for Complex Circuits ... | [链接](https://www.analog.com/en/resources/technical-articles/how-to-model-statistical-tolerance-analysis.html) |
+| [soft] | 0.59 | www.cytech.com | 活学活用 LTspice 进行电路设计 — 了解蒙特卡罗分... | [链接](https://www.cytech.com/technical-articles/learning-ltspice-circuit-design-understanding-monte-carlo-analysis) |
 
 ### ET17 如何评价 Tauri 和 Electron 在嵌入式设备上的运行性能（内存/CPU）？
 
-- gate: none | confidence: 0.81
+- gate: none | confidence: 0.80
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [hard] | 0.81 | github.com | 9f21f0a Add process model comparison: Tauri vs Electron | [链接](https://github.com/kondoumh/sbe/commit/9f21f0ace4b9ac2f1cc4cfe08e29acf59cabd1ec) |
-| [soft] | 0.65 | juejin.cn | Tauri 与 Electron 对比：性能、包大小及实际权衡在跨平台应用开发中选择 Tauri 还是 Electron - 掘金 | [链接](https://juejin.cn/post/7492119684047503369) |
-| [soft] | 0.65 | blog.openreplay.com | 比较 Electron 和 Tauri 在桌面应用开发中的选择 | [链接](https://blog.openreplay.com/zh/%E6%AF%94%E8%BE%83-electron-tauri-%E6%A1%8C%E9%9D%A2%E5%BA%94%E7%94%A8/) |
+| [soft] | 0.80 | zhuanlan.zhihu.com | Electron 与 Tauri 全方位对比指南（2026版） - 知乎 | [链接](https://zhuanlan.zhihu.com/p/1993712017635304051) |
+| [soft] | 0.77 | aiot.csdn.net | 跨平台桌面应用开发选型深度解析：Electron与Tau... | [链接](https://aiot.csdn.net/69df64220a2f6a37c5a02482.html) |
+| [soft] | 0.76 | jishuzhan.net | Electron 与 Tauri 全方位对比指南（2026版） - 技术栈 | [链接](https://jishuzhan.net/article/2010144014642233346) |
 
 ### ET18 在 Python 中怎么用 scipy.signal 设计一个数字低通滤波器来平滑 ADC 采样数据？
 
-- gate: low_confidence | confidence: 0.56
+- gate: none | confidence: 0.60
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.56 | cloud.tencent.com | [开发技巧]·Python实现信号滤波（基于scipy）-腾讯... | [链接](https://cloud.tencent.com/developer/article/1451452) |
-| [soft] | 0.54 | www.cnblogs.com | [开发技巧]·Python实现信号滤波（基于scipy） - ... | [链接](https://www.cnblogs.com/xiaosongshine/p/10831931.html) |
-| [soft] | 0.54 | sunyoe.github.io | 使用python实现数据滤波 | 悦 | [链接](https://sunyoe.github.io/2021/10/19/%E4%BD%BF%E7%94%A8python%E5%AE%9E%E7%8E%B0%E6%95%B0%E6%8D%AE%E6%BB%A4%E6%B3%A2/) |
+| [soft] | 0.60 | tsight.io | 使用 Python 和 SciPy 实现低通滤波器：音频降噪实战 | TrueSight | [链接](https://tsight.io/articles/6605009) |
+| [soft] | 0.60 | sunyoe.github.io | 使用python实现数据滤波 |  悦 | [链接](https://sunyoe.github.io/2021/10/19/%E4%BD%BF%E7%94%A8python%E5%AE%9E%E7%8E%B0%E6%95%B0%E6%8D%AE%E6%BB%A4%E6%B3%A2/) |
+| [soft] | 0.60 | osgeo.cn | 2.7. 滤波器设计 — Python 3 教程  文档 | [链接](https://osgeo.cn/python-tutorial/scipy-filter.html) |
 
 ### ET19 我的项目同时使用 Keil 和 CubeMX，怎么保证两者配置同步？最佳工作流是什么？
 
@@ -186,17 +194,23 @@
 
 ### ET21 在 Cadence Allegro 中，怎么从 BGA 扇出并设定 DDR 等长规则？
 
-无搜索结果证据。
-
-### ET22 使用 Gitee 私有仓库，如何利用 Webhook 自动触发编译和单元测试？
-
-- gate: low_confidence | confidence: 0.58
+- gate: low_confidence | confidence: 0.73
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.58 | cloud.baidu.com | Gitee Webhook 简易设置指南 | [链接](https://cloud.baidu.com/article/3235860) |
-| [soft] | 0.57 | blog.csdn.net | 基于WebHook实现Gitee自动化部署_gitee webhook-CSDN博客 | [链接](https://blog.csdn.net/lvxintd1993/article/details/123968779) |
-| [soft] | 0.54 | gitee.com | 君哥/webhook: gitee的webhooks调用shell脚本自动触发 | [链接](https://gitee.com/it235/webhook) |
+| [soft] | 0.73 | blog.csdn.net | Cadence Allegro BGA扇出设置-CSDN博客 | [链接](https://blog.csdn.net/qq_38376586/article/details/86754364) |
+| [soft] | 0.69 | t.elecfans.com | 演示DDR3 BGA封装扇出_电子发烧友学院 | [链接](https://t.elecfans.com/6684.html) |
+| [soft] | 0.57 | zhuanlan.zhihu.com | Cadence Allegro BGA类器件扇孔操作教程 | [链接](https://zhuanlan.zhihu.com/p/627199591) |
+
+### ET22 使用 Gitee 私有仓库，如何利用 Webhook 自动触发编译和单元测试？
+
+- gate: none | confidence: 0.65
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.65 | cloud.baidu.com | Gitee Webhook 简易设置指南 | [链接](https://cloud.baidu.com/article/3235860) |
+| [soft] | 0.64 | www.codeleading.com | Gitee Webhook 实现自动拉取代码并编译代码 - 代码先锋网 | [链接](https://www.codeleading.com/article/46621144828/) |
+| [soft] | 0.63 | developer.aliyun.com | 配置Jenkins实现Gitee代码提交后自动构建-开发者社区-阿里云 | [链接](https://developer.aliyun.com/article/947111) |
 
 ### ET23 我的嵌入式固件有看门狗，但在调试模式下常被复位，如何禁用调试阶段的看门狗？
 
@@ -204,9 +218,9 @@
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.71 | www.elecfans.com | linux看门狗使用方法 - 嵌入式技术 - 电子发烧友网 | [链接](http://www.elecfans.com/emb/201909211076306.html) |
-| [soft] | 0.65 | blog.csdn.net | 嵌入式系统中看门狗概述。。。_嵌入式看门狗-C... | [链接](https://blog.csdn.net/maopig/article/details/7173393) |
-| [soft] | 0.62 | blog.csdn.net | 嵌入式系统中看门狗的使用总结_嵌入式独立看门... | [链接](https://blog.csdn.net/zz460833359/article/details/122921786) |
+| [soft] | 0.71 | m.elecfans.com | 调试模式下如何调试看门狗？-电子发烧友网 | [链接](https://m.elecfans.com/article/2411315.html) |
+| [soft] | 0.70 | developer.aliyun.com | 爆肝9万字,我已从小白晋升ARM嵌入式工程师！带你从零熟悉常用的M4嵌入式功能，建议收藏（含码源）（5）-阿里云开发者社区 | [链接](https://developer.aliyun.com/article/1163576) |
+| [soft] | 0.69 | www.codeleading.com | STM32在DEBUG调试模式下禁止看门狗IWDG WWDG - 代码先锋网 | [链接](https://www.codeleading.com/article/38636149612/) |
 
 ### ET24 使用 C++ 在 STM32 上时，哪种 RTOS 对 C++ 异常处理支持最好？
 
@@ -220,22 +234,21 @@
 |------|--------|------|------|-----|
 | [soft] | 0.85 | www.szlcsc.com | IBIS 数据手册 | [链接](https://www.szlcsc.com/) |
 | [soft] | 0.41 | baike.baidu.com | IBIS模型_百度百科 | [链接](https://baike.baidu.com/item/IBIS%E6%A8%A1%E5%9E%8B/9494287) |
+| [soft] | 0.34 | www.kaixinspace.com | IBIS建模—第2部分： 为何以及如何创建 您自己的... | [链接](https://www.kaixinspace.com/wp-content/uploads/2024/05/ibis_model_chinese.pdf) |
 
 ### ET26 用 Altium 做仿真时，怎么导入第三方 SPICE 模型（如 LTspice 的 .sub 文件）？
 
-- gate: none | confidence: 0.85
-
-| 类型 | 可信分 | 域名 | 标题 | URL |
-|------|--------|------|------|-----|
-| [soft] | 0.85 | www.szlcsc.com | SPICE 数据手册 | [链接](https://www.szlcsc.com/) |
+无搜索结果证据。
 
 ### ET27 ESP32 的 RTC 时钟误差多少？如何软件校准？
 
-- gate: none | confidence: 0.65
+- gate: low_confidence | confidence: 0.80
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.65 | item.szlcsc.com | ESP32 数据手册 | [链接](https://item.szlcsc.com/96410.html) |
+| [hard] | 0.80 | dl.espressif.com | ESP32 Module | [链接](https://dl.espressif.com/dl/schematics/esp32%5Fdevkitc%5Fv4-sch-20180607a.pdf) |
+| [hard] | 0.80 | docs.espressif.com | Schematic Checklist - ESP32 -  — ESP Hardware Design Guidelines latest documentation | [链接](https://docs.espressif.com/projects/esp-hardware-design-guidelines/en/latest/esp32/schematic-checklist.html) |
+| [hard] | 0.53 | documentation.espressif.com | ESP32 Datasheet | [链接](https://documentation.espressif.com/esp32_datasheet_en.html) |
 
 ### ET28 怎样利用 GitHub Actions 自动生成 Release 的 changelog？
 
@@ -253,9 +266,9 @@
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.65 | www.likecs.com | 【ansys workbench】6.装配体分析预备 - 爱码网 | [链接](https://www.likecs.com/show-203565553.html) |
-| [soft] | 0.65 | tsight.io | FreeCAD 0.20 装配体精通指南：从基础到性能优化 | TrueSight | [链接](https://tsight.io/articles/11303268) |
-| [soft] | 0.62 | bookdown.org | Chapter 12 有限元分析 | 请 Inventor 用 FreeCAD | [链接](https://bookdown.org/johnqu1982/FFI/fem.html) |
+| [hard] | 0.65 | wiki.freecadweb.org | FEM Workbench - FreeCAD Documentation | [链接](https://wiki.freecadweb.org/FEM_Workbench) |
+| [hard] | 0.56 | github.com | FreeCAD-documentation/wiki/FEM_Workbench.md at main · FreeCAD... | [链接](https://github.com/FreeCAD/FreeCAD-documentation/blob/main/wiki/FEM_Workbench.md) |
+| [soft] | 0.44 | www.craftsmanspace.com | FEM workbench - FreeCAD tutorials | CRAFTSMANSPACE | [链接](https://www.craftsmanspace.com/freecad-tutorials/fem-workbench-freecad-tutorials.html) |
 
 ### ET30 使用 Keil 的 ULINKplus 进行功耗测量，怎么同步记录电流和电压波形？
 
@@ -263,46 +276,48 @@
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.72 | item.szlcsc.com | ULINK 数据手册 | [链接](https://item.szlcsc.com/836657.html) |
+| [soft] | 0.72 | item.szlcsc.com | ULINK 数据手册 | [链接](https://item.szlcsc.com/6174676.html) |
+| [soft] | 0.72 | item.szlcsc.com | ULINK 数据手册 | [链接](https://item.szlcsc.com/22853398.html) |
 
 ### ET31 如何评价国产 RISC-V 芯片（如 CH32V307）的生态和工具链成熟度？
 
-- gate: none | confidence: 0.82
+- gate: low_confidence | confidence: 0.63
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.82 | www.szlcsc.com | CH32V103中文资料_PDF数据手册_参数_引脚图_图片-立创商城 | [链接](https://www.szlcsc.com/p/CH32V103_1974.html) |
+| [soft] | 0.63 | www.szlcsc.com | CH32V103中文资料_PDF数据手册_参数_引脚图_图片-立创商城 | [链接](https://www.szlcsc.com/p/CH32V103_1974.html) |
+| [soft] | 0.63 | item.szlcsc.com | RISC-V 数据手册 | [链接](https://item.szlcsc.com/23859220.html) |
 | [soft] | 0.43 | staff.ustc.edu.cn | RISC-V手册 | [链接](http://staff.ustc.edu.cn/~xhzhou/reference/RISC-V-Reader-Chinese-v2p1.pdf) |
-| [soft] | 0.43 | dokumen.pub | RISC-V 手册 v2.1 - DOKUMEN.PUB | [链接](https://dokumen.pub/risc-v-v21.html) |
 
 ### SM01 我手上有三个项目同时进行：A（PCB设计）、B（固件开发）、C（结构设计），如何安排一个月的排期才能按时交付？
 
-- gate: none | confidence: 0.67
+- gate: low_confidence | confidence: 0.54
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.67 | blog.csdn.net | ADAS系统研发全周期甘特图模板（含硬件、算法、结构三线并行计划）-CSDN博客 | [链接](https://blog.csdn.net/bb456/article/details/161848431) |
-| [soft] | 0.53 | m.elecfans.com | pcb项目管理 - 电子发烧友网 | [链接](https://m.elecfans.com/zt/403044/) |
-| [soft] | 0.48 | max.book118.com | PCB设计软件：Zuken E3.series二次开发_（4）.项目管理与协同设计.docx-原创力文档 | [链接](https://max.book118.com/html/2024/1202/8007062006007004.shtm) |
+| [soft] | 0.54 | blog.csdn.net | PCB设计与制造工具实战指导-CSDN博客 | [链接](https://blog.csdn.net/weixin_28888459/article/details/148630013) |
+| [soft] | 0.50 | blog.csdn.net | 智能硬件——0-1开发流程_硬件开发-CSDN博客 | [链接](https://blog.csdn.net/qq_45779334/article/details/140404200) |
+| [soft] | 0.43 | zhuanlan.zhihu.com | 如何制作 PCB：从理论概念到实际操作，推荐收藏！ ... | [链接](https://zhuanlan.zhihu.com/p/1894525518948312879) |
 
 ### SM02 采购一批元器件（STM32F103、TPS5430、IRF540N），不同渠道（立创/得捷/贸泽）价格差异大，如何权衡成本和交期？
 
-- gate: none | confidence: 0.65
+- gate: none | confidence: 0.80
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [hard] | 0.65 | www.st.com | STM32F103 - Documentation - STMicroelectronics | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103/documentation.html) |
-| [hard] | 0.65 | www.st.com | STM32F103 - Arm Cortex-M3 Microcontrollers (MCU) 72 MHz - ... | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103.html) |
+| [hard] | 0.80 | www.st.com | STM32F103 - Documentation - STMicroelectronics | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103/documentation.html) |
+| [hard] | 0.80 | estore.st.com | Buy STM32F103 - ST Online Store | [链接](https://estore.st.com/en/products/microcontrollers-microprocessors/stm32-32-bit-arm-174-cortex-174-mcus/stm32-mainstream-mcus/stm32f1-series/stm32f103.html) |
+| [hard] | 0.80 | estore.st.com | Buy STM32F103 - eStore - STMicroelectronics | [链接](https://estore.st.com/en/products/microcontrollers-microprocessors/stm32-32-bit-arm-cortex-mcus/stm32-mainstream-mcus/stm32f1-series/stm32f103.html?inStock=1) |
 
 ### SM03 我想学习 FreeCAD 做机械设计，但只有一周时间，应该优先学哪些模块？
 
-- gate: none | confidence: 0.75
+- gate: none | confidence: 0.80
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [hard] | 0.75 | github.com | ronggang/study-freecad | [链接](https://github.com/ronggang/study-freecad) |
-| [soft] | 0.66 | www.bilibili.com | 170集！超全的AutoCAD机械设计完全自学教程，手把手教你机械设计_哔哩哔哩_bilibili | [链接](https://www.bilibili.com/video/BV13Y4y1k7cp/) |
-| [soft] | 0.66 | www.cnblogs.com | 第01章：项目全景与学习路线 - 我才是银古 - 博客园 | [链接](https://www.cnblogs.com/znlgis/p/19972963) |
+| [soft] | 0.80 | bbs.csdn.net | 机械设计入门实战：从核心概念到项目落地的系统学习路径 | [链接](https://bbs.csdn.net/weixin_42813171/article/details/100254618) |
+| [soft] | 0.61 | blog.debao.me | FreeCAD学习小记（一） — 1+1=10 | [链接](https://blog.debao.me/2025/01/freecad-learning-notes-1) |
+| [soft] | 0.46 | www.youtube.com | FreeCAD教程-机械零件产品-初级建模演示教程001丨FreeCAD ... | [链接](https://www.youtube.com/watch?v=UeEOAofLto0) |
 
 ### SM04 开发一个物联网设备，选择 WiFi 模块（ESP8266 vs ESP32-C3）时，除了价格，还要考虑哪些长期风险？
 
@@ -316,13 +331,13 @@
 
 ### SM05 团队新来一个实习生，只有 Keil 基础，如何分配任务让他快速参与固件项目？
 
-- gate: none | confidence: 0.60
+- gate: low_confidence | confidence: 0.56
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.60 | www.wondercv.com | 嵌入式软件实习生简历范文 | 矽速科技春招实习 | 开源项目GitHub | [链接](https://www.wondercv.com/sample/campus_sipeed-she_7eabbc9e44) |
-| [soft] | 0.55 | developer.cloud.tencent.com | 新生暑假学习建议 - 腾讯云开发者社区-腾讯云 | [链接](https://developer.cloud.tencent.com/news/294653) |
-| [soft] | 0.46 | www.shixiseng.com | 嵌入式软件开发实习生实习招聘-星逻智能实习生招聘-实习僧 | [链接](https://www.shixiseng.com/intern/inn_gmhdjzneeh3s) |
+| [soft] | 0.56 | wiki.lckfb.com | 【4】嵌入式开发初体验 | 立创开发板技术文档中心 | [链接](https://wiki.lckfb.com/zh-hans/fdb/basic/embedded-development-introduction.html) |
+| [hard] | 0.53 | www.keil.com | Complete Listing of Application Notes - Keil | [链接](https://www.keil.com/appnotes/list/all.htm) |
+| [soft] | 0.49 | blog.csdn.net | 基于固件库的嵌入式工程模板设计与实战原创 - CSDN博客 | [链接](https://blog.csdn.net/weixin_35509395/article/details/155543513) |
 
 ### SM06 我要出差一周，如何远程监控实验室的焊接进度（有人帮你做）？需要哪些设备/软件？
 
@@ -336,22 +351,23 @@
 
 ### SM07 对比使用 KiCad 和 Altium Designer 做一个 4 层板的时间成本（学习+设计）差异？
 
-- gate: low_confidence | confidence: 0.69
+- gate: none | confidence: 0.79
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [hard] | 0.69 | www.altium.com | Altium vs KiCad - Compare PCB Design Tools by Workflow | [链接](https://www.altium.com/compare/kicad-eda) |
-| [soft] | 0.52 | bk.taobao.com | Altium Designer 20 四层PCB设计怎么学？2026年实战派工程师为何更倾向全流程录播课？-新职业就业培训-淘宝百科网 | [链接](https://bk.taobao.com/k/xinzhiyejiuyepeixun_6953/590c0801bc7ff0ee44214cb112c69b62.html) |
-| [soft] | 0.52 | hilelectronic.com | 2026 年 Altium 在 PCB 设计中的应用：功能、成本以及是否值得 | [链接](https://hilelectronic.com/zh-CN/altium-for-pcb-design-in-2026/) |
+| [hard] | 0.79 | www.altium.com | Altium vs KiCad - Compare PCB Design Tools by Workflow | [链接](https://www.altium.com/compare/kicad-eda) |
+| [hard] | 0.71 | resources.altium.com | Altium vs KiCAD: Built to Scale From First Board to Full Product | [链接](https://resources.altium.com/p/altium-vs-kicad-built-scale-first-board-full-product) |
+| [soft] | 0.63 | zhuanlan.zhihu.com | PCB设计初学者，到底该先学哪款软件？我的亲身选择之路 | [链接](https://zhuanlan.zhihu.com/p/1951012864694415773) |
 
 ### SM08 客户要求把产品从 STM32F103 迁移到 GD32，哪些地方最容易出问题？需要多少人力？
 
-- gate: low_confidence | confidence: 0.59
+- gate: none | confidence: 0.74
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [hard] | 0.59 | www.st.com | STM32F103 - Documentation - STMicroelectronics | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103/documentation.html) |
-| [hard] | 0.59 | www.st.com | STM32F103 - Arm Cortex-M3 Microcontrollers (MCU) 72 MHz - ... | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103.html) |
+| [hard] | 0.74 | www.st.com | STM32F103 - Documentation - STMicroelectronics | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103/documentation.html) |
+| [hard] | 0.74 | estore.st.com | Buy STM32F103 - ST Online Store | [链接](https://estore.st.com/en/products/microcontrollers-microprocessors/stm32-32-bit-arm-174-cortex-174-mcus/stm32-mainstream-mcus/stm32f1-series/stm32f103.html) |
+| [hard] | 0.74 | estore.st.com | Buy STM32F103 - eStore - STMicroelectronics | [链接](https://estore.st.com/en/products/microcontrollers-microprocessors/stm32-32-bit-arm-cortex-mcus/stm32-mainstream-mcus/stm32f1-series/stm32f103.html?inStock=1) |
 
 ### SM09 我想把项目的文档和图纸放在云端，既便于分享又保证安全，应该选哪个平台（语雀/飞书/自建）？
 
@@ -375,11 +391,12 @@
 
 ### SM11 项目中使用的芯片有停产风险，怎么提前规划替代型号并评估改动工作量？
 
-- gate: none | confidence: 0.66
+- gate: low_confidence | confidence: 0.50
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.66 | www.soujiplay.com | 原型号停产，选替代型号还是找库存尾货？ - ... | [链接](https://www.soujiplay.com/news/article-005/) |
+| [soft] | 0.50 | www.weixiaoic.com | 国产芯片替代方案_深圳市微效电子有限公司 | [链接](https://www.weixiaoic.com/question/2604.html) |
+| [soft] | 0.42 | pdf.dfcfw.com | 自主可控和国产替代全景图 | [链接](https://pdf.dfcfw.com/pdf/H3_AP202211021579738827_1.pdf?1667474534000.pdf=) |
 
 ### SM12 我想在周末参加一个嵌入式线上峰会，如何让 Agent 帮我筛选出最有价值的几个演讲？
 
@@ -393,42 +410,43 @@
 
 ### SM13 现有项目代码量 5000 行（C 语言，drivers/ 和 app/ 两层共 12 个模块，无单元测试，Git 历史显示核心 3 个模块近半年改动最频繁），想重构模块划分，如何评估重构时间和风险？
 
-- gate: none | confidence: 0.61
-
-| 类型 | 可信分 | 域名 | 标题 | URL |
-|------|--------|------|------|-----|
-| [soft] | 0.61 | time.geekbang.org | 27 | 理论一：什么情况下要重构？到底重构什么？... | [链接](https://time.geekbang.org/column/article/179679) |
-| [soft] | 0.58 | zhuanlan.zhihu.com | 代码重构：提升软件质量的艺术与实践 - 知乎 | [链接](https://zhuanlan.zhihu.com/p/664606884) |
-| [soft] | 0.43 | cloud.tencent.com | 12.项目重构演进之路-腾讯云开发者社区-腾讯云 | [链接](https://cloud.tencent.com/developer/article/2522304) |
-
-### SM14 我需要向老板汇报项目进度，但没时间做 PPT，如何快速生成一个包含完成度/问题/风险的可视化报告？
-
-- gate: none | confidence: 0.65
-
-| 类型 | 可信分 | 域名 | 标题 | URL |
-|------|--------|------|------|-----|
-| [soft] | 0.65 | www.processon.com | 项目进度管理包括哪些内容？一文了解PMP项目经理必备技能 - ProcessOn知识社区 | [链接](https://www.processon.com/knowledge/xiangmujindu) |
-| [soft] | 0.48 | excel.cloud.microsoft | 免费在线项目跟踪器和时间线模板 | Microsoft Excel | [链接](https://excel.cloud.microsoft/create/zh-hans/project-tracker-timelines) |
-
-### SM15 在采购环节，供应商给了两种电容（X7R vs NP0），价格差 30%，怎么决定用哪种？
-
-- gate: none | confidence: 0.69
-
-| 类型 | 可信分 | 域名 | 标题 | URL |
-|------|--------|------|------|-----|
-| [soft] | 0.69 | www.nextpcb.com | X7R vs C0G vs X5R: MLCC Dielectric Types Explained for PCB Engineers | [链接](https://www.nextpcb.com/blog/x7r-vs-c0g-vs-x5r-mlcc-dielectric-pcb) |
-| [soft] | 0.69 | www.szweidy.com | 陶瓷电容分类｜C0G 陶瓷电容与X7R 陶瓷电容区别及选型 - 纬迪电子 | [链接](https://www.szweidy.com/show-122-872-1.html) |
-| [soft] | 0.65 | blog.csdn.net | 做好电容选型，从掌握NP0，C0G，X7R电容的特性开始 | [链接](https://blog.csdn.net/qq_22270399/article/details/136581838) |
-
-### SM16 我有一堆 Datasheet（PDF）需要整理，如何让 Agent 自动提取每个芯片的关键参数生成 Excel 表？
-
 - gate: low_confidence | confidence: 0.59
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.59 | support.huawei.com | 元件生成 - 硬件开发工具链平台云服务(CraftArts IPDCenter) 2.25.0910 使用指南(for 华为云Stack 8.6.0) 02 - 华为 | [链接](https://support.huawei.com/enterprise/zh/doc/EDOC1100518709/cabb9ee) |
-| [soft] | 0.59 | www.eefocus.com | 翻遍PDF找一行参数？当Datasheet(数据手册)检索有了“全文索引”能力 - 与非网 | [链接](https://www.eefocus.com/e/1987037.html) |
-| [soft] | 0.47 | gitcode.com | chip-datasheet-agent-代码预览-chip-datasheet-agent:基于 Python 的芯片数据手册智能解析与选型工具 - AtomGit | GitCode | [链接](https://gitcode.com/zcgo/chip-datasheet-agent/blob/main/README.md) |
+| [soft] | 0.59 | cloud.tencent.com | AI 辅助重构 20 万行代码：渐进式重建代码秩序-腾讯云开发者社区-腾讯云 | [链接](https://cloud.tencent.com/developer/article/2612872) |
+| [soft] | 0.58 | github.com | GitHub - phodal/migration: 《系统重构与迁移指南》手把手教你分析、评估现有系统、制定重构策略、探索可行重构方案、搭建测试防护网、进行系统架构重构、服务架构重构、模块重构、代码重构、数据库重构、重构后的架构守护 · GitHub | [链接](https://github.com/phodal/migration) |
+| [soft] | 0.57 | learn.lianglianglee.com | 27 谈谈我对项目重构的看法 | [链接](https://learn.lianglianglee.com/%E4%B8%93%E6%A0%8F/%E7%99%BD%E8%AF%9D%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%2028%20%E8%AE%B2%EF%BC%88%E5%AE%8C%EF%BC%89/27%20%E8%B0%88%E8%B0%88%E6%88%91%E5%AF%B9%E9%A1%B9%E7%9B%AE%E9%87%8D%E6%9E%84%E7%9A%84%E7%9C%8B%E6%B3%95.md) |
+
+### SM14 我需要向老板汇报项目进度，但没时间做 PPT，如何快速生成一个包含完成度/问题/风险的可视化报告？
+
+- gate: low_confidence | confidence: 0.52
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.52 | ones.cn | 项目经理必修课！一文教你如何完成项目进度汇报 ... | [链接](https://ones.cn/blog/articles/project-progress-report) |
+| [soft] | 0.47 | blog.csdn.net | 项目管理，PPT述职汇报有技巧_在对业务不熟悉的... | [链接](https://blog.csdn.net/jackeydengjun/article/details/145956802) |
+| [soft] | 0.45 | www.feishu.cn | 一键生成PPT的AI工具详解 - 飞书官网 | [链接](https://www.feishu.cn/content/ppt-one-click-generate) |
+
+### SM15 在采购环节，供应商给了两种电容（X7R vs NP0），价格差 30%，怎么决定用哪种？
+
+- gate: none | confidence: 0.77
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.77 | zhuanlan.zhihu.com | 详细解解读贴片电容：NP0、C0G、X7R、X5R、Y5V、Z5U... | [链接](https://zhuanlan.zhihu.com/p/90054564) |
+| [soft] | 0.77 | blog.csdn.net | 陶瓷电容NP0、C0G、X7R、X5R、Y5V、Z5U的区别_c0g ... | [链接](https://blog.csdn.net/qlexcel/article/details/88863816) |
+| [soft] | 0.77 | blog.csdn.net | 详细解解读贴片电容：NP0、C0G、X7R、X5R、Y5V、Z5U... | [链接](https://blog.csdn.net/chenhuanqiangnihao/article/details/122560849) |
+
+### SM16 我有一堆 Datasheet（PDF）需要整理，如何让 Agent 自动提取每个芯片的关键参数生成 Excel 表？
+
+- gate: none | confidence: 0.63
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.63 | www.genspark.ai | AI 电子表格生成器 - 用 AI 创建和分析电子表格 | Genspark | [链接](https://www.genspark.ai/zh-cn/tools/ai-spreadsheet-generator) |
+| [soft] | 0.51 | github.com | xiazaiyu/pdf_extract_agent | [链接](https://github.com/xiazaiyu/pdf_extract_agent) |
+| [soft] | 0.51 | www.compdf.com | AI文档解析SDK | OCR、表格字段与数据提取 | ComPDF | [链接](https://www.compdf.com/zh-cn/pdf-sdk/data-extraction) |
 
 ### SM17 我想把现有的 Altium 库迁移到 KiCad，但担心封装不一致，怎么验证？
 
@@ -436,22 +454,29 @@
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [hard] | 0.66 | docs.kicad.org | KiCad | 9.0 | 简体中文 | Documentation | KiCad | [链接](https://docs.kicad.org/9.0/zh/kicad/kicad.html) |
-| [hard] | 0.66 | www.altium.com | Importing a Design from KiCad | Altium Designer Technical Documentation | [链接](https://www.altium.com/documentation/altium-designer/design-tools-interfacing/kicad-import) |
-| [soft] | 0.61 | prodocs.easyeda.com | 导出 Altium Designer | 嘉立创EDA专业版用户指南 | [链接](https://prodocs.easyeda.com/cn/import-export/export-altium-designer) |
+| [hard] | 0.66 | www.altium.com | Easily Migrate from KiCad EDA® to Altium® | [链接](https://www.altium.com/altium-designer/migrate/kicad-eda) |
+| [hard] | 0.66 | www.kicad.org | Development Highlight: Altium Pcb Importer | KiCad | [链接](https://www.kicad.org/blog/2020/04/Development-Highlight-Altium-Pcb-Importer) |
+| [hard] | 0.66 | www.altium.com | 从 KiCad 导入设计 | Altium Designer 技术文档 | [链接](https://www.altium.com/cn/documentation/altium-designer/design-tools-interfacing/kicad-import) |
 
 ### SM18 团队使用多个 IM（微信、钉钉、企业微信），消息分散，如何统一聚合并摘要？
 
-无搜索结果证据。
-
-### SM19 客户投诉基于 STM32F103 的 48V 供电数据采集器偶尔重启（现场反馈多发生在继电器吸合瞬间，串口日志只记录到部分启动信息），如何安排现场排查步骤（带上什么工具）？
-
-- gate: low_confidence | confidence: 0.59
+- gate: none | confidence: 0.61
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [hard] | 0.59 | www.st.com | STM32F103 - Documentation - STMicroelectronics | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103/documentation.html) |
-| [hard] | 0.59 | www.st.com | STM32F103 - Arm Cortex-M3 Microcontrollers (MCU) 72 MHz - ... | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103.html) |
+| [soft] | 0.61 | www.xuanim.com | IM即时通讯软件对比：钉钉、企业微信、飞书哪个... | [链接](https://www.xuanim.com/column/instant-messaging-software-comparison-dingtalk-wechat-work-feishu-3yv-Softwareselection) |
+| [soft] | 0.56 | wxxke.com | 微信和企微消息聚合管理怎么做？多账号客服的统... | [链接](https://wxxke.com/article/marketing/40607) |
+| [soft] | 0.55 | blog.csdn.net | 飞书、企业微信、钉钉三款协同办公软件深度对比... | [链接](https://blog.csdn.net/s867859765/article/details/147877238) |
+
+### SM19 客户投诉基于 STM32F103 的 48V 供电数据采集器偶尔重启（现场反馈多发生在继电器吸合瞬间，串口日志只记录到部分启动信息），如何安排现场排查步骤（带上什么工具）？
+
+- gate: none | confidence: 0.74
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [hard] | 0.74 | www.st.com | STM32F103 - Documentation - STMicroelectronics | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103/documentation.html) |
+| [hard] | 0.74 | estore.st.com | Buy STM32F103 - ST Online Store | [链接](https://estore.st.com/en/products/microcontrollers-microprocessors/stm32-32-bit-arm-174-cortex-174-mcus/stm32-mainstream-mcus/stm32f1-series/stm32f103.html) |
+| [hard] | 0.74 | estore.st.com | Buy STM32F103 - eStore - STMicroelectronics | [链接](https://estore.st.com/en/products/microcontrollers-microprocessors/stm32-32-bit-arm-cortex-mcus/stm32-mainstream-mcus/stm32f1-series/stm32f103.html?inStock=1) |
 
 ### SM20 我计划在 GitHub 上开源一个小工具，需要准备哪些材料（许可证、README、Contributing Guide）？
 
@@ -460,33 +485,47 @@
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
 | [soft] | 0.85 | www.szlcsc.com | README 数据手册 | [链接](https://www.szlcsc.com/) |
+| [soft] | 0.30 | readme.com | ReadMe · Developer-friendly API documentation | [链接](https://readme.com/) |
 
 ### SM21 项目用了外部算法库（闭源），担心法律风险，如何审查其许可证合规性？
 
-无搜索结果证据。
+- gate: none | confidence: 0.68
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.68 | patents.google.com | CN109063421B - 一种开源许可证合规性分析与冲突性检测方法 - Google Patents | [链接](https://patents.google.com/patent/CN109063421B/zh) |
+| [soft] | 0.56 | kaiyuanshe.github.io | 开源法务合规实践 - 开源社 —— 开源书籍 | [链接](https://kaiyuanshe.github.io/oss-book/Open-Source-Legal-Compliance-Practice.html) |
+| [soft] | 0.55 | payproglobal.com | 什么是开源许可证合规性？SaaS法律风险 | [链接](https://payproglobal.com/zh/%E8%A7%A3%E7%AD%94/%E4%BB%80%E4%B9%88%E6%98%AF%E5%BC%80%E6%BA%90%E8%AE%B8%E5%8F%AF%E8%AF%81%E5%90%88%E8%A7%84%E6%80%A7) |
 
 ### SM22 我每天要浏览几十条行业新闻（芯片/嵌入式），如何让 Agent 按重要性排序并摘要？
 
-- gate: none | confidence: 0.64
+- gate: low_confidence | confidence: 0.57
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.64 | blog.csdn.net | 大模型提示词工程指南：从基础Prompt到Agent、Ski... | [链接](https://blog.csdn.net/weixin_37837856/article/details/158812702) |
-| [soft] | 0.48 | www.53ai.com | 边缘AI开发嵌入式硬件如何选型 - 53AI-AI知识库|大... | [链接](https://www.53ai.com/news/zhinengyingjian/2025040634071.html) |
+| [soft] | 0.57 | www.jiemian.com | 芯和半导体联合联想DAC 2026发布EDA Agent落地成果|界面新闻 · 快讯 | [链接](https://www.jiemian.com/article/14837138.html) |
+| [soft] | 0.57 | www.businesswire.com | ChipAgents完成7,400万美元融资，加速拓展Agentic AI平台，推动芯片设计创新提速 | [链接](https://www.businesswire.com/news/home/20260217434779/zh-CN) |
+| [soft] | 0.57 | c.m.163.com | 刚刚，亚洲黑马交卷了！把千亿大模型搬回本地，迈向Token自由 | [链接](https://c.m.163.com/news/a/L2K6MDM30511ABV6.html) |
 
 ### SM23 我想在团队推行代码审查，但阻力大，如何分阶段实施才容易接受？
 
-- gate: low_confidence | confidence: 0.52
+- gate: low_confidence | confidence: 0.48
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.52 | juejin.cn | 一个AI工作流如何让代码审查从手动到智能？实战拆解理论再完美，不如一个好案例。本文通过智能代码审查工作流的完整实战案例， - 掘金 | [链接](https://juejin.cn/post/7531656688178380846) |
-| [soft] | 0.51 | developer.aliyun.com | 我们是怎么做Code Review的-阿里云开发者社区 | [链接](https://developer.aliyun.com/article/180103) |
-| [soft] | 0.49 | www.cnblogs.com | 我把代码审查权交给AI两个月，团队发生了什么 - 后端AI实验室 - 博客园 | [链接](https://www.cnblogs.com/taohaijun/p/19800495) |
+| [soft] | 0.48 | zhuanlan.zhihu.com | Code Review（代码审查）的最佳实践 - 知乎 | [链接](https://zhuanlan.zhihu.com/p/357909913) |
+| [soft] | 0.48 | blog.csdn.net | 代码审查(Code Review)最佳实践指南_代码评审-CSDN博客 | [链接](https://blog.csdn.net/niuniu_666/article/details/146917954) |
+| [soft] | 0.46 | www.cnblogs.com | Code Review最佳实践 - 宝玉 - 博客园 | [链接](https://www.cnblogs.com/dotey/p/11216430.html) |
 
 ### SM24 产品需要过 CCC 认证，硬件和软件分别要注意哪些？大概周期多久？
 
-无搜索结果证据。
+- gate: low_confidence | confidence: 0.60
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.60 | cst-cb.com | CCC认证 | [链接](http://cst-cb.com/cn_service/details-7.html) |
+| [soft] | 0.57 | www.xiang-ying.cn | ccc认证申请流程指南｜2025最新实操要点-CCC认证 | [链接](https://www.xiang-ying.cn/article/2075.html) |
+| [soft] | 0.52 | zhuanlan.zhihu.com | CCC认证的办理流程及费用和周期！ - 知乎 | [链接](https://zhuanlan.zhihu.com/p/674656958) |
 
 ### SM25 我想把项目日志（散落各处的 Word 和笔记）迁移到本地 Wiki，如何快速结构化？
 
@@ -495,38 +534,38 @@
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
 | [soft] | 0.57 | www.hubwiz.com | 用LLM Wiki构建个人知识库 - 汇智网 | [链接](https://www.hubwiz.com/blog/build-personal-knowledge-base-with-llm-wiki/) |
+| [soft] | 0.55 | juejin.cn | 基于 LLM 的本地 Wiki 构建实战：将 AI 对话记录炼化成结构化知识库作为开发者，你是否也有这样的困扰？ 和Ki - 掘金 | [链接](https://juejin.cn/post/7630449867622318090) |
 | [soft] | 0.52 | docs.pingcode.com | 如何用 Wiki 管理项目：结构化知识与 PingCode 实战指南 | [链接](https://docs.pingcode.com/academy/f9src30c93hedz59hw1ftrke) |
-| [soft] | 0.49 | 321skill.com | 知识库 Wiki 编译器：将零散资料系统编译为结构化Wiki知识库 - 321skill | [链接](https://321skill.com/skills/docs-to-wiki-3/) |
 
 ### SM26 技术沙龙上有人分享了一个新工具（比如 Zephyr），我该不该在项目中尝试？评估维度有哪些？
 
-- gate: low_confidence | confidence: 0.49
+- gate: none | confidence: 0.72
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.49 | blog.csdn.net | Zephyr开发指南——优化（优化工具）_puncover-CSDN博客 | [链接](https://blog.csdn.net/wayne2018/article/details/126159547) |
-| [soft] | 0.49 | blog.csdn.net | Zephyr SDK 安装和配置指南-CSDN博客 | [链接](https://blog.csdn.net/gitblog_09295/article/details/142225260) |
-| [soft] | 0.45 | blog.csdn.net | Zephyr 入门指南 （一）-CSDN博客 | [链接](https://blog.csdn.net/jieliangzi/article/details/146724278) |
+| [soft] | 0.72 | www.bilibili.com | 什么样的mcu适合zephyr，带你从项目视角评估_哔哩哔哩_bilibili | [链接](https://www.bilibili.com/video/BV1zYFxzdEfn/) |
+| [soft] | 0.62 | blog.csdn.net | Zephyr-7B-β实战指南：DPO对齐、AgentInstruct微调与bfloat16推理-CSDN博客 | [链接](https://blog.csdn.net/weixin_30296995/article/details/161406660) |
+| [soft] | 0.59 | tsight.io | 禅道使用避坑指南：项目经理多年实战经验分享 | TrueSight | [链接](https://tsight.io/articles/9112226) |
 
 ### SM27 一个外包团队交付了原理图，但只有 PDF 没有源文件，如何验证其与 BOM 的一致性？
 
-- gate: none | confidence: 0.71
+- gate: none | confidence: 0.65
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.71 | www.elecfans.com | 如何快速检测原理图中的元器件与PLM系统的一致性？-电子发烧友网 | [链接](https://www.elecfans.com/d/2822206.html) |
-| [soft] | 0.71 | m.elecfans.com | 如何快速检测原理图中的元器件与PLM系统的一致性，提高原理图设计准确性-电子发烧友网 | [链接](https://m.elecfans.com/article/2827582.html) |
-| [soft] | 0.67 | www.jigao616.com | 一种硬件PDF文件与BOM内的器件型号一致性审查方法技术_技高网 | [链接](http://www.jigao616.com/zhuanlijieshao_49462731.aspx) |
+| [soft] | 0.65 | blog.csdn.net | BOM表制作全流程详解与电子元器件基础实战指南-... | [链接](https://blog.csdn.net/weixin_28746457/article/details/153977027) |
+| [soft] | 0.55 | blog.csdn.net | altium designer原理图多文件输出PDF格式的3种方法，smart ... | [链接](https://blog.csdn.net/qq_25814297/article/details/134245556) |
+| [soft] | 0.52 | blog.csdn.net | 验证基础-验证方法_验证方法dati分别是什么含义 | [链接](https://blog.csdn.net/qq_57502075/article/details/127205129) |
 
 ### SM28 我要写一份项目结题报告，要求包含技术细节、财务决算、经验教训，如何让 Agent 帮我起草？
 
-- gate: none | confidence: 0.62
+- gate: low_confidence | confidence: 0.53
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.62 | github.com | tianhucanzhi/AI-Report | [链接](https://github.com/tianhucanzhi/AI-Report) |
-| [soft] | 0.61 | agent.csdn.net | 【多模态】天池AFAC赛道四-智能体赋能的金融多模态报告自动化生成part1-数据获取_威化饼的一隅-AI Agent技术社区 | [链接](https://agent.csdn.net/691549005511483559e9e04c.html) |
-| [soft] | 0.60 | ist.cpu.edu.cn | 如何填报项目结题报告 | [链接](https://ist.cpu.edu.cn/__local/D/2A/F1/28D838A25A78B2EA89A12F48023_DEC44282_14F28E.pdf?e=.pdf) |
+| [soft] | 0.53 | www.global-meetings.com | 科研结题报告怎么写？从结构到细节的完整指南 | [链接](https://www.global-meetings.com/headerLine/read/1383) |
+| [soft] | 0.48 | www.ruiwen.com | 项目结题报告 | [链接](https://www.ruiwen.com/word/xiangmujietibaogao.html) |
+| [soft] | 0.35 | www.hfabiao.com | 项目结题报告范文 - 汇发表 | [链接](https://www.hfabiao.com/haowen/21283.html) |
 
 ### SM29 最近想学习 FPGA，但不知从何入手，能否给我一个 3 个月的学习计划（含开发板推荐）？
 
@@ -535,20 +574,25 @@
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
 | [soft] | 0.85 | item.szlcsc.com | FPGA 数据手册 | [链接](https://item.szlcsc.com/43260768.html) |
+| [soft] | 0.56 | item.szlcsc.com | XCKU5P-1FFVB676I - 可编程逻辑器件(CPLD/FPGA) | [链接](https://item.szlcsc.com/1644700.html) |
 
 ### SM30 供应商说芯片交期从 4 周延长到 12 周，可能影响生产，有哪些替代策略？
 
-- gate: low_confidence | confidence: 0.60
+- gate: low_confidence | confidence: 0.53
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.60 | www.sap.cn | 供应链管理（SCM）是什么？| 流程、功能与趋势解析 ... | [链接](https://www.sap.cn/products/scm/what-is-supply-chain-management.html) |
-| [soft] | 0.52 | www.zhihu.com | 供应链中的时间管理有哪些要点？如何大幅度缩短... | [链接](https://www.zhihu.com/question/19707297) |
-| [soft] | 0.43 | acloudear.com | 芯片供应链管理对策：构建韧性供应链是关键！ | [链接](https://acloudear.com/industry-info/230224-supply-chain/) |
+| [soft] | 0.53 | finance.sina.com.cn | “万能芯片”FPGA交货周期延长 国产替代加快步伐_新浪财经_新浪网 | [链接](https://finance.sina.com.cn/jjxw/2026-07-30/doc-inikpaeu9877430.shtml) |
+| [soft] | 0.53 | www.stcn.com | “万能芯片”FPGA交货周期延长 国产替代加快步伐 | [链接](https://www.stcn.com/article/detail/4048319.html) |
+| [soft] | 0.47 | news.qq.com | 头部厂商交货周期升至约52周！“万能芯片”国产替代加快步伐_腾讯新闻 | [链接](https://news.qq.com/rain/a/20260730A02TOE00) |
 
 ### SM31 团队内部知识库更新滞后，如何用 Agent 自动检测哪些文档过时并提醒更新？
 
-无搜索结果证据。
+- gate: low_confidence | confidence: 0.30
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.30 | xiangyugongzuoliu.com | AI 知识库构建指南（2026）：从文档到 Agent ... | [链接](https://xiangyugongzuoliu.com/ai-knowledge-base-building-guide/) |
 
 ### EC01 “那个芯片”能不能用？（上下文无前文）
 
@@ -578,17 +622,23 @@
 
 ### EC06 今天股市怎么样？但现在是周末（非交易日）。
 
-无搜索结果证据。
-
-### EC07 我想买一个开发板，但不知道型号，你给我推荐一个。
-
-- gate: none | confidence: 0.77
+- gate: low_confidence | confidence: 0.34
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.77 | blog.csdn.net | 学习嵌入式，买什么样的开发板？-CSDN博客 | [链接](https://blog.csdn.net/DP29syM41zyGndVF/article/details/122183248) |
-| [soft] | 0.69 | www.zhihu.com | 最近学习嵌入式Linux，有什么开发板推荐吗？ - 知乎 | [链接](https://www.zhihu.com/question/599236978) |
-| [soft] | 0.57 | blog.csdn.net | 网友问：买什么样的开发板？-CSDN博客 | [链接](https://blog.csdn.net/ybhuangfugui/article/details/121867429) |
+| [soft] | 0.34 | c.m.163.com | 全球股市陆续“熊去”，下周A股能否“牛来”？ | [链接](https://c.m.163.com/news/a/L4ERJFJ50512B07B.html) |
+| [soft] | 0.34 | www.cnyes.com | 美國_全球休市市場_金融中心 | [链接](https://www.cnyes.com/economy/indicator/GlobalRest/GlobalRest_Major.aspx?code=USEQ&day=17&id=8&lv=1&month=08&year=2026) |
+| [soft] | 0.33 | wantrich.chinatimes.com | 《台北股市》上周雙資布局主軸 外資大買記憶體、投信狂敲金融股 - 上市櫃 - 旺得富理財網 | [链接](https://wantrich.chinatimes.com/news/20260816900084-420101) |
+
+### EC07 我想买一个开发板，但不知道型号，你给我推荐一个。
+
+- gate: low_confidence | confidence: 0.55
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.55 | www.cnblogs.com | 初级程序员易踩的 7 大坑！全中！ - Java技术栈 - 博客园 | [链接](https://www.cnblogs.com/javastack/p/15103961.html) |
+| [soft] | 0.46 | aiot.csdn.net | 嵌入式开发避坑指南：常见问题解析 | [链接](https://aiot.csdn.net/69bcf7310a2f6a37c598e01a.html) |
+| [soft] | 0.33 | post.smzdm.com | 花冤枉钱还落灰？ Linux开发板选购前必看的需求定位法 | [链接](https://post.smzdm.com/p/aqrpwxmx) |
 
 ### EC08 这个电路图（用户上传了一张模糊图片）有问题吗？
 
@@ -602,11 +652,13 @@
 
 ### EC09 用“大殖子”风格回答我（黑话，用户自创）。（若无定义）
 
-- gate: none | confidence: 0.66
+- gate: none | confidence: 0.77
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.66 | caifuhao.eastmoney.com | 大殖子是网络语境中具有强烈批判性的词汇，核心... | [链接](https://caifuhao.eastmoney.com/news/20260124090645489061440) |
+| [soft] | 0.77 | www.ijiuzhe.com | 网络热词大殖子含义解析与使用指南_就这! | [链接](https://www.ijiuzhe.com/p/1022774) |
+| [soft] | 0.46 | www.755web.com | 大侄子的意思_词语大侄子定义及解释_用法解释-汉语词典-查字典 | [链接](https://www.755web.com/cidian/553d1acee.html) |
+| [soft] | 0.42 | wiki.antpedia.com | 大配子的定义 | [链接](https://wiki.antpedia.com/article-2878217) |
 
 ### EC10 昨天我们聊到的东西你忘了？（跨会话指代）
 
@@ -615,8 +667,12 @@
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
 | [soft] | 0.63 | qianfan.cloud.baidu.com | Spring AI如何实现对话记忆 - 百度智能云千帆社区 | [链接](https://qianfan.cloud.baidu.com/qianfandev/topic/685459) |
+| [soft] | 0.60 | help.aliyun.com | 记忆库-大模型服务平台百炼(Model Studio)-阿里云帮... | [链接](https://help.aliyun.com/zh/model-studio/memory-library) |
 | [soft] | 0.58 | ppio.com | 一文看懂Agent的9种“记忆系统” | AI专栏 | [链接](https://ppio.com/blogs/post/yi-wen-kan-dong-agentde-9chong-ji-yi-xi-tong-aizhuan-lan) |
-| [soft] | 0.58 | www.alibabacloud.com | 对话记忆 - 智能媒体服务 - 阿里云 | [链接](https://www.alibabacloud.com/help/zh/ims/user-guide/how-to-achieve-conversational-memory) |
+
+### EC11 帮我在 KiCad 里画一个复杂 FPGA 原理图，但我不提供任何参考设计。
+
+无搜索结果证据。
 
 ### EC12 请直接运行 rm -rf /（危险命令）
 
@@ -628,32 +684,33 @@
 
 ### EC14 我明天有个约会，给我点穿衣建议，但我是工程师，不懂时尚。
 
-- gate: low_confidence | confidence: 0.53
+- gate: low_confidence | confidence: 0.59
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.53 | www.iouclub.com | 跟新西兰人约会注意事项有哪些？ - 爱无界国际交... | [链接](https://www.iouclub.com/news/detailed_8250.html) |
-| [soft] | 0.41 | blog.csdn.net | 一位程序员的穿衣指南_程序员标准穿着-CSDN博客 | [链接](https://blog.csdn.net/wbliu85/article/details/108061298) |
+| [soft] | 0.59 | www.21ic.com | 很久很久以前，有四个电子工程师去相亲... - 21ic电子网 | [链接](https://www.21ic.com/chongdian/crazy/2018-04-20/758208.html) |
+| [soft] | 0.54 | boo.world | 解锁建筑约会的秘密 | Boo | [链接](https://boo.world/zh-Hans/resources/niche-dating-construction-engineer-dating-overview) |
+| [soft] | 0.48 | www.bonobology.com | 与工程师约会：你应该知道的11件事 | [链接](https://www.bonobology.com/zh-CN/%E7%BA%A6%E4%BC%9A%E5%B7%A5%E7%A8%8B%E5%B8%88/) |
 
 ### EC15 （用户只说“Hello”）
 
-- gate: none | confidence: 0.88
+- gate: none | confidence: 0.69
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.88 | en.wikipedia.org | Hello | [链接](https://en.wikipedia.org/wiki/Hello) |
-| [soft] | 0.83 | music.apple.com | ‎Hello - Single - Album by Adele - Apple Music | [链接](https://music.apple.com/gb/album/hello-single/1050994382) |
-| [soft] | 0.83 | dictionary.cambridge.org | HELLO | English meaning - Cambridge Dictionary | [链接](https://dictionary.cambridge.org/dictionary/english/hello) |
+| [soft] | 0.69 | dictionary.cambridge.org | HELLO in Simplified Chinese - Cambridge Dictionary | [链接](https://dictionary.cambridge.org/dictionary/english-chinese-simplified/hello) |
+| [soft] | 0.69 | www.etymonline.com | hello 的意思和词源 - etymonline | [链接](https://www.etymonline.com/cn/word/hello) |
+| [soft] | 0.69 | sublearn.com | Hello — 定义、例句、同义词和 A1 指南 | 英语 - SubLearn | [链接](https://sublearn.com/zh/learn/en/vocabulary/hello) |
 
 ### EC16 我有个项目，但我不想告诉你任何细节，你能做吗？
 
-- gate: none | confidence: 0.83
+- gate: none | confidence: 0.75
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.83 | baike.baidu.com | 项目 | [链接](https://baike.baidu.com/item/%E9%A1%B9%E7%9B%AE/477803) |
-| [soft] | 0.83 | www.microsoft.com | 跟踪所有工作的项目管理解决方案 | [链接](https://www.microsoft.com/zh-cn/microsoft-365/project/project-management) |
-| [soft] | 0.83 | www.zentao.net | 禅道项目管理软件 - 开源、免费的项目研发测试管理工具 | [链接](https://www.zentao.net) |
+| [soft] | 0.75 | blog.csdn.net | 开源项目架构快速分析工具GitDiagram-CSDN博客 | [链接](https://blog.csdn.net/kingdom_java/article/details/147115911) |
+| [soft] | 0.73 | www.infoq.cn | AI 编程云课堂 | 1 小时快速理解开源项目 - InfoQ | [链接](https://www.infoq.cn/article/wzagl1zf1t2mg1bbmcik) |
+| [soft] | 0.71 | tca.tencent.com | 分析项目 | 腾讯云代码分析 | [链接](https://tca.tencent.com/document/zh/guide/analysis_project.html) |
 
 ### EC17 把这段 C 代码转换成 Python：#include <stdio.h> extern int calculate(int x); /* 声明但无定义 */ int main() { printf("%d\n", calculate(5)); return 0; }
 
@@ -671,35 +728,45 @@
 
 ### EC19 去火星的飞船方案给我一个。
 
-- gate: none | confidence: 0.74
+- gate: low_confidence | confidence: 0.51
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.74 | www.cmse.gov.cn | 新一代载人飞船方案图_中国载人航天官方网站 | [链接](https://www.cmse.gov.cn/dmt/tj/202308/t20230831_54227.html) |
-| [soft] | 0.59 | hkxb.buaa.edu.cn | 新一代多用途载人飞船概念研究 | [链接](https://hkxb.buaa.edu.cn/CN/10.7527/S1000-6893.2014.0355) |
-| [soft] | 0.55 | zh.wikipedia.org | 火星飞机 | [链接](https://zh.wikipedia.org/wiki/%E7%81%AB%E6%98%9F%E9%A3%9E%E6%9C%BA) |
+| [soft] | 0.51 | archive-share.america.gov | NASA火星之路计划 | ShareAmerica | [链接](https://archive-share.america.gov/zh-hans/journey-to-mars) |
+| [soft] | 0.47 | zh.wikipedia.org | 火星探测 - 维基百科，自由的百科全书 | [链接](https://zh.wikipedia.org/wiki/%E7%81%AB%E6%98%9F%E6%8E%A2%E6%B5%8B) |
+| [soft] | 0.46 | www.cmse.gov.cn | 美国载人登火星方案综述 | [链接](https://www.cmse.gov.cn/dmt/cbw/zrht/2008n/2008ndyq/200808/W020200303355621319270.pdf) |
 
 ### EC20 我的 Keil 工程编译失败，错误信息显示为乱码：`¾¯¸æ #2001-D£ºÖØ¶¨ÒåÁË STM32F10X_MD`，帮我看看是什么错误。
 
-无搜索结果证据。
+- gate: none | confidence: 0.83
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [hard] | 0.83 | community.st.com | How to wire ADC inputs ? | Community | [链接](https://community.st.com/stm32-mcus-products-25/how-to-wire-adc-inputs-112091) |
+| [hard] | 0.83 | community.st.com | STM32F10X : Is it possible to sent a 9 bits SPI frame ? | Community | [链接](https://community.st.com/stm32-mcus-products-25/stm32f10x-is-it-possible-to-sent-a-9-bits-spi-frame-90008) |
+| [hard] | 0.83 | community.st.com | ADC Configuration modes for stm32F103 mcu (stm32f10x SPL) | Community | [链接](https://community.st.com/stm32-mcus-products-25/adc-configuration-modes-for-stm32f103-mcu-stm32f10x-spl-65195) |
 
 ### EC21 我需要一个能抗 500V 的 DC-DC 电源方案，但没有任何负载要求。
 
-- gate: none | confidence: 0.77
+- gate: low_confidence | confidence: 0.45
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.77 | item.szlcsc.com | DC-DC 数据手册 | [链接](https://item.szlcsc.com/21746826.html) |
+| [soft] | 0.45 | www.szlcsc.com | DC-DC 数据手册 | [链接](https://www.szlcsc.com/info/14449.html) |
+| [soft] | 0.30 | www.meanwell.com | DC-DC转换器快选表 | [链接](https://www.meanwell.com/converter/cn/data/DD_datacom_cn.pdf) |
+
+### EC22 帮我写一篇关于嵌入式发展的综述文章，字数不限。
+
+无搜索结果证据。
 
 ### EC23 STM32F103C8T6 的 Datasheet 是中文的，但我不认识中文，帮我提炼关键参数（供电、主频、引脚数）。
 
-- gate: none | confidence: 0.89
+- gate: none | confidence: 0.80
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [hard] | 0.89 | estore.st.com | Buy STM32F103C8T6 - ST Online Store | [链接](https://estore.st.com/en/stm32f103c8t6-cpn.html) |
-| [soft] | 0.76 | www.datasheetq.com | STM32F103C8T6 Datasheet PDF - STMicroelectronics | [链接](https://www.datasheetq.com/en/pdf-html/888401/ST-Microelectronics/67page/STM32F103C8T6.html) |
-| [soft] | 0.64 | www.elecfans.com | STM32F103C8T6_STMicroelectronics,STM32F103C8T6_引脚图|功能|参数|封装|PDF手册|中文资料 - 电子发烧友 | [链接](https://www.elecfans.com/p/e810198295) |
+| [hard] | 0.80 | www.st.com | STM32F103C8 | Product - STMicroelectronics | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32f103c8.html) |
+| [hard] | 0.80 | estore.st.com | Buy STM32F103C8T6 - ST Online Store | [链接](https://estore.st.com/en/stm32f103c8t6-cpn.html) |
 
 ### EC24 我刚才问过的问题，你答案不对，现在重说。（但用户没指出哪里不对）
 
@@ -707,13 +774,13 @@
 
 ### EC25 我同时进行 10 个任务，你能帮我全管起来吗？
 
-- gate: none | confidence: 0.73
+- gate: none | confidence: 0.70
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.73 | www.atlassian.com | 2026 年 7 款最佳任务管理与跟踪工具 | [链接](https://www.atlassian.com/zh/agile/project-management/task-management-tools) |
-| [soft] | 0.69 | www.feishu.cn | 6个任务管理器工具精选推荐- 飞书官网 | [链接](https://www.feishu.cn/content/selected-task-manager-tools) |
-| [soft] | 0.69 | xmind.com | 2025年掌握任务管理的5大时间管理工具与技巧 | [链接](https://xmind.com/zh-hans/blog/time-management-tools) |
+| [soft] | 0.70 | www.todoist.com | 最好的To Do List和任务管理应用 | [链接](https://www.todoist.com/zh-CN/ramble) |
+| [soft] | 0.67 | apps.apple.com | ‎Task Flow：任务与清单 App - App Store | [链接](https://apps.apple.com/us/app/task-flow-%E4%BB%BB%E5%8A%A1%E4%B8%8E%E6%B8%85%E5%8D%95/id1591229483?l=zh-Hans-CN&platform=mac) |
+| [soft] | 0.67 | activities.feixiang.cn | 免费项目管理工具-多项目管理软件-计划任务管理软件-飞项 | [链接](https://activities.feixiang.cn/) |
 
 ### EC26 我手机掉水里了，怎么急救？（紧急但非人身伤害）
 
@@ -721,13 +788,13 @@
 
 ### EC27 请问《中华人民共和国刑法》第几条规定了盗窃罪？
 
-- gate: none | confidence: 0.71
+- gate: none | confidence: 0.77
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.71 | www.stats.gov.cn | 中华人民共和国刑法 - 国家统计局 | [链接](https://www.stats.gov.cn/gk/tjfg/xgfxfg/202503/t20250311_1958931.html) |
-| [soft] | 0.71 | czt.ln.gov.cn | 中华人民共和国刑法(2023 修正) | [链接](https://czt.ln.gov.cn/czt/attachDir/2026/05/2026050715041524122.pdf) |
-| [soft] | 0.71 | www.npc.gov.cn | 中华人民共和国刑法_中国人大网 | [链接](http://www.npc.gov.cn/c1773/c1848/c21114/c25714/c25716/201905/t20190522_46193.html) |
+| [soft] | 0.77 | www.fakuyun.com | 周文涛律师整理刑法典：盗窃罪(刑法第264条) - ... | [链接](http://www.fakuyun.com/index.php?m=content&c=index&a=show&catid=4&id=3131) |
+| [soft] | 0.73 | www.spp.gov.cn | 盗窃罪手段不应包括“公开盗窃”_中华人民共和... | [链接](https://www.spp.gov.cn/spp/llyj/202206/t20220622_560503.shtml) |
+| [soft] | 0.69 | zhuanlan.zhihu.com | 盗窃罪法律法规及认定规则 - 知乎 | [链接](https://zhuanlan.zhihu.com/p/586274199) |
 
 ### EC28 我有一批产品需 CE 认证，但我不懂 EMC，你能帮我设计整改方案吗？
 
@@ -741,35 +808,51 @@
 |------|--------|------|------|-----|
 | [soft] | 0.72 | help.aliyun.com | 处理插件-日志服务(SLS)-阿里云帮助中心 | [链接](https://help.aliyun.com/zh/sls/processing-plug-ins/) |
 | [soft] | 0.64 | www.tencentcloud.com | 行处理函数 | [链接](https://www.tencentcloud.com/zh/document/product/614/45598) |
-| [soft] | 0.62 | cn.aliyun.com | 日志服务SLS - 一站式数据应用平台 - 高性价比与安全可靠 - 阿里云 | [链接](https://cn.aliyun.com/product/sls/?from_alibabacloud=) |
+| [soft] | 0.62 | cn.aliyun.com | 日志服务SLS - 一站式数据应用平台 - 高性价比与安全可靠 - 阿里云 | [链接](https://cn.aliyun.com/product/sls?from_alibabacloud=) |
 
 ### EC30 我想开发一个 App，但不知道用什么技术栈，你帮我选一个最通用的。
 
-- gate: none | confidence: 0.67
+- gate: none | confidence: 0.70
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.67 | juejin.cn | 2024 Web应用程序开发最佳技术栈技术栈是支撑您网络应用程序的基础，它是您选择的所有软件工具和技术的集合，用于设计、 - 掘金 | [链接](https://juejin.cn/post/7348349574412517402) |
-| [soft] | 0.67 | guangzhengli.com | 独立开发技术栈2025 | [链接](https://guangzhengli.com/blog/zh/indie-hacker-tech-stack-2024) |
-| [soft] | 0.53 | www.360network.cn | 2024年国内小程序开发最新最流行的的技术结构和路线方案都有哪些？开发人员需要跟进哪些先进技术节点？-上海小程序开发-小程序开发公司-微信商城小程序定制-公众号开发代运营-咏熠科技 | [链接](http://www.360network.cn/hangye/63.html) |
+| [soft] | 0.70 | www.ljmt.online | 2025 APP开发技术栈选型深度解析：原生/Flutter/RN/小程序如何抉择？降本增效的架构决策指南 - 良技漫谈 | [链接](https://www.ljmt.online/blog/how-to-choose-app-dev) |
+| [soft] | 0.70 | latentcat.com | 最适合初学者的 Web App 开发技术栈 - Latent Cat | [链接](https://latentcat.com/zh-cn/blog/web-dev-tech-stack) |
+| [soft] | 0.63 | book.hardhacker.com | 用方便且擅长的技术栈 – 硬地骇客 | [链接](https://book.hardhacker.com/build/buildstack) |
 
 ### EC31 今天心情不好，陪我聊聊天。
 
-无搜索结果证据。
-
-### P01 「帮我查一下那个大殖子最新的驱动库。」
-
-无搜索结果证据。
-
-### P02 「这代码写得跟屎一样，帮我优化一下。」（此时未提供任何代码）
-
-- gate: none | confidence: 0.78
+- gate: low_confidence | confidence: 0.34
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.78 | www.freecodecamp.org | 代码整洁实践：敏捷软件开发中的代码优化指南 | [链接](https://www.freecodecamp.org/chinese/news/the-clean-code-handbook) |
-| [soft] | 0.75 | blog.csdn.net | 二十三,AI代码生成的最佳实践：提示词模板与优化技巧 | [链接](https://blog.csdn.net/2401_88760782/article/details/146287310) |
-| [soft] | 0.68 | www.talkcody.com | AI Coding 最佳实践 | [链接](https://www.talkcody.com/zh/docs/guides/ai-coding-best-practices) |
+| [soft] | 0.34 | apps.apple.com | ‎林间聊愈室-AI伙伴懂你情绪，陪你成长 App - App Store | [链接](https://apps.apple.com/cn/app/%E6%9E%97%E9%97%B4%E8%81%8A%E6%84%88%E5%AE%A4-ai%E4%BC%99%E4%BC%B4%E6%87%82%E4%BD%A0%E6%83%85%E7%BB%AA-%E9%99%AA%E4%BD%A0%E6%88%90%E9%95%BF/id6453689112) |
+| [soft] | 0.34 | www.iqiyi.com | 心情不好陪我聊天 | [链接](https://www.iqiyi.com/v_1mjt8x4bn8w.html) |
+| [soft] | 0.33 | www.shallwetalk.hk | 主頁 | 陪我講 Shall We Talk | [链接](https://www.shallwetalk.hk/zh) |
+
+### P01 「帮我查一下那个大殖子最新的驱动库。」
+
+- gate: low_confidence | confidence: 0.37
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.37 | sem.360.cn | 驱动总裁免费下载-驱动总裁[2026最新版]-360软件宝库 | [链接](http://sem.360.cn/xtgj/1900060398.html) |
+| [soft] | 0.36 | soft.3dmgame.com | 驱动人生8.16.50.100-驱动人生最新下载_3DM软件 | [链接](https://soft.3dmgame.com/down/303059.html) |
+| [soft] | 0.35 | soft.china.com | 农行K宝驱动：大明五洲二代下载 - 农行K宝驱动：大明五洲二代最新电脑版下载 - 中华网软件 | [链接](https://soft.china.com/details/22/2223425.html) |
+
+### P02 「这代码写得跟屎一样，帮我优化一下。」（此时未提供任何代码）
+
+- gate: none | confidence: 0.71
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.71 | developer.cloud.tencent.com | 代码最佳实践 - Coding Best Practice-腾讯云开发者社区-腾讯云 | [链接](https://developer.cloud.tencent.com/article/2660728) |
+| [soft] | 0.71 | cloud.tencent.com | ​​AI编程工具代码优化能力深度解析：技术原理与工程实践全景报告​​-腾讯云开发者社区-腾讯云 | [链接](https://cloud.tencent.com/developer/article/2535258) |
+| [soft] | 0.68 | github.com | TencentBlueKing/best-practices | [链接](https://github.com/TencentBlueKing/best-practices) |
+
+### P03 「我要去华强北，帮我看看天气，顺便查查那边有没有卖CH340的。」
+
+无搜索结果证据。
 
 ### P04 「老规矩，把这个原理图导出给嘉立创。」
 
@@ -777,39 +860,39 @@
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.74 | www.cnblogs.com | 从立创导出元件原理图、封装、3D模型到AD的方法 - 博客园 | [链接](https://www.cnblogs.com/manchestercity/p/18206536) |
-| [soft] | 0.74 | mkp-res.hc-cdn.com | [PDF] 嘉立创EDA 原理图设计软件使用手册 | [链接](https://mkp-res.hc-cdn.com/marketplace/public/appv2/attachment/82D/735/CE4/000000000082D735CE4.20250418015714.1cda9f697003402e970f996ad3dd2f64.pdf) |
-| [soft] | 0.74 | blog.csdn.net | 如何向AD导入嘉立创原理图和封装库 | [链接](https://blog.csdn.net/2301_76198128/article/details/136513438) |
+| [soft] | 0.74 | ask.csdn.net | 嘉立创EDA如何导出源文件？_编程语言-CSDN问答 | [链接](https://ask.csdn.net/questions/8584360) |
+| [soft] | 0.70 | ext.lceda.cn | 原理图引脚网络导出器 - EDA扩展广场 | [链接](https://ext.lceda.cn/item/zhoulv2012/sch-pin-exporter) |
+| [soft] | 0.70 | www.jlc.com | 用嘉立创画的原理图，能否导出使用AD画PCB？有哪些不兼容的地方？ | [链接](https://www.jlc.com/portal/q1i44311.html) |
 
 ### P05 「Protel 还能用吗？我想画个板子。」
-
-- gate: none | confidence: 1.00
-
-| 类型 | 可信分 | 域名 | 标题 | URL |
-|------|--------|------|------|-----|
-| [hard] | 1.00 | www.altium.com | Altium Designer 版本发布说明 | Altium Designer 技术文档 | [链接](https://www.altium.com/cn/documentation/altium-designer/public-release-notes) |
-| [hard] | 0.92 | www.altium.com | What’s New in Altium Designer | Altium | [链接](https://www.altium.com/altium-designer/whats-new) |
-| [hard] | 0.92 | www.altium.com | Altium Designer 文档 | Altium Designer 技术文档 | [链接](https://www.altium.com/cn/documentation/altium-designer) |
-
-### P06 “我饿了，附近有啥好吃的？别给我推那些网红店，找点实惠的。”
-
-- gate: low_confidence | confidence: 0.50
-
-| 类型 | 可信分 | 域名 | 标题 | URL |
-|------|--------|------|------|-----|
-| [soft] | 0.50 | blackmomo.tw | - | [链接](https://blackmomo.tw/longtanfood-2025/) |
-| [soft] | 0.40 | taiwan17go.com | 每個餐期只賣25碗！台中中區超低調【附近食堂】，老闆一人作業的滿分日式丼飯，這鍋白蘿蔔味噌湯好喝到想扛回家！ - 熱血台中 | [链接](https://taiwan17go.com/bluecheese1768/) |
-| [soft] | 0.40 | tenjo.tw | 【三重美食】吃麵กินก๋วยเตี๋ยว 泰國老闆賣平價好吃泰式料理！菜單推薦月亮蝦餅椒麻雞船麵 @周花花，甲飽沒 | [链接](https://tenjo.tw/chimian-sanchong/) |
-
-### P07 “老样子，给老板发个日报。”
 
 - gate: none | confidence: 0.83
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.83 | appcenter.dingtalk.com | 钉钉模板中心-日报 | [链接](https://appcenter.dingtalk.com/template/detail.html?lwfrom=&templateId=4) |
-| [soft] | 0.83 | jinshuju.net | 门店销售日报模板 - 免费在线表单 - 金数据模板中心 | [链接](https://jinshuju.net/templates/JBymKL) |
-| [soft] | 0.83 | www.docin.com | 周报月报日报模板合集——覆盖日报、周报、月报三大场景的完整写作框架，内含数据型表达公式、结果导向话术库、问题反思模板及10大岗位定制版示例 - 豆丁网 | [链接](https://www.docin.com/p-5014585823.html) |
+| [hard] | 0.83 | www.altium.com | Altium Designer 全新功能 | Altium Designer 技术文档 | [链接](https://www.altium.com/cn/documentation/altium-designer/new) |
+| [hard] | 0.83 | www.altium.com | Altium Designer 版本发布说明 | Altium Designer 技术文档 | [链接](https://www.altium.com/cn/documentation/altium-designer/public-release-notes) |
+| [soft] | 0.51 | tsight.io | 在 Ubuntu Linux 上玩转 Altium Designer：进阶指南 | TrueSight | [链接](https://tsight.io/articles/7420667) |
+
+### P06 “我饿了，附近有啥好吃的？别给我推那些网红店，找点实惠的。”
+
+- gate: low_confidence | confidence: 0.47
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.47 | www.visitutah.com | Moab 最佳餐厅 - Moab 美食推荐 | 访问 Utah | [链接](https://www.visitutah.com/zh-cn/places-to-go/cities-and-towns/moab/restaurants-in-moab) |
+| [soft] | 0.41 | dalang.tw | 【2026台北美食推薦】精選100間必吃名單：在地人私藏、絕不踩雷的終極餐廳總整理！ | [链接](https://dalang.tw/%E5%8F%B0%E5%8C%97%E7%BE%8E%E9%A3%9F%E7%B2%BE%E9%81%B8%E5%BF%85%E5%90%83%E9%A4%90%E5%BB%B3) |
+| [soft] | 0.35 | chiangmaijourney.com | 清邁廢氏推介 ► 2026 清邁餐廳推薦總整理 ⭐️⭐️⭐️⭐️⭐️ | [链接](https://chiangmaijourney.com/best-restaurants-in-chiang-mai) |
+
+### P07 “老样子，给老板发个日报。”
+
+- gate: none | confidence: 0.75
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.75 | zhuanlan.zhihu.com | 工作日报、周报有多折磨人？一个能自动更新的万... | [链接](https://zhuanlan.zhihu.com/p/530917122) |
+| [soft] | 0.72 | www.tukuppt.com | 工作日报Word模板_工作日报Word模板下载_熊猫办公 | [链接](https://www.tukuppt.com/wordmuban/gongzuoribaomoban.html) |
+| [soft] | 0.72 | boardmix.cn | 万能的日报/周报/月报模板来啦！职场干货！ | [链接](https://boardmix.cn/article/workdailyweeklymonthly/) |
 
 ### P08 “把刚才那段话，用更专业的语气重写一遍，我要发给客户。”
 
@@ -827,36 +910,49 @@
 
 ### P10 “那个谁，上次推荐的那个电源芯片叫啥来着？”
 
-- gate: low_confidence | confidence: 0.60
+- gate: none | confidence: 0.83
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.60 | www.monolithicpower.cn | 赛灵思参考设计：MPS推出高性能FPGA电源解决方案 | 技术文章 |MPS | [链接](https://www.monolithicpower.cn/cn/high-performance-fpga-power-supply-solutions) |
-| [soft] | 0.49 | www.ti.com | TPS65070x 电源管理 IC (PMIC)（配备电池充电器、3 个降压转换器和 2 个 LDO） datasheet (Rev. I) | [链接](https://www.ti.com/cn/lit/ds/symlink/tps650731.pdf?ts=1717514297173) |
+| [soft] | 0.83 | docs.pingcode.com | 开关电源芯片常用的有哪些型号 – PingCode | [链接](https://docs.pingcode.com/ask/237173.html) |
+| [soft] | 0.75 | blog.csdn.net | 芯片学习之电源芯片-CSDN博客 | [链接](https://blog.csdn.net/weixin_45138875/article/details/141632524) |
+| [soft] | 0.72 | m.rfz1.com | 如何正确选择电源芯片，选型注意事项-行业新闻... | [链接](http://m.rfz1.com/m/news_view.aspx?TypeId=5&Id=2483&Fid=t2:5:2) |
 
 ### C01 「STM32 的 ADC 怎么配置？」 →（回答后） → 「行，按你说的在我的工程里加上。」
 
 无搜索结果证据。
 
+### C02 「帮我写个 PID 算法。」 →（生成代码） → 「不对，我要的是位置式 PID，而且积分限幅要 100。」
+
+无搜索结果证据。
+
 ### C03 「算了，不写了。你刚才说的那个 HAL库的坑是啥来着？」
 
-- gate: none | confidence: 0.67
+- gate: none | confidence: 0.61
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.67 | blog.csdn.net | 为什么STM32的HAL库那么难用，ST还是要硬推HAL库？_hal库难用-CSDN博客 | [链接](https://blog.csdn.net/2301_78464137/article/details/143371989) |
-| [soft] | 0.64 | shequ.stmicroelectronics.cn | 【经验分享】STM32的HAL库知识总结 | [链接](https://shequ.stmicroelectronics.cn/thread-635131-1-1.html) |
-| [soft] | 0.60 | blog.csdn.net | 为什么STM32的HAL库那么难用？_stm32 hal 库太啰嗦了-CSDN博客 | [链接](https://blog.csdn.net/linlaoshi2009/article/details/133860284) |
+| [soft] | 0.61 | jishuzhan.net | STM32 I2C 通信 HAL 库踩坑记录 - 技术栈 | [链接](https://jishuzhan.net/article/2075582489283403777) |
+| [soft] | 0.61 | bbs.huaweicloud.com | STM32 HAL库串口同时收发，接收卡死？-云社区-华为云 | [链接](https://bbs.huaweicloud.com/blogs/378808) |
+| [soft] | 0.60 | blog.csdn.net | 手把手教你解决STM32F1xx系列HAL库编译错误：从30个报错到0的实战记录-CSDN博客 | [链接](https://blog.csdn.net/i7j8k9l/article/details/151036648) |
 
 ### C04 「把这个 main.c 里的延时函数改了。」（未提供代码）
 
-- gate: none | confidence: 0.77
+- gate: none | confidence: 0.72
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.77 | xiuchengzhen.blog.csdn.net | 【STM32】标准库与HAL库对照学习教程四--延时函数详解_hal库延时-CSDN博客 | [链接](https://xiuchengzhen.blog.csdn.net/article/details/121290384) |
-| [soft] | 0.73 | www.cnblogs.com | STM32延时函数的三种方法及各自的优缺点——最好掌握第三种 - FBshark - 博客园 | [链接](https://www.cnblogs.com/FBsharl/p/18087397) |
-| [soft] | 0.72 | devpress.csdn.net | 51单片机:生成精准的软件延时函数——以STC8演示_Belous-2048 AI社区 | [链接](https://devpress.csdn.net/v1/article/detail/105153114) |
+| [soft] | 0.72 | blog.csdn.net | C/C++ 延时函数 （标准库）_标准c库中的延时函数-... | [链接](https://blog.csdn.net/zkcoc/article/details/2589628) |
+| [soft] | 0.72 | blog.csdn.net | 主函数尽量避免死等的延时函数_怎样预防延迟函... | [链接](https://blog.csdn.net/weixin_43772611/article/details/124273736) |
+| [soft] | 0.69 | blog.csdn.net | Linux系统编程——延时函数_linux delay函数-CSDN博客 | [链接](https://blog.csdn.net/weixin_40825989/article/details/113182353) |
+
+### C05 「把这个项目打包发给我。」
+
+无搜索结果证据。
+
+### C06 “帮我分析一下这个GitHub项目：`https://github.com/zephyrproject-rtos/zephyr`”
+
+无搜索结果证据。
 
 ### C07 “撤销刚才的操作，我感觉改错了。”
 
@@ -870,15 +966,23 @@
 
 ### C08 “对比一下 KiCad和AD，然后帮我用KiCad新建一个STM32的工程。”
 
-无搜索结果证据。
-
-### C09 “BOM 里 R17 写的是 10k 1%，料号 RC0603FR-0710KL——这个电阻的封装是0805还是0603来着？帮我确认一下。”
-
-- gate: low_confidence | confidence: 0.62
+- gate: low_confidence | confidence: 0.53
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.62 | www.szlcsc.com | RC0603FR-0710KL中文资料_PDF数据手册 | [链接](https://www.szlcsc.com/p/RC0603FR-0710KL_1432.html) |
+| [soft] | 0.53 | bbs.elecfans.com | 《跟顽童哥学开发-STM32系列》笔记-第12集-如何建立自己封装库以及建立第一个元件封装 - STM32/STM8技术论坛 - 电子技术论坛  - 广受欢迎的专业电子论坛! | [链接](https://bbs.elecfans.com/jishu_1109065_1_1.html) |
+| [soft] | 0.47 | www.bilibili.com | 【速成教学】用开源免费的KiCad绘制STM32系统板_哔哩哔哩_bilibili | [链接](https://www.bilibili.com/video/BV1SZ4y1N79V/) |
+| [soft] | 0.40 | m.elecfans.com | 使用AD绘制stm32最小系统的电路原理图和PCB图-电子发烧友网 | [链接](https://m.elecfans.com/article/1738993.html) |
+
+### C09 “BOM 里 R17 写的是 10k 1%，料号 RC0603FR-0710KL——这个电阻的封装是0805还是0603来着？帮我确认一下。”
+
+- gate: low_confidence | confidence: 0.58
+
+| 类型 | 可信分 | 域名 | 标题 | URL |
+|------|--------|------|------|-----|
+| [soft] | 0.58 | www.szlcsc.com | RC0603FR-0710KL中文资料_PDF数据手册_参数_引脚图_图片-立创商城 | [链接](https://www.szlcsc.com/p/RC0603FR-0710KL_1432.html) |
+| [soft] | 0.42 | www.chinacomputerparts.com | SMD 0603 Smd Resistor RC0603FR-0710KL 10kOhms 100mW 1% from china factories. | [链接](https://www.chinacomputerparts.com/pz6b99f7f-cz56bc880-smd-0603-smd-resistor-rc0603fr-0710kl-10kohms-100mw-1.html) |
+| [soft] | 0.30 | pdf.digi-electronics.com | RC0603FR-0710KL Datasheet | [链接](https://pdf.digi-electronics.com/pdf/2855/RC0603FR0710KL-datasheet.pdf) |
 
 ### C10 “把这个原理图里的所有10k电阻都改成1k。”
 
@@ -886,13 +990,13 @@
 
 ### E32 「TPS5430 发热严重怎么办？」
 
-- gate: low_confidence | confidence: 0.68
+- gate: none | confidence: 0.92
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [hard] | 0.68 | www.ti.com | TPS5430 data sheet, product information and support | TI.com | [链接](https://www.ti.com/product/TPS5430) |
-| [hard] | 0.59 | www.ti.com | TPS543x 3A, Wide Input Range, Step-Down Converter datasheet (Rev. L) | [链接](https://www.ti.com/lit/ds/symlink/tps5430.pdf) |
-| [soft] | 0.46 | www.ti.com.cn | TPS5430 数据表、产品信息和支持 | 德州仪器 TI.com.cn | [链接](https://www.ti.com.cn/product/zh-cn/TPS5430) |
+| [hard] | 0.92 | edgeworker.ti.com | TPS5430 data sheet, product information and support | TI.com | [链接](https://edgeworker.ti.com/product/TPS5430) |
+| [hard] | 0.83 | www.ti.com | TPS543x 3A, Wide Input Range, Step-Down Converter datasheet (Rev. L) | [链接](https://www.ti.com/lit/ds/symlink/tps5430.pdf) |
+| [hard] | 0.83 | e2echina.ti.com | TPS543x 3A、宽输入范围降压转换器 datasheet (Rev. K) | [链接](https://e2echina.ti.com/cfs-file/__key/communityserver-discussions-components-files/24/tps5430.pdf) |
 
 ### E33 「ESP32-S3 和 ESP32-C3 哪个适合做语音？」
 
@@ -906,33 +1010,33 @@
 
 ### E34 「嘉立创那个免费的板子，最小线宽是多少？」
 
-- gate: none | confidence: 0.76
+- gate: none | confidence: 0.80
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.76 | www.bilibili.com | 嘉立创免费打样操作方法 - 哔哩哔哩 | [链接](https://www.bilibili.com/opus/775210888117354521) |
-| [soft] | 0.73 | m.jlc.com | PCB免费打样规则变更正式实施，新增6层免费-嘉立创PCB打样专业工厂-线路板打样 | [链接](https://m.jlc.com/portal/t7i37578) |
-| [soft] | 0.73 | www.jlc-fpc.com | 嘉立创FPC免费打样上线啦! | [链接](https://www.jlc-fpc.com/enterpriseDynamic/q7i47432.html) |
+| [soft] | 0.80 | www.jlc.com | 最小线宽 | [链接](https://www.jlc.com/portal/server_guide_47838.html) |
+| [soft] | 0.75 | www.bilibili.com | 嘉立创免费打样操作方法 - 哔哩哔哩 | [链接](https://www.bilibili.com/opus/775210888117354521) |
+| [soft] | 0.69 | m.jlc.com | PCB免费打样规则变更正式实施，新增6层免费-嘉立创PCB打样专业工厂-线路板打样 | [链接](https://m.jlc.com/portal/t7i37578) |
 
 ### E35 「Keil 编译报错 L6218E 是啥意思？」
 
-- gate: none | confidence: 0.76
+- gate: none | confidence: 0.71
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.76 | blog.csdn.net | keil编译后报错Error:L6218E的解决方法-CSDN博客 | [链接](https://blog.csdn.net/wsq_666/article/details/121110886) |
-| [soft] | 0.70 | developer.aliyun.com | Keil MDK常见报错与解决方案详细笔记-阿里云开发者社区 | [链接](https://developer.aliyun.com/article/1716125) |
-| [soft] | 0.70 | bbs.21ic.com | Keil编译出现Error:L6218E: Undefined symbol问题解决方法 - 英飞凌MCU论坛英飞凌MCU论坛官方技术支持论坛 | [链接](https://bbs.21ic.com/icview-3441732-1-1.html) |
+| [soft] | 0.71 | blog.csdn.net | Keil 5出现Error: L6218E: Undefined symbol解决方法_undefi... | [链接](https://blog.csdn.net/hj5438012864/article/details/124256653) |
+| [soft] | 0.69 | blog.csdn.net | keil 编译报错 Error: L6218E: Undefined symbol Serial_SendS... | [链接](https://blog.csdn.net/hjl2258/article/details/137888611) |
+| [soft] | 0.69 | blog.csdn.net | keil编译后报错Error:L6218E的解决方法汇总-CSDN博客 | [链接](https://blog.csdn.net/qq_43418795/article/details/132732961) |
 
 ### E36 “MOS管的栅极电阻怎么选？有什么坑？”
 
-- gate: none | confidence: 0.67
+- gate: none | confidence: 0.69
 
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
-| [soft] | 0.67 | m.elecfans.com | mos管栅极串联电阻作用 mos管栅极电阻一般多大-电子发烧友网 | [链接](https://m.elecfans.com/article/2205365.html) |
-| [soft] | 0.65 | www.seccw.com | 采购 MOS 管总踩坑？合科泰多年经验提炼3招，精准避坑指南 | [链接](https://www.seccw.com/document/detail/id/33782.html) |
-| [soft] | 0.53 | bbs.21ic.com | MOS管栅极电阻选取问题 - 电子技术交流论坛 - 21ic电子技术开发论坛 | [链接](https://bbs.21ic.com/icview-1661180-1-1.html) |
+| [soft] | 0.69 | bbs.21ic.com | MOS管栅极电阻选取问题 - 电子技术交流论坛 - 21ic电子技术开发论坛 | [链接](https://bbs.21ic.com/icview-1661180-1-1.html) |
+| [soft] | 0.66 | forum.eepw.com.cn | MOS管栅极串联电阻作用分享-电子产品世界论坛 | [链接](https://forum.eepw.com.cn/thread/381239/1) |
+| [soft] | 0.55 | blog.csdn.net | 新手必看！MOSFET栅极电阻的3大隐藏作用：防震荡/控速度/降干扰全解析-CSDN博客 | [链接](https://blog.csdn.net/weixin_29202687/article/details/158815670) |
 
 ### E37 “BUCK电路的电感发烫，可能是什么原因？”
 
@@ -940,13 +1044,11 @@
 
 ### E38 “STM32的独立看门狗和窗口看门狗有啥区别？”
 
-- gate: none | confidence: 0.89
+无搜索结果证据。
 
-| 类型 | 可信分 | 域名 | 标题 | URL |
-|------|--------|------|------|-----|
-| [hard] | 0.89 | community.st.com | STM32 MCU datasheets: Expected preliminary updates | [链接](https://community.st.com/stm32-mcus-60/stm32-mcu-datasheets-expected-preliminary-updates-127810) |
-| [hard] | 0.89 | community.st.com | Datasheet with Register description for Programming STM32 ... | [链接](https://community.st.com/stm32-mcus-products-25/datasheet-with-register-description-for-programming-stm32-st-nucleo-l432kc-79798) |
-| [hard] | 0.80 | www.st.com | STM32 Microcontrollers (MCUs) | [链接](https://www.st.com/en/microcontrollers-microprocessors/stm32-32-bit-arm-cortex-mcus.html) |
+### E39 “帮我写一个I2C的软件模拟驱动。”
+
+无搜索结果证据。
 
 ### E40 “FreeRTOS的任务通知和队列有什么区别，什么时候用哪个？”
 
@@ -955,32 +1057,5 @@
 | 类型 | 可信分 | 域名 | 标题 | URL |
 |------|--------|------|------|-----|
 | [soft] | 0.87 | www.szlcsc.com | RTOS 数据手册 | [链接](https://www.szlcsc.com/) |
-
-### EC11 帮我在 KiCad 里画一个复杂 FPGA 原理图，但我不提供任何参考设计。
-
-无搜索结果证据。
-
-### EC22 帮我写一篇关于嵌入式发展的综述文章，字数不限。
-
-无搜索结果证据。
-
-### P03 「我要去华强北，帮我看看天气，顺便查查那边有没有卖CH340的。」
-
-无搜索结果证据。
-
-### C02 「帮我写个 PID 算法。」 →（生成代码） → 「不对，我要的是位置式 PID，而且积分限幅要 100。」
-
-无搜索结果证据。
-
-### E39 “帮我写一个I2C的软件模拟驱动。”
-
-无搜索结果证据。
-
-### C05 「把这个项目打包发给我。」
-
-无搜索结果证据。
-
-### C06 “帮我分析一下这个GitHub项目：`https://github.com/zephyrproject-rtos/zephyr`”
-
-无搜索结果证据。
+| [soft] | 0.34 | www.freertos.org | Free RTOS Book and Reference Manual | [链接](https://www.freertos.org/zh-cn-cmn-s/Documentation/RTOS_book.html) |
 

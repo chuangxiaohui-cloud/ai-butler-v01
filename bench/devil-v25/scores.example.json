@@ -29,7 +29,7 @@
       "id": "ET05",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 3
     },
     {
       "id": "ET06",
@@ -53,7 +53,7 @@
       "id": "ET09",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 3
     },
     {
       "id": "ET10",
@@ -89,7 +89,7 @@
       "id": "ET15",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 2
     },
     {
       "id": "ET16",
@@ -101,7 +101,7 @@
       "id": "ET17",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 3
+      "autoScore": 2
     },
     {
       "id": "ET18",
@@ -119,13 +119,13 @@
       "id": "ET20",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 3
+      "autoScore": 0
     },
     {
       "id": "ET21",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 2
     },
     {
       "id": "ET22",
@@ -155,7 +155,7 @@
       "id": "ET26",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 3
+      "autoScore": 0
     },
     {
       "id": "ET27",
@@ -173,7 +173,7 @@
       "id": "ET29",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 3
     },
     {
       "id": "ET30",
@@ -185,7 +185,7 @@
       "id": "ET31",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 3
     },
     {
       "id": "SM01",
@@ -209,13 +209,13 @@
       "id": "SM04",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 3
     },
     {
       "id": "SM05",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 3
     },
     {
       "id": "SM06",
@@ -245,7 +245,7 @@
       "id": "SM10",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 3
+      "autoScore": 2
     },
     {
       "id": "SM11",
@@ -263,7 +263,7 @@
       "id": "SM13",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 2
     },
     {
       "id": "SM14",
@@ -281,7 +281,7 @@
       "id": "SM16",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 3
     },
     {
       "id": "SM17",
@@ -305,13 +305,13 @@
       "id": "SM20",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 3
+      "autoScore": 2
     },
     {
       "id": "SM21",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 3
     },
     {
       "id": "SM22",
@@ -329,7 +329,7 @@
       "id": "SM24",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 3
     },
     {
       "id": "SM25",
@@ -365,7 +365,7 @@
       "id": "SM30",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 1
     },
     {
       "id": "SM31",
@@ -425,7 +425,7 @@
       "id": "EC09",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 1
     },
     {
       "id": "EC10",
@@ -473,7 +473,7 @@
       "id": "EC17",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 1
     },
     {
       "id": "EC18",
@@ -491,13 +491,13 @@
       "id": "EC20",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 2
     },
     {
       "id": "EC21",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 3
     },
     {
       "id": "EC22",
@@ -521,7 +521,7 @@
       "id": "EC25",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 3
     },
     {
       "id": "EC26",
@@ -539,7 +539,7 @@
       "id": "EC28",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 1
     },
     {
       "id": "EC29",
@@ -557,13 +557,13 @@
       "id": "EC31",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 1
     },
     {
       "id": "P01",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 1
     },
     {
       "id": "P02",
@@ -581,7 +581,7 @@
       "id": "P04",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 1
     },
     {
       "id": "P05",
@@ -641,7 +641,7 @@
       "id": "C04",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 1
+      "autoScore": 2
     },
     {
       "id": "C05",
@@ -671,13 +671,13 @@
       "id": "C09",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 2
+      "autoScore": 3
     },
     {
       "id": "C10",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 1
     },
     {
       "id": "E32",
@@ -719,7 +719,7 @@
       "id": "E38",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 3
+      "autoScore": 0
     },
     {
       "id": "E39",

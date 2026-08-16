@@ -1061,3 +1061,121 @@
 {"ts":"2026-08-16T16:25:38.653Z","query":"STM32F103C8T6 立创商城 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
 {"ts":"2026-08-16T16:25:38.655Z","query":"STM32F103C8T6 site:szlcsc.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
 {"ts":"2026-08-16T16:25:38.658Z","query":"STM32F103C8T6 芯查查 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:34:53.423Z","query":"STM32H7 site:st.com datasheet","bocha_ms":227,"bocha_ok":false,"anysearch_ms":2702,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:35:09.570Z","query":"BUCK 立创商城 数据手册","bocha_ms":157,"bocha_ok":false,"anysearch_ms":1113,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:35:28.274Z","query":"TPS5430 site:ti.com datasheet","bocha_ms":157,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true}
+{"ts":"2026-08-16T16:35:31.438Z","query":"TPS5430 ti.com 官方 数据手册","bocha_ms":150,"bocha_ok":false,"anysearch_ms":3160,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:35:42.330Z","query":"FreeCAD 导入 KiCad PCB 3D 模型 对齐","bocha_ms":146,"bocha_ok":false,"anysearch_ms":2204,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:35:56.191Z","query":"RTOS 立创商城 数据手册","bocha_ms":151,"bocha_ok":false,"anysearch_ms":4177,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:36:17.240Z","query":"ESP32-S3 site:espressif.com datasheet","bocha_ms":212,"bocha_ok":false,"anysearch_ms":2877,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:36:25.736Z","query":"Altium Designer 高速PCB 差分对等长规则设置","bocha_ms":214,"bocha_ok":false,"anysearch_ms":1718,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:36:36.765Z","query":"PyMuPDF 解析 Datasheet 表格 合并单元格 处理 工具","bocha_ms":170,"bocha_ok":false,"anysearch_ms":2491,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:36:46.539Z","query":"STM32F103 site:st.com datasheet","bocha_ms":142,"bocha_ok":false,"anysearch_ms":1758,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:36:58.129Z","query":"GitHub API 获取贡献者数量 star 趋势 图表","bocha_ms":191,"bocha_ok":false,"anysearch_ms":2524,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:37:13.929Z","query":"JLink SWD 100kΩ 上拉电阻 必须 不加 后果","bocha_ms":155,"bocha_ok":false,"anysearch_ms":4516,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:37:21.832Z","query":"Rust 嵌入式 避免堆内存分配错误 最佳实践","bocha_ms":205,"bocha_ok":false,"anysearch_ms":1594,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:37:32.863Z","query":"ESP32-C3 site:espressif.com datasheet","bocha_ms":145,"bocha_ok":false,"anysearch_ms":2289,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:37:42.936Z","query":"ST-L 立创商城 数据手册","bocha_ms":150,"bocha_ok":false,"anysearch_ms":1588,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:38:02.703Z","query":"KiCad 差分对阻抗匹配 设置 插件","bocha_ms":156,"bocha_ok":false,"anysearch_ms":1732,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:38:13.815Z","query":"LTspice 蒙特卡罗分析 电阻容差 输出电压 设置","bocha_ms":206,"bocha_ok":false,"anysearch_ms":4273,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:38:26.404Z","query":"Tauri vs Electron 嵌入式设备 性能 内存 CPU 对比","bocha_ms":146,"bocha_ok":false,"anysearch_ms":3612,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:38:35.299Z","query":"Python scipy.signal 数字低通滤波器 设计 ADC 采样数据 平滑","bocha_ms":153,"bocha_ok":false,"anysearch_ms":2869,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:38:46.004Z","query":"Keil CubeMX 配置同步 最佳工作流","bocha_ms":155,"bocha_ok":false,"anysearch_ms":2959,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:38:57.668Z","query":"STM32 site:st.com datasheet","bocha_ms":244,"bocha_ok":false,"anysearch_ms":3149,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:39:07.665Z","query":"Cadence Allegro BGA扇出 DDR等长规则 设置","bocha_ms":160,"bocha_ok":false,"anysearch_ms":4514,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:39:20.789Z","query":"Gitee 私有仓库 Webhook 自动触发编译 单元测试","bocha_ms":142,"bocha_ok":false,"anysearch_ms":1354,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:39:29.996Z","query":"嵌入式 看门狗 调试模式 禁用 方法","bocha_ms":215,"bocha_ok":false,"anysearch_ms":1808,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:39:42.045Z","query":"STM32 site:st.com datasheet","bocha_ms":146,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true}
+{"ts":"2026-08-16T16:39:43.624Z","query":"STM32 st.com 官方 数据手册","bocha_ms":151,"bocha_ok":false,"anysearch_ms":1574,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:39:58.549Z","query":"IBIS 立创商城 数据手册","bocha_ms":214,"bocha_ok":false,"anysearch_ms":4026,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:40:12.970Z","query":"SPICE 立创商城 数据手册","bocha_ms":152,"bocha_ok":false,"anysearch_ms":4120,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:40:25.171Z","query":"ESP32 site:espressif.com datasheet","bocha_ms":199,"bocha_ok":false,"anysearch_ms":1838,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:40:50.233Z","query":"GitHub Actions 自动生成 Release changelog 教程","bocha_ms":150,"bocha_ok":false,"anysearch_ms":4154,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:41:01.077Z","query":"FreeCAD 装配体 有限元静态分析 Workbench","bocha_ms":200,"bocha_ok":false,"anysearch_ms":2963,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:41:13.490Z","query":"ULINK 立创商城 数据手册","bocha_ms":164,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true}
+{"ts":"2026-08-16T16:41:14.885Z","query":"ULINK site:szlcsc.com datasheet","bocha_ms":145,"bocha_ok":false,"anysearch_ms":1387,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:41:33.173Z","query":"RISC-V 立创商城 数据手册","bocha_ms":168,"bocha_ok":false,"anysearch_ms":1541,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:41:48.521Z","query":"多项目并行排期管理 PCB设计 固件开发 结构设计 一个月","bocha_ms":225,"bocha_ok":false,"anysearch_ms":3498,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:42:03.071Z","query":"STM32F103 site:st.com datasheet","bocha_ms":null,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:42:16.131Z","query":"FreeCAD 机械设计 一周 学习路线 模块","bocha_ms":200,"bocha_ok":false,"anysearch_ms":3403,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:42:26.258Z","query":"ESP8266 立创商城 数据手册","bocha_ms":151,"bocha_ok":false,"anysearch_ms":3441,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:42:38.220Z","query":"实习生 Keil 基础 固件项目 任务分配 经验","bocha_ms":168,"bocha_ok":false,"anysearch_ms":3179,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:42:56.469Z","query":"远程监控实验室焊接进度 设备 软件","bocha_ms":156,"bocha_ok":false,"anysearch_ms":3453,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:43:12.089Z","query":"KiCad Altium Designer 4层板 学习成本 设计时间 对比","bocha_ms":192,"bocha_ok":false,"anysearch_ms":3602,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:43:19.940Z","query":"STM32F103 site:st.com datasheet","bocha_ms":null,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:43:31.857Z","query":"语雀 飞书 自建 文档图纸 云端 对比 安全 分享","bocha_ms":153,"bocha_ok":false,"anysearch_ms":2503,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:43:43.192Z","query":"Agent 自动汇总 Git 提交 测试结果 站会","bocha_ms":179,"bocha_ok":false,"anysearch_ms":2851,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:44:02.573Z","query":"芯片停产 替代型号 评估 改动工作量 规划","bocha_ms":167,"bocha_ok":false,"anysearch_ms":3754,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:44:16.323Z","query":"嵌入式线上峰会 演讲 筛选 方法","bocha_ms":217,"bocha_ok":false,"anysearch_ms":2575,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:44:32.974Z","query":"C语言项目重构 模块划分 评估时间 风险 经验","bocha_ms":155,"bocha_ok":false,"anysearch_ms":4532,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:44:54.562Z","query":"快速生成项目进度可视化报告 工具 方法","bocha_ms":207,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true}
+{"ts":"2026-08-16T16:44:59.008Z","query":"我需要向老板汇报项目进度，但没时间做 PPT，如何快速生成一个包含完成度/问题/风险的可视化报告？","bocha_ms":154,"bocha_ok":false,"anysearch_ms":4442,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:45:11.128Z","query":"X7R vs NP0 电容 区别 选择","bocha_ms":221,"bocha_ok":false,"anysearch_ms":2329,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:45:20.627Z","query":"Agent 自动提取 PDF Datasheet 芯片参数 生成 Excel 表格","bocha_ms":145,"bocha_ok":false,"anysearch_ms":1527,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:45:31.908Z","query":"Altium 库迁移 KiCad 封装验证 方法","bocha_ms":152,"bocha_ok":false,"anysearch_ms":3533,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:45:44.104Z","query":"多IM消息聚合 统一管理 工具 微信 钉钉 企业微信","bocha_ms":144,"bocha_ok":false,"anysearch_ms":3236,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:45:52.067Z","query":"STM32F103 site:st.com datasheet","bocha_ms":null,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:46:06.225Z","query":"README 立创商城 数据手册","bocha_ms":206,"bocha_ok":false,"anysearch_ms":4018,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:46:24.835Z","query":"闭源算法库 许可证合规性 审查 方法","bocha_ms":196,"bocha_ok":false,"anysearch_ms":2904,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:46:34.676Z","query":"Agent 新闻摘要 重要性排序 芯片 嵌入式","bocha_ms":160,"bocha_ok":false,"anysearch_ms":1695,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:46:51.170Z","query":"团队推行代码审查 分阶段实施 经验","bocha_ms":146,"bocha_ok":false,"anysearch_ms":4754,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:47:06.361Z","query":"CCC认证 硬件 软件 注意事项 周期","bocha_ms":203,"bocha_ok":false,"anysearch_ms":2901,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:47:18.844Z","query":"项目日志迁移到本地Wiki 结构化 方法","bocha_ms":146,"bocha_ok":false,"anysearch_ms":1546,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:47:33.268Z","query":"Zephyr 工具 项目 评估 踩坑 经验","bocha_ms":196,"bocha_ok":false,"anysearch_ms":1839,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:47:45.030Z","query":"PDF原理图 BOM一致性 验证方法","bocha_ms":151,"bocha_ok":false,"anysearch_ms":3962,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:47:58.976Z","query":"Agent 起草项目结题报告 技术细节 财务决算 经验教训","bocha_ms":166,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true}
+{"ts":"2026-08-16T16:48:03.268Z","query":"我要写一份项目结题报告，要求包含技术细节、财务决算、经验教训，如何让 Agent 帮我起草？","bocha_ms":173,"bocha_ok":false,"anysearch_ms":4288,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:48:19.419Z","query":"FPGA 立创商城 数据手册","bocha_ms":155,"bocha_ok":false,"anysearch_ms":3162,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:48:33.459Z","query":"芯片交期延长 替代策略 供应链管理","bocha_ms":201,"bocha_ok":false,"anysearch_ms":2007,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:48:54.242Z","query":"Agent 自动检测文档过时 提醒更新 知识库","bocha_ms":203,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true}
+{"ts":"2026-08-16T16:48:58.079Z","query":"团队内部知识库更新滞后，如何用 Agent 自动检测哪些文档过时并提醒更新？","bocha_ms":147,"bocha_ok":false,"anysearch_ms":3830,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:49:20.142Z","query":"功耗问题 解决 状态","bocha_ms":157,"bocha_ok":false,"anysearch_ms":1865,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:49:26.622Z","query":"2026 今天股市怎么样？但现在是周末（非交易日）。 最新","bocha_ms":205,"bocha_ok":false,"anysearch_ms":1957,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:49:46.050Z","query":"开发板推荐 踩坑 经验 注意事项","bocha_ms":207,"bocha_ok":false,"anysearch_ms":3016,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:50:00.682Z","query":"电路图 模糊 问题 检查","bocha_ms":165,"bocha_ok":false,"anysearch_ms":2740,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:50:08.132Z","query":"大殖子 定义 含义","bocha_ms":157,"bocha_ok":false,"anysearch_ms":1366,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:50:18.876Z","query":"跨会话指代 对话历史 记忆","bocha_ms":191,"bocha_ok":false,"anysearch_ms":3961,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:50:25.904Z","query":"工程师 约会 穿衣建议 注意事项","bocha_ms":201,"bocha_ok":false,"anysearch_ms":1540,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:50:42.096Z","query":"Hello 含义","bocha_ms":200,"bocha_ok":false,"anysearch_ms":3202,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:50:50.640Z","query":"项目 通用 分析","bocha_ms":168,"bocha_ok":false,"anysearch_ms":4426,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:51:05.301Z","query":"Altium Designer 是什么","bocha_ms":218,"bocha_ok":false,"anysearch_ms":4376,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:51:14.676Z","query":"火星飞船方案","bocha_ms":135,"bocha_ok":false,"anysearch_ms":3742,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:51:34.851Z","query":"STM32F10X site:st.com datasheet","bocha_ms":187,"bocha_ok":false,"anysearch_ms":4356,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:51:43.690Z","query":"DC-DC 立创商城 数据手册","bocha_ms":158,"bocha_ok":false,"anysearch_ms":1451,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:52:01.856Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":214,"bocha_ok":false,"anysearch_ms":3957,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:52:09.206Z","query":"多任务管理 方法 工具 效率","bocha_ms":155,"bocha_ok":false,"anysearch_ms":1630,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:52:19.565Z","query":"中华人民共和国刑法 盗窃罪 第几条","bocha_ms":199,"bocha_ok":false,"anysearch_ms":3131,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:52:38.957Z","query":"日志处理工具","bocha_ms":139,"bocha_ok":false,"anysearch_ms":1733,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:52:48.549Z","query":"App开发 技术栈 选择 通用 2024","bocha_ms":207,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true}
+{"ts":"2026-08-16T16:52:52.601Z","query":"我想开发一个 App，但不知道用什么技术栈，你帮我选一个最通用的。","bocha_ms":167,"bocha_ok":false,"anysearch_ms":4048,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:53:00.852Z","query":"2026 今天心情不好，陪我聊聊天。 最新","bocha_ms":169,"bocha_ok":false,"anysearch_ms":2866,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:53:18.416Z","query":"2026 「帮我查一下那个大殖子最新的驱动库。」 最新","bocha_ms":209,"bocha_ok":false,"anysearch_ms":1396,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:53:27.906Z","query":"代码优化 最佳实践","bocha_ms":218,"bocha_ok":false,"anysearch_ms":1901,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:53:34.575Z","query":"华强北 天气","bocha_ms":145,"bocha_ok":false,"anysearch_ms":2980,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:53:49.123Z","query":"原理图导出嘉立创 方法","bocha_ms":162,"bocha_ok":false,"anysearch_ms":1519,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:53:57.205Z","query":"Altium Designer 现状 可用性","bocha_ms":155,"bocha_ok":false,"anysearch_ms":1847,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:54:04.525Z","query":"附近实惠好吃的餐厅 推荐 非网红店","bocha_ms":180,"bocha_ok":false,"anysearch_ms":3371,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:54:19.398Z","query":"日报 模板","bocha_ms":194,"bocha_ok":false,"anysearch_ms":3679,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:54:27.966Z","query":"上海 出差 注意事项","bocha_ms":162,"bocha_ok":false,"anysearch_ms":3612,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:54:36.284Z","query":"电源芯片 推荐","bocha_ms":132,"bocha_ok":false,"anysearch_ms":2778,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:54:43.680Z","query":"STM32 site:st.com datasheet","bocha_ms":156,"bocha_ok":false,"anysearch_ms":2963,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:55:00.436Z","query":"HAL库 踩坑 经验 注意事项","bocha_ms":206,"bocha_ok":false,"anysearch_ms":2471,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:55:09.047Z","query":"main.c 延时函数 修改 方法","bocha_ms":180,"bocha_ok":false,"anysearch_ms":3915,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:55:19.550Z","query":"撤销操作 快捷键 恢复","bocha_ms":153,"bocha_ok":false,"anysearch_ms":3761,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:55:28.989Z","query":"KiCad vs Altium Designer 对比 2024","bocha_ms":151,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true}
+{"ts":"2026-08-16T16:55:34.004Z","query":"“对比一下 KiCad和AD，然后帮我用KiCad新建一个STM32的工程。”","bocha_ms":166,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true}
+{"ts":"2026-08-16T16:55:35.572Z","query":"“对比一下 KiCad和AD 然后帮我用KiCad新建一个STM32的工程 ”","bocha_ms":148,"bocha_ok":false,"anysearch_ms":1563,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:55:51.968Z","query":"RC0603FR-0710KL 立创商城 数据手册","bocha_ms":208,"bocha_ok":false,"anysearch_ms":1866,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:56:13.334Z","query":"TPS5430 site:ti.com datasheet","bocha_ms":153,"bocha_ok":false,"anysearch_ms":3290,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:56:22.283Z","query":"ESP32-S3 site:espressif.com datasheet","bocha_ms":218,"bocha_ok":false,"anysearch_ms":1136,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:56:35.370Z","query":"嘉立创免费打样 最小线宽","bocha_ms":155,"bocha_ok":false,"anysearch_ms":1353,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:56:41.148Z","query":"Keil 编译报错 L6218E 错误原因 解决方法","bocha_ms":206,"bocha_ok":false,"anysearch_ms":2593,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:56:48.281Z","query":"MOS管栅极电阻 选型 踩坑 经验","bocha_ms":159,"bocha_ok":false,"anysearch_ms":1563,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:56:59.828Z","query":"BUCK 立创商城 数据手册","bocha_ms":152,"bocha_ok":false,"anysearch_ms":4863,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:57:15.244Z","query":"STM32 site:st.com datasheet","bocha_ms":199,"bocha_ok":false,"anysearch_ms":2544,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:57:33.650Z","query":"RTOS 立创商城 数据手册","bocha_ms":209,"bocha_ok":false,"anysearch_ms":4334,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T17:01:37.337Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T17:01:37.345Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T17:01:37.356Z","query":"STM32F103C8T6 立创商城 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T17:01:37.359Z","query":"STM32F103C8T6 site:szlcsc.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T17:01:37.366Z","query":"STM32F103C8T6 芯查查 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}

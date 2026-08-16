@@ -23,6 +23,7 @@
     "evidence:devil-v25": "tsx scripts/gen-devil-evidence.ts",
     "worksheet:devil-v25": "tsx scripts/gen-devil-worksheet.ts",
     "score-sheet:devil-v25": "tsx scripts/gen-devil-score-sheet.ts",
+    "baseline:devil-v25": "tsx scripts/export-devil-baseline.ts",
     "compare:devil-v25": "tsx scripts/compare-devil-baseline.ts",
     "bench:provider-router": "tsx scripts/bench-provider-router.ts",
     "model:export": "tsx scripts/export-model-catalog.ts",
