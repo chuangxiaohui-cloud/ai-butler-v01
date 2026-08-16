@@ -6,6 +6,7 @@
   "main": "dist/main.js",
   "scripts": {
     "dev": "tsx src/main.ts",
+    "gateway": "tsx src/gateway/server.ts",
     "build": "tsc",
     "bench:v01": "tsx scripts/bench-v01.ts",
     "classify:smoke": "tsx scripts/classify-smoke.ts",

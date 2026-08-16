@@ -43,6 +43,7 @@ import { postProcess } from './stages/s6_post.js';
 import { parseDocumentFile } from './document-parser.js';
 import { resolveModelTier } from './model-router.js';
 import type { ModelRouteInfo } from './model-router.js';
+import type { ModelSelection } from './model-id.js';
 
 export interface Evidence {
   title: string;
@@ -86,6 +87,7 @@ export interface PipelineDeps {
 export interface PipelineOptions {
   files?: RawFileLike[];
   userId?: string;
+  modelSelection?: ModelSelection;
 }
 
 export async function pipeline(
@@ -550,6 +552,15 @@ export async function pipeline(
 
   // Stage 5：秘书级合成
   let lastModelRoute: ModelRouteInfo | undefined;
+  const routeModelTier = resolveModelTier({
+    intent: routeSelected.intent,
+    actionType: route.features.actionType,
+    searchNeed: routeSelected.searchNeed,
+    confidence: route.confidence,
+    hasImage: route.features.hasImage,
+    hasDocument: route.features.hasDocument,
+    hasGithubLink: route.features.hasGithubLink,
+  });
   const synthesized = await synthesizeAnswer(prepared.cleanQuery, fused, classified, {
     llm: deps.llm,
     serious: rule3.serious,
@@ -559,15 +570,8 @@ export async function pipeline(
     skillHints,
     skillOutputs,
     primaryLens: routeSelected.primaryLens,
-    modelTier: resolveModelTier({
-      intent: routeSelected.intent,
-      actionType: route.features.actionType,
-      searchNeed: routeSelected.searchNeed,
-      confidence: route.confidence,
-      hasImage: route.features.hasImage,
-      hasDocument: route.features.hasDocument,
-      hasGithubLink: route.features.hasGithubLink,
-    }),
+    modelTier: opts.modelSelection?.role ?? routeModelTier,
+    preferredProvider: opts.modelSelection?.provider,
     onModelRoute: (info) => {
       lastModelRoute = info;
       recordTrajectory({ type: 'model_route', modelRoute: info });

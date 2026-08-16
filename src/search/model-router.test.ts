@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { resolveModelTier } from './model-router.js';
+import { parseModelId } from './model-id.js';
 
 describe('model-router: 按任务难度分档', () => {
   it('执行类任务走重档', () => {
@@ -32,5 +33,19 @@ describe('model-router: 按任务难度分档', () => {
       resolveModelTier({ intent: 'local_query', searchNeed: false, confidence: 0.95 }),
       'light',
     );
+  });
+});
+
+describe('model-id: UI 模型选择解析', () => {
+  it('合法 id 解析出 provider 与档位', () => {
+    assert.deepEqual(parseModelId('deepseek:heavy'), { provider: 'deepseek', role: 'heavy' });
+    assert.deepEqual(parseModelId('zhipu:medium'), { provider: 'zhipu', role: 'medium' });
+  });
+
+  it('非法 id / 视觉档返回 null', () => {
+    assert.equal(parseModelId(null), null);
+    assert.equal(parseModelId('nope'), null);
+    assert.equal(parseModelId('deepseek:vision'), null);
+    assert.equal(parseModelId(':heavy'), null);
   });
 });

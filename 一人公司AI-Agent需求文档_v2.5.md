@@ -1568,6 +1568,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/search/llm-client.ts` | OpenAI 兼容 LLM 客户端（与 provider 解耦） |
 | `src/search/llm-registry.ts` | Provider Registry + fallback 链（[P-107]） |
 | `src/search/model-router.ts` | 模型分档路由（[P-105]/[P-106]） |
+| `src/search/model-id.ts` | UI 模型 id（`<provider>:<role>`）解析 |
 | `src/search/providers/bocha.ts` | Bocha 引擎适配 |
 | `src/search/providers/anysearch.ts` | AnySearch 引擎适配 |
 | `src/search/providers/tavily.ts` | Tavily 引擎适配（含 [P-35] 超时保护） |
@@ -1577,6 +1578,9 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/memory/experience.ts` | ExperienceManager（embedding 检索 + 置信度演化） |
 | `scripts/bench-provider-router.ts` | Provider Registry / 模型分档本地 bench |
 | `scripts/export-model-catalog.ts` | 导出 Provider Registry 模型目录给 UI |
+| `src/config/model-catalog.ts` | 共享模型目录（UI / gateway 共用） |
+| `src/gateway/app.ts` | TurnLoop gateway 路由（/api/ask / health / model-providers） |
+| `src/gateway/server.ts` | gateway 启动器（复用 CLI 同款依赖） |
 
 > 完整代码目录为实施期产物：v0.1 落地后按 §0.1 文档治理规则补全并登记版本快照。当前仅列已定架构的关键模块。
 
@@ -2392,6 +2396,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：客户端暴露 model/baseUrl，`FallbackLLMClient` 记录最后使用 provider 与 fallback 序列；trajectory 新增 `model_route` 事件；route-case 新增 `modelRoute` 字段与 `attachModelRoute`，audit 统计 `withModelRoute`；pipeline 在 Stage 5 合成成功后写轨迹并回写 case；新增 `scripts/export-model-catalog.ts` 与 `npm run model:export`，UI 模型切换器优先读 `ui/prototype/public/model-providers.json`，缺失回落静态列表。
 - **验证**：主项目 `npm run build` 通过；`npm run test:all` 单测 310/310 + 集成 17/17 全绿；UI 构建通过；`npm run model:export` 产出 8 项模型目录；doc-lint 通过；详见 `docs/plans/2026-08-16-model-data-flywheel.md`。
 - affects: §13 | bench:na(new-param) 理由：模型路由观测与 UI 目录导出，无 §5/§6 参数或行为变更
+
+### 2026-08-16（单一共享 TurnLoop Gateway E106）
+
+- **变更**：新增 Express gateway（`src/gateway/app.ts` + `server.ts` + `npm run gateway`），`POST /api/ask` 走同一 `answer(query)` 契约，空 query 400 且不泄露原始错误；`GET /api/model-providers` 返回共享模型目录；UI `send()` 优先调 gateway，失败回落本地草稿；`PipelineOptions.modelSelection` 支持 UI 模型 id（`<provider>:<role>`）覆盖 Stage 5 档位/provider；`src/config/model-catalog.ts` 统一目录生成。
+- **验证**：主项目 `npm run build` 通过；`npm run test:all` 单测 316/316 + 集成 17/17 全绿；UI 构建通过；doc-lint 通过；gateway 启动于 `http://127.0.0.1:8787`；详见 `docs/plans/2026-08-16-shared-turnloop-gateway.md`。
+- affects: §13 | bench:na(new-param) 理由：gateway 与 UI 接线，无 §5/§6 参数或行为变更
 
 ### v2.5（2026-08-12）
 

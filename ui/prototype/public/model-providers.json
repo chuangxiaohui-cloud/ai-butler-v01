@@ -1,11 +1,10 @@
 {
-  "generatedAt": "2026-08-16T02:46:57.920Z",
+  "generatedAt": "2026-08-16T02:55:19.727Z",
   "defaultTier": "medium",
   "tiers": [
     "light",
     "medium",
-    "heavy",
-    "vision"
+    "heavy"
   ],
   "models": [
     {
@@ -27,12 +26,6 @@
       "note": "旗舰 · 推理"
     },
     {
-      "id": "deepseek:vision",
-      "provider": "DeepSeek",
-      "label": "deepseek-chat",
-      "note": "视觉"
-    },
-    {
       "id": "zhipu:light",
       "provider": "智谱",
       "label": "glm-5-turbo",
@@ -49,12 +42,6 @@
       "provider": "智谱",
       "label": "glm-5.3",
       "note": "旗舰 · 推理"
-    },
-    {
-      "id": "zhipu:vision",
-      "provider": "智谱",
-      "label": "glm-5.2",
-      "note": "视觉"
     }
   ]
 }

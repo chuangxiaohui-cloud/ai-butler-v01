@@ -79,6 +79,8 @@ const FALLBACK_MODELS: ModelOption[] = [
   { id: 'glm-5-turbo', provider: '智谱', label: 'GLM-5-Turbo', note: '快速' },
 ];
 
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL ?? 'http://127.0.0.1:8787';
+
 const INITIAL_MESSAGES: Record<TabKey, Message[]> = {
   engineering: [
     {
@@ -225,7 +227,7 @@ function App() {
 
   const activeMessages = messages[tab];
 
-  const send = (images: string[] = []) => {
+  const send = async (images: string[] = []) => {
     const text = input.trim();
     if (!text && images.length === 0) return;
     const userMsg: Message = {
@@ -234,12 +236,43 @@ function App() {
       text: text || '已发送图片',
       images,
     };
-    const reply = ReplyDraft(tab, mode, text);
-    setMessages((prev) => ({
-      ...prev,
-      [tab]: [...prev[tab], userMsg, reply],
-    }));
+    setMessages((prev) => ({ ...prev, [tab]: [...prev[tab], userMsg] }));
     setInput('');
+    const appendReply = (reply: Message) =>
+      setMessages((prev) => ({ ...prev, [tab]: [...prev[tab], reply] }));
+    if (images.length > 0) {
+      appendReply(ReplyDraft(tab, mode, text));
+      return;
+    }
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: text, modelId: model, tab, mode, userId: 'ui-user' }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = (await resp.json()) as {
+        answer?: string;
+        evidence?: Array<{ title: string; url: string; type: string }>;
+      };
+      const evidence: Evidence[] = (data.evidence ?? []).map((item) => ({
+        type: 'search',
+        label: item.title,
+        detail: item.url,
+        hard: item.type === '[hard]',
+      }));
+      appendReply({
+        id: `reply-${Date.now()}`,
+        role: 'agent',
+        text: data.answer ?? '（后端没有返回内容）',
+        evidence,
+        meta: `${TABS.find((t) => t.key === tab)?.label} · ${
+          MODES.find((m) => m.key === mode)?.label
+        } · 后端`,
+      });
+    } catch {
+      appendReply(ReplyDraft(tab, mode, text));
+    }
   };
 
   const stats = useMemo(

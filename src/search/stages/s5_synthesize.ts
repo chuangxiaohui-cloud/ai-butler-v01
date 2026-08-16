@@ -21,6 +21,7 @@ export interface SynthesizeOptions {
   skillOutputs?: string[];
   primaryLens?: PrimaryLens;
   modelTier?: ModelTier;
+  preferredProvider?: string;
   onModelRoute?: (info: ModelRouteInfo) => void;
 }
 
@@ -136,7 +137,11 @@ export async function synthesizeAnswer(
   ];
 
   try {
-    const client = opts.llm ?? createClientForRole(opts.modelTier ?? 'heavy');
+    const client =
+      opts.llm ??
+      createClientForRole(opts.modelTier ?? 'heavy', {
+        preferredId: opts.preferredProvider,
+      });
     const raw = await client.complete(messages, { maxTokens: 800, temperature: 0.3 });
     const answer = raw.trim();
     if (!answer) throw new Error('空答案');
