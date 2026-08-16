@@ -1314,42 +1314,93 @@ function MemorySettings() {
 }
 
 function UsageSettings() {
-  const bars = [
-    { label: '今日', pct: 12 },
-    { label: '本周', pct: 38 },
-    { label: '本月', pct: 64 },
-  ];
+  const [stats, setStats] = useState<{
+    todayTokens: number;
+    weekTokens: number;
+    monthTokens: number;
+    byModel: Record<string, { promptTokens: number; completionTokens: number }>;
+  }>({ todayTokens: 0, weekTokens: 0, monthTokens: 0, byModel: {} });
+  const [budget, setBudget] = useState<{ budgetYuan: number | null; degradeAtPercent: number }>({
+    budgetYuan: null,
+    degradeAtPercent: 90,
+  });
+  const [budgetInput, setBudgetInput] = useState('');
+
+  const load = () => {
+    fetch(`${GATEWAY_URL}/api/usage/stats`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((data: { stats?: typeof stats; budget?: typeof budget } | null) => {
+        if (data?.stats) setStats(data.stats);
+        if (data?.budget) {
+          setBudget(data.budget);
+          setBudgetInput(data.budget.budgetYuan === null ? '' : String(data.budget.budgetYuan));
+        }
+      })
+      .catch(() => undefined);
+  };
+
+  useEffect(load, []);
+
+  const saveBudget = async () => {
+    const value = budgetInput.trim() === '' ? null : Number(budgetInput);
+    await fetch(`${GATEWAY_URL}/api/usage/budget`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ budgetYuan: value }),
+    });
+    load();
+  };
+
+  const modelRows = Object.entries(stats.byModel).sort(
+    (a, b) =>
+      b[1].promptTokens + b[1].completionTokens - (a[1].promptTokens + a[1].completionTokens),
+  );
+  const maxModelTokens = Math.max(1, ...modelRows.map(([, v]) => v.promptTokens + v.completionTokens));
+
   return (
     <div className="settings-form">
       <div className="usage-summary">
         <div>
-          <strong>¥12.40</strong>
-          <span>本月已用</span>
+          <strong>{stats.todayTokens.toLocaleString()}</strong>
+          <span>今日 Tokens</span>
         </div>
         <div>
-          <strong>¥50.00</strong>
-          <span>预算上限</span>
+          <strong>{stats.weekTokens.toLocaleString()}</strong>
+          <span>近 7 天 Tokens</span>
         </div>
         <div>
-          <strong>64%</strong>
-          <span>已用预算</span>
+          <strong>{stats.monthTokens.toLocaleString()}</strong>
+          <span>本月 Tokens</span>
         </div>
       </div>
       <div className="usage-bars">
-        {bars.map((bar) => (
-          <div key={bar.label}>
-            <span>{bar.label}</span>
-            <i style={{ width: `${bar.pct}%` }} />
-            <em>{bar.pct}%</em>
-          </div>
-        ))}
+        {modelRows.map(([model, value]) => {
+          const tokens = value.promptTokens + value.completionTokens;
+          return (
+            <div key={model}>
+              <span>{model}</span>
+              <i style={{ width: `${Math.round((tokens / maxModelTokens) * 100)}%` }} />
+              <em>{tokens.toLocaleString()}</em>
+            </div>
+          );
+        })}
+        {modelRows.length === 0 && <p className="settings-note">暂无计量数据</p>}
       </div>
-      <div className="form-actions">
-        <button className="primary">设置预算上限</button>
-        <button>模型用量占比</button>
+      <div className="budget-row">
+        <label>预算上限（¥）</label>
+        <input
+          type="number"
+          min="0"
+          step="0.1"
+          value={budgetInput}
+          onChange={(event) => setBudgetInput(event.target.value)}
+          placeholder="不设上限"
+        />
+        <button className="primary" onClick={saveBudget}>保存预算</button>
+        <span>降级阈值 {budget.degradeAtPercent}%（P-108）</span>
       </div>
       <p className="settings-note">
-        超过预算 90% 自动降级到更便宜模型（P-108），配置归属模型路由模块。
+        Token 由后端计量服务自动记录；费用换算待配置单价后启用，超预算自动降级到更便宜模型。
       </p>
     </div>
   );

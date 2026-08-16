@@ -19,13 +19,14 @@
 13. **路由校准设置面板接真实数据（E110）**：gateway 新增 `/api/routing/cases`、`/api/routing/batch-mark`、`/api/routing/export`；UI 路由校准表格读取真实 route-case，支持标记正确、刷新、导出 CSV；单测 322/322 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-routing-calibration-api.md`。
 14. **服务商设置接真实数据（E111）**：新增 `src/config/provider-order.ts` 持久化默认 provider 顺序；gateway 新增 `/api/providers`、`/api/providers/default`、`/api/providers/test`；UI 服务商设置显示真实状态，支持测试连接、设为默认；单测 323/323 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-provider-settings-api.md`。
 15. **技能库设置接真实数据（E112）**：新增 `src/config/skills-config.ts` 持久化禁用列表；pipeline 执行跳过禁用 Skill；gateway 新增 `/api/skills`、`/api/skills/sync`；UI 技能库显示真实 19 项，支持启用/禁用、类别筛选；单测 325/325 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-skills-settings-api.md`。
+16. **Token 计量真实数据（E113）**：新增 `src/usage/usage-store.ts` 与 `src/config/usage-budget.ts`；LLM 响应 `usage` 自动记账；gateway 新增 `/api/usage/stats`、`/api/usage/budget`；UI Token 用量页展示真实 Tokens、模型占比与预算；单测 328/328 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-usage-metering-api.md`。
 
 ## 明天继续（按优先级）
 
 1. 解决“低置信兜底话术”回升：强化浏览器兜底/重试/查询改写（SM18/SM31/C08/ET20 等搜索质量类）。
 2. 按新基线重打分（旧定稿分只代表旧行为），推进 A/B 套评测拆分。
 3. 给 35 条 Bug 清单补状态字段与回归用例，验证 C05 打包与 C06 README 抓取在真实环境稳定。
-4. 设置面板写操作接真实 API（记忆/Token 计量）、artifact 事件流与右侧文件列表联动、终端真实执行通道。
+4. 设置面板写操作接真实 API（记忆管理）、artifact 事件流与右侧文件列表联动、终端真实执行通道。
 
 ## 常用命令
 

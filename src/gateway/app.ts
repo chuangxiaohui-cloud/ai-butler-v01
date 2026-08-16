@@ -14,6 +14,8 @@ import { parseModelId } from '../search/model-id.js';
 import { pipeline, type PipelineDeps } from '../search/pipeline.js';
 import { listSkillMetadata } from '../skills/registry.js';
 import { writeDisabledSkills } from '../config/skills-config.js';
+import { readUsageBudget, writeUsageBudget } from '../config/usage-budget.js';
+import { aggregateUsage, readUsage } from '../usage/usage-store.js';
 import type { RawFileLike } from '../skills/deps.js';
 import { dataUrlToRawFile, type AttachmentPayload } from './attachments.js';
 
@@ -117,6 +119,35 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     }
     writeDisabledSkills(disabled);
     res.json({ ok: true, disabled });
+  });
+
+  app.get('/api/usage/stats', (_req, res) => {
+    res.json({
+      stats: aggregateUsage(readUsage()),
+      budget: readUsageBudget(),
+    });
+  });
+
+  app.post('/api/usage/budget', (req, res) => {
+    const body = (req.body ?? {}) as {
+      budgetYuan?: unknown;
+      degradeAtPercent?: unknown;
+    };
+    const current = readUsageBudget();
+    const next: typeof current = {
+      budgetYuan:
+        typeof body.budgetYuan === 'number' && body.budgetYuan >= 0
+          ? body.budgetYuan
+          : current.budgetYuan,
+      degradeAtPercent:
+        typeof body.degradeAtPercent === 'number' &&
+        body.degradeAtPercent > 0 &&
+        body.degradeAtPercent <= 100
+          ? body.degradeAtPercent
+          : current.degradeAtPercent,
+    };
+    writeUsageBudget(next);
+    res.json({ ok: true, budget: next });
   });
 
   app.get('/api/routing/cases', (_req, res) => {

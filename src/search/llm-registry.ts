@@ -293,6 +293,7 @@ export class LlmProviderRegistry {
         apiKey: p.apiKey,
         model: p.models[role],
         timeoutMs,
+        provider: p.id,
       }),
     }));
     if (chain.length === 1) return chain[0].client;

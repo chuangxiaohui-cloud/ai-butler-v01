@@ -302,3 +302,19 @@ test('gateway: /api/skills 返回真实技能目录，非法禁用名单被拒',
     server.close();
   }
 });
+
+test('gateway: /api/usage/stats 返回聚合与预算', async () => {
+  const { server, base } = await startApp();
+  try {
+    const resp = await fetch(`${base}/api/usage/stats`);
+    const body = (await resp.json()) as {
+      stats?: { todayTokens?: number; byModel?: Record<string, unknown> };
+      budget?: { budgetYuan?: number | null; degradeAtPercent?: number };
+    };
+    assert.equal(resp.status, 200);
+    assert.equal(typeof body.stats?.todayTokens, 'number');
+    assert.equal(typeof body.budget?.degradeAtPercent, 'number');
+  } finally {
+    server.close();
+  }
+});

@@ -1572,6 +1572,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/search/llm-registry.ts` | Provider Registry + fallback 链（[P-107]） |
 | `src/search/model-router.ts` | 模型分档路由（[P-105]/[P-106]） |
 | `src/search/model-id.ts` | UI 模型 id（`<provider>:<role>`）解析 |
+| `src/usage/usage-store.ts` | Token 计量存储与聚合（data/usage.jsonl） |
 | `src/agent/mode-mapper.ts` | 五主镜片 → UI 三模式/子模式映射 |
 | `src/search/providers/bocha.ts` | Bocha 引擎适配 |
 | `src/search/providers/anysearch.ts` | AnySearch 引擎适配 |
@@ -1585,6 +1586,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/config/model-catalog.ts` | 共享模型目录（UI / gateway 共用） |
 | `src/config/provider-order.ts` | Provider 默认顺序持久化（data/provider-order.json） |
 | `src/config/skills-config.ts` | Skill 启用/禁用持久化（data/skills-config.json） |
+| `src/config/usage-budget.ts` | Token 预算持久化（data/usage-budget.json，阈值 P-108） |
 | `src/gateway/app.ts` | TurnLoop gateway 路由（/api/ask / health / model-providers） |
 | `src/gateway/server.ts` | gateway 启动器（复用 CLI 同款依赖） |
 | `src/gateway/attachments.ts` | base64 data URL 附件 → RawFileLike |
@@ -2445,6 +2447,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：新增 `src/config/skills-config.ts` 持久化禁用 Skill 列表；registry 新增 `isSkillEnabled()/listSkillMetadata()`；pipeline 直接 Skill 执行与 `findBest` 注入跳过禁用项；gateway 新增 `GET /api/skills`、`POST /api/skills/sync`；UI 技能库显示真实 19 项与触发词，支持启用/禁用、类别筛选。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 325/325 + 集成 17/17 全绿（新增 skills-config 与 skills 目录测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-skills-settings-api.md`。
 - affects: §13 | bench:na(new-param) 理由：技能库读写 API 与 UI 接线，无 §5/§6 参数或行为变更
+
+### 2026-08-16（Token 计量真实数据 E113）
+
+- **变更**：新增 `src/usage/usage-store.ts` 与 `src/config/usage-budget.ts`；OpenAI 兼容客户端解析响应 `usage` 自动记账到 `data/usage.jsonl`；gateway 新增 `GET /api/usage/stats`、`POST /api/usage/budget`；UI Token 用量页展示真实今日/近7天/本月 Tokens、模型占比与预算设置。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 328/328 + 集成 17/17 全绿（新增 usage-store/usage-budget 与 usage stats 测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-usage-metering-api.md`。
+- affects: §13 | bench:na(new-param) 理由：Token 计量读写 API 与 UI 接线，无 §5/§6 参数或行为变更
 
 ### v2.5（2026-08-12）
 
