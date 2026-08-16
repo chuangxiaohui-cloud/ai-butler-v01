@@ -11,6 +11,7 @@ import { routeV2 } from '../agent/router-v2.js';
 import { ExperienceManager } from '../memory/experience.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { writeSecurityConfig } from '../config/security-config.js';
+import { subscribeArtifactEvents } from './artifact-bus.js';
 import type { ChatMessage, LLMClient } from '../search/llm.js';
 import type {
   SearchProvider,
@@ -464,4 +465,22 @@ test('gateway: /api/files 返回产物文件列表', async () => {
   } finally {
     server.close();
   }
+});
+
+test('gateway: /api/ask 完成时发布 files_changed 事件', async () => {
+  const events: string[] = [];
+  const unsubscribe = subscribeArtifactEvents((event) => events.push(event.type));
+  const { server, base } = await startApp();
+  try {
+    const resp = await fetch(`${base}/api/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: '查一下我今天的日程' }),
+    });
+    assert.equal(resp.status, 200);
+  } finally {
+    server.close();
+    unsubscribe();
+  }
+  assert.ok(events.includes('files_changed'));
 });

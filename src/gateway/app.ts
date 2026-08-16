@@ -21,6 +21,7 @@ import { UserContextStore } from '../memory/user-context-store.js';
 import { aggregateUsage, readUsage } from '../usage/usage-store.js';
 import { listProjectFiles } from './files.js';
 import { runCommand } from './terminal.js';
+import { publishArtifactEvent, subscribeArtifactEvents } from './artifact-bus.js';
 import type { RawFileLike } from '../skills/deps.js';
 import { dataUrlToRawFile, type AttachmentPayload } from './attachments.js';
 
@@ -58,6 +59,21 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
   app.get('/api/files', (_req, res) => {
     const files = listProjectFiles(process.cwd());
     res.json({ total: files.length, files });
+  });
+
+  app.get('/api/events', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+    const send = (type: string, data: Record<string, unknown>) => {
+      res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+    send('connected', { at: Date.now() });
+    const unsubscribe = subscribeArtifactEvents((event) => {
+      send(event.type, event.data);
+    });
+    req.on('close', unsubscribe);
   });
 
   app.get('/api/providers', (_req, res) => {
@@ -419,6 +435,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
         modelSelection,
         files,
       });
+      publishArtifactEvent('files_changed', { at: Date.now() });
       res.json(result);
     } catch {
       res.status(500).json({

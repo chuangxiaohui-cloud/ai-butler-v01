@@ -1594,6 +1594,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/gateway/attachments.ts` | base64 data URL 附件 → RawFileLike |
 | `src/gateway/terminal.ts` | 终端命令执行通道（Shell 权限门控） |
 | `src/gateway/files.ts` | 产物文件扫描（沙箱根目录白名单） |
+| `src/gateway/artifact-bus.ts` | Artifact 事件总线（SSE 推送） |
 
 > 完整代码目录为实施期产物：v0.1 落地后按 §0.1 文档治理规则补全并登记版本快照。当前仅列已定架构的关键模块。
 
@@ -2481,6 +2482,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：`SecurityConfig` 新增 `allowedCommandPrefixes`（默认空 = 允许任意）；gateway `/api/security/persist` 支持写入前缀，`/api/terminal/exec` 执行前校验，未授权前缀返回 403；UI 安全中心增加命令前缀输入框。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 335/335 + 集成 17/17 全绿（新增白名单 403 测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-terminal-allowlist.md`。
 - affects: §13 | bench:na(new-param) 理由：终端白名单配置与校验，无 §5/§6 参数或行为变更
+
+### 2026-08-16（Artifact 事件流 E118）
+
+- **变更**：新增 `src/gateway/artifact-bus.ts` 内存事件总线；gateway 新增 `GET /api/events` SSE 端点，`/api/ask` 完成后广播 `files_changed`；UI 右侧栏打开时连接 EventSource 自动刷新文件列表。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 337/337 + 集成 17/17 全绿（新增 artifact-bus 与 ask 事件断言）；doc-lint 通过；详见 `docs/plans/2026-08-16-artifact-event-stream.md`。
+- affects: §13 | bench:na(new-param) 理由：SSE 事件流与 UI 接线，无 §5/§6 参数或行为变更
 
 ### v2.5（2026-08-12）
 

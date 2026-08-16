@@ -240,6 +240,13 @@ function App() {
 
   useEffect(loadFiles, []);
 
+  useEffect(() => {
+    if (!rightOpen) return;
+    const source = new EventSource(`${GATEWAY_URL}/api/events`);
+    source.addEventListener('files_changed', () => loadFiles());
+    return () => source.close();
+  }, [rightOpen]);
+
   const contextUsage = useMemo(() => {
     const chars = messages.reduce(
       (sum, msg) => sum + (msg.text?.length ?? 0) + (msg.images?.length ?? 0) * 1200,
