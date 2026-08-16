@@ -2501,6 +2501,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 339/339 + 集成 17/17 全绿（新增 onArtifact 与 artifact 事件断言）；doc-lint 通过；详见 `docs/plans/2026-08-16-skill-artifact-status.md`。
 - affects: §13 | bench:na(new-param) 理由：Skill 级产物状态事件与 UI 接线，无 §5/§6 参数或行为变更
 
+### 2026-08-16（Electron 桌面壳 E121）
+
+- **变更**：选型 Electron（复用 Node/TS 栈与 gateway，首版最快落地；Tauri 留作后续瘦身迁移）；gateway 增加静态 UI 同源托管（`GET /` 返回 `ui/prototype/dist`，非 `/api/*` GET 回退 `index.html`）；新增 `desktop/` Electron 主进程，自动拉起 gateway、健康检查后打开 1440×900 窗口，关闭时回收子进程；根 package 增加 `desktop` / `desktop:smoke` 脚本。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 340/340 + 集成 17/17 全绿（新增静态 UI 同源托管与 API 不回退测试）；`desktop:smoke` 实测拉起 gateway、加载窗口并自动退出，端口无残留；doc-lint 通过；详见 `docs/plans/2026-08-16-desktop-shell.md`。
+- affects: §13 | bench:na(new-param) 理由：桌面壳与静态托管新增，无 §5/§6 参数或行为变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

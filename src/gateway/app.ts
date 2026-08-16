@@ -3,6 +3,10 @@
  * CLI / UI / 未来聊天频道都通过同一 pipeline；错误不向客户端泄露原始细节。
  */
 
+import { existsSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import express from 'express';
 
 import { auditRouteCases } from '../agent/route-case-audit.js';
@@ -32,6 +36,7 @@ export interface GatewayOptions {
   userContextStore?: UserContextStore;
   experienceManager?: ExperienceManager;
   securityConfigPath?: string;
+  uiDistPath?: string;
 }
 
 interface AskBody {
@@ -447,6 +452,20 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       });
     }
   });
+
+  const distPath =
+    opts.uiDistPath ??
+    join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'ui', 'prototype', 'dist');
+  const indexPath = join(distPath, 'index.html');
+  if (existsSync(indexPath)) {
+    app.use(express.static(distPath, { index: 'index.html' }));
+    app.use((req, res, next) => {
+      if (req.method === 'GET' && !req.path.startsWith('/api/')) {
+        return res.sendFile(indexPath);
+      }
+      next();
+    });
+  }
 
   return app;
 }

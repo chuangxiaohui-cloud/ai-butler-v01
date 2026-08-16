@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -501,4 +501,29 @@ test('gateway: /api/ask 完成时发布 files_changed 事件', async () => {
   assert.ok(events.includes('files_changed'));
   assert.ok(events.includes('progress'));
   assert.ok(events.includes('artifact'));
+});
+
+test('gateway: 静态 UI 目录同源托管且不回退 API', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-ui-dist-'));
+  writeFileSync(join(dir, 'index.html'), '<div id="root">one-person-agent</div>', 'utf-8');
+  const app = createGatewayApp({ deps: testDeps(), uiDistPath: dir });
+  const server = createServer(app);
+  try {
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}`;
+    const root = await fetch(`${base}/`);
+    assert.equal(root.status, 200);
+    assert.ok((await root.text()).includes('one-person-agent'));
+    const spa = await fetch(`${base}/some/client/route`);
+    assert.equal(spa.status, 200);
+    assert.ok((await spa.text()).includes('one-person-agent'));
+    const health = await fetch(`${base}/api/health`);
+    assert.equal(health.status, 200);
+    const body = (await health.json()) as { ok?: boolean };
+    assert.equal(body.ok, true);
+  } finally {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
