@@ -50,6 +50,11 @@ export interface FusedOutput {
   lowConfidence: boolean;
 }
 
+export interface FuseOptions {
+  minScore?: number;
+  skipRelevanceGate?: boolean;
+}
+
 function tokenizeText(text: string): string[] {
   const tokens: string[] = [];
   const ascii = text.match(/[a-z0-9][a-z0-9+#._/-]*/gi) ?? [];
@@ -374,8 +379,10 @@ export function fuseResults(
   intent: IntentKey,
   topK = SIMPLE_TOP_K,
   relevanceQuery = query,
+  opts: FuseOptions = {},
 ): FusedOutput {
   const dropped: string[] = [];
+  const minScore = opts.minScore ?? DISCARD_THRESHOLD;
 
   // 过滤器①：实体精确匹配
   let candidates = entityFilter(query, items);
@@ -411,6 +418,7 @@ export function fuseResults(
       weights[3] * factConsistency;
     if (seoNoise) score *= 0.5;
     if (
+      !opts.skipRelevanceGate &&
       !official &&
       relevance < 0.5 &&
       answerCoverage < 0.6 &&
@@ -437,7 +445,7 @@ export function fuseResults(
   });
 
   const kept = fused.filter((f) => {
-    const ok = f.finalScore >= DISCARD_THRESHOLD;
+    const ok = f.finalScore >= minScore;
     if (!ok) dropped.push(f.result.url);
     return ok;
   });

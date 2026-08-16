@@ -691,14 +691,73 @@ plt.show()
 ## ET20（第一卷）
 
 - query：如何用硬件定时器在 STM32 上产生一个频率可实时调整的 PWM 信号（不掉步）？
-- confidence：0.00 | gate：low_confidence | evidence：0
+- confidence：0.52 | gate：low_confidence | evidence：3
 - 预期行为：需搜索 TIM 的捕获/比较寄存器更新时机，给出双缓冲方法。
 - 考察点：外设深度驱动
 - 证据来源：
-  - 无搜索结果证据
+  - [hard] | community.st.com | STM32 MCU datasheets: Expected preliminary updates | Community | 0.52 | https://community.st.com/stm32-mcus-60/stm32-mcu-datasheets-expected-preliminary-updates-127810
+  - [hard] | community.st.com | Datasheet with Register description for Programming STM32 ST NUCLEO-L432KC | Community | 0.52 | https://community.st.com/stm32-mcus-products-25/datasheet-with-register-description-for-programming-stm32-st-nucleo-l432kc-79798
+  - [hard] | www.st.com | STM32 Microcontrollers (MCUs) - STMicroelectronics | 0.46 | https://www.st.com/en/microcontrollers-microprocessors/stm32-32-bit-arm-cortex-mcus.html
 - 相关性(0-3)：0（初判：0）
 
-我暂时无法确认这个问题。建议查阅官方源或补充更多信息，我再帮你查。
+老板，直接给您结论：**用硬件定时器在 STM32 上实现频率实时可调且不掉步的 PWM，核心思路是“改 ARR（自动重装载值）而不是改 PSC（预分频器）”，并配合“影子寄存器”的预装载机制。**
+
+下面我按原理、步骤和代码示例分开说。
+
+---
+
+### 一、为什么改 ARR 才能不掉步？
+
+- **PSC（预分频器）**：改变它会影响整个定时器时钟域，导致当前计数周期被截断或延长，输出波形会瞬间“跳变”，这就是掉步。
+- **ARR（自动重装载值）**：它决定 PWM 周期。只要开启 **预装载（Preload）**，ARR 的新值会在当前计数周期结束时才生效，下一个周期立即采用新频率，中间不会产生毛刺或断档。
+
+**所以，实时调频的正确姿势是：保持 PSC 不变，只修改 ARR。**
+
+---
+
+### 二、具体实现步骤（以 STM32F1 系列为例）
+
+1. **初始化定时器**：配置为 PWM 模式，开启 ARR 预装载（`TIM_ARRPreloadConfig` 或 HAL 库的 `__HAL_TIM_SET_AUTORELOAD`）。
+2. **调频时**：直接调用 `__HAL_TIM_SET_AUTORELOAD(&htim, newARR)` 更新 ARR 值。
+3. **同步调整占空比**：如果频率变了，占空比对应的 CCR 值也要按比例调整，否则占空比会变。
+
+---
+
+### 三、示例代码（HAL 库，STM32F103）
+
+```c
+// 初始化：TIM2，PWM 模式1，PSC=71（72MHz/72=1MHz计数频率）
+// 初始频率 = 1MHz / (ARR+1)
+
+void MX_TIM2_Init(void)
+{
+    TIM_OC_InitTypeDef sConfigOC = {0};
+    htim2.Instance = TIM2;
+    htim2.Init.Prescaler = 71;          // 计数频率 1MHz
+    htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim2.Init.Period = 999;            // 初始 1kHz
+    htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    HAL_TIM_PWM_Init(&htim2);
+
+    sConfigOC.OCMode = TIM_OCMODE_PWM1;
+    sConfigOC.Pulse = 500;              // 初始 50% 占空比
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+    HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1);
+
+    // 关键：开启 ARR 预装载
+    __HAL_TIM_SET_AUTORELOAD(&htim2, 999);
+    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+}
+
+// 实时调频函数：newFreq_Hz 为目标频率
+void Set_PWM_Freq(uint32_t newFreq_Hz)
+{
+    uint32_t newARR = 1000000 / newFreq_Hz - 1;  // 计数频率1MHz
+    __HAL_TIM_SET_AUTORELOAD(&htim2, newARR);
+
+    // 同步调整占空比（保持50%）
+    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL
 
 ---
 
@@ -1659,14 +1718,60 @@ agency run --dag daily-standup.yaml
 ## SM18（第二卷）
 
 - query：团队使用多个 IM（微信、钉钉、企业微信），消息分散，如何统一聚合并摘要？
-- confidence：0.00 | gate：low_confidence | evidence：0
+- confidence：0.61 | gate：none | evidence：3
 - 预期行为：需搜索开源聚合工具（如 Mattermost 桥接），给出部署建议。
 - 考察点：多通道信息整合
 - 证据来源：
-  - 无搜索结果证据
+  - [soft] | www.xuanim.com | IM即时通讯软件对比：钉钉、企业微信、飞书哪个... | 0.61 | https://www.xuanim.com/column/instant-messaging-software-comparison-dingtalk-wechat-work-feishu-3yv-Softwareselection
+  - [soft] | wxxke.com | 微信和企微消息聚合管理怎么做？多账号客服的统... | 0.56 | https://wxxke.com/article/marketing/40607
+  - [soft] | blog.csdn.net | 飞书、企业微信、钉钉三款协同办公软件深度对比... | 0.55 | https://blog.csdn.net/s867859765/article/details/147877238
 - 相关性(0-3)：0（初判：0）
 
-我暂时无法确认这个问题。建议查阅官方源或补充更多信息，我再帮你查。
+老板，直接给您结论：**目前没有一款官方工具能一键把微信、钉钉、企业微信的消息全部聚合，但可以通过“API/Webhook 接入 + 统一消息网关 + AI 摘要”的组合方案来实现。**
+
+下面我按现状、可行路径和注意事项分开说。
+
+---
+
+### 一、现状：官方没有统一聚合接口
+
+根据现有证据，微信、钉钉、企业微信都是**独立封闭的 IM 体系**，官方并未提供跨平台的“消息统一收件箱”功能。证据[1]提到，像喧喧IM这类产品虽然支持多端消息漫游和与OA系统打通，但那是**单一平台内部**的聚合，不是跨微信/钉钉/企微的聚合。
+
+---
+
+### 二、可行路径：三层架构实现聚合与摘要
+
+**第一层：消息接入（采集）**
+- 每个 IM 平台都提供**开放 API 或 Webhook**（如企业微信的“群机器人”、钉钉的“自定义机器人”、微信的“客服消息接口”）。
+- 您需要为每个平台写一个**消息监听服务**，把新消息实时推送到统一的消息队列（如 Kafka、RabbitMQ）。
+
+**第二层：统一存储与去重**
+- 将各平台消息统一格式化为标准结构（发送人、时间、平台、内容、群ID），存入统一数据库。
+- 按“会话/群”维度做消息关联和去重。
+
+**第三层：AI 摘要**
+- 对聚合后的消息，按时间窗口（如每15分钟）或会话维度，调用大模型 API 生成摘要。
+- 摘要结果推送到您指定的“主入口”（比如企业微信或钉钉的机器人）。
+
+---
+
+### 三、注意事项（基于证据[2][3]）
+
+1. **权限限制**：微信个人号没有官方开放 API，只能通过企业微信的“客户联系”能力间接接入；钉钉和企业微信的开放接口也需要企业认证。
+2. **合规风险**：证据[2]提到市面上有“多账号客服聚合”工具，但这类工具多涉及非官方协议，存在封号风险，建议优先走官方 API。
+3. **选型参考**：证据[3]对比了钉钉、企业微信、飞书，如果您团队还没完全绑定，可以考虑**统一到单一平台**（如飞书），从源头解决分散问题，效率提升更直接。
+
+---
+
+### 四、如果只是“轻量需求”
+
+如果团队规模小、不想自建系统，可以考虑：
+- 使用**企业微信的“微信客服”**功能，把微信客户消息统一收到企微后台；
+- 再通过企微的 API 把消息转发到钉钉或飞书机器人，实现“单向汇总”。
+
+---
+
+**总结**：技术上完全可行，核心是**官方 API 接入 + 消息队列 + AI 摘要**，但需要一定的开发投入。如果团队还没深度绑定，我更建议先评估“统一到单一 IM”的可行性，成本更低。需要我帮您梳理某个平台的具体接入文档吗？
 
 ---
 
@@ -2121,14 +2226,55 @@ Agent 不知道什么对您重要，您得先告诉它。建议用**关键词权
 ## SM31（第二卷）
 
 - query：团队内部知识库更新滞后，如何用 Agent 自动检测哪些文档过时并提醒更新？
-- confidence：0.00 | gate：low_confidence | evidence：0
+- confidence：0.39 | gate：low_confidence | evidence：3
 - 预期行为：需设计检测机制（文件修改时间、内容语义变化），生成提醒列表。
 - 考察点：知识资产老化检测
 - 证据来源：
-  - 无搜索结果证据
+  - [soft] | www.tencentcloud.com | 知识库检索 Agent | 0.39 | https://www.tencentcloud.com/zh/document/product/1254/78742
+  - [soft] | github.com | bcefghj/agent-knowledge-hub | 0.38 | https://github.com/bcefghj/agent-knowledge-hub
+  - [soft] | developer.aliyun.com | 从工单、文档到结构化知识库：一套可复用的 Agent 知识采集方案-阿里云开发者社区 | 0.32 | https://developer.aliyun.com/article/1704711
 - 相关性(0-3)：0（初判：0）
 
-我暂时无法确认这个问题。建议查阅官方源或补充更多信息，我再帮你查。
+老板，直接给您结论：**用 Agent 自动检测文档过时并提醒更新，核心思路是“Agentic RAG + 增量更新 + 定时巡检”，目前已有开源方案和云厂商工具可以落地。**
+
+下面按可行路径和注意事项分开说。
+
+---
+
+### 一、可行路径：三件套组合
+
+**1. 用 Agentic RAG 做“文档新鲜度”检测**
+腾讯云知识库检索 Agent（[证据1](https://www.tencentcloud.com/zh/document/product/1254/78742)）支持 Agentic RAG 方案，Agent 能自主拆解检索任务。您可以给它设定规则：定期对比文档内容与上游数据源（如代码仓库、工单系统、API 文档），当检测到源数据变化但知识库文档未同步时，即判定为“过时”。
+
+**2. 用开源多 Agent 系统做“增量更新 + 提醒”**
+GitHub 上的 `agent-knowledge-hub`（[证据2](https://github.com/bcefghj/agent-knowledge-hub)）是一个企业级多 Agent 知识管理系统，由 4 个 AI Agent 协作完成文档解析→知识抽取→智能问答→**增量更新**。您可以让其中一个 Agent 专门负责“变更检测”，另一个负责“通知推送”（如发到 IM 群）。
+
+**3. 用全链路 pipeline 做“自动采集 + 同步”**
+阿里云开发者社区分享的方案（[证据3](https://developer.aliyun.com/article/1704711)）提供了一套“自动提取 → 智能泛化 → 增量更新 → 向量化同步”的 pipeline，可以把工单、文档等原始位置的变化自动同步到知识库，从源头减少“滞后”。
+
+---
+
+### 二、落地建议（按优先级）
+
+| 优先级 | 动作 | 说明 |
+|--------|------|------|
+| 高 | 先定义“过时”规则 | 比如：文档最后修改时间 > 30 天，或关联代码/工单有更新但文档未改 |
+| 高 | 接入变更源 | 让 Agent 监听 Git 提交、工单状态、API 版本变化 |
+| 中 | 定时巡检 + 差异比对 | 每天跑一次 Agent，比对源数据与文档内容差异 |
+| 中 | 提醒渠道 | 检测到过时文档后，自动发消息到企业微信/钉钉群，@ 文档负责人 |
+| 低 | 人工确认闭环 | 提醒后需负责人点击“已更新”或“忽略”，避免重复打扰 |
+
+---
+
+### 三、注意事项
+
+- **证据时效**：以上三个来源均为 2026 年 4 月左右的资料，距今约 4 个月，属于较新的方案参考，但具体产品功能可能有迭代，建议落地前再确认最新文档。
+- **不要过度自动化**：建议先做“提醒”而非“自动改文档”，避免 Agent 误改内容。
+- **权限控制**：Agent 访问知识库和源系统时，需要最小权限授权。
+
+---
+
+如果您需要，我可以帮您梳理一个最小可用的 Agent 检测脚本框架（Python 示例），您看需要吗？
 
 ---
 
@@ -3414,14 +3560,57 @@ void delay_ms(u16 nms) {
 ## C08（第四卷-C）
 
 - query：“对比一下 KiCad和AD，然后帮我用KiCad新建一个STM32的工程。”
-- confidence：0.00 | gate：low_confidence | evidence：0
+- confidence：0.83 | gate：none | evidence：1
 - 预期行为：1. 复合指令：先执行一个“知识问答”（对比），再执行一个“项目执行”（新建工程）。 2. 无缝切换：回答完对比后，自动切换到工程开发栏并执行。
 - 考察点：复合指令处理
 - 证据来源：
-  - 无搜索结果证据
+  - [soft] | www.cnblogs.com | https://www.cnblogs.com/yangzifb/p/16299165.html | 0.83 | https://www.cnblogs.com/yangzifb/p/16299165.html
 - 相关性(0-3)：0（初判：0）
 
-我暂时无法确认这个问题。建议查阅官方源或补充更多信息，我再帮你查。
+老板，直接给您结论：**KiCad 和 AD（Altium Designer）各有侧重——KiCad 免费开源、跨平台、数据文本化便于 Git 管理，且能直接打开 AD 的原理图和 PCB；AD 功能更全面但收费且依赖 Windows。若您想用 KiCad 新建 STM32 工程，流程很清晰，我下面按对比和步骤分开说。**
+
+---
+
+### 一、KiCad 与 AD 的核心对比
+
+根据现有证据（[来源](https://www.cnblogs.com/yangzifb/p/16299165.html)），KiCad 6.0 版本与 AD 的对比要点如下：
+
+| 维度 | KiCad | AD |
+|------|-------|-----|
+| **成本** | 免费开源 | 商业授权，费用高 |
+| **平台** | 跨平台（Win/Mac/Linux） | 主要 Windows |
+| **数据格式** | 文本存储，便于 Git 托管、人工修改、扩展 | 二进制/专有格式 |
+| **兼容性** | 可直接打开 AD 的原理图、PCB | 不支持反向打开 KiCad 文件 |
+| **封装管理** | 每个封装一个独立文件 | 集成库管理 |
+| **适用场景** | 个人/中小团队、开源项目 | 大型企业、复杂高速设计 |
+
+**结论**：如果您的项目需要版本控制、跨平台协作或预算有限，KiCad 是很好的替代；若涉及复杂高速电路或团队已深度绑定 AD 生态，则 AD 更合适。
+
+---
+
+### 二、用 KiCad 新建 STM32 工程的步骤
+
+以下为通用操作流程（基于 KiCad 6.0 及以上版本）：
+
+1. **打开 KiCad 项目管理器**，点击“文件” → “新建项目”，输入项目名称（如 `STM32_Project`），选择保存路径，点击“保存”。
+2. **创建原理图**：在项目管理器中双击 `.kicad_sch` 文件（或点击“原理图编辑器”图标），进入原理图绘制界面。
+3. **添加 STM32 元件**：点击右侧“放置符号”图标（或按 `A` 键），在库中搜索 `STM32F103C8`（或其他型号），选择后放置到画布。
+4. **添加必要外围元件**：按需放置晶振、电容、电阻、电源接口等，并连接引脚。
+5. **关联封装**：为每个元件指定封装（如 STM32 的 LQFP48），可在元件属性中设置，或使用“工具” → “分配封装”。
+6. **生成网表**：完成原理图后，点击“生成网表”图标，选择格式为 `KiCad`，生成 `.net` 文件。
+7. **创建 PCB**：在项目管理器中点击“PCB 编辑器”，选择“工具” → “从原理图更新 PCB”，导入网表后布局布线。
+8. **输出制造文件**：完成布线后，通过“文件” → “制造输出”生成 Gerber 和钻孔文件。
+
+> **注意**：若您需要具体的 STM32 型号（如 STM32F407）或更详细的引脚配置，请告诉我具体型号，我可以帮您细化步骤。
+
+---
+
+### 三、补充说明
+
+- 证据中仅提到 KiCad 6.0 的对比和基本仿真功能，未涉及 STM32 工程创建的详细截图或官方教程，以上步骤基于 KiCad 通用操作逻辑。
+- 若您需要更权威的官方指引，建议查阅 KiCad 官方文档（[kicad.org](https://www.kicad.org)）或社区教程。
+
+老板，需要我针对某个具体型号（比如 STM
 
 ---
 

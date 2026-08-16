@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { pickSecondPassTarget, shouldSecondPass } from './second-pass.js';
+import { pickSecondPassTarget, pickSecondPassTargets, shouldSecondPass } from './second-pass.js';
 
 const html = (url: string, title = 't'): { title: string; url: string; content: string; provider: 'browser' } => ({
   title,
@@ -54,4 +54,28 @@ test('second-pass: 只有 PDF 时退回高可信 PDF', () => {
   ];
   const picked = pickSecondPassTarget(results, 'GD32F103C8T6 数据手册', fused as never);
   assert.equal(picked?.url, 'https://atta.szlcsc.com/upload/public/pdf/source/gd32-selection.pdf');
+});
+
+test('second-pass: 融合全空时按相关度选 HTML 原文', () => {
+  const results = [
+    {
+      title: '用 AI Agent 做知识库更新提醒',
+      url: 'https://example.com/kb-update',
+      content: 'Agent 自动检测知识库文档过时 负责人 提醒更新',
+      provider: 'bocha' as const,
+    },
+    {
+      title: '不相关页面',
+      url: 'https://example.com/unrelated',
+      content: '随便一句话',
+      provider: 'bocha' as const,
+    },
+  ];
+  const targets = pickSecondPassTargets(
+    results,
+    '团队内部知识库更新滞后，如何用 Agent 自动检测哪些文档过时并提醒更新？',
+    [],
+  );
+  assert.equal(targets[0]?.url, 'https://example.com/kb-update');
+  assert.ok(targets.length <= 2);
 });

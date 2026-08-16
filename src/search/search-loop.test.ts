@@ -7,7 +7,7 @@ import { clearCacheForTests } from './cache.js';
 import type { ChatMessage, LLMClient } from './llm.js';
 import type { QuotaStoreLike } from './quota.js';
 import type { SearchProvider, SearchProviderResult, SearchResultItem } from './providers/types.js';
-import { runSearchLoop } from './search-loop.js';
+import { buildEmptyFallbackQueries, runSearchLoop } from './search-loop.js';
 
 process.env.SEARCH_METRICS_LOG = join(tmpdir(), 'search-loop-metrics-test.jsonl');
 
@@ -69,6 +69,22 @@ class FakeDomesticProvider implements SearchProvider {
   }
 }
 
+class EmptyThenHitProvider implements SearchProvider {
+  readonly id = 'bocha' as const;
+
+  constructor(private readonly hits: Record<string, SearchResultItem[]>) {}
+
+  async search(query: string): Promise<SearchProviderResult> {
+    const items = this.hits[query] ?? [];
+    return {
+      provider: 'bocha',
+      ok: items.length > 0,
+      results: items,
+      latencyMs: 1,
+    };
+  }
+}
+
 class FakeLLM implements LLMClient {
   private judgeCalls = 0;
 
@@ -98,6 +114,67 @@ test('search-loop: 无 LLM 时单次子搜索', async () => {
   assert.deepEqual(r.subQueries, ['q']);
   assert.equal(r.results.length, 1);
   assert.equal(r.degraded, false);
+});
+
+test('search-loop: 子搜索全空时用原句重试', async () => {
+  const original = '如何用硬件定时器生成频率可调的 PWM？';
+  const rewritten = 'STM32 PWM 频率动态修改 无毛刺';
+  const provider = new EmptyThenHitProvider({
+    [original]: [
+      {
+        title: 'STM32 PWM 动态频率',
+        url: 'https://example.com/pwm',
+        content: '双缓冲更新比较寄存器即可不掉步',
+        provider: 'bocha',
+      },
+    ],
+  });
+  const r = await runSearchLoop(rewritten, {
+    originalQuery: original,
+    intent: 'how_to',
+    providers: [provider],
+    quota: new FakeQuota(),
+    minResults: 1,
+  });
+  assert.ok(r.subQueries.includes(original));
+  assert.ok(r.results.some((x) => x.url.includes('example.com/pwm')));
+});
+
+test('search-loop: 重试仍空时浏览器搜索兜底', async () => {
+  const original = '团队 IM 消息聚合工具';
+  const provider = new EmptyThenHitProvider({});
+  const browser = {
+    fetchPage: async () => ({
+      url: 'https://example.com',
+      title: '',
+      text: '',
+    }),
+    downloadFile: async () => ({ ok: false, size: 0 }),
+    searchWeb: async () => [
+      {
+        title: 'IM 消息聚合工具',
+        url: 'https://bing.example.com/im-aggregate',
+        content: '可以聚合微信、钉钉、企业微信消息',
+        provider: 'browser' as const,
+      },
+    ],
+  };
+  const r = await runSearchLoop('改写后的子查询', {
+    originalQuery: original,
+    intent: 'how_to',
+    providers: [provider],
+    quota: new FakeQuota(),
+    browserSession: browser,
+    minResults: 1,
+  });
+  assert.ok(r.results.some((x) => x.provider === 'browser'));
+  assert.ok(r.attempts.some((a) => a.provider === 'browser' && a.ok));
+});
+
+test('search-loop: 空结果回退候选含原句与简化句', () => {
+  const candidates = buildEmptyFallbackQueries('改写句', '如何用硬件定时器生成（不掉步）PWM？');
+  assert.equal(candidates[0], '如何用硬件定时器生成（不掉步）PWM？');
+  assert.ok(candidates.some((q) => q.includes('硬件定时器生成') && !q.includes('如何')));
 });
 
 test('search-loop: LLM 追加子查询直到覆盖足够', async () => {

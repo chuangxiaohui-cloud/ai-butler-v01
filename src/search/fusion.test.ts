@@ -278,6 +278,22 @@ test('fusion: 无结果时低置信门控', () => {
   assert.equal(r.lowConfidence, true);
 });
 
+test('fusion: 放宽 minScore 保留被严格阈值丢弃的结果', () => {
+  const items = [
+    item({
+      url: 'https://example.com/kb-update',
+      title: '用 AI Agent 做知识库更新提醒',
+      content: '知识库更新提醒 Agent 文档过时 负责人 提醒',
+      provider: 'bocha',
+    }),
+  ];
+  const query = '团队内部知识库更新滞后，如何用 Agent 自动检测哪些文档过时并提醒更新？';
+  const strict = fuseResults(query, items, 'how_to');
+  assert.equal(strict.items.length, 0);
+  const relaxed = fuseResults(query, items, 'how_to', undefined, query, { minScore: 0 });
+  assert.ok(relaxed.items.length > 0);
+});
+
 test('fusion: 版本查询用检索子词算相关性，官方 release 胜出', () => {
   const items = [
     item({

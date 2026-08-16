@@ -57,6 +57,21 @@ test('s2: 强时效状态问题规则优先为 news', async () => {
   assert.equal(r.source, 'rule');
 });
 
+test('s2: 实时调整不误判为 news', async () => {
+  const r = await classifyQuery(
+    '如何用硬件定时器在 STM32 上产生一个频率可实时调整的 PWM 信号（不掉步）？',
+    fakeOk,
+  );
+  assert.notEqual(r.intent, 'news');
+  assert.equal(r.source, 'llm');
+});
+
+test('s2: A股实时行情仍为 news', async () => {
+  const r = await classifyQuery('A股实时行情', fakeOk);
+  assert.equal(r.intent, 'news');
+  assert.equal(r.source, 'rule');
+});
+
 test('s2: 非法 JSON 降级为 factual', async () => {
   const r = await classifyQuery('STM32F103C8T6 最大主频是多少', fakeBroken);
   assert.equal(r.intent, 'factual');

@@ -2525,6 +2525,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`cargo check` 通过；`--smoke` 实测打包资源分支拉起 gateway、加载 UI、打印 `TAURI_READY` 后退出码 0；`npm run tauri:build` 产出 `一人公司AI-Agent_0.1.0_x64-setup.exe`；主项目与 UI build、`npm run test:all` 单测 340/340 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-16-tauri-migration.md`。
 - affects: §13 | bench:na(new-param) 理由：Tauri 桌面壳新增，Electron 保留回退，无 §5/§6 参数或行为变更
 
+### 2026-08-17（搜索空结果兜底链 E125）
+
+- **变更**：`runSearchLoop` 子搜索全空时依次原句重试、简化句重试、Bing/Baidu 浏览器搜索兜底；`BrowserSessionManager` 新增 `searchWeb` 解析结果页；`PRESENT_STATE_RE` 去掉裸 `实时` 修复技术问题误判 news；`pickSecondPassTargets` 融合全空时按相关度抓 HTML 原文，二次融合 `minScore=0.3` 放宽阈值。
+- **验证**：单测 348/348 + 集成 17/17 全绿；`searchWeb` 真实验证可解析 Bing；ET20/SM18/SM31/C08 四条基准重跑全部从“我暂时无法确认”变成带证据的真实回答（ET20 conf 0.52/3 证据，SM31 conf 0.39/3 证据）；doc-lint 通过；详见 `docs/plans/2026-08-17-search-fallback-chain.md`。
+- affects: §6,§13 | bench:na(new-param) 理由：搜索兜底链与融合阈值微调，无 §5 参数登记变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

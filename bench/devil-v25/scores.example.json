@@ -119,7 +119,7 @@
       "id": "ET20",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 3
     },
     {
       "id": "ET21",
@@ -293,7 +293,7 @@
       "id": "SM18",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 2
     },
     {
       "id": "SM19",
@@ -371,7 +371,7 @@
       "id": "SM31",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 2
     },
     {
       "id": "EC01",
@@ -665,7 +665,7 @@
       "id": "C08",
       "score": null,
       "hardAnswer": false,
-      "autoScore": 0
+      "autoScore": 2
     },
     {
       "id": "C09",

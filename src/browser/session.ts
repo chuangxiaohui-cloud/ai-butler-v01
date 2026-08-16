@@ -222,6 +222,67 @@ export class BrowserSessionManager {
     }
   }
 
+  /**
+   * 搜索引擎结果页兜底（E125）：引擎 API 全部零结果时，
+   * 用现有浏览器会话抓 Bing/Baidu 结果容器并解析成 SearchResultItem。
+   */
+  async searchWeb(
+    query: string,
+    opts: { engine?: 'bing' | 'baidu'; count?: number } = {},
+  ): Promise<
+    Array<{
+      title: string;
+      url: string;
+      content: string;
+      provider: 'browser';
+    }>
+  > {
+    const engine = opts.engine ?? 'bing';
+    const count = Math.min(10, opts.count ?? 8);
+    const url =
+      engine === 'baidu'
+        ? `https://www.baidu.com/s?wd=${encodeURIComponent(query)}`
+        : `https://www.bing.com/search?q=${encodeURIComponent(query)}&setlang=zh-CN&count=${count}`;
+    const context = await this.ensureContext();
+    const page = await context.newPage();
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15_000 });
+      await page.waitForTimeout(1_000);
+      const items = await page.evaluate((engineArg) => {
+        const doc = (globalThis as { document?: unknown }).document as
+          | {
+              querySelectorAll(selector: string): ArrayLike<unknown>;
+            }
+          | undefined;
+        if (!doc) return [];
+        const engineName = engineArg as 'bing' | 'baidu';
+        const selector = engineName === 'baidu' ? 'div.result.c-container' : 'li.b_algo';
+        const nodes = Array.from(doc.querySelectorAll(selector)) as Array<{
+          querySelector(selector: string): {
+            textContent: string | null;
+            getAttribute(name: string): string | null;
+          } | null;
+          textContent: string | null;
+        }>;
+        return nodes
+          .slice(0, 8)
+          .map((node) => {
+            const anchor = node.querySelector('h2 a, h3 a, a');
+            return {
+              title: anchor?.textContent?.trim() ?? '',
+              url: anchor?.getAttribute('href') ?? '',
+              content: (node.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 500),
+              provider: 'browser' as const,
+            };
+          })
+          .filter((item) => item.url && item.title);
+      }, engine);
+      return items;
+    } finally {
+      await page.close().catch(() => undefined);
+    }
+  }
+
   /** 用当前浏览器会话下载文件（含 CDP 登录态 Cookie），返回落盘结果。 */
   async downloadFile(
     url: string,

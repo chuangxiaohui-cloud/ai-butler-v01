@@ -20,7 +20,7 @@ import type { RawFileLike, SkillDeps } from '../skills/deps.js';
 import { executorStatus } from '../agent/executors.js';
 import { extractPartNumber, getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
-import { pickSecondPassTarget, shouldSecondPass } from './second-pass.js';
+import { pickSecondPassTargets, shouldSecondPass } from './second-pass.js';
 import { applyRule3 } from './rule3.js';
 import { shouldTriggerTavily } from './tavily-trigger.js';
 import {
@@ -540,10 +540,15 @@ export async function pipeline(
       ? 'low_confidence'
       : 'none';
 
-  // 低置信二次取证：器件/资料查询用浏览器抓高可信 HTML 页完整正文后重新融合
-  if (gate === 'low_confidence' && shouldSecondPass(prepared.cleanQuery) && deps.browserSession) {
-    const target = pickSecondPassTarget(search.results, prepared.cleanQuery, fused.items);
-    if (target) {
+  // 低置信二次取证：器件/资料查询优先抓高可信 HTML 页；普通问题融合全空时按相关度抓原文重试
+  if (
+    gate === 'low_confidence' &&
+    (shouldSecondPass(prepared.cleanQuery) || search.results.length > 0) &&
+    deps.browserSession
+  ) {
+    const targets = pickSecondPassTargets(search.results, prepared.cleanQuery, fused.items);
+    let secondPassAdded = false;
+    for (const target of targets) {
       try {
         let secondPassText = '';
         if (/\.pdf(\?|#|$)/i.test(target.url)) {
@@ -568,40 +573,44 @@ export async function pipeline(
           secondPassText = page.text;
         }
         if (secondPassText.trim().length > 0) {
+          secondPassAdded = true;
           search.results.push({
             title: target.url.includes('szlcsc.com') ? `${extractPartNumber(prepared.cleanQuery)} 数据手册` : target.url,
             url: target.url,
             content: secondPassText.slice(0, 5000),
             provider: 'browser',
           });
-          const refused = fuseResults(
-            prepared.cleanQuery,
-            search.results,
-            classified.intent,
-            undefined,
-            relevanceQuery,
-          );
-          fused = refused;
-          evidence = refused.items.map((f) => ({
-            title: f.result.title,
-            url: f.result.url,
-            domain: getHostname(f.result.url),
-            score: f.finalScore,
-            type: f.official ? ('[hard]' as const) : ('[soft]' as const),
-          }));
-          confidence =
-            refused.items.length > 0
-              ? Math.max(...refused.items.map((f) => f.finalScore))
-              : 0;
-          gate = rule3.serious
-            ? 'safety'
-            : refused.items.length === 0 || refused.gated || refused.lowConfidence
-              ? 'low_confidence'
-              : 'none';
         }
       } catch {
         // 二次取证失败不改变原结果
       }
+    }
+    if (secondPassAdded) {
+      const refused = fuseResults(
+        prepared.cleanQuery,
+        search.results,
+        classified.intent,
+        undefined,
+        relevanceQuery,
+        { minScore: 0.3 },
+      );
+      fused = refused;
+      evidence = refused.items.map((f) => ({
+        title: f.result.title,
+        url: f.result.url,
+        domain: getHostname(f.result.url),
+        score: f.finalScore,
+        type: f.official ? ('[hard]' as const) : ('[soft]' as const),
+      }));
+      confidence =
+        refused.items.length > 0
+          ? Math.max(...refused.items.map((f) => f.finalScore))
+          : 0;
+      gate = rule3.serious
+        ? 'safety'
+        : refused.items.length === 0 || refused.gated || refused.lowConfidence
+          ? 'low_confidence'
+          : 'none';
     }
   }
 

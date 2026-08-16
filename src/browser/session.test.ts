@@ -148,3 +148,53 @@ test('browser-session: 下载 PDF 到本地', async () => {
   assert.equal(existsSync(dest), true);
   rmSync(dir, { recursive: true, force: true });
 });
+
+test('browser-session: searchWeb 解析搜索结果', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'browser-search-'));
+  const searchPage = {
+    goto: async () => undefined,
+    waitForTimeout: async () => undefined,
+    url: () => 'https://www.bing.com/search?q=STM32+PWM',
+    title: async () => 'STM32 PWM - 搜索',
+    evaluate: async () => [
+      {
+        title: 'STM32 PWM 动态频率',
+        url: 'https://example.com/pwm',
+        content: '双缓冲更新比较寄存器',
+        provider: 'browser',
+      },
+    ],
+    close: async () => undefined,
+  };
+  const searchContext = {
+    cookies: async () => [],
+    newPage: async () => searchPage,
+    close: async () => undefined,
+    browser: () => ({ isConnected: () => true }),
+    request: {
+      get: async () => ({
+        ok: () => true,
+        body: async () => Buffer.from(''),
+      }),
+    },
+  };
+  const searchLauncher = {
+    launchPersistentContext: async () => searchContext,
+    connectOverCDP: async () => ({
+      contexts: () => [],
+      close: async () => undefined,
+    }),
+  };
+  const manager = new (await import('./session.js')).BrowserSessionManager({
+    userDataDir: join(dir, 'profile'),
+    executablePath: 'C:/fake/chrome.exe',
+    launcher: searchLauncher as never,
+    cdpStatePath: join(dir, 'cdp.json'),
+  });
+  const items = await manager.searchWeb('STM32 PWM');
+  assert.equal(items.length, 1);
+  assert.equal(items[0].provider, 'browser');
+  assert.equal(items[0].url, 'https://example.com/pwm');
+  await manager.close();
+  rmSync(dir, { recursive: true, force: true });
+});

@@ -999,3 +999,60 @@
 {"ts":"2026-08-16T15:55:43.141Z","query":"STM32F103C8T6 立创商城 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
 {"ts":"2026-08-16T15:55:43.145Z","query":"STM32F103C8T6 site:szlcsc.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
 {"ts":"2026-08-16T15:55:43.147Z","query":"STM32F103C8T6 芯查查 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:05:47.533Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":313,"bocha_ok":false,"anysearch_ms":2775,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:05:51.741Z","query":"TPS5430 输入电压范围","bocha_ms":58,"bocha_ok":false,"anysearch_ms":4201,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:05:52.900Z","query":"STM32F103 ADC 多通道采集 踩坑 经验","bocha_ms":157,"bocha_ok":false,"anysearch_ms":1155,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:05:54.832Z","query":"MOSFET 栅极驱动电阻 选型 注意事项","bocha_ms":60,"bocha_ok":false,"anysearch_ms":1929,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:05:55.573Z","query":"KiCad 和 Altium Designer 对比 优缺点","bocha_ms":59,"bocha_ok":false,"anysearch_ms":737,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:05:56.422Z","query":"Keil MDK JTAG 配置 步骤","bocha_ms":65,"bocha_ok":false,"anysearch_ms":845,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:06:00.073Z","query":"STM32 HAL_UART_Transmit 阻塞 卡死","bocha_ms":54,"bocha_ok":false,"anysearch_ms":3647,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:06:00.923Z","query":"高血压 用药注意事项 禁忌","bocha_ms":54,"bocha_ok":false,"anysearch_ms":847,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:06:05.940Z","query":"个人所得税 专项附加扣除 怎么申报","bocha_ms":61,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true}
+{"ts":"2026-08-16T16:06:07.438Z","query":"ESP32 I2C 通信失败 无应答","bocha_ms":166,"bocha_ok":false,"anysearch_ms":1493,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:07:09.086Z","query":"2026 如何用硬件定时器在 STM32 上产生一个频率可实时调整的 PWM 信号（不掉步）？ 最新","bocha_ms":223,"bocha_ok":false,"anysearch_ms":2759,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:07:12.462Z","query":"如何用硬件定时器在 STM32 上产生一个频率可实时调整的 PWM 信号（不掉步）？","bocha_ms":147,"bocha_ok":false,"anysearch_ms":1850,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:07:18.094Z","query":"STM32 硬件定时器 PWM 频率实时调整 不掉步","bocha_ms":70,"bocha_ok":false,"anysearch_ms":3437,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:07:21.953Z","query":"STM32 PWM 频率动态修改 无毛刺","bocha_ms":152,"bocha_ok":false,"anysearch_ms":1844,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:07:25.757Z","query":"STM32 定时器 PWM 频率连续可调 实现方法","bocha_ms":64,"bocha_ok":false,"anysearch_ms":1906,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:10:27.393Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:10:27.397Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:10:27.400Z","query":"STM32F103C8T6 立创商城 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:10:27.402Z","query":"STM32F103C8T6 site:szlcsc.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:10:27.403Z","query":"STM32F103C8T6 芯查查 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:11:07.419Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:11:07.424Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:11:07.429Z","query":"STM32F103C8T6 立创商城 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:11:07.431Z","query":"STM32F103C8T6 site:szlcsc.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:11:07.436Z","query":"STM32F103C8T6 芯查查 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:12:08.697Z","query":"2026 如何用硬件定时器在 STM32 上产生一个频率可实时调整的 PWM 信号（不掉步）？ 最新","bocha_ms":257,"bocha_ok":false,"anysearch_ms":1467,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:12:16.817Z","query":"多IM消息聚合 统一管理 工具 微信 钉钉 企业微信","bocha_ms":137,"bocha_ok":false,"anysearch_ms":3308,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:12:26.654Z","query":"Agent 自动检测文档过时 提醒更新 知识库","bocha_ms":181,"bocha_ok":false,"anysearch_ms":4296,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:12:30.634Z","query":"KiCad vs Altium Designer 对比 2024","bocha_ms":154,"bocha_ok":false,"anysearch_ms":2463,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:13:11.781Z","query":"2026 如何用硬件定时器在 STM32 上产生一个频率可实时调整的 PWM 信号（不掉步）？ 最新","bocha_ms":200,"bocha_ok":false,"anysearch_ms":2063,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:14:14.878Z","query":"团队内部知识库更新滞后，如何用 Agent 自动检测哪些文档过时并提醒更新？","bocha_ms":288,"bocha_ok":false,"anysearch_ms":4272,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:14:19.894Z","query":"对比一下 KiCad和AD，然后帮我用KiCad新建一个STM32的工程。","bocha_ms":148,"bocha_ok":false,"anysearch_ms":null,"anysearch_ok":false,"timeout":true,"degraded":true}
+{"ts":"2026-08-16T16:16:30.858Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:16:30.865Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:16:30.867Z","query":"STM32F103C8T6 立创商城 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:16:30.869Z","query":"STM32F103C8T6 site:szlcsc.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:16:30.874Z","query":"STM32F103C8T6 芯查查 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:17:01.998Z","query":"STM32 site:st.com datasheet","bocha_ms":234,"bocha_ok":false,"anysearch_ms":3817,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:17:14.037Z","query":"多IM消息聚合 统一管理 工具 微信 钉钉 企业微信","bocha_ms":152,"bocha_ok":false,"anysearch_ms":4696,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:17:20.438Z","query":"Agent 自动检测文档过时 提醒更新 知识库","bocha_ms":145,"bocha_ok":false,"anysearch_ms":1611,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:17:35.263Z","query":"KiCad vs Altium Designer 对比 2024","bocha_ms":147,"bocha_ok":false,"anysearch_ms":3836,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:19:04.731Z","query":"STM32 site:st.com datasheet","bocha_ms":220,"bocha_ok":false,"anysearch_ms":3174,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:19:15.071Z","query":"Agent 自动检测文档过时 提醒更新 知识库","bocha_ms":156,"bocha_ok":false,"anysearch_ms":3515,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:21:42.146Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:21:42.151Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:21:42.154Z","query":"STM32F103C8T6 立创商城 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:21:42.158Z","query":"STM32F103C8T6 site:szlcsc.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:21:42.160Z","query":"STM32F103C8T6 芯查查 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:22:14.040Z","query":"STM32 site:st.com datasheet","bocha_ms":210,"bocha_ok":false,"anysearch_ms":4017,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:22:34.826Z","query":"多IM消息聚合 统一管理 工具 微信 钉钉 企业微信","bocha_ms":228,"bocha_ok":false,"anysearch_ms":2495,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:22:48.558Z","query":"Agent 自动检测文档过时 提醒更新 知识库","bocha_ms":202,"bocha_ok":false,"anysearch_ms":3119,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:23:09.999Z","query":"KiCad vs Altium Designer 对比 2024","bocha_ms":175,"bocha_ok":false,"anysearch_ms":3076,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:24:53.327Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:24:53.331Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:24:53.342Z","query":"STM32F103C8T6 立创商城 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:24:53.343Z","query":"STM32F103C8T6 site:szlcsc.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T16:24:53.345Z","query":"STM32F103C8T6 芯查查 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}

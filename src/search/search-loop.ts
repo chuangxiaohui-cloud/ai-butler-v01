@@ -36,6 +36,10 @@ export interface BrowserFetcher {
     timeoutMs?: number,
     waitMs?: number,
   ): Promise<{ url: string; title: string; text: string }>;
+  searchWeb?(
+    query: string,
+    opts?: { engine?: 'bing' | 'baidu'; count?: number },
+  ): Promise<SearchResultItem[]>;
   downloadFile(
     url: string,
     destPath: string,
@@ -83,6 +87,20 @@ function uniqueUrls(items: SearchResultItem[]): string[] {
     }
   }
   return out;
+}
+
+export function buildEmptyFallbackQueries(query: string, originalQuery?: string): string[] {
+  const out: string[] = [];
+  const simplified = (originalQuery ?? query)
+    .replace(/[（(][^）)]*[)）]/g, ' ')
+    .replace(/[？?。！!，,]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^(如何|怎么|怎样|帮我|请帮我|团队|我们|我想|需要|请问|请)\s*/g, '')
+    .trim();
+  if (originalQuery && !out.includes(originalQuery)) out.push(originalQuery);
+  if (simplified && !out.includes(simplified)) out.push(simplified);
+  if (query && !out.includes(query)) out.push(query);
+  return out.slice(0, 2);
 }
 
 export function buildCoverageJudgeMessages(
@@ -183,6 +201,60 @@ export async function runSearchLoop(
       }
     }
     if (judge.enough) break;
+  }
+
+  if (results.length === 0) {
+    for (const fallbackQuery of buildEmptyFallbackQueries(query, opts.originalQuery)) {
+      if (seenQueries.has(fallbackQuery)) continue;
+      seenQueries.add(fallbackQuery);
+      subQueries.push(fallbackQuery);
+      const stage = await runSearchStage(fallbackQuery, {
+        ...opts,
+        cacheKey: `search:loop:empty-retry:${hashQuery(fallbackQuery)}`,
+        cachedValue: null,
+      });
+      results.push(...stage.results);
+      attempts.push(...stage.attempts);
+      aiAnswers.push(...stage.aiAnswers);
+      for (const attempt of stage.attempts) {
+        opts.sourceStats?.record(attempt.provider, opts.intent, attempt.ok, attempt.latencyMs);
+      }
+      if (stage.cacheHit) cacheHit = true;
+      if (stage.cacheEngines) cacheEngines = stage.cacheEngines;
+      if (stage.degraded && results.length === 0) degraded = true;
+      if (results.length > 0) break;
+    }
+  }
+
+  if (results.length === 0 && opts.browserSession?.searchWeb) {
+    const engines = ['bing', 'baidu'] as const;
+    for (const engine of engines) {
+      if (results.length > 0) break;
+      const attemptStart = Date.now();
+      try {
+        const items = await opts.browserSession.searchWeb(opts.originalQuery ?? query, {
+          engine,
+          count: 8,
+        });
+        const ok = items.length > 0;
+        attempts.push({
+          provider: 'browser',
+          ok,
+          latencyMs: Date.now() - attemptStart,
+          error: ok ? undefined : '浏览器搜索无结果',
+        });
+        opts.sourceStats?.record('browser', opts.intent, ok, Date.now() - attemptStart);
+        if (ok) results.push(...items);
+      } catch (err) {
+        attempts.push({
+          provider: 'browser',
+          ok: false,
+          latencyMs: Date.now() - attemptStart,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        opts.sourceStats?.record('browser', opts.intent, false, Date.now() - attemptStart);
+      }
+    }
   }
 
   const part = extractPartNumber(query);
