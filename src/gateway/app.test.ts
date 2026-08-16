@@ -410,3 +410,22 @@ test('gateway: /api/security 读取，Shell 关闭时终端 403', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('gateway: /api/files 返回产物文件列表', async () => {
+  const { server, base } = await startApp();
+  try {
+    const resp = await fetch(`${base}/api/files`);
+    const body = (await resp.json()) as {
+      total?: number;
+      files?: Array<{ path: string; size: number; kind: string }>;
+    };
+    assert.equal(resp.status, 200);
+    assert.equal(typeof body.total, 'number');
+    assert.ok(Array.isArray(body.files));
+    if ((body.files ?? []).length > 0) {
+      assert.ok(body.files?.[0]?.path);
+    }
+  } finally {
+    server.close();
+  }
+});

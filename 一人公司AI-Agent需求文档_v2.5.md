@@ -1593,6 +1593,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/gateway/server.ts` | gateway 启动器（复用 CLI 同款依赖） |
 | `src/gateway/attachments.ts` | base64 data URL 附件 → RawFileLike |
 | `src/gateway/terminal.ts` | 终端命令执行通道（Shell 权限门控） |
+| `src/gateway/files.ts` | 产物文件扫描（沙箱根目录白名单） |
 
 > 完整代码目录为实施期产物：v0.1 落地后按 §0.1 文档治理规则补全并登记版本快照。当前仅列已定架构的关键模块。
 
@@ -2468,6 +2469,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：新增 `src/config/security-config.ts` 持久化安全策略；新增 `src/gateway/terminal.ts` 执行通道；gateway 新增 `GET /api/security`、`POST /api/security/persist`、`POST /api/terminal/exec`（Shell 默认关闭返回 403）；UI 安全中心改为真实开关，终端命令经 gateway 执行并回显 stdout/stderr/exitCode。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 332/332 + 集成 17/17 全绿（新增 security-config/terminal 与 403 门控测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-security-terminal-channel.md`。
 - affects: §13 | bench:na(new-param) 理由：安全配置与终端执行 API 接线，无 §5/§6 参数或行为变更
+
+### 2026-08-16（产物文件列表接真实数据 E116）
+
+- **变更**：新增 `src/gateway/files.ts` 扫描沙箱允许根目录；gateway 新增 `GET /api/files`；UI 右侧文件 Tab 显示真实路径/类型/大小，打开与问答后自动刷新。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 334/334 + 集成 17/17 全绿（新增 files 扫描与形状测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-artifact-files-api.md`。
+- affects: §13 | bench:na(new-param) 理由：产物文件读写 API 与 UI 接线，无 §5/§6 参数或行为变更
 
 ### v2.5（2026-08-12）
 

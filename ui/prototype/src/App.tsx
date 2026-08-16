@@ -134,12 +134,6 @@ const MOCK_PROJECTS = [
   },
 ];
 
-const MOCK_FILES = [
-  { name: 'hardware/stm32-min.kicad_sch', state: '已完成', kind: '原理图' },
-  { name: 'hardware/stm32-min.net', state: '待检查', kind: '网络表' },
-  { name: 'docs/min-system-checklist.md', state: '草稿', kind: '文档' },
-];
-
 const TERMINAL_LINES = [
   '$ kicad-cli sch erc hardware/stm32-min.kicad_sch',
   '[INFO] 检查 12 条电源规则',
@@ -218,6 +212,7 @@ function App() {
   const [shellEnabled, setShellEnabled] = useState(false);
   const [terminalLines, setTerminalLines] = useState<string[]>(TERMINAL_LINES);
   const [terminalInput, setTerminalInput] = useState('');
+  const [files, setFiles] = useState<Array<{ path: string; size: number; kind: string }>>([]);
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}model-providers.json`)
@@ -235,6 +230,15 @@ function App() {
         // 目录缺失时保留静态列表
       });
   }, []);
+
+  const loadFiles = () => {
+    fetch(`${GATEWAY_URL}/api/files`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((data: { files?: typeof files } | null) => setFiles(data?.files ?? []))
+      .catch(() => setFiles([]));
+  };
+
+  useEffect(loadFiles, []);
 
   const contextUsage = useMemo(() => {
     const chars = messages.reduce(
@@ -302,8 +306,10 @@ function App() {
         evidence,
         meta: `${MODES.find((m) => m.key === mode)?.label} · 后端`,
       });
+      loadFiles();
     } catch {
       appendReply(ReplyDraft(mode, text));
+      loadFiles();
     }
   };
 
@@ -499,12 +505,13 @@ function App() {
           <div className="right-body">
             {rightTab === 'files' && (
               <div className="file-list">
-                {MOCK_FILES.map((file) => (
-                  <div className="file-row" key={file.name}>
+                {files.length === 0 && <p className="settings-note">暂无产物文件</p>}
+                {files.map((file) => (
+                  <div className="file-row" key={file.path}>
                     <FileText size={15} />
                     <div>
-                      <strong>{file.name}</strong>
-                      <span>{file.kind} · {file.state}</span>
+                      <strong>{file.path}</strong>
+                      <span>{file.kind} · {(file.size / 1024).toFixed(1)} KB</span>
                     </div>
                     <ArrowUpRight size={13} />
                   </div>

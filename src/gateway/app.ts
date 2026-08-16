@@ -19,6 +19,7 @@ import { readSecurityConfig, writeSecurityConfig } from '../config/security-conf
 import { ExperienceManager } from '../memory/experience.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { aggregateUsage, readUsage } from '../usage/usage-store.js';
+import { listProjectFiles } from './files.js';
 import { runCommand } from './terminal.js';
 import type { RawFileLike } from '../skills/deps.js';
 import { dataUrlToRawFile, type AttachmentPayload } from './attachments.js';
@@ -52,6 +53,11 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
 
   app.get('/api/model-providers', (_req, res) => {
     res.json(buildModelCatalog());
+  });
+
+  app.get('/api/files', (_req, res) => {
+    const files = listProjectFiles(process.cwd());
+    res.json({ total: files.length, files });
   });
 
   app.get('/api/providers', (_req, res) => {
