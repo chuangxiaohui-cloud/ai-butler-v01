@@ -279,3 +279,26 @@ test('gateway: /api/providers 返回状态，测试连接安全失败', async ()
     server.close();
   }
 });
+
+test('gateway: /api/skills 返回真实技能目录，非法禁用名单被拒', async () => {
+  const { server, base } = await startApp();
+  try {
+    const listResp = await fetch(`${base}/api/skills`);
+    const list = (await listResp.json()) as {
+      total?: number;
+      skills?: Array<{ name: string; version: string; enabled: boolean }>;
+    };
+    assert.equal(listResp.status, 200);
+    assert.ok((list.total ?? 0) > 0);
+    assert.ok((list.skills ?? []).some((s) => s.name === 'calendar-skill'));
+
+    const syncResp = await fetch(`${base}/api/skills/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ disabled: ['not-a-skill'] }),
+    });
+    assert.equal(syncResp.status, 400);
+  } finally {
+    server.close();
+  }
+});

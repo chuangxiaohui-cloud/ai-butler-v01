@@ -7,7 +7,7 @@ import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { DatabaseSync } from 'node:sqlite';
 
-import { getSkills } from './registry.js';
+import { getSkills, isSkillEnabled } from './registry.js';
 import { isColdAfter, weeklyDecayConfidence } from '../memory/confidence-decay.js';
 
 const P30_DECAY_PER_WEEK = 0.9; // [P-30]
@@ -118,6 +118,7 @@ export class SkillLifecycle {
   findBest(query: string, now = Date.now()): { name: string; triggerLength: number } | null {
     const lower = query.toLowerCase();
     const candidates = getSkills()
+      .filter((skill) => isSkillEnabled(skill.name))
       .map((skill) => {
         const stat = this.get(skill.name);
         if (!stat) return null;

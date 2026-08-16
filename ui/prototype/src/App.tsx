@@ -1199,23 +1199,81 @@ function RoutingSettings() {
 }
 
 function SkillsSettings() {
-  const skills = [
-    { name: 'chip-analysis', version: '0.1.0', category: '工程开发', on: true },
-    { name: 'datasheet-speed', version: '0.1.0', category: '知识咨询', on: true },
-    { name: 'calendar-skill', version: '0.1.0', category: '生活助手', on: true },
-    { name: 'lcsc-footprint-generator', version: '规划中', category: '工程开发', on: false },
-  ];
+  const [skills, setSkills] = useState<
+    Array<{ name: string; version: string; triggers: string[]; enabled: boolean }>
+  >([]);
+  const [category, setCategory] = useState('all');
+
+  const categoryOf = (name: string): string => {
+    if (['chip-analysis', 'circuit-topology', 'datasheet-speed', 'github-reader', 'industry-kits', 'engineer', 'project-packager', 'color-recognition'].includes(name)) {
+      return '工程开发';
+    }
+    if (['knowledge-qa', 'document-qa', 'content-writer', 'delivery-workflow', 'plan-validation', 'jargon-map', 'quote-compare'].includes(name)) {
+      return '知识咨询';
+    }
+    return '生活助手';
+  };
+
+  const load = () => {
+    fetch(`${GATEWAY_URL}/api/skills`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((data: { skills?: typeof skills } | null) => setSkills(data?.skills ?? []))
+      .catch(() => setSkills([]));
+  };
+
+  useEffect(load, []);
+
+  const toggle = async (name: string, enabled: boolean) => {
+    const disabled = skills.filter((skill) => !skill.enabled).map((skill) => skill.name);
+    if (enabled) {
+      const index = disabled.indexOf(name);
+      if (index >= 0) disabled.splice(index, 1);
+    } else if (!disabled.includes(name)) {
+      disabled.push(name);
+    }
+    await fetch(`${GATEWAY_URL}/api/skills/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ disabled }),
+    });
+    load();
+  };
+
+  const filtered =
+    category === 'all' ? skills : skills.filter((skill) => categoryOf(skill.name) === category);
+
   return (
     <div className="settings-form skill-grid">
-      {skills.map((skill) => (
+      <div className="skill-filter">
+        {['all', '工程开发', '知识咨询', '生活助手'].map((item) => (
+          <button
+            key={item}
+            className={category === item ? 'active' : ''}
+            onClick={() => setCategory(item)}
+          >
+            {item === 'all' ? '全部' : item}
+          </button>
+        ))}
+      </div>
+      {filtered.map((skill) => (
         <div className="skill-card" key={skill.name}>
           <div>
             <strong>{skill.name}</strong>
-            <span>v{skill.version} · {skill.category}</span>
+            <span>v{skill.version} · {categoryOf(skill.name)}</span>
+            <small>{skill.triggers.slice(0, 3).join(' / ')}</small>
           </div>
-          <ToggleRow label="启用" defaultOn={skill.on} />
+          <div className="skill-toggle-row">
+            <span>启用</span>
+            <button
+              className={`toggle ${skill.enabled ? 'on' : ''}`}
+              onClick={() => toggle(skill.name, !skill.enabled)}
+              aria-pressed={skill.enabled}
+            >
+              <i />
+            </button>
+          </div>
           <div className="skill-meta">
-            <span>输入参数 / 输出契约 / 错误日志</span>
+            <span>输入参数 / 输出契约 / 错误日志见 Skill 元数据</span>
           </div>
         </div>
       ))}

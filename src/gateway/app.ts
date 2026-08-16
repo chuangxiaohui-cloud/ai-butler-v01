@@ -12,6 +12,8 @@ import { defaultRegistry } from '../search/llm-registry.js';
 import { OpenAiCompatibleClient } from '../search/llm-client.js';
 import { parseModelId } from '../search/model-id.js';
 import { pipeline, type PipelineDeps } from '../search/pipeline.js';
+import { listSkillMetadata } from '../skills/registry.js';
+import { writeDisabledSkills } from '../config/skills-config.js';
 import type { RawFileLike } from '../skills/deps.js';
 import { dataUrlToRawFile, type AttachmentPayload } from './attachments.js';
 
@@ -92,6 +94,29 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     } catch {
       res.json({ ok: false, error: '连接失败或 API Key 无效' });
     }
+  });
+
+  app.get('/api/skills', (_req, res) => {
+    const skills = listSkillMetadata();
+    res.json({
+      total: skills.length,
+      enabled: skills.filter((s) => s.enabled).length,
+      skills,
+    });
+  });
+
+  app.post('/api/skills/sync', (req, res) => {
+    const body = (req.body ?? {}) as { disabled?: unknown };
+    const known = new Set(listSkillMetadata().map((s) => s.name));
+    const disabled = Array.isArray(body.disabled)
+      ? body.disabled.filter((item): item is string => typeof item === 'string')
+      : [];
+    if (disabled.some((name) => !known.has(name))) {
+      res.status(400).json({ error: 'disabled 包含未知 Skill' });
+      return;
+    }
+    writeDisabledSkills(disabled);
+    res.json({ ok: true, disabled });
   });
 
   app.get('/api/routing/cases', (_req, res) => {

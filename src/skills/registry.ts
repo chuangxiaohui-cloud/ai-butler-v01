@@ -23,6 +23,7 @@ import { createPlanValidationSkill } from './plan-validation/index.js';
 import { createBrowserSessionSkill } from './browser-session/index.js';
 import { createProjectPackagerSkill } from './project-packager/index.js';
 import { PARAMS } from '../config/params.js';
+import { readDisabledSkills } from '../config/skills-config.js';
 import type { AttachmentSignal } from '../agent/multimodal-preprocessor.js';
 import type { RawFileLike, SkillDeps } from './deps.js';
 import type { UserContext } from '../memory/user-context.js';
@@ -62,6 +63,25 @@ export function findSkill(query: string): ExecutableSkill[] {
   return EXECUTABLE_SKILLS.filter((skill) =>
     skill.triggers.some((trigger) => normalized.includes(trigger.toLowerCase())),
   );
+}
+
+export function isSkillEnabled(name: string): boolean {
+  return !readDisabledSkills().has(name);
+}
+
+export function listSkillMetadata(): Array<{
+  name: string;
+  version: string;
+  triggers: string[];
+  enabled: boolean;
+}> {
+  const disabled = readDisabledSkills();
+  return EXECUTABLE_SKILLS.map((skill) => ({
+    name: skill.name,
+    version: skill.version,
+    triggers: skill.triggers,
+    enabled: !disabled.has(skill.name),
+  }));
 }
 
 // ── Week 1 增量（C1/C3）：新接口已转正，旧 handler 仅作为 LegacySkillDef 输入 ──

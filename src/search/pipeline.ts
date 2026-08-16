@@ -15,7 +15,7 @@ import { defaultMemoryStore } from '../memory/store.js';
 import type { ExperienceEntry } from '../memory/experience.js';
 import type { SearchSourceStats } from './source-stats.js';
 import type { TrajectoryEventBody, TrajectoryLogLike } from '../trajectory/trajectory-log.js';
-import { getSkills, toDisplayText } from '../skills/registry.js';
+import { getSkills, isSkillEnabled, toDisplayText } from '../skills/registry.js';
 import type { RawFileLike, SkillDeps } from '../skills/deps.js';
 import { executorStatus } from '../agent/executors.js';
 import { extractPartNumber, getHostname } from './authority.js';
@@ -292,7 +292,7 @@ export async function pipeline(
     const executor = routeSelected.executor ?? 'executor';
     const status = executorStatus(routeSelected.executor);
     const skillName = executor.replaceAll('_', '-');
-    const skill = getSkills().find((s) => s.name === skillName);
+    const skill = getSkills().find((s) => s.name === skillName && isSkillEnabled(s.name));
     if (skill && status === 'available') {
       try {
         const skillDeps = deps.skillDeps ?? { callVLM: async () => '' };
@@ -394,7 +394,9 @@ export async function pipeline(
       if (best) {
         skillHints = [best.name];
         usedSkillName = best.name;
-        const skill = getSkills().find((s) => s.name === best.name);
+        const skill = getSkills().find(
+          (s) => s.name === best.name && isSkillEnabled(s.name),
+        );
         if (skill) {
           try {
             const skillDeps: SkillDeps = { callVLM: async () => '' };

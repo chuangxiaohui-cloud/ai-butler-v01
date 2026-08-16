@@ -1584,6 +1584,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `scripts/export-model-catalog.ts` | 导出 Provider Registry 模型目录给 UI |
 | `src/config/model-catalog.ts` | 共享模型目录（UI / gateway 共用） |
 | `src/config/provider-order.ts` | Provider 默认顺序持久化（data/provider-order.json） |
+| `src/config/skills-config.ts` | Skill 启用/禁用持久化（data/skills-config.json） |
 | `src/gateway/app.ts` | TurnLoop gateway 路由（/api/ask / health / model-providers） |
 | `src/gateway/server.ts` | gateway 启动器（复用 CLI 同款依赖） |
 | `src/gateway/attachments.ts` | base64 data URL 附件 → RawFileLike |
@@ -2438,6 +2439,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：新增 `src/config/provider-order.ts` 持久化默认 provider 顺序；registry 支持 `order()/setOrder()/listStatuses()`；gateway 新增 `GET /api/providers`、`POST /api/providers/default`、`POST /api/providers/test`；UI 服务商设置显示真实配置状态，支持测试连接、设为默认。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 323/323 + 集成 17/17 全绿（新增 providers 状态与安全失败测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-provider-settings-api.md`。
 - affects: §13 | bench:na(new-param) 理由：服务商读写 API 与 UI 接线，无 §5/§6 参数或行为变更
+
+### 2026-08-16（技能库设置接真实数据 E112）
+
+- **变更**：新增 `src/config/skills-config.ts` 持久化禁用 Skill 列表；registry 新增 `isSkillEnabled()/listSkillMetadata()`；pipeline 直接 Skill 执行与 `findBest` 注入跳过禁用项；gateway 新增 `GET /api/skills`、`POST /api/skills/sync`；UI 技能库显示真实 19 项与触发词，支持启用/禁用、类别筛选。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 325/325 + 集成 17/17 全绿（新增 skills-config 与 skills 目录测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-skills-settings-api.md`。
+- affects: §13 | bench:na(new-param) 理由：技能库读写 API 与 UI 接线，无 §5/§6 参数或行为变更
 
 ### v2.5（2026-08-12）
 

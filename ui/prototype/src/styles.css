@@ -1607,6 +1607,26 @@ button {
   gap: 8px;
 }
 
+.skill-filter {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.skill-filter button {
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.skill-filter button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .skill-card > div:first-child {
   display: flex;
   flex-direction: column;
@@ -1620,6 +1640,18 @@ button {
 .skill-card span {
   font-size: 10px;
   color: var(--muted);
+}
+
+.skill-card small {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.skill-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
 }
 
 .skill-meta {
