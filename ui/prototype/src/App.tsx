@@ -1068,6 +1068,7 @@ function SecuritySettings({
     illegalEnabled: boolean;
     personalEmergencyEnabled: boolean;
     propertyEmergencyEnabled: boolean;
+    allowedCommandPrefixes: string[];
   }>({
     shellEnabled: false,
     fileAccess: 'project-only',
@@ -1075,7 +1076,9 @@ function SecuritySettings({
     illegalEnabled: true,
     personalEmergencyEnabled: true,
     propertyEmergencyEnabled: true,
+    allowedCommandPrefixes: [],
   });
+  const [prefixInput, setPrefixInput] = useState('');
 
   const load = () => {
     fetch(`${GATEWAY_URL}/api/security`)
@@ -1084,6 +1087,7 @@ function SecuritySettings({
         if (data) {
           setConfig(data);
           onShellChange(data.shellEnabled);
+          setPrefixInput(data.allowedCommandPrefixes.join(', '));
         }
       })
       .catch(() => undefined);
@@ -1094,6 +1098,7 @@ function SecuritySettings({
   const persist = async (patch: Partial<typeof config>) => {
     const next = { ...config, ...patch };
     setConfig(next);
+    setPrefixInput(next.allowedCommandPrefixes.join(', '));
     if (typeof patch.shellEnabled === 'boolean') onShellChange(patch.shellEnabled);
     await fetch(`${GATEWAY_URL}/api/security/persist`, {
       method: 'POST',
@@ -1154,8 +1159,25 @@ function SecuritySettings({
           <i />
         </button>
       </div>
+      <div className="allowlist-row">
+        <span>允许执行的命令前缀</span>
+        <input
+          value={prefixInput}
+          onChange={(event) => setPrefixInput(event.target.value)}
+          onBlur={() =>
+            persist({
+              allowedCommandPrefixes: prefixInput
+                .split(',')
+                .map((item) => item.trim())
+                .filter(Boolean),
+            })
+          }
+          placeholder="如 git, npm, kicad-cli"
+        />
+      </div>
       <p className="settings-note">
-        Shell 权限默认关闭；切换工程开发模式不会自动开启。首次执行命令需二次确认。
+        Shell 权限默认关闭；切换工程开发模式不会自动开启。白名单为空时允许任意命令，
+        建议填写常用前缀以限制终端执行范围。
       </p>
     </div>
   );

@@ -23,13 +23,14 @@
 17. **记忆管理设置接真实数据（E114）**：UserContextStore/ExperienceManager 增加公开读取删除方法；gateway 新增 `/api/memory`、`/api/memory/forget`；UI 记忆管理页展示 L1/L2 合并视图，支持筛选、搜索、遗忘；单测 329/329 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-memory-settings-api.md`。
 18. **安全中心真实配置 + 终端执行通道（E115）**：新增 `src/config/security-config.ts` 与 `src/gateway/terminal.ts`；gateway 新增 `/api/security`、`/api/security/persist`、`/api/terminal/exec`；UI 安全中心真实开关，终端命令经 gateway 执行；单测 332/332 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-security-terminal-channel.md`。
 19. **产物文件列表接真实数据（E116）**：新增 `src/gateway/files.ts` 扫描沙箱根目录；gateway 新增 `/api/files`；UI 右侧文件 Tab 显示真实路径/类型/大小，打开与问答后自动刷新；单测 334/334 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-artifact-files-api.md`。
+20. **终端命令白名单细化（E117）**：`SecurityConfig` 新增 `allowedCommandPrefixes`；gateway 执行前校验，未授权前缀 403；UI 安全中心增加命令前缀输入；单测 335/335 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-terminal-allowlist.md`。
 
 ## 明天继续（按优先级）
 
 1. 解决“低置信兜底话术”回升：强化浏览器兜底/重试/查询改写（SM18/SM31/C08/ET20 等搜索质量类）。
 2. 按新基线重打分（旧定稿分只代表旧行为），推进 A/B 套评测拆分。
 3. 给 35 条 Bug 清单补状态字段与回归用例，验证 C05 打包与 C06 README 抓取在真实环境稳定。
-4. SSE/流式 artifact 事件（生成中实时更新）与 HTML 预览自动弹出；终端命令白名单/审批流细化；桌面端封装。
+4. SSE/流式 artifact 事件（生成中实时更新）与 HTML 预览自动弹出；桌面端封装。
 
 ## 常用命令
 

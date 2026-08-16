@@ -2476,6 +2476,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 334/334 + 集成 17/17 全绿（新增 files 扫描与形状测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-artifact-files-api.md`。
 - affects: §13 | bench:na(new-param) 理由：产物文件读写 API 与 UI 接线，无 §5/§6 参数或行为变更
 
+### 2026-08-16（终端命令白名单细化 E117）
+
+- **变更**：`SecurityConfig` 新增 `allowedCommandPrefixes`（默认空 = 允许任意）；gateway `/api/security/persist` 支持写入前缀，`/api/terminal/exec` 执行前校验，未授权前缀返回 403；UI 安全中心增加命令前缀输入框。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 335/335 + 集成 17/17 全绿（新增白名单 403 测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-terminal-allowlist.md`。
+- affects: §13 | bench:na(new-param) 理由：终端白名单配置与校验，无 §5/§6 参数或行为变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

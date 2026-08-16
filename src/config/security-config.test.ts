@@ -14,8 +14,10 @@ test('security-config: 默认 Shell 关闭，读写持久化', () => {
     assert.equal(empty.shellEnabled, false);
     assert.equal(empty.fileAccess, 'project-only');
     assert.equal(empty.illegalEnabled, true);
-    writeSecurityConfig({ ...empty, shellEnabled: true }, file);
+    assert.deepEqual(empty.allowedCommandPrefixes, []);
+    writeSecurityConfig({ ...empty, shellEnabled: true, allowedCommandPrefixes: ['git', 'npm'] }, file);
     assert.equal(readSecurityConfig(file).shellEnabled, true);
+    assert.deepEqual(readSecurityConfig(file).allowedCommandPrefixes, ['git', 'npm']);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

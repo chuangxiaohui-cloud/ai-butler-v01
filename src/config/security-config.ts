@@ -13,6 +13,7 @@ export interface SecurityConfig {
   illegalEnabled: boolean;
   personalEmergencyEnabled: boolean;
   propertyEmergencyEnabled: boolean;
+  allowedCommandPrefixes: string[];
 }
 
 const DEFAULT_SECURITY: SecurityConfig = {
@@ -22,6 +23,7 @@ const DEFAULT_SECURITY: SecurityConfig = {
   illegalEnabled: true,
   personalEmergencyEnabled: true,
   propertyEmergencyEnabled: true,
+  allowedCommandPrefixes: [],
 };
 
 export function securityConfigPath(root = process.cwd()): string {
@@ -39,6 +41,9 @@ export function readSecurityConfig(file = securityConfigPath()): SecurityConfig 
       illegalEnabled: raw.illegalEnabled !== false,
       personalEmergencyEnabled: raw.personalEmergencyEnabled !== false,
       propertyEmergencyEnabled: raw.propertyEmergencyEnabled !== false,
+      allowedCommandPrefixes: Array.isArray(raw.allowedCommandPrefixes)
+        ? raw.allowedCommandPrefixes.filter((item): item is string => typeof item === 'string')
+        : [],
     };
   } catch {
     return { ...DEFAULT_SECURITY };

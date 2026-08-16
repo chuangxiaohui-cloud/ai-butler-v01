@@ -386,6 +386,7 @@ test('gateway: /api/security 读取，Shell 关闭时终端 403', async () => {
       illegalEnabled: true,
       personalEmergencyEnabled: true,
       propertyEmergencyEnabled: true,
+      allowedCommandPrefixes: [],
     },
     file,
   );
@@ -405,6 +406,41 @@ test('gateway: /api/security 读取，Shell 关闭时终端 403', async () => {
       body: JSON.stringify({ command: 'echo hi' }),
     });
     assert.equal(execResp.status, 403);
+  } finally {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('gateway: 终端命令白名单拒绝未授权前缀', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-allowlist-'));
+  const file = join(dir, 'security-config.json');
+  writeSecurityConfig(
+    {
+      shellEnabled: true,
+      fileAccess: 'project-only',
+      externalApiEnabled: false,
+      illegalEnabled: true,
+      personalEmergencyEnabled: true,
+      propertyEmergencyEnabled: true,
+      allowedCommandPrefixes: ['git', 'npm'],
+    },
+    file,
+  );
+  const app = createGatewayApp({ deps: testDeps(), securityConfigPath: file });
+  const server = createServer(app);
+  try {
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}`;
+    const execResp = await fetch(`${base}/api/terminal/exec`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'echo hi' }),
+    });
+    assert.equal(execResp.status, 403);
+    const body = (await execResp.json()) as { error?: string };
+    assert.ok(body.error?.includes('白名单'));
   } finally {
     server.close();
     rmSync(dir, { recursive: true, force: true });

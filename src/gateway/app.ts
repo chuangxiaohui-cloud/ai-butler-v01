@@ -237,6 +237,9 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
         typeof body.propertyEmergencyEnabled === 'boolean'
           ? body.propertyEmergencyEnabled
           : current.propertyEmergencyEnabled,
+      allowedCommandPrefixes: Array.isArray(body.allowedCommandPrefixes)
+        ? body.allowedCommandPrefixes.filter((item): item is string => typeof item === 'string')
+        : current.allowedCommandPrefixes,
     };
     writeSecurityConfig(next, opts.securityConfigPath);
     res.json({ ok: true, security: next });
@@ -252,6 +255,18 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     const security = readSecurityConfig(opts.securityConfigPath);
     if (!security.shellEnabled) {
       res.status(403).json({ error: 'Shell 权限未开启，请先到安全中心开启' });
+      return;
+    }
+    const allowlist = (security.allowedCommandPrefixes ?? [])
+      .map((prefix) => prefix.trim().toLowerCase())
+      .filter(Boolean);
+    if (
+      allowlist.length > 0 &&
+      !allowlist.some((prefix) => command.toLowerCase().startsWith(prefix))
+    ) {
+      res.status(403).json({
+        error: `命令不在白名单：允许前缀 ${allowlist.join(' / ')}`,
+      });
       return;
     }
     const result = await runCommand(command, { timeoutMs: 15000, cwd: process.cwd() });
