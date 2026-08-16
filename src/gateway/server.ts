@@ -43,6 +43,7 @@ try {
 
 const app = createGatewayApp({
   defaultUserId: 'gateway-user',
+  routeCaseStore,
   deps: {
     tavily: { enabled: true },
     experienceManager,

@@ -5,6 +5,8 @@
 
 import express from 'express';
 
+import { auditRouteCases } from '../agent/route-case-audit.js';
+import { RouteCaseStore, type RouteCaseRecord, type RouteFeedback } from '../agent/route-case-store.js';
 import { buildModelCatalog } from '../config/model-catalog.js';
 import { parseModelId } from '../search/model-id.js';
 import { pipeline, type PipelineDeps } from '../search/pipeline.js';
@@ -14,6 +16,7 @@ import { dataUrlToRawFile, type AttachmentPayload } from './attachments.js';
 export interface GatewayOptions {
   deps?: PipelineDeps;
   defaultUserId?: string;
+  routeCaseStore?: RouteCaseStore;
 }
 
 interface AskBody {
@@ -27,6 +30,7 @@ interface AskBody {
 
 export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
   const app = express();
+  const routeCaseStore = opts.routeCaseStore ?? new RouteCaseStore();
   app.use(express.json({ limit: '25mb' }));
 
   app.get('/api/health', (_req, res) => {
@@ -35,6 +39,88 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
 
   app.get('/api/model-providers', (_req, res) => {
     res.json(buildModelCatalog());
+  });
+
+  app.get('/api/routing/cases', (_req, res) => {
+    const records = routeCaseStore.list();
+    res.json({
+      total: records.length,
+      audit: auditRouteCases(records),
+      records,
+    });
+  });
+
+  app.post('/api/routing/batch-mark', (req, res) => {
+    const body = (req.body ?? {}) as {
+      updates?: Array<{
+        id?: unknown;
+        feedback?: unknown;
+        correctedRoute?: unknown;
+      }>;
+    };
+    const updates = Array.isArray(body.updates) ? body.updates : [];
+    const updated: string[] = [];
+    const failed: string[] = [];
+    for (const update of updates) {
+      if (typeof update?.id !== 'string') continue;
+      const feedback = update.feedback;
+      if (feedback !== 'accept' && feedback !== 'reject' && feedback !== 'correct') {
+        failed.push(update.id);
+        continue;
+      }
+      const corrected =
+        typeof update.correctedRoute === 'object' && update.correctedRoute !== null
+          ? {
+              primaryLens:
+                typeof (update.correctedRoute as { primaryLens?: unknown }).primaryLens === 'string'
+                  ? ((update.correctedRoute as { primaryLens?: string }).primaryLens as string)
+                  : undefined,
+              intent:
+                typeof (update.correctedRoute as { intent?: unknown }).intent === 'string'
+                  ? ((update.correctedRoute as { intent?: string }).intent as string)
+                  : undefined,
+            }
+          : undefined;
+      if (routeCaseStore.recordFeedback(update.id, feedback as RouteFeedback, corrected)) {
+        updated.push(update.id);
+      } else {
+        failed.push(update.id);
+      }
+    }
+    res.json({ updated, failed });
+  });
+
+  app.post('/api/routing/export', (req, res) => {
+    const body = (req.body ?? {}) as { format?: unknown };
+    const format = body.format === 'json' ? 'json' : 'csv';
+    const records = routeCaseStore.list();
+    if (format === 'json') {
+      res
+        .type('application/json')
+        .setHeader('Content-Disposition', 'attachment; filename="route-cases.json"')
+        .send(JSON.stringify(records, null, 2));
+      return;
+    }
+    const header = 'id,timestamp,query,decision,primaryLens,intent,confidence';
+    const rows = records.map((r: RouteCaseRecord) =>
+      [
+        r.id,
+        r.timestamp,
+        csvCell(r.query),
+        r.result.decision.type,
+        r.result.decision.type === 'direct' || r.result.decision.type === 'confirm'
+          ? r.result.decision.selected.primaryLens
+          : '',
+        r.result.decision.type === 'direct' || r.result.decision.type === 'confirm'
+          ? r.result.decision.selected.intent
+          : '',
+        r.result.confidence,
+      ].join(','),
+    );
+    res
+      .type('text/csv')
+      .setHeader('Content-Disposition', 'attachment; filename="route-cases.csv"')
+      .send([header, ...rows].join('\n'));
   });
 
   app.post('/api/ask', async (req, res) => {
@@ -88,4 +174,8 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
   });
 
   return app;
+}
+
+function csvCell(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`;
 }

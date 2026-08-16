@@ -1,8 +1,13 @@
 import { strict as assert } from 'node:assert';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 
+import { RouteCaseStore } from '../agent/route-case-store.js';
+import { routeV2 } from '../agent/router-v2.js';
 import type { ChatMessage, LLMClient } from '../search/llm.js';
 import type {
   SearchProvider,
@@ -200,5 +205,45 @@ test('gateway: /api/ask 接收图片附件并走 VLM Skill', async () => {
     assert.ok(body.answer?.includes('对话界面'), JSON.stringify(body));
   } finally {
     server.close();
+  }
+});
+
+test('gateway: 路由校准 cases / batch-mark / export', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-routing-'));
+  const store = new RouteCaseStore(join(dir, 'route-cases.jsonl'));
+  const id = store.record(routeV2('帮我写一份 PRD'), { source: 'seed' });
+  const app = createGatewayApp({ deps: testDeps(), routeCaseStore: store });
+  const server = createServer(app);
+  try {
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}`;
+
+    const listResp = await fetch(`${base}/api/routing/cases`);
+    const list = (await listResp.json()) as { total?: number; records?: Array<{ id: string }> };
+    assert.equal(list.total, 1);
+    assert.equal(list.records?.[0]?.id, id);
+
+    const markResp = await fetch(`${base}/api/routing/batch-mark`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        updates: [{ id, feedback: 'accept' }],
+      }),
+    });
+    const mark = (await markResp.json()) as { updated?: string[] };
+    assert.deepEqual(mark.updated, [id]);
+
+    const exportResp = await fetch(`${base}/api/routing/export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ format: 'csv' }),
+    });
+    const csv = await exportResp.text();
+    assert.ok(csv.includes('id,timestamp,query'));
+    assert.ok(csv.includes('帮我写一份 PRD'));
+  } finally {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
   }
 });

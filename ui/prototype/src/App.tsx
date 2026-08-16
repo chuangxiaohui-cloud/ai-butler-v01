@@ -1032,10 +1032,72 @@ function ToggleRow({
 }
 
 function RoutingSettings() {
-  const rows = [
-    { input: '帮我订下周的会议室', current: 'web_search', suggest: 'life', time: '2026-08-16 10:12' },
-    { input: '评估当前架构风险', current: 'qa', suggest: 'engineering/review_critique', time: '2026-08-16 09:40' },
-  ];
+  const [records, setRecords] = useState<
+    Array<{
+      id: string;
+      timestamp: number;
+      query: string;
+      primaryLens?: string;
+      intent?: string;
+      decision: string;
+    }>
+  >([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    fetch(`${GATEWAY_URL}/api/routing/cases`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((data: { records?: Array<Record<string, unknown>> } | null) => {
+        const list = data?.records ?? [];
+        setRecords(
+          list.map((item) => {
+            const result = item.result as {
+              decision?: { type?: string; selected?: { primaryLens?: string; intent?: string } };
+            };
+            const decision = result?.decision;
+            return {
+              id: String(item.id ?? ''),
+              timestamp: Number(item.timestamp ?? 0),
+              query: String(item.query ?? ''),
+              decision: decision?.type ?? '',
+              primaryLens: decision?.selected?.primaryLens,
+              intent: decision?.selected?.intent,
+            };
+          }),
+        );
+      })
+      .catch(() => setRecords([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, []);
+
+  const accept = async (id: string) => {
+    await fetch(`${GATEWAY_URL}/api/routing/batch-mark`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updates: [{ id, feedback: 'accept' }] }),
+    });
+    load();
+  };
+
+  const exportCsv = async () => {
+    const resp = await fetch(`${GATEWAY_URL}/api/routing/export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ format: 'csv' }),
+    });
+    if (!resp.ok) return;
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'route-cases.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="settings-form">
       <div className="table-wrap">
@@ -1050,15 +1112,24 @@ function RoutingSettings() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.input}>
-                <td>{row.input}</td>
-                <td>{row.current}</td>
-                <td>{row.suggest}</td>
-                <td>{row.time}</td>
+            {loading && (
+              <tr>
+                <td colSpan={5}>加载中…</td>
+              </tr>
+            )}
+            {!loading && records.length === 0 && (
+              <tr>
+                <td colSpan={5}>暂无路由 case</td>
+              </tr>
+            )}
+            {records.map((row) => (
+              <tr key={row.id}>
+                <td>{row.query}</td>
+                <td>{row.primaryLens ?? '-'} / {row.intent ?? '-'}</td>
+                <td>{row.decision}</td>
+                <td>{new Date(row.timestamp).toLocaleString()}</td>
                 <td>
-                  <button>标记</button>
-                  <button>导出</button>
+                  <button onClick={() => accept(row.id)}>标记正确</button>
                 </td>
               </tr>
             ))}
@@ -1066,8 +1137,8 @@ function RoutingSettings() {
         </table>
       </div>
       <div className="form-actions">
-        <button className="primary">一键标记待分析队列</button>
-        <button>导出 CSV/JSON</button>
+        <button className="primary" onClick={load}>刷新</button>
+        <button onClick={exportCsv}>导出 CSV</button>
       </div>
     </div>
   );

@@ -2426,6 +2426,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 321/321 + 集成 17/17 全绿（新增 mode-mapper 2 条、gateway mode 断言）；doc-lint 通过；详见 `docs/plans/2026-08-16-ui-v2-shell.md`。
 - affects: §6.3,§13 | bench:na(new-param) 理由：UI 外壳与路由元数据扩展，无 §5/§6 参数或行为变更
 
+### 2026-08-16（路由校准设置面板接真实数据 E110）
+
+- **变更**：gateway 新增 `GET /api/routing/cases`、`POST /api/routing/batch-mark`、`POST /api/routing/export`（CSV/JSON），读取/标记/导出 `data/route-cases.jsonl`；`GatewayOptions` 支持注入 `RouteCaseStore`；UI 路由校准表格改为拉取真实 case，支持标记正确、刷新、导出 CSV。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 322/322 + 集成 17/17 全绿（新增 cases/batch-mark/export 集成测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-routing-calibration-api.md`。
+- affects: §13 | bench:na(new-param) 理由：路由校准读写 API 与 UI 接线，无 §5/§6 参数或行为变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
