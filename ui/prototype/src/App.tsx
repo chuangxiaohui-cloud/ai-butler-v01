@@ -1282,31 +1282,75 @@ function SkillsSettings() {
 }
 
 function MemorySettings() {
-  const items = [
-    { text: '用户偏好 A 区会议室', type: '语义记忆 · L2', time: '2 天前' },
-    { text: '上次讨论的选型方案', type: '情景记忆 · L1', time: '1 天前' },
-    { text: '原始对话记录（高级）', type: '原始记录 · L0', time: '3 天前' },
-  ];
+  const [items, setItems] = useState<
+    Array<{
+      id: string;
+      type: 'fact' | 'session' | 'experience';
+      layer: 'L1' | 'L2';
+      content: string;
+      createdAt: number;
+      lastAccessedAt: number;
+      meta: string;
+    }>
+  >([]);
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+
+  const load = () => {
+    fetch(`${GATEWAY_URL}/api/memory`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((data: { items?: typeof items } | null) => setItems(data?.items ?? []))
+      .catch(() => setItems([]));
+  };
+
+  useEffect(load, []);
+
+  const forget = async (id: string, type: string) => {
+    await fetch(`${GATEWAY_URL}/api/memory/forget`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, type }),
+    });
+    load();
+  };
+
+  const filtered = items.filter((item) => {
+    if (filter !== 'all' && item.layer !== filter) return false;
+    if (search && !`${item.content} ${item.meta}`.toLowerCase().includes(search.toLowerCase())) {
+      return false;
+    }
+    return true;
+  });
+
+  const labelOf = (item: { type: string; layer: string }): string => {
+    if (item.type === 'fact') return `语义记忆 · ${item.layer}`;
+    if (item.type === 'session') return `情景记忆 · ${item.layer}`;
+    return `技能经验 · ${item.layer}`;
+  };
+
   return (
     <div className="settings-form">
       <div className="memory-filter">
-        <button className="active">全部</button>
-        <button>L1 情景</button>
-        <button>L2 语义</button>
-        <button>原始记录</button>
-        <button className="ghost">
+        <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>全部</button>
+        <button className={filter === 'L1' ? 'active' : ''} onClick={() => setFilter('L1')}>L1 情景</button>
+        <button className={filter === 'L2' ? 'active' : ''} onClick={() => setFilter('L2')}>L2 语义</button>
+        <div className="memory-search">
           <Search size={13} />
-          搜索记忆
-        </button>
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="搜索记忆"
+          />
+        </div>
       </div>
-      {items.map((item) => (
-        <div className="memory-row" key={item.text}>
+      {filtered.length === 0 && <p className="settings-note">暂无记忆条目</p>}
+      {filtered.map((item) => (
+        <div className="memory-row" key={item.id}>
           <div>
-            <strong>{item.text}</strong>
-            <span>{item.type} · {item.time}</span>
+            <strong>{item.content}</strong>
+            <span>{labelOf(item)} · {new Date(item.lastAccessedAt).toLocaleString()}</span>
           </div>
-          <button>置顶</button>
-          <button>遗忘</button>
+          <button onClick={() => forget(item.id, item.type)}>遗忘</button>
         </div>
       ))}
     </div>

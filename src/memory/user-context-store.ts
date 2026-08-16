@@ -114,6 +114,40 @@ export class UserContextStore {
     };
   }
 
+  listFacts(userId: string): Array<{
+    id: number;
+    content: string;
+    source: string;
+    confidence: number;
+    createdAt: number;
+    lastAccessedAt: number;
+  }> {
+    const rows = this.db
+      .prepare(
+        'SELECT * FROM user_facts WHERE user_id = ? ORDER BY confidence DESC',
+      )
+      .all(userId) as unknown as FactRow[];
+    return rows.map((row) => ({
+      id: row.id,
+      content: row.content,
+      source: row.source,
+      confidence: row.confidence,
+      createdAt: row.created_at,
+      lastAccessedAt: row.last_accessed_at,
+    }));
+  }
+
+  deleteFact(userId: string, id: number): boolean {
+    const result = this.db
+      .prepare('DELETE FROM user_facts WHERE user_id = ? AND id = ?')
+      .run(userId, id);
+    return result.changes > 0;
+  }
+
+  listSessions(userId: string, limit = 50): SessionSummary[] {
+    return this.loadSessions(userId, limit);
+  }
+
   saveProfile(userId: string, profile: UserProfile, now = Date.now()): void {
     this.db
       .prepare(

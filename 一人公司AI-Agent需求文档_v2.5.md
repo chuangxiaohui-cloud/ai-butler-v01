@@ -1581,6 +1581,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/search/authority.ts` | 来源权威注入（域名权威度表 + 原厂域名映射） |
 | `src/memory/store.ts` | MemoryStore 接口 + SqliteDirectStore/MemoryCoreStore |
 | `src/memory/experience.ts` | ExperienceManager（embedding 检索 + 置信度演化） |
+| `src/memory/user-context-store.ts` | 用户画像/长期事实/会话摘要 SQLite 存储 |
 | `scripts/bench-provider-router.ts` | Provider Registry / 模型分档本地 bench |
 | `scripts/export-model-catalog.ts` | 导出 Provider Registry 模型目录给 UI |
 | `src/config/model-catalog.ts` | 共享模型目录（UI / gateway 共用） |
@@ -2453,6 +2454,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：新增 `src/usage/usage-store.ts` 与 `src/config/usage-budget.ts`；OpenAI 兼容客户端解析响应 `usage` 自动记账到 `data/usage.jsonl`；gateway 新增 `GET /api/usage/stats`、`POST /api/usage/budget`；UI Token 用量页展示真实今日/近7天/本月 Tokens、模型占比与预算设置。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 328/328 + 集成 17/17 全绿（新增 usage-store/usage-budget 与 usage stats 测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-usage-metering-api.md`。
 - affects: §13 | bench:na(new-param) 理由：Token 计量读写 API 与 UI 接线，无 §5/§6 参数或行为变更
+
+### 2026-08-16（记忆管理设置接真实数据 E114）
+
+- **变更**：`UserContextStore` 与 `ExperienceManager` 增加公开读取/删除方法；gateway 新增 `GET /api/memory`、`POST /api/memory/forget`，注入现有存储实例；UI 记忆管理页展示 L1/L2 合并视图，支持筛选、搜索、遗忘。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 329/329 + 集成 17/17 全绿（新增 memory 读取与遗忘集成测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-memory-settings-api.md`。
+- affects: §13 | bench:na(new-param) 理由：记忆读写 API 与 UI 接线，无 §5/§6 参数或行为变更
 
 ### v2.5（2026-08-12）
 

@@ -15,6 +15,8 @@ import { pipeline, type PipelineDeps } from '../search/pipeline.js';
 import { listSkillMetadata } from '../skills/registry.js';
 import { writeDisabledSkills } from '../config/skills-config.js';
 import { readUsageBudget, writeUsageBudget } from '../config/usage-budget.js';
+import { ExperienceManager } from '../memory/experience.js';
+import { UserContextStore } from '../memory/user-context-store.js';
 import { aggregateUsage, readUsage } from '../usage/usage-store.js';
 import type { RawFileLike } from '../skills/deps.js';
 import { dataUrlToRawFile, type AttachmentPayload } from './attachments.js';
@@ -23,6 +25,8 @@ export interface GatewayOptions {
   deps?: PipelineDeps;
   defaultUserId?: string;
   routeCaseStore?: RouteCaseStore;
+  userContextStore?: UserContextStore;
+  experienceManager?: ExperienceManager;
 }
 
 interface AskBody {
@@ -126,6 +130,78 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       stats: aggregateUsage(readUsage()),
       budget: readUsageBudget(),
     });
+  });
+
+  app.get('/api/memory', (_req, res) => {
+    const items: Array<{
+      id: string;
+      type: 'fact' | 'session' | 'experience';
+      layer: 'L1' | 'L2';
+      content: string;
+      createdAt: number;
+      lastAccessedAt: number;
+      meta: string;
+    }> = [];
+    const userId = opts.defaultUserId ?? 'default';
+    if (opts.userContextStore) {
+      for (const fact of opts.userContextStore.listFacts(userId)) {
+        items.push({
+          id: `fact:${fact.id}`,
+          type: 'fact',
+          layer: 'L2',
+          content: fact.content,
+          createdAt: fact.createdAt,
+          lastAccessedAt: fact.lastAccessedAt,
+          meta: fact.source,
+        });
+      }
+      for (const session of opts.userContextStore.listSessions(userId)) {
+        items.push({
+          id: `session:${session.sessionId}`,
+          type: 'session',
+          layer: 'L1',
+          content: session.summary,
+          createdAt: session.createdAt,
+          lastAccessedAt: session.createdAt,
+          meta: session.topics.join('/'),
+        });
+      }
+    }
+    if (opts.experienceManager) {
+      for (const entry of opts.experienceManager.list()) {
+        items.push({
+          id: `experience:${entry.id}`,
+          type: 'experience',
+          layer: 'L1',
+          content: entry.content,
+          createdAt: entry.createdAt,
+          lastAccessedAt: entry.lastUsedAt ?? entry.createdAt,
+          meta: entry.skillName,
+        });
+      }
+    }
+    res.json({ total: items.length, items });
+  });
+
+  app.post('/api/memory/forget', (req, res) => {
+    const body = (req.body ?? {}) as { id?: unknown; type?: unknown };
+    const id = typeof body.id === 'string' ? body.id : '';
+    const type = body.type;
+    if (type === 'fact' && opts.userContextStore) {
+      const factId = Number(id.replace(/^fact:/, ''));
+      const ok = Number.isFinite(factId) && opts.userContextStore.deleteFact(
+        opts.defaultUserId ?? 'default',
+        factId,
+      );
+      res.json({ ok, error: ok ? undefined : '未找到记忆' });
+      return;
+    }
+    if (type === 'experience' && opts.experienceManager) {
+      const ok = opts.experienceManager.remove(id.replace(/^experience:/, ''));
+      res.json({ ok, error: ok ? undefined : '未找到记忆' });
+      return;
+    }
+    res.json({ ok: false, error: '不支持的记忆类型' });
   });
 
   app.post('/api/usage/budget', (req, res) => {

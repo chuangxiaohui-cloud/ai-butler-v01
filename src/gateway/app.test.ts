@@ -8,6 +8,8 @@ import { test } from 'node:test';
 
 import { RouteCaseStore } from '../agent/route-case-store.js';
 import { routeV2 } from '../agent/router-v2.js';
+import { ExperienceManager } from '../memory/experience.js';
+import { UserContextStore } from '../memory/user-context-store.js';
 import type { ChatMessage, LLMClient } from '../search/llm.js';
 import type {
   SearchProvider,
@@ -316,5 +318,58 @@ test('gateway: /api/usage/stats 返回聚合与预算', async () => {
     assert.equal(typeof body.budget?.degradeAtPercent, 'number');
   } finally {
     server.close();
+  }
+});
+
+test('gateway: /api/memory 读取与遗忘', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-memory-'));
+  const userContext = new UserContextStore(join(dir, 'user-context.db'));
+  const experience = new ExperienceManager(join(dir, 'experience.db'));
+  const now = Date.now();
+  userContext.addFact('test-user', '用户偏好 A 区会议室', 'user_explicit', now);
+  userContext.addSessionSummary('test-user', 's1', '讨论选型方案', ['选型'], now);
+  experience.add({
+    id: 'e1',
+    skillName: 'chip-analysis',
+    content: 'STM32F103C8T6 主频 72MHz',
+    keywords: ['STM32'],
+    createdAt: now,
+    lastUsedAt: now,
+  });
+  const app = createGatewayApp({
+    deps: testDeps(),
+    defaultUserId: 'test-user',
+    userContextStore: userContext,
+    experienceManager: experience,
+  });
+  const server = createServer(app);
+  try {
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}`;
+    const listResp = await fetch(`${base}/api/memory`);
+    const list = (await listResp.json()) as { total?: number; items?: Array<{ id: string; type: string }> };
+    assert.ok((list.total ?? 0) >= 3);
+    const factId = list.items?.find((item) => item.type === 'fact')?.id ?? '';
+    const expId = list.items?.find((item) => item.type === 'experience')?.id ?? '';
+
+    const forgetResp = await fetch(`${base}/api/memory/forget`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: factId, type: 'fact' }),
+    });
+    assert.equal(((await forgetResp.json()) as { ok?: boolean }).ok, true);
+
+    const forgetExpResp = await fetch(`${base}/api/memory/forget`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: expId, type: 'experience' }),
+    });
+    assert.equal(((await forgetExpResp.json()) as { ok?: boolean }).ok, true);
+  } finally {
+    server.close();
+    userContext.close();
+    experience.close();
+    rmSync(dir, { recursive: true, force: true });
   }
 });

@@ -73,6 +73,15 @@ export class ExperienceManager {
       .run(entry.id, entry.skillName, entry.content, entry.keywords.join(','), entry.createdAt, entry.lastUsedAt);
   }
 
+  list(now = Date.now()): ExperienceEntry[] {
+    return this.all().map((entry) => this.decayEntry(entry, now));
+  }
+
+  remove(id: string): boolean {
+    const result = this.db.prepare('DELETE FROM experiences WHERE id = ?').run(id);
+    return result.changes > 0;
+  }
+
   recordUse(id: string, now = Date.now()): void {
     const row = this.get(id);
     if (!row) return;
