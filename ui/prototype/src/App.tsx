@@ -214,6 +214,7 @@ function App() {
   const [terminalInput, setTerminalInput] = useState('');
   const [files, setFiles] = useState<Array<{ path: string; size: number; kind: string }>>([]);
   const [progressStage, setProgressStage] = useState('');
+  const [generatingSkills, setGeneratingSkills] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}model-providers.json`)
@@ -258,8 +259,31 @@ function App() {
         // 忽略非法进度事件
       }
     });
+    source.addEventListener('artifact', (event) => {
+      try {
+        const data = JSON.parse((event as MessageEvent).data) as {
+          skill?: string;
+          state?: string;
+        };
+        const skill = data.skill;
+        const state = data.state;
+        if (!skill) return;
+        setGeneratingSkills((prev) => {
+          const next = { ...prev };
+          if (state === 'generating') {
+            next[skill] = '生成中';
+          } else {
+            delete next[skill];
+          }
+          return next;
+        });
+      } catch {
+        // 忽略非法 artifact 事件
+      }
+    });
     source.addEventListener('files_changed', () => {
       setProgressStage('');
+      setGeneratingSkills({});
       loadFiles(true);
     });
     return () => source.close();
@@ -534,6 +558,15 @@ function App() {
           <div className="right-body">
             {rightTab === 'files' && (
               <div className="file-list">
+                {Object.entries(generatingSkills).map(([skill, label]) => (
+                  <div className="file-row generating" key={skill}>
+                    <FileText size={15} />
+                    <div>
+                      <strong>{skill}</strong>
+                      <span>{label}</span>
+                    </div>
+                  </div>
+                ))}
                 {files.length === 0 && <p className="settings-note">暂无产物文件</p>}
                 {files.map((file) => (
                   <div className="file-row" key={file.path}>

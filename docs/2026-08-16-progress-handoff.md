@@ -26,7 +26,7 @@
 20. **终端命令白名单细化（E117）**：`SecurityConfig` 新增 `allowedCommandPrefixes`；gateway 执行前校验，未授权前缀 403；UI 安全中心增加命令前缀输入；单测 335/335 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-terminal-allowlist.md`。
 21. **Artifact 事件流（E118）**：新增 `src/gateway/artifact-bus.ts` 事件总线；gateway 新增 `GET /api/events` SSE，`/api/ask` 完成后广播 `files_changed`；UI 右侧栏 EventSource 自动刷新文件列表；单测 337/337 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-artifact-event-stream.md`。
 22. **Pipeline 进度事件 + HTML 预览自动弹出（E119）**：`PipelineOptions.onProgress` 六阶段回调；gateway 发布 SSE `progress`；`files.ts` 识别 HTML 产物；UI 顶部显示进度，HTML 产物出现时自动展开浏览器 Tab；单测 338/338 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-pipeline-progress-html-preview.md`。
-23. **Skill 级“生成中”状态（E120）**：`PipelineOptions.onArtifact`（generating/done/failed + path）；gateway 发布 SSE `artifact`；UI 文件列表顶部实时显示/移除生成中 Skill 行；单测 339/339 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-skill-artifact-status.md`。
+23. **Skill 级“生成中”状态（E120）**：`PipelineOptions.onArtifact`（generating/done/failed + path）；gateway 发布 SSE `artifact`；UI 文件列表顶部实时显示/移除生成中 Skill 行；单测 339/339 + 集成 17/17 全绿；顺手修复 `push:hosts` 漏带 `ui/` 的清单；详见 `docs/plans/2026-08-16-skill-artifact-status.md`。
 
 ## 明天继续（按优先级）
 
