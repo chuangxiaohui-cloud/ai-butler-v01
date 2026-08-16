@@ -781,6 +781,9 @@ answer(query) → { answer, confidence, evidence[], gate_triggered }
 
 > §4.2 定义四字段的用户可见行为；§6 定义四字段如何算出。此锚点串在 §4.2 与 §6 合计恰好出现 1 次。
 
+> UI 扩展元数据：`mode`（engineering / knowledge / life）与可选 `submode`
+> （product_planning / review_critique）由路由层附加到响应，不影响四字段契约（E109）。
+
 ### 6.4 P0 评分修复前置
 
 > 原附录A 步0 → §6.4。
@@ -1569,6 +1572,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/search/llm-registry.ts` | Provider Registry + fallback 链（[P-107]） |
 | `src/search/model-router.ts` | 模型分档路由（[P-105]/[P-106]） |
 | `src/search/model-id.ts` | UI 模型 id（`<provider>:<role>`）解析 |
+| `src/agent/mode-mapper.ts` | 五主镜片 → UI 三模式/子模式映射 |
 | `src/search/providers/bocha.ts` | Bocha 引擎适配 |
 | `src/search/providers/anysearch.ts` | AnySearch 引擎适配 |
 | `src/search/providers/tavily.ts` | Tavily 引擎适配（含 [P-35] 超时保护） |
@@ -2415,6 +2419,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：聊天输入框右下角新增上下文用量环（按当前会话消息长度估算，6% 起封顶 100%）；Ask/Craft/Plan 从常驻三按钮改为可收缩单按钮 + 弹出层，选择后自动收起。
 - **验证**：UI `npm run build` 通过；Playwright 检查 1280px 无横向溢出、模式按钮数为 1、用量图位于工具行右下角，弹出层含 3 项且选择后收起；详见 `docs/plans/2026-08-16-composer-refine.md`。
 - affects: §4.1 | bench:na(new-param) 理由：UI 布局与交互调整，无 §5/§6 参数或行为变更
+
+### 2026-08-16（UI v2 外壳 + mode/submode 契约 E109）
+
+- **变更**：按《AI-Agent-v2.5_3》重构 UI 外壳：L0/L1 侧边栏、右侧产物栏（文件/浏览器/终端）、终端抽屉、设置双栏（服务商/安全/路由校准/技能/记忆/Token 用量）、对话区顶部胶囊模式标签 + 子模式徽标；新增 `src/agent/mode-mapper.ts`，`/api/ask` 响应附加 `mode` / `submode`，四字段核心契约不变。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 321/321 + 集成 17/17 全绿（新增 mode-mapper 2 条、gateway mode 断言）；doc-lint 通过；详见 `docs/plans/2026-08-16-ui-v2-shell.md`。
+- affects: §6.3,§13 | bench:na(new-param) 理由：UI 外壳与路由元数据扩展，无 §5/§6 参数或行为变更
 
 ### v2.5（2026-08-12）
 

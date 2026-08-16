@@ -30,6 +30,7 @@ import {
 } from './emergency-reply.js';
 import { weekendMarketReply } from './weekend-market.js';
 import { routeV2WithLLM } from '../agent/router-v2.js';
+import { mapRouteToUiMode, type UiMode } from '../agent/mode-mapper.js';
 import { preprocessUserMessage } from '../agent/multimodal-preprocessor.js';
 import { buildMemoryInjection, type UserContext } from '../memory/user-context.js';
 import type { UserContextStore } from '../memory/user-context-store.js';
@@ -60,6 +61,8 @@ export interface AnswerResult {
   evidence: Evidence[];
   gate_triggered: 'none' | 'emergency' | 'low_confidence' | 'safety';
   elapsed_ms: number;
+  mode?: UiMode;
+  submode?: string;
 }
 
 export interface PipelineDeps {
@@ -212,6 +215,7 @@ export async function pipeline(
       elapsed_ms: Date.now() - start,
     };
   }
+  const uiRoute = mapRouteToUiMode(routeSelected.primaryLens, routeSelected.intent);
   if (routeSelected.intent === 'emergency') {
     const answer = buildEmergencyReply(query);
     recordTrajectory({
@@ -230,6 +234,8 @@ export async function pipeline(
       evidence: [],
       gate_triggered: 'emergency',
       elapsed_ms: Date.now() - start,
+      mode: uiRoute.mode,
+      submode: uiRoute.submode,
     };
   }
   if (routeSelected.intent === 'safety_refusal') {
@@ -241,6 +247,8 @@ export async function pipeline(
       evidence: [],
       gate_triggered: 'safety',
       elapsed_ms: Date.now() - start,
+      mode: uiRoute.mode,
+      submode: uiRoute.submode,
     };
   }
   if (routeSelected.intent === 'property_emergency') {
@@ -252,6 +260,8 @@ export async function pipeline(
       evidence: [],
       gate_triggered: 'emergency',
       elapsed_ms: Date.now() - start,
+      mode: uiRoute.mode,
+      submode: uiRoute.submode,
     };
   }
   if (routeSelected.intent === 'rewrite') {
@@ -262,6 +272,8 @@ export async function pipeline(
       evidence: [],
       gate_triggered: 'none',
       elapsed_ms: Date.now() - start,
+      mode: uiRoute.mode,
+      submode: uiRoute.submode,
     };
   }
   if (routeSelected.intent === 'pack_project') {
@@ -272,6 +284,8 @@ export async function pipeline(
       evidence: [],
       gate_triggered: 'none',
       elapsed_ms: Date.now() - start,
+      mode: uiRoute.mode,
+      submode: uiRoute.submode,
     };
   }
   if (!routeSelected.searchNeed && routeSelected.intent !== 'web_search') {
@@ -335,6 +349,8 @@ export async function pipeline(
           evidence: [],
           gate_triggered: 'none',
           elapsed_ms: Date.now() - start,
+          mode: uiRoute.mode,
+          submode: uiRoute.submode,
         };
       } catch {
         // Skill 执行失败，落到诚实降级
@@ -350,6 +366,8 @@ export async function pipeline(
       evidence: [],
       gate_triggered: 'none',
       elapsed_ms: Date.now() - start,
+      mode: uiRoute.mode,
+      submode: uiRoute.submode,
     };
   }
 
@@ -640,5 +658,7 @@ export async function pipeline(
     evidence: final.evidence,
     gate_triggered: final.gateTriggered as AnswerResult['gate_triggered'],
     elapsed_ms: final.elapsedMs,
+    mode: uiRoute.mode,
+    submode: uiRoute.submode,
   };
 }

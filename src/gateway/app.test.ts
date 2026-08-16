@@ -129,12 +129,14 @@ test('gateway: /api/ask 走同一 pipeline 并返回四字段契约', async () =
       answer?: string;
       confidence?: number;
       gate_triggered?: string;
+      mode?: string;
     };
     assert.equal(resp.status, 200);
     assert.equal(body.query, 'STM32F103C8T6 主频是多少');
     assert.ok(body.answer?.includes('测试答案'));
     assert.equal(typeof body.confidence, 'number');
     assert.ok(['none', 'emergency', 'low_confidence', 'safety'].includes(body.gate_triggered ?? ''));
+    assert.equal(body.mode, 'knowledge');
   } finally {
     server.close();
   }

@@ -1,23 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import {
   ArrowUpRight,
-  Bell,
   BookOpen,
   Bot,
-  CheckCircle2,
   ChevronDown,
-  Clock,
+  ChevronLeft,
   Code2,
-  Cpu,
+  Database,
   FileText,
+  FolderKanban,
   FolderOpen,
   Globe,
   HeartPulse,
   Image,
-  PanelBottom,
+  Layers,
+  MessageSquare,
+  PanelRight,
   Paperclip,
   PenLine,
+  Plug,
   Plus,
+  Route,
   Search,
   Send,
   Settings,
@@ -27,12 +31,13 @@ import {
   ThumbsDown,
   ThumbsUp,
   User,
-  Wrench,
   X,
+  Zap,
 } from 'lucide-react';
 
-type TabKey = 'engineering' | 'knowledge' | 'life';
-type Mode = 'ask' | 'craft' | 'plan';
+type UiMode = 'engineering' | 'knowledge' | 'life';
+type RightTab = 'files' | 'browser' | 'terminal';
+type SettingsKey = 'providers' | 'security' | 'routing' | 'skills' | 'memory' | 'usage';
 
 interface Evidence {
   type: 'file' | 'terminal' | 'test' | 'search';
@@ -63,135 +68,124 @@ interface Attachment {
   dataUrl: string;
 }
 
-const TABS: Array<{ key: TabKey; label: string; sub: string; icon: typeof Code2 }> = [
-  { key: 'engineering', label: '工程开发', sub: '架构师 + PM + 老板 · 项目协作', icon: Code2 },
-  { key: 'knowledge', label: '知识咨询', sub: '30年老专家 · 直接回答 + 联网补坑', icon: BookOpen },
-  { key: 'life', label: '生活助手', sub: '贴身女秘书 · 陪伴 + 紧急', icon: HeartPulse },
+const MODES: Array<{ key: UiMode; label: string; icon: LucideIcon }> = [
+  { key: 'engineering', label: '工程开发', icon: Code2 },
+  { key: 'knowledge', label: '知识咨询', icon: BookOpen },
+  { key: 'life', label: '生活助手', icon: HeartPulse },
 ];
 
-const MODES: Array<{ key: Mode; label: string; hint: string }> = [
-  { key: 'ask', label: 'Ask', hint: '只看不改' },
-  { key: 'craft', label: 'Craft', hint: '直接干' },
-  { key: 'plan', label: 'Plan', hint: '先出方案' },
-];
+const SUBMODE_LABELS: Record<string, string> = {
+  product_planning: '产品规划',
+  review_critique: '代码审查',
+};
 
 const FALLBACK_MODELS: ModelOption[] = [
-  { id: 'deepseek-v4-flash', provider: 'DeepSeek', label: 'DeepSeek V4 Flash', note: '快速 · 默认' },
-  { id: 'deepseek-v4-pro', provider: 'DeepSeek', label: 'DeepSeek V4 Pro', note: '旗舰 · 推理' },
-  { id: 'MiniMax-M3', provider: 'MiniMax', label: 'MiniMax M3', note: '新一代' },
-  { id: 'MiniMax-M2.7', provider: 'MiniMax', label: 'MiniMax M2.7', note: '1M 上下文' },
-  { id: 'glm-5.3', provider: '智谱', label: 'GLM-5.3', note: '旗舰' },
-  { id: 'glm-5.2', provider: '智谱', label: 'GLM-5.2', note: '均衡' },
-  { id: 'glm-5-turbo', provider: '智谱', label: 'GLM-5-Turbo', note: '快速' },
+  { id: 'deepseek:heavy', provider: 'DeepSeek', label: 'deepseek-chat', note: '旗舰 · 推理' },
+  { id: 'deepseek:medium', provider: 'DeepSeek', label: 'deepseek-chat', note: '均衡' },
+  { id: 'deepseek:light', provider: 'DeepSeek', label: 'deepseek-chat', note: '快速' },
+  { id: 'zhipu:heavy', provider: '智谱', label: 'glm-5.3', note: '旗舰' },
+  { id: 'zhipu:medium', provider: '智谱', label: 'glm-5.2', note: '均衡' },
+  { id: 'zhipu:light', provider: '智谱', label: 'glm-5-turbo', note: '快速' },
 ];
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL ?? 'http://127.0.0.1:8787';
 
-const INITIAL_MESSAGES: Record<TabKey, Message[]> = {
-  engineering: [
-    {
-      id: 'eng-user-1',
-      role: 'user',
-      text: '帮我在 KiCad 里画 STM32F103C8T6 最小系统原理图',
-    },
-    {
-      id: 'eng-agent-1',
-      role: 'agent',
-      meta: 'PM 拆解 → 架构师审查 → 子 Agent 执行',
-      text:
-        '我把任务拆成 4 步：① 引脚与电源规划；② 晶振/复位/BOOT 电路；③ 最小系统网络表；④ 原理图规则检查。KiCad 子 Agent 正在执行，完成后我会给你审查报告。',
-      evidence: [
-        { type: 'file', label: 'hardware/stm32-min.kicad_sch', detail: 'STM32F103C8T6 最小系统：电源/晶振/复位', hard: true },
-        { type: 'terminal', label: 'erc.log:128', detail: 'ERC 0 Error(s), 0 Warning(s)' },
-        { type: 'test', label: 'netlist-smoke', detail: '电源网络与 ST 官方参考一致' },
-      ],
-    },
-  ],
-  knowledge: [
-    {
-      id: 'know-user-1',
-      role: 'user',
-      text: 'STM32F103C8T6 最大主频是多少？',
-    },
-    {
-      id: 'know-agent-1',
-      role: 'agent',
-      meta: '结论：72MHz · 置信度 88%',
-      text:
-        'STM32F103C8T6 最高主频为 72MHz，内核为 Arm Cortex-M3，64KB Flash、16KB SRAM。官方数据手册是最权威来源，立创/芯查查/半导小芯可作国内快速核对入口。',
-      evidence: [
-        { type: 'search', label: '[hard] ST 官网产品页', detail: 'www.st.com/stm32f103c8.html', hard: true },
-        { type: 'search', label: '[soft] 立创商城资料页', detail: 'item.szlcsc.com/9243.html' },
-        { type: 'search', label: '[soft] 芯查查物料页', detail: 'www.xcc.com/chip/material/search?title=STM32F103C8T6' },
-      ],
-    },
-  ],
-  life: [
-    {
-      id: 'life-user-1',
-      role: 'user',
-      text: '最近压力大，晚上一直睡不好',
-    },
-    {
-      id: 'life-agent-1',
-      role: 'agent',
-      meta: '秘书模式 · 不评判 · 给可执行动作',
-      text:
-        '先别急，我们分三步走：把手机放到另一个房间；今晚固定 23:00 前躺下，只做 10 分钟腹式呼吸；明早记录一次醒来的时间。连续三天没改善，我们再一起看睡眠环境或作息。',
-    },
-  ],
+const INITIAL_MESSAGES: Message[] = [
+  {
+    id: 'welcome-user',
+    role: 'user',
+    text: '帮我在 KiCad 里画 STM32F103C8T6 最小系统原理图',
+  },
+  {
+    id: 'welcome-agent',
+    role: 'agent',
+    meta: '工程开发 · 产品规划 → 架构师执行',
+    text:
+      '我把任务拆成 4 步：① 引脚与电源规划；② 晶振/复位/BOOT 电路；③ 最小系统网络表；④ 原理图规则检查。KiCad 子 Agent 正在执行，完成后我会给你审查报告。',
+    evidence: [
+      { type: 'file', label: 'hardware/stm32-min.kicad_sch', detail: 'STM32F103C8T6 最小系统：电源/晶振/复位', hard: true },
+      { type: 'terminal', label: 'erc.log:128', detail: 'ERC 0 Error(s), 0 Warning(s)' },
+      { type: 'test', label: 'netlist-smoke', detail: '电源网络与 ST 官方参考一致' },
+    ],
+  },
+];
+
+const MOCK_PROJECTS = [
+  {
+    id: 'p1',
+    name: 'STM32 最小系统',
+    mode: 'engineering' as UiMode,
+    updated: '10 分钟前',
+    sessions: ['原理图绘制', '电源审查'],
+  },
+  {
+    id: 'p2',
+    name: 'LED 驱动选型',
+    mode: 'knowledge' as UiMode,
+    updated: '昨天',
+    sessions: ['芯片参数核对'],
+  },
+  {
+    id: 'p3',
+    name: '会议室预约',
+    mode: 'life' as UiMode,
+    updated: '2 天前',
+    sessions: ['下周排期'],
+  },
+];
+
+const MOCK_FILES = [
+  { name: 'hardware/stm32-min.kicad_sch', state: '已完成', kind: '原理图' },
+  { name: 'hardware/stm32-min.net', state: '待检查', kind: '网络表' },
+  { name: 'docs/min-system-checklist.md', state: '草稿', kind: '文档' },
+];
+
+const TERMINAL_LINES = [
+  '$ kicad-cli sch erc hardware/stm32-min.kicad_sch',
+  '[INFO] 检查 12 条电源规则',
+  '[PASS] VDD 3.3V 网络已连接',
+  '[PASS] VDDA 与 VREF 去耦电容已放置',
+  '[PASS] ERC 0 Error(s), 0 Warning(s)',
+];
+
+const SETTINGS_MENU: Array<{ key: SettingsKey; label: string; icon: LucideIcon }> = [
+  { key: 'providers', label: '服务商', icon: Plug },
+  { key: 'security', label: '安全中心', icon: ShieldCheck },
+  { key: 'routing', label: '路由校准', icon: Route },
+  { key: 'skills', label: '技能库', icon: Layers },
+  { key: 'memory', label: '记忆管理', icon: Database },
+  { key: 'usage', label: 'Token 用量', icon: Zap },
+];
+
+const SETTINGS_FORMS: Record<SettingsKey, { title: string; desc: string }> = {
+  providers: { title: '服务商管理', desc: '管理 API Key、模型列表、默认模型与连接状态。' },
+  security: { title: '安全中心', desc: '配置三分支安全策略与 Shell/文件/外部调用权限。' },
+  routing: { title: '路由校准', desc: '持续采集误判样本，标记后导出供路由规则优化。' },
+  skills: { title: '技能库', desc: '管理子 Agent / Skill 的启用状态、参数与输出契约。' },
+  memory: { title: '记忆管理', desc: '查看 L1 情景记忆与 L2 语义记忆，支持搜索、置顶、遗忘。' },
+  usage: { title: 'Token 用量', desc: '今日/本月消耗、费用与预算，超预算自动降级。' },
 };
 
-const SUBAGENTS = [
-  { name: 'kicad-mcp', category: 'EDA', status: '运行中' },
-  { name: 'altium-mcp', category: 'EDA', status: '待命' },
-  { name: 'freecad-mcp', category: '结构', status: '待命' },
-  { name: 'ltspice-mcp', category: '仿真', status: '运行中' },
-  { name: 'stm32cubemx', category: '编码', status: '待命' },
-  { name: 'codex-agent', category: '执行', status: '运行中' },
-];
-
-const PRODUCTS = [
-  { name: 'hardware/stm32-min.kicad_sch', state: '生成中', risk: '低' },
-  { name: 'hardware/stm32-min.net', state: '待检查', risk: '中' },
-  { name: 'docs/min-system-checklist.md', state: '草稿', risk: '低' },
-];
-
-function ReplyDraft(tab: TabKey, mode: Mode, input: string): Message {
+function ReplyDraft(mode: UiMode, input: string): Message {
   const base: { text: string; evidence: Evidence[] } =
-    tab === 'engineering'
+    mode === 'engineering'
       ? {
-          text:
-            mode === 'plan'
-              ? '我先给出方案拆解与验收标准，再让对应子 Agent 执行。'
-              : mode === 'craft'
-                ? '我直接开始执行，并把每一步产物与检查日志放在右侧。'
-                : '我先只做分析与取证，不改动任何项目文件。',
+          text: '我先把任务拆成可验收的小步，再让对应子 Agent 执行；产物和检查日志会放到右侧。',
           evidence: [
             { type: 'file', label: 'hardware/next-task.kicad_sch', detail: input.slice(0, 40) },
             { type: 'terminal', label: 'task-run.log:1', detail: '子 Agent 任务队列已建立' },
           ],
         }
-      : tab === 'knowledge'
+      : mode === 'knowledge'
         ? {
-            text:
-              mode === 'plan'
-                ? '我会先拆出需要查证的子问题，再逐条给出证据链。'
-                : mode === 'craft'
-                  ? '我直接生成结论和可复制的资料清单，证据都带来源。'
-                  : '我先把问题范围界定清楚，再回答，不急着给结论。',
+            text: '我先拆出需要查证的子问题，再逐条给出带来源的证据链，不急着给结论。',
             evidence: [
               { type: 'search', label: '[hard] 官方资料', detail: '厂商官网/数据手册', hard: true },
               { type: 'search', label: '[soft] 国内资料站', detail: '立创 / 芯查查 / 半导小芯' },
             ],
           }
         : {
-            text:
-              mode === 'plan'
-                ? '我会先陪你把情况理清楚，再给一个可执行的小计划。'
-                : mode === 'craft'
-                  ? '我直接给你现在就能做的一小步。'
-                  : '我先听你说完，不做判断，只陪你一起看。',
+            text: '我先陪你把情况理清楚，再给一个现在就能执行的小步骤。',
             evidence: [],
           };
   return {
@@ -199,20 +193,31 @@ function ReplyDraft(tab: TabKey, mode: Mode, input: string): Message {
     role: 'agent',
     text: base.text,
     evidence: base.evidence,
-    meta: `${TABS.find((t) => t.key === tab)?.label} · ${MODES.find((m) => m.key === mode)?.label}`,
+    meta: `${MODES.find((m) => m.key === mode)?.label} · 本地兜底`,
   };
 }
 
 function App() {
-  const [tab, setTab] = useState<TabKey>('engineering');
-  const [mode, setMode] = useState<Mode>('ask');
-  const [messages, setMessages] = useState<Record<TabKey, Message[]>>(INITIAL_MESSAGES);
+  const [mode, setMode] = useState<UiMode>('engineering');
+  const [submode, setSubmode] = useState<string | null>('product_planning');
+  const [manualLocked, setManualLocked] = useState(false);
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [models, setModels] = useState<ModelOption[]>(FALLBACK_MODELS);
   const [model, setModel] = useState<string>(FALLBACK_MODELS[0].id);
-  const [terminalOpen, setTerminalOpen] = useState(true);
-  const [browserOpen, setBrowserOpen] = useState(false);
   const [liked, setLiked] = useState<Record<string, boolean>>({});
+
+  const [l1Section, setL1Section] = useState<'sessions' | 'projects'>('projects');
+  const [l1Open, setL1Open] = useState(false);
+  const [rightOpen, setRightOpen] = useState(false);
+  const [rightTab, setRightTab] = useState<RightTab>('files');
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsKey, setSettingsKey] = useState<SettingsKey>('providers');
+
+  const [shellEnabled, setShellEnabled] = useState(false);
+  const [terminalLines, setTerminalLines] = useState<string[]>(TERMINAL_LINES);
+  const [terminalInput, setTerminalInput] = useState('');
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}model-providers.json`)
@@ -231,7 +236,18 @@ function App() {
       });
   }, []);
 
-  const activeMessages = messages[tab];
+  const contextUsage = useMemo(() => {
+    const chars = messages.reduce(
+      (sum, msg) => sum + (msg.text?.length ?? 0) + (msg.images?.length ?? 0) * 1200,
+      0,
+    );
+    return Math.min(100, Math.round(6 + chars / 400));
+  }, [messages]);
+
+  const applyMode = (next: UiMode, nextSubmode?: string | null) => {
+    setMode(next);
+    setSubmode(nextSubmode ?? null);
+  };
 
   const send = async (attachments: Attachment[] = []) => {
     const text = input.trim();
@@ -244,10 +260,9 @@ function App() {
         .filter((item) => item.type.startsWith('image/'))
         .map((item) => item.dataUrl),
     };
-    setMessages((prev) => ({ ...prev, [tab]: [...prev[tab], userMsg] }));
+    setMessages((prev) => [...prev, userMsg]);
     setInput('');
-    const appendReply = (reply: Message) =>
-      setMessages((prev) => ({ ...prev, [tab]: [...prev[tab], reply] }));
+    const appendReply = (reply: Message) => setMessages((prev) => [...prev, reply]);
     try {
       const resp = await fetch(`${GATEWAY_URL}/api/ask`, {
         method: 'POST',
@@ -255,7 +270,6 @@ function App() {
         body: JSON.stringify({
           query: text,
           modelId: model,
-          tab,
           mode,
           userId: 'ui-user',
           attachments: attachments.map((item) => ({
@@ -269,7 +283,12 @@ function App() {
       const data = (await resp.json()) as {
         answer?: string;
         evidence?: Array<{ title: string; url: string; type: string }>;
+        mode?: UiMode;
+        submode?: string;
       };
+      if (!manualLocked && data.mode) {
+        applyMode(data.mode, data.submode);
+      }
       const evidence: Evidence[] = (data.evidence ?? []).map((item) => ({
         type: 'search',
         label: item.title,
@@ -281,318 +300,271 @@ function App() {
         role: 'agent',
         text: data.answer ?? '（后端没有返回内容）',
         evidence,
-        meta: `${TABS.find((t) => t.key === tab)?.label} · ${
-          MODES.find((m) => m.key === mode)?.label
-        } · 后端`,
+        meta: `${MODES.find((m) => m.key === mode)?.label} · 后端`,
       });
     } catch {
-      appendReply(ReplyDraft(tab, mode, text));
+      appendReply(ReplyDraft(mode, text));
     }
   };
 
-  const stats = useMemo(
-    () => ({
-      engineering: 4,
-      knowledge: 3,
-      life: 1,
-    }),
-    [],
-  );
-  const contextUsage = useMemo(() => {
-    const chars = activeMessages.reduce(
-      (sum, msg) => sum + (msg.text?.length ?? 0) + (msg.images?.length ?? 0) * 1200,
-      0,
-    );
-    return Math.min(100, Math.round(6 + chars / 400));
-  }, [activeMessages]);
+  const toggleL1 = (section: 'sessions' | 'projects') => {
+    if (l1Section === section) {
+      setL1Open((prev) => !prev);
+    } else {
+      setL1Section(section);
+      setL1Open(true);
+    }
+  };
+
+  const runTerminal = () => {
+    const cmd = terminalInput.trim();
+    if (!cmd || !shellEnabled) return;
+    setTerminalLines((prev) => [...prev, `$ ${cmd}`, '[PASS] 命令已完成']);
+    setTerminalInput('');
+  };
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-mark">
-            <Bot size={20} />
+    <div className="shell-v2">
+      <nav className="l0-nav" aria-label="一级导航">
+        <button
+          className={l1Open && l1Section === 'sessions' ? 'active' : ''}
+          onClick={() => toggleL1('sessions')}
+          aria-label="对话"
+        >
+          <MessageSquare size={19} />
+        </button>
+        <button
+          className={l1Open && l1Section === 'projects' ? 'active' : ''}
+          onClick={() => toggleL1('projects')}
+          aria-label="项目"
+        >
+          <FolderKanban size={19} />
+        </button>
+        <button
+          className={settingsOpen ? 'active' : ''}
+          onClick={() => setSettingsOpen((prev) => !prev)}
+          aria-label="设置"
+        >
+          <Settings size={19} />
+        </button>
+        <span className="l0-spacer" />
+        <button
+          className={rightOpen ? 'active' : ''}
+          onClick={() => setRightOpen((prev) => !prev)}
+          aria-label="右侧产物栏"
+        >
+          <PanelRight size={19} />
+        </button>
+      </nav>
+
+      {l1Open && (
+        <aside className="l1-panel">
+          <div className="l1-head">
+            <strong>{l1Section === 'projects' ? '项目列表' : '历史会话'}</strong>
+            <button className="new-session" onClick={() => setL1Open(false)}>
+              <Plus size={14} />
+              新对话
+            </button>
           </div>
-          <div>
-            <div className="brand-name">一人公司 AI-Agent</div>
-            <div className="brand-sub">v1.0 三栏 UI 原型</div>
+          <div className="l1-list">
+            {l1Section === 'projects'
+              ? MOCK_PROJECTS.map((project) => (
+                  <div className="project-row active" key={project.id}>
+                    <div className="project-main">
+                      <strong>{project.name}</strong>
+                      <span>{MODES.find((m) => m.key === project.mode)?.label} · {project.updated}</span>
+                    </div>
+                    <div className="session-list">
+                      {project.sessions.map((session) => (
+                        <button key={session} onClick={() => setL1Open(false)}>
+                          {session}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              : MOCK_PROJECTS.slice(0, 2).map((project) => (
+                  <div className="project-row" key={project.id}>
+                    <div className="project-main">
+                      <strong>{project.sessions[0]}</strong>
+                      <span>{project.name}</span>
+                    </div>
+                  </div>
+                ))}
           </div>
-        </div>
-        <nav className="header-tabs" aria-label="内容领域">
-          {TABS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.key}
-                className={tab === item.key ? 'active' : ''}
-                onClick={() => setTab(item.key)}
-              >
-                <Icon size={17} />
-                <span>{item.label}</span>
-                <small>{item.sub}</small>
-              </button>
-            );
-          })}
-        </nav>
-        <div className="top-actions">
-          <div className="status-pill">
-            <ShieldCheck size={14} />
-            QQ 会话已连接
-          </div>
-          <button className="icon-button" aria-label="搜索">
-            <Search size={17} />
+          <button className="l1-settings" onClick={() => setSettingsOpen(true)}>
+            <Settings size={15} />
+            设置
           </button>
-          <button className="icon-button" aria-label="通知">
-            <Bell size={17} />
-          </button>
-          <button className="icon-button" aria-label="设置">
-            <Settings size={17} />
-          </button>
-        </div>
-      </header>
+        </aside>
+      )}
 
-      <div className="workspace">
-        <main className="main">
-          {tab === 'engineering' ? (
-            <div className="engineering-grid">
-              <aside className="roles-panel panel">
-                <div className="panel-head">
-                  <Cpu size={16} />
-                  <h2>角色与子 Agent</h2>
-                </div>
-                <div className="role-card">
-                  <div className="role-avatar">
-                    <User size={17} />
-                  </div>
-                  <div>
-                    <strong>项目经理</strong>
-                    <span>拆解 · 调度 · 审查</span>
-                  </div>
-                </div>
-                <div className="subagent-list">
-                  {SUBAGENTS.map((agent) => (
-                    <div className="subagent" key={agent.name}>
-                      <div className="agent-icon">
-                        <Wrench size={15} />
-                      </div>
-                      <div>
-                        <strong>{agent.name}</strong>
-                        <span>{agent.category}</span>
-                      </div>
-                      <em className={agent.status === '运行中' ? 'running' : ''}>{agent.status}</em>
-                    </div>
-                  ))}
-                </div>
-              </aside>
-
-              <section className="chat-panel panel">
-                <div className="message-list">
-                  {activeMessages.map((msg) => (
-                    <MessageItem
-                      key={msg.id}
-                      msg={msg}
-                      liked={liked[msg.id]}
-                      onLike={(value) => setLiked((prev) => ({ ...prev, [msg.id]: value }))}
-                    />
-                  ))}
-                </div>
-                <Composer
-                  value={input}
-                  onChange={setInput}
-                  onSend={send}
-                  mode={mode}
-                  onModeChange={setMode}
-                  model={model}
-                  onModelChange={setModel}
-                  models={models}
-                  contextUsage={contextUsage}
-                />
-              </section>
-
-              <aside className="products-panel panel">
-                <div className="panel-head">
-                  <FileText size={16} />
-                  <h2>产物区</h2>
-                </div>
-                <div className="product-list">
-                  {PRODUCTS.map((p) => (
-                    <div className="product" key={p.name}>
-                      <div>
-                        <strong>{p.name}</strong>
-                        <span>{p.state}</span>
-                      </div>
-                      <em>{p.risk === '低' ? '低风险' : '中风险'}</em>
-                    </div>
-                  ))}
-                </div>
-                <div className="review-box">
-                  <CheckCircle2 size={16} />
-                  <div>
-                    <strong>审查报告</strong>
-                    <span>等待子 Agent 完成 ERC</span>
-                  </div>
-                </div>
-              </aside>
-
-              <div className="bottom-dock">
-                <div className="dock-tabs">
-                  <button
-                    className={terminalOpen ? 'active' : ''}
-                    onClick={() => {
-                      setTerminalOpen(true);
-                      setBrowserOpen(false);
-                    }}
-                  >
-                    <Terminal size={15} />
-                    内置终端
-                  </button>
-                  <button
-                    className={browserOpen ? 'active' : ''}
-                    onClick={() => {
-                      setBrowserOpen(true);
-                      setTerminalOpen(false);
-                    }}
-                  >
-                    <Globe size={15} />
-                    内置浏览器
-                  </button>
-                  <span className="dock-spacer" />
-                  <button className="dock-mini" aria-label="折叠">
-                    <ChevronDown size={15} />
-                  </button>
-                </div>
-                {terminalOpen && (
-                  <pre className="terminal-output">
-                    {`$ kicad-cli sch erc hardware/stm32-min.kicad_sch\n[INFO] 检查 12 条电源规则\n[PASS] VDD 3.3V 网络已连接\n[PASS] VDDA 与 VREF 去耦电容已放置\n[PASS] ERC 0 Error(s), 0 Warning(s)`}
-                  </pre>
-                )}
-                {browserOpen && (
-                  <div className="browser-preview">
-                    <div className="browser-bar">
-                      <span>https://item.szlcsc.com/9243.html</span>
-                      <ArrowUpRight size={14} />
-                    </div>
-                    <div className="browser-body">
-                      <strong>STM32F103C8T6 · 数据手册下载</strong>
-                      <span>来源：立创商城 · 官方 PDF 已由 QQ 会话下载并校验</span>
-                    </div>
-                  </div>
-                )}
+      <main className="center-v2">
+        {settingsOpen ? (
+          <SettingsPanel
+            settingsKey={settingsKey}
+            onSelect={setSettingsKey}
+            shellEnabled={shellEnabled}
+            onShellChange={setShellEnabled}
+            onBack={() => setSettingsOpen(false)}
+          />
+        ) : (
+          <section className="chat-v2">
+            <header className="chat-head">
+              <div>
+                <h1>一人公司 AI-Agent</h1>
+                <span>意图自动识别 · 无缝切换 · 本地 gateway</span>
               </div>
-            </div>
-          ) : (
-            <div className="chat-layout">
-              <section className="chat-panel panel">
-                <div className="message-list">
-                  {activeMessages.map((msg) => (
-                    <MessageItem
-                      key={msg.id}
-                      msg={msg}
-                      liked={liked[msg.id]}
-                      onLike={(value) => setLiked((prev) => ({ ...prev, [msg.id]: value }))}
-                    />
-                  ))}
-                </div>
-                <Composer
-                  value={input}
-                  onChange={setInput}
-                  onSend={send}
-                  mode={mode}
-                  onModeChange={setMode}
-                  model={model}
-                  onModelChange={setModel}
-                  models={models}
-                  contextUsage={contextUsage}
+              <button
+                className={rightOpen ? 'active' : ''}
+                onClick={() => setRightOpen((prev) => !prev)}
+                aria-label="展开右侧栏"
+              >
+                <PanelRight size={16} />
+                产物
+              </button>
+            </header>
+            <div className="message-list">
+              {messages.map((msg) => (
+                <MessageItem
+                  key={msg.id}
+                  msg={msg}
+                  liked={liked[msg.id]}
+                  onLike={(value) => setLiked((prev) => ({ ...prev, [msg.id]: value }))}
                 />
-              </section>
-
-              <aside className="context-panel panel">
-                {tab === 'knowledge' ? (
-                  <>
-                    <div className="panel-head">
-                      <Sparkles size={16} />
-                      <h2>证据链</h2>
-                    </div>
-                    <div className="evidence-note">
-                      <ShieldCheck size={16} />
-                      <div>
-                        <strong>[hard]</strong>
-                        <span>ST 官网 · 数据手册</span>
-                      </div>
-                    </div>
-                    <div className="evidence-note soft">
-                      <BookOpen size={16} />
-                      <div>
-                        <strong>[soft]</strong>
-                        <span>立创 / 芯查查 / 半导小芯</span>
-                      </div>
-                    </div>
-                    <div className="meta-line">
-                      <Clock size={14} />
-                      <span>强时效查询自动补官方源</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="panel-head">
-                      <HeartPulse size={16} />
-                      <h2>秘书备注</h2>
-                    </div>
-                    <div className="persona-note">
-                      <strong>贴身女秘书</strong>
-                      <span>只陪伴、不评判；紧急情况先给本地可执行步骤。</span>
-                    </div>
-                    <div className="meta-line">
-                      <Clock size={14} />
-                      <span>紧急安全走本地知识库快速通道</span>
-                    </div>
-                  </>
-                )}
-                <div className="shortcut-list">
-                  <div className="shortcut-head">快捷操作</div>
-                  <button>
-                    <PanelBottom size={15} />
-                    打开终端
-                  </button>
-                  <button>
-                    <Search size={15} />
-                    站内搜索
-                  </button>
-                  <button>
-                    <PenLine size={15} />
-                    修改建议
-                  </button>
-                </div>
-              </aside>
+              ))}
             </div>
-          )}
-        </main>
-      </div>
-      <footer className="statusbar">
-        <span>
-          <Cpu size={13} />
-          MCP ×6
+            <Composer
+              value={input}
+              onChange={setInput}
+              onSend={send}
+              model={model}
+              onModelChange={setModel}
+              models={models}
+              contextUsage={contextUsage}
+              mode={mode}
+              submode={submode}
+              manualLocked={manualLocked}
+              onModeManual={(next) => {
+                applyMode(next);
+                setManualLocked(true);
+              }}
+            />
+          </section>
+        )}
+      </main>
+
+      {rightOpen && (
+        <aside className="right-v2">
+          <div className="right-tabs">
+            {(
+              [
+                ['files', '文件', FileText],
+                ['browser', '浏览器', Globe],
+                ['terminal', '终端', Terminal],
+              ] as Array<[RightTab, string, LucideIcon]>
+            ).map(([key, label, Icon]) => (
+              <button
+                key={key}
+                className={rightTab === key ? 'active' : ''}
+                onClick={() => setRightTab(key)}
+              >
+                <Icon size={14} />
+                {label}
+              </button>
+            ))}
+            <button className="right-close" onClick={() => setRightOpen(false)} aria-label="收起右侧栏">
+              <X size={15} />
+            </button>
+          </div>
+          <div className="right-body">
+            {rightTab === 'files' && (
+              <div className="file-list">
+                {MOCK_FILES.map((file) => (
+                  <div className="file-row" key={file.name}>
+                    <FileText size={15} />
+                    <div>
+                      <strong>{file.name}</strong>
+                      <span>{file.kind} · {file.state}</span>
+                    </div>
+                    <ArrowUpRight size={13} />
+                  </div>
+                ))}
+              </div>
+            )}
+            {rightTab === 'browser' && (
+              <div className="browser-preview">
+                <div className="browser-bar">
+                  <span>https://item.szlcsc.com/9243.html</span>
+                  <ArrowUpRight size={14} />
+                </div>
+                <div className="browser-body">
+                  <strong>STM32F103C8T6 · 数据手册</strong>
+                  <span>内置浏览器使用独立会话；登录态场景走主浏览器或后端代理。</span>
+                </div>
+              </div>
+            )}
+            {rightTab === 'terminal' && (
+              <TerminalView
+                lines={terminalLines}
+                shellEnabled={shellEnabled}
+                input={terminalInput}
+                onInput={setTerminalInput}
+                onRun={runTerminal}
+              />
+            )}
+          </div>
+        </aside>
+      )}
+
+      <footer className="statusbar-v2">
+        <span className="status-mode">
+          <ShieldCheck size={13} />
+          系统正常
         </span>
         <span>
-          <Wrench size={13} />
-          子 Agent：4 运行中
+          <Zap size={13} />
+          上下文 {contextUsage}%
         </span>
         <span>
-          <FileText size={13} />
-          项目文件 {stats.engineering}
+          <Sparkles size={13} />
+          {models.find((item) => item.id === model)?.label ?? model}
         </span>
-        <span>
-          <BookOpen size={13} />
-          证据 {stats.knowledge}
+        <span className="status-spacer" />
+        <span className="status-hint">
+          <Terminal size={13} />
+          [PASS] VDD 3.3V
         </span>
-        <span>
-          <HeartPulse size={13} />
-          会话 {stats.life}
-        </span>
-        <span>Bocha 配额 34/1000</span>
-        <span>记忆：L1 装备 · L2 蒸馏</span>
-        <span>工作区 git: main</span>
+        <button
+          className={terminalOpen ? 'active' : ''}
+          onClick={() => setTerminalOpen((prev) => !prev)}
+        >
+          <Terminal size={13} />
+          {terminalOpen ? 'Terminal ▲' : 'Terminal'}
+        </button>
       </footer>
+
+      {terminalOpen && (
+        <div className="terminal-drawer">
+          <div className="terminal-head">
+            <strong>
+              <Terminal size={14} />
+              {'>_ Terminal'}
+            </strong>
+            <span>{shellEnabled ? 'Shell 权限已开启' : 'Shell 权限未开启（安全中心）'}</span>
+            <button onClick={() => setTerminalOpen(false)} aria-label="收起终端">
+              <ChevronDown size={15} />
+            </button>
+          </div>
+          <TerminalView
+            lines={terminalLines}
+            shellEnabled={shellEnabled}
+            input={terminalInput}
+            onInput={setTerminalInput}
+            onRun={runTerminal}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -666,22 +638,26 @@ function Composer({
   value,
   onChange,
   onSend,
-  mode,
-  onModeChange,
   model,
   onModelChange,
   models,
   contextUsage,
+  mode,
+  submode,
+  manualLocked,
+  onModeManual,
 }: {
   value: string;
   onChange: (value: string) => void;
   onSend: (attachments: Attachment[]) => void;
-  mode: Mode;
-  onModeChange: (mode: Mode) => void;
   model: string;
   onModelChange: (model: string) => void;
   models: ModelOption[];
   contextUsage: number;
+  mode: UiMode;
+  submode: string | null;
+  manualLocked: boolean;
+  onModeManual: (mode: UiMode) => void;
 }) {
   const [attachOpen, setAttachOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
@@ -691,6 +667,7 @@ function Composer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentModel = models.find((item) => item.id === model) ?? models[0];
   const currentMode = MODES.find((item) => item.key === mode) ?? MODES[0];
+  const ModeIcon = currentMode.icon;
   const providers = Array.from(new Set(models.map((item) => item.provider)));
   const addFile = (file: File) => {
     const reader = new FileReader();
@@ -707,8 +684,9 @@ function Composer({
   const addFiles = (files: FileList | null) => {
     Array.from(files ?? []).forEach(addFile);
   };
+
   return (
-    <div className="composer">
+    <div className="composer-v2">
       <input
         ref={imageInputRef}
         type="file"
@@ -730,6 +708,44 @@ function Composer({
           event.target.value = '';
         }}
       />
+      <div className="mode-capsule-row">
+        <div className="mode-capsule">
+          <button
+            className={modeOpen ? 'active' : ''}
+            onClick={() => setModeOpen((prev) => !prev)}
+            aria-label="切换模式"
+          >
+            <ModeIcon size={15} />
+            <strong>{currentMode.label}</strong>
+            {submode && SUBMODE_LABELS[submode] && (
+              <em>{SUBMODE_LABELS[submode]}</em>
+            )}
+            {manualLocked && <span className="lock-tag">锁定</span>}
+            <ChevronDown size={14} />
+          </button>
+          {modeOpen && (
+            <div className="mode-overlay">
+              {MODES.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.key}
+                    className={mode === item.key ? 'active' : ''}
+                    onClick={() => {
+                      onModeManual(item.key);
+                      setModeOpen(false);
+                    }}
+                  >
+                    <Icon size={15} />
+                    <span>{item.label}</span>
+                    <small>手动覆盖 · 锁定本会话</small>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
       {attachments.length > 0 && (
         <div className="attach-previews">
           {attachments.map((att) => (
@@ -744,9 +760,7 @@ function Composer({
               )}
               <button
                 aria-label="移除附件"
-                onClick={() =>
-                  setAttachments((prev) => prev.filter((item) => item !== att))
-                }
+                onClick={() => setAttachments((prev) => prev.filter((item) => item !== att))}
               >
                 <X size={13} />
               </button>
@@ -813,35 +827,9 @@ function Composer({
             </div>
           )}
         </div>
-        <div className="mode-switch">
-          <button
-            className={modeOpen ? 'active' : ''}
-            onClick={() => setModeOpen((prev) => !prev)}
-            aria-label="执行方式"
-          >
-            <Wrench size={14} />
-            <strong>{currentMode.label}</strong>
-            <small>{currentMode.hint}</small>
-            <ChevronDown size={14} />
-          </button>
-          {modeOpen && (
-            <div className="mode-popover">
-              {MODES.map((m) => (
-                <button
-                  key={m.key}
-                  className={mode === m.key ? 'active' : ''}
-                  onClick={() => {
-                    onModeChange(m.key);
-                    setModeOpen(false);
-                  }}
-                >
-                  <span>{m.label}</span>
-                  <small>{m.hint}</small>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <span className="composer-mode-note">
+          {manualLocked ? '已手动锁定模式' : '意图自动识别中'}
+        </span>
         <div className="model-switch">
           <button
             className={modelOpen ? 'active' : ''}
@@ -876,7 +864,6 @@ function Composer({
             </div>
           )}
         </div>
-        <span className="composer-hint">{currentModel.note}</span>
         <div
           className="context-meter"
           role="img"
@@ -897,6 +884,325 @@ function Composer({
           </svg>
           <span>{contextUsage}%</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SettingsPanel({
+  settingsKey,
+  onSelect,
+  shellEnabled,
+  onShellChange,
+  onBack,
+}: {
+  settingsKey: SettingsKey;
+  onSelect: (key: SettingsKey) => void;
+  shellEnabled: boolean;
+  onShellChange: (enabled: boolean) => void;
+  onBack: () => void;
+}) {
+  const form = SETTINGS_FORMS[settingsKey];
+  return (
+    <section className="settings-v2">
+      <div className="settings-menu">
+        <div className="settings-menu-head">
+          <button className="settings-back" onClick={onBack}>
+            <ChevronLeft size={16} />
+            返回
+          </button>
+          <strong>设置</strong>
+        </div>
+        {SETTINGS_MENU.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.key}
+              className={settingsKey === item.key ? 'active' : ''}
+              onClick={() => onSelect(item.key)}
+            >
+              <Icon size={15} />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="settings-detail">
+        <div className="settings-detail-head">
+          <h2>{form.title}</h2>
+          <p>{form.desc}</p>
+        </div>
+        {settingsKey === 'providers' && <ProvidersSettings />}
+        {settingsKey === 'security' && (
+          <SecuritySettings shellEnabled={shellEnabled} onShellChange={onShellChange} />
+        )}
+        {settingsKey === 'routing' && <RoutingSettings />}
+        {settingsKey === 'skills' && <SkillsSettings />}
+        {settingsKey === 'memory' && <MemorySettings />}
+        {settingsKey === 'usage' && <UsageSettings />}
+      </div>
+    </section>
+  );
+}
+
+function ProvidersSettings() {
+  const rows = [
+    { name: 'DeepSeek', model: 'deepseek-chat', status: '连接正常', default: true },
+    { name: '智谱', model: 'glm-5.3', status: '连接正常', default: false },
+    { name: 'MiniMax', model: 'MiniMax-M3', status: '未配置', default: false },
+  ];
+  return (
+    <div className="settings-form">
+      <button className="add-provider">
+        <Plus size={14} />
+        添加服务商
+      </button>
+      {rows.map((row) => (
+        <div className="provider-row" key={row.name}>
+          <div>
+            <strong>{row.name}</strong>
+            <span>{row.model}</span>
+          </div>
+          <em className={row.status === '连接正常' ? 'ok' : ''}>{row.status}</em>
+          <button>设为默认</button>
+          <button>测试连接</button>
+          <button>编辑</button>
+          <button className="danger">删除</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SecuritySettings({
+  shellEnabled,
+  onShellChange,
+}: {
+  shellEnabled: boolean;
+  onShellChange: (enabled: boolean) => void;
+}) {
+  const items = [
+    { key: 'illegal', label: '非法请求拦截', defaultOn: true },
+    { key: 'personal', label: '人身紧急事件', defaultOn: true },
+    { key: 'property', label: '财产紧急事件', defaultOn: true },
+    { key: 'file', label: '文件访问仅限项目目录', defaultOn: true },
+    { key: 'external', label: '外部 API 调用权限', defaultOn: false },
+  ];
+  return (
+    <div className="settings-form">
+      {items.map((item) => (
+        <ToggleRow key={item.key} label={item.label} defaultOn={item.defaultOn} />
+      ))}
+      <ToggleRow label="Shell 命令权限" defaultOn={shellEnabled} onChange={onShellChange} danger />
+      <p className="settings-note">
+        Shell 权限默认关闭；切换工程开发模式不会自动开启。首次执行命令需二次确认。
+      </p>
+    </div>
+  );
+}
+
+function ToggleRow({
+  label,
+  defaultOn,
+  onChange,
+  danger,
+}: {
+  label: string;
+  defaultOn: boolean;
+  onChange?: (value: boolean) => void;
+  danger?: boolean;
+}) {
+  const [on, setOn] = useState(defaultOn);
+  return (
+    <div className="toggle-row">
+      <span>{label}</span>
+      <button
+        className={`toggle ${on ? 'on' : ''} ${danger ? 'danger' : ''}`}
+        onClick={() => {
+          const next = !on;
+          setOn(next);
+          onChange?.(next);
+        }}
+        aria-pressed={on}
+      >
+        <i />
+      </button>
+    </div>
+  );
+}
+
+function RoutingSettings() {
+  const rows = [
+    { input: '帮我订下周的会议室', current: 'web_search', suggest: 'life', time: '2026-08-16 10:12' },
+    { input: '评估当前架构风险', current: 'qa', suggest: 'engineering/review_critique', time: '2026-08-16 09:40' },
+  ];
+  return (
+    <div className="settings-form">
+      <div className="table-wrap">
+        <table className="route-table">
+          <thead>
+            <tr>
+              <th>用户输入</th>
+              <th>当前路由</th>
+              <th>建议意图</th>
+              <th>时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.input}>
+                <td>{row.input}</td>
+                <td>{row.current}</td>
+                <td>{row.suggest}</td>
+                <td>{row.time}</td>
+                <td>
+                  <button>标记</button>
+                  <button>导出</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="form-actions">
+        <button className="primary">一键标记待分析队列</button>
+        <button>导出 CSV/JSON</button>
+      </div>
+    </div>
+  );
+}
+
+function SkillsSettings() {
+  const skills = [
+    { name: 'chip-analysis', version: '0.1.0', category: '工程开发', on: true },
+    { name: 'datasheet-speed', version: '0.1.0', category: '知识咨询', on: true },
+    { name: 'calendar-skill', version: '0.1.0', category: '生活助手', on: true },
+    { name: 'lcsc-footprint-generator', version: '规划中', category: '工程开发', on: false },
+  ];
+  return (
+    <div className="settings-form skill-grid">
+      {skills.map((skill) => (
+        <div className="skill-card" key={skill.name}>
+          <div>
+            <strong>{skill.name}</strong>
+            <span>v{skill.version} · {skill.category}</span>
+          </div>
+          <ToggleRow label="启用" defaultOn={skill.on} />
+          <div className="skill-meta">
+            <span>输入参数 / 输出契约 / 错误日志</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MemorySettings() {
+  const items = [
+    { text: '用户偏好 A 区会议室', type: '语义记忆 · L2', time: '2 天前' },
+    { text: '上次讨论的选型方案', type: '情景记忆 · L1', time: '1 天前' },
+    { text: '原始对话记录（高级）', type: '原始记录 · L0', time: '3 天前' },
+  ];
+  return (
+    <div className="settings-form">
+      <div className="memory-filter">
+        <button className="active">全部</button>
+        <button>L1 情景</button>
+        <button>L2 语义</button>
+        <button>原始记录</button>
+        <button className="ghost">
+          <Search size={13} />
+          搜索记忆
+        </button>
+      </div>
+      {items.map((item) => (
+        <div className="memory-row" key={item.text}>
+          <div>
+            <strong>{item.text}</strong>
+            <span>{item.type} · {item.time}</span>
+          </div>
+          <button>置顶</button>
+          <button>遗忘</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function UsageSettings() {
+  const bars = [
+    { label: '今日', pct: 12 },
+    { label: '本周', pct: 38 },
+    { label: '本月', pct: 64 },
+  ];
+  return (
+    <div className="settings-form">
+      <div className="usage-summary">
+        <div>
+          <strong>¥12.40</strong>
+          <span>本月已用</span>
+        </div>
+        <div>
+          <strong>¥50.00</strong>
+          <span>预算上限</span>
+        </div>
+        <div>
+          <strong>64%</strong>
+          <span>已用预算</span>
+        </div>
+      </div>
+      <div className="usage-bars">
+        {bars.map((bar) => (
+          <div key={bar.label}>
+            <span>{bar.label}</span>
+            <i style={{ width: `${bar.pct}%` }} />
+            <em>{bar.pct}%</em>
+          </div>
+        ))}
+      </div>
+      <div className="form-actions">
+        <button className="primary">设置预算上限</button>
+        <button>模型用量占比</button>
+      </div>
+      <p className="settings-note">
+        超过预算 90% 自动降级到更便宜模型（P-108），配置归属模型路由模块。
+      </p>
+    </div>
+  );
+}
+
+function TerminalView({
+  lines,
+  shellEnabled,
+  input,
+  onInput,
+  onRun,
+}: {
+  lines: string[];
+  shellEnabled: boolean;
+  input: string;
+  onInput: (value: string) => void;
+  onRun: () => void;
+}) {
+  return (
+    <div className="terminal-view">
+      <pre className="terminal-output">
+        {lines.map((line, i) => (
+          <span key={`${i}-${line}`}>{line}</span>
+        ))}
+      </pre>
+      <div className="terminal-input-row">
+        <span>$</span>
+        <input
+          value={input}
+          onChange={(event) => onInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') onRun();
+          }}
+          disabled={!shellEnabled}
+          placeholder={shellEnabled ? '输入命令…' : 'Shell 权限未开启，请先到安全中心开启'}
+        />
       </div>
     </div>
   );
