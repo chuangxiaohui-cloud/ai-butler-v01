@@ -1179,3 +1179,8 @@
 {"ts":"2026-08-16T17:01:37.356Z","query":"STM32F103C8T6 立创商城 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
 {"ts":"2026-08-16T17:01:37.359Z","query":"STM32F103C8T6 site:szlcsc.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
 {"ts":"2026-08-16T17:01:37.366Z","query":"STM32F103C8T6 芯查查 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T17:02:33.362Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T17:02:33.365Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T17:02:33.371Z","query":"STM32F103C8T6 立创商城 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T17:02:33.374Z","query":"STM32F103C8T6 site:szlcsc.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-16T17:02:33.376Z","query":"STM32F103C8T6 芯查查 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
