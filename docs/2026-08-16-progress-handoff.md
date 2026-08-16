@@ -28,13 +28,14 @@
 22. **Pipeline 进度事件 + HTML 预览自动弹出（E119）**：`PipelineOptions.onProgress` 六阶段回调；gateway 发布 SSE `progress`；`files.ts` 识别 HTML 产物；UI 顶部显示进度，HTML 产物出现时自动展开浏览器 Tab；单测 338/338 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-pipeline-progress-html-preview.md`。
 23. **Skill 级“生成中”状态（E120）**：`PipelineOptions.onArtifact`（generating/done/failed + path）；gateway 发布 SSE `artifact`；UI 文件列表顶部实时显示/移除生成中 Skill 行；单测 339/339 + 集成 17/17 全绿；顺手修复 `push:hosts` 漏带 `ui/` 的清单；详见 `docs/plans/2026-08-16-skill-artifact-status.md`。
 24. **Electron 桌面壳（E121）**：选型 Electron；gateway 静态 UI 同源托管（`GET /` 服务 `ui/prototype/dist`，SPA 回退，API 不受影响）；新增 `desktop/` 主进程自动拉起 gateway、健康检查后开窗口、退出回收子进程；根 package 增加 `desktop` / `desktop:smoke`；单测 340/340 + 集成 17/17 全绿，smoke 实测通过；详见 `docs/plans/2026-08-16-desktop-shell.md`。
+25. **桌面安装包（E122）**：electron-builder 产出 NSIS 安装版 + 便携版；`prepare-resources.mjs` 构建前打包 dist/UI/依赖/.env/node.exe 到 `desktop/resources/gateway`；`main.mjs` 打包分支用内置 Node + 编译后 gateway，userData 可写；打包 exe 的 smoke 实测通过；产物 `desktop/release/一人公司AI-Agent Setup 0.1.0.exe`（129.3 MB）与便携版（129.0 MB）；详见 `docs/plans/2026-08-16-desktop-installer.md`。
 
 ## 明天继续（按优先级）
 
 1. 解决“低置信兜底话术”回升：强化浏览器兜底/重试/查询改写（SM18/SM31/C08/ET20 等搜索质量类）。
 2. 按新基线重打分（旧定稿分只代表旧行为），推进 A/B 套评测拆分。
 3. 给 35 条 Bug 清单补状态字段与回归用例，验证 C05 打包与 C06 README 抓取在真实环境稳定。
-4. 桌面安装包（electron-builder）与 Tauri 瘦身迁移。
+4. 应用图标、代码签名与 Tauri 瘦身迁移。
 
 ## 常用命令
 

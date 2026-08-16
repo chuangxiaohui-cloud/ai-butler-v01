@@ -4,7 +4,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,6 +20,15 @@ let gateway = null;
 let mainWindow = null;
 
 function gatewayCommand() {
+  if (app.isPackaged) {
+    const gatewayDir = join(process.resourcesPath, 'gateway');
+    const nodeName = process.platform === 'win32' ? 'node.exe' : 'node';
+    const entry = join(gatewayDir, 'dist', 'gateway', 'server.js');
+    if (!existsSync(entry)) {
+      throw new Error(`安装包缺少 gateway 运行文件：${entry}`);
+    }
+    return [join(process.resourcesPath, nodeName), [entry]];
+  }
   const tsxCli = join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
   if (!existsSync(tsxCli)) {
     throw new Error('缺少项目根目录依赖，请先运行 npm install');
@@ -34,8 +43,12 @@ function gatewayCommand() {
 
 function startGateway() {
   const [command, args] = gatewayCommand();
+  const cwd = app.isPackaged ? app.getPath('userData') : repoRoot;
+  if (app.isPackaged) {
+    mkdirSync(join(cwd, 'data'), { recursive: true });
+  }
   gateway = spawn(command, args, {
-    cwd: repoRoot,
+    cwd,
     env: process.env,
     stdio: ['ignore', 'pipe', 'pipe'],
   });

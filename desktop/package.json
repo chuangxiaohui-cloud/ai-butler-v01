@@ -5,9 +5,46 @@
   "type": "module",
   "main": "main.mjs",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "prepare:resources": "node scripts/prepare-resources.mjs",
+    "pack": "npm run prepare:resources && electron-builder --dir",
+    "dist": "npm run prepare:resources && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.one-person-agent.desktop",
+    "productName": "一人公司AI-Agent",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.mjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": ".",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "一人公司AI-Agent"
+    }
   },
   "devDependencies": {
-    "electron": "^43.4.0"
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3"
   }
 }

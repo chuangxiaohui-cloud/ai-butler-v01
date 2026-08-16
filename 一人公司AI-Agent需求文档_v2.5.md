@@ -2507,6 +2507,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 340/340 + 集成 17/17 全绿（新增静态 UI 同源托管与 API 不回退测试）；`desktop:smoke` 实测拉起 gateway、加载窗口并自动退出，端口无残留；doc-lint 通过；详见 `docs/plans/2026-08-16-desktop-shell.md`。
 - affects: §13 | bench:na(new-param) 理由：桌面壳与静态托管新增，无 §5/§6 参数或行为变更
 
+### 2026-08-16（桌面安装包 E122）
+
+- **变更**：electron-builder 产出 Windows NSIS 安装版与便携版；新增 `desktop/scripts/prepare-resources.mjs` 在构建前把 `dist/`、`ui/prototype/dist`、`node_modules/`、`.env`、`node.exe` 复制到 `desktop/resources/gateway`；`main.mjs` 增加 `app.isPackaged` 分支，从 `process.resourcesPath/gateway` 用内置 Node 启动编译后的 gateway，cwd 用 Electron userData 保证数据可写；`.gitignore` 排除打包产物。
+- **验证**：`electron-builder --dir` 后打包 exe 的 `--smoke` 实测通过（内置 gateway 启动 + UI 加载 + 退出码 0）；`npm run dist` 产出 NSIS Setup（129.3 MB）与便携版（129.0 MB）；主项目与 UI build、`npm run test:all` 单测 340/340 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-16-desktop-installer.md`。
+- affects: §13 | bench:na(new-param) 理由：安装包资源准备与打包分支新增，无 §5/§6 参数或行为变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

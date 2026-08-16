@@ -28,6 +28,8 @@ TencentDB-Agent-Memory/
 node_modules/
 dist/
 .env
+desktop/resources/
+desktop/release/
 
 # 运行时数据（SQLite、JSONL、缓存）
 data/
