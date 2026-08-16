@@ -368,6 +368,16 @@ test('pipeline: 统一轨迹记录路由/技能/搜索/合成/答案', async () 
   assert.ok(routeEvent.route.matchedRules.length > 0);
 });
 
+test('pipeline: onProgress 按阶段回调', async () => {
+  const stages: string[] = [];
+  await pipeline('STM32F103C8T6 最大主频是多少', deps, {
+    onProgress: (stage) => stages.push(stage),
+  });
+  for (const stage of ['stage1', 'stage2', 'stage3', 'stage4', 'stage5', 'stage6']) {
+    assert.ok(stages.includes(stage), `missing ${stage}`);
+  }
+});
+
 test('pipeline: 本地日历查询走 calendar-skill 执行', async () => {
   const r = await pipeline('查一下我今天的日程', deps);
   assert.ok(r.answer.includes('日程'));

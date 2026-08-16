@@ -434,6 +434,8 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
         userId,
         modelSelection,
         files,
+        onProgress: (stage) =>
+          publishArtifactEvent('progress', { stage, at: Date.now() }),
       });
       publishArtifactEvent('files_changed', { at: Date.now() });
       res.json(result);

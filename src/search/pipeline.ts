@@ -91,6 +91,7 @@ export interface PipelineOptions {
   files?: RawFileLike[];
   userId?: string;
   modelSelection?: ModelSelection;
+  onProgress?: (stage: string) => void;
 }
 
 export async function pipeline(
@@ -100,6 +101,13 @@ export async function pipeline(
 ): Promise<AnswerResult> {
   const start = Date.now();
   const sessionId = randomUUID();
+  const safeProgress = (stage: string) => {
+    try {
+      opts.onProgress?.(stage);
+    } catch {
+      // 进度回调失败不阻塞主对话
+    }
+  };
   const recordTrajectory = (event: TrajectoryEventBody) => {
     try {
       deps.trajectory?.record({ ...event, sessionId });
@@ -110,6 +118,7 @@ export async function pipeline(
 
   // Stage 1：预处理（黑话/脱敏/澄清/缓存）
   const prepared = prepareQuery(query);
+  safeProgress('stage1');
   if (prepared.clarify) {
     return {
       query,
@@ -161,6 +170,7 @@ export async function pipeline(
     contextHints,
     processed.attachmentSignals,
   );
+  safeProgress('stage2');
   recordTrajectory({
     type: 'route',
     route: {
@@ -468,6 +478,7 @@ export async function pipeline(
     tavily: { enabled: tavilyEnabled, trigger: tavilyTrigger },
     browserSession: deps.browserSession,
   });
+  safeProgress('stage3');
   recordTrajectory({
     type: 'search',
     search: {
@@ -499,6 +510,7 @@ export async function pipeline(
     fused.items.length > 0
       ? Math.max(...fused.items.map((f) => f.finalScore))
       : 0;
+  safeProgress('stage4');
   let gate: AnswerResult['gate_triggered'] = rule3.serious
     ? 'safety'
     : fused.items.length === 0 || fused.gated || fused.lowConfidence
@@ -597,6 +609,7 @@ export async function pipeline(
       recordTrajectory({ type: 'model_route', modelRoute: info });
     },
   });
+  safeProgress('stage5');
   if (routeCaseId && lastModelRoute) {
     try {
       deps.routeCaseStore?.attachModelRoute?.(routeCaseId, {
@@ -632,6 +645,7 @@ export async function pipeline(
     },
     { store: deps.memoryStore ?? defaultMemoryStore() },
   );
+  safeProgress('stage6');
   recordTrajectory({
     type: 'answer',
     answer: {

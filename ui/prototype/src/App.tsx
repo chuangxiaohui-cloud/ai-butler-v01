@@ -213,6 +213,7 @@ function App() {
   const [terminalLines, setTerminalLines] = useState<string[]>(TERMINAL_LINES);
   const [terminalInput, setTerminalInput] = useState('');
   const [files, setFiles] = useState<Array<{ path: string; size: number; kind: string }>>([]);
+  const [progressStage, setProgressStage] = useState('');
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}model-providers.json`)
@@ -231,21 +232,38 @@ function App() {
       });
   }, []);
 
-  const loadFiles = () => {
+  const loadFiles = (autoPreview = false) => {
     fetch(`${GATEWAY_URL}/api/files`)
       .then((resp) => (resp.ok ? resp.json() : null))
-      .then((data: { files?: typeof files } | null) => setFiles(data?.files ?? []))
+      .then((data: { files?: typeof files } | null) => {
+        const list = data?.files ?? [];
+        setFiles(list);
+        if (autoPreview && list.some((file) => file.kind === 'HTML 预览')) {
+          setRightOpen(true);
+          setRightTab('browser');
+        }
+      })
       .catch(() => setFiles([]));
   };
 
   useEffect(loadFiles, []);
 
   useEffect(() => {
-    if (!rightOpen) return;
     const source = new EventSource(`${GATEWAY_URL}/api/events`);
-    source.addEventListener('files_changed', () => loadFiles());
+    source.addEventListener('progress', (event) => {
+      try {
+        const data = JSON.parse((event as MessageEvent).data) as { stage?: string };
+        if (data.stage) setProgressStage(data.stage);
+      } catch {
+        // 忽略非法进度事件
+      }
+    });
+    source.addEventListener('files_changed', () => {
+      setProgressStage('');
+      loadFiles(true);
+    });
     return () => source.close();
-  }, [rightOpen]);
+  }, []);
 
   const contextUsage = useMemo(() => {
     const chars = messages.reduce(
@@ -445,7 +463,11 @@ function App() {
             <header className="chat-head">
               <div>
                 <h1>一人公司 AI-Agent</h1>
-                <span>意图自动识别 · 无缝切换 · 本地 gateway</span>
+                <span>
+                  {progressStage
+                    ? `进度：${progressStage}`
+                    : '意图自动识别 · 无缝切换 · 本地 gateway'}
+                </span>
               </div>
               <button
                 className={rightOpen ? 'active' : ''}

@@ -21,6 +21,7 @@ function kindOf(filePath: string): string {
   if (lower.endsWith('.kicad_sch') || lower.endsWith('.kicad_pcb')) return '原理图/PCB';
   if (lower.endsWith('.net')) return '网络表';
   if (lower.endsWith('.pdf')) return 'PDF';
+  if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'HTML 预览';
   if (lower.endsWith('.zip')) return '打包';
   if (lower.endsWith('.md') || lower.endsWith('.txt')) return '文档';
   return '文件';

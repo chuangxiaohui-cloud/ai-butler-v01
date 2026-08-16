@@ -10,9 +10,11 @@ test('files: 只扫描沙箱根目录，跳过 node_modules', () => {
   const dir = mkdtempSync(join(tmpdir(), 'files-'));
   try {
     mkdirSync(join(dir, 'projects', 'p1'), { recursive: true });
+    mkdirSync(join(dir, 'outputs'), { recursive: true });
     mkdirSync(join(dir, 'data', 'datasheets'), { recursive: true });
     mkdirSync(join(dir, 'projects', 'node_modules'), { recursive: true });
     writeFileSync(join(dir, 'projects', 'p1', 'a.kicad_sch'), 'x');
+    writeFileSync(join(dir, 'outputs', 'preview.html'), '<html></html>');
     writeFileSync(join(dir, 'data', 'datasheets', 'b.pdf'), 'y');
     writeFileSync(join(dir, 'projects', 'node_modules', 'skip.txt'), 'z');
     writeFileSync(join(dir, 'outside.txt'), 'no');
@@ -21,9 +23,11 @@ test('files: 只扫描沙箱根目录，跳过 node_modules', () => {
     const paths = files.map((f) => f.path);
     assert.ok(paths.includes('projects/p1/a.kicad_sch'));
     assert.ok(paths.includes('data/datasheets/b.pdf'));
+    assert.ok(paths.includes('outputs/preview.html'));
     assert.ok(!paths.some((p) => p.includes('node_modules')));
     assert.ok(!paths.some((p) => p.includes('outside.txt')));
     assert.equal(files.find((f) => f.path === 'projects/p1/a.kicad_sch')?.kind, '原理图/PCB');
+    assert.equal(files.find((f) => f.path === 'outputs/preview.html')?.kind, 'HTML 预览');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

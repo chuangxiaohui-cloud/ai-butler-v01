@@ -2489,6 +2489,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 337/337 + 集成 17/17 全绿（新增 artifact-bus 与 ask 事件断言）；doc-lint 通过；详见 `docs/plans/2026-08-16-artifact-event-stream.md`。
 - affects: §13 | bench:na(new-param) 理由：SSE 事件流与 UI 接线，无 §5/§6 参数或行为变更
 
+### 2026-08-16（Pipeline 进度事件 + HTML 预览自动弹出 E119）
+
+- **变更**：`PipelineOptions` 增加 `onProgress(stage)`，Stage1-6 关键节点回调；gateway `/api/ask` 发布 SSE `progress` 事件；`files.ts` 将 `.html/.htm` 归为 `HTML 预览`；UI EventSource 常驻监听进度并在 HTML 产物出现时自动展开浏览器 Tab。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 338/338 + 集成 17/17 全绿（新增 onProgress/progress 事件/HTML 分类测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-pipeline-progress-html-preview.md`。
+- affects: §13 | bench:na(new-param) 理由：进度事件与 HTML 预览接线，无 §5/§6 参数或行为变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

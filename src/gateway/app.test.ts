@@ -483,4 +483,5 @@ test('gateway: /api/ask 完成时发布 files_changed 事件', async () => {
     unsubscribe();
   }
   assert.ok(events.includes('files_changed'));
+  assert.ok(events.includes('progress'));
 });
