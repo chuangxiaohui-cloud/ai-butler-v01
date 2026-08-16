@@ -319,8 +319,27 @@ function App() {
   const runTerminal = () => {
     const cmd = terminalInput.trim();
     if (!cmd || !shellEnabled) return;
-    setTerminalLines((prev) => [...prev, `$ ${cmd}`, '[PASS] 命令已完成']);
+    setTerminalLines((prev) => [...prev, `$ ${cmd}`]);
     setTerminalInput('');
+    fetch(`${GATEWAY_URL}/api/terminal/exec`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: cmd }),
+    })
+      .then((resp) => resp.json())
+      .then((data: { error?: string; stdout?: string; stderr?: string; exitCode?: number }) => {
+        if (data.error) {
+          setTerminalLines((prev) => [...prev, `[ERR] ${data.error}`]);
+          return;
+        }
+        const output = [data.stdout ?? '', data.stderr ?? ''].filter(Boolean).join('').trim();
+        setTerminalLines((prev) => [
+          ...prev,
+          ...(output ? output.split('\n') : ['[PASS] 命令完成']),
+          `[exit ${data.exitCode ?? '?'}]`,
+        ]);
+      })
+      .catch(() => setTerminalLines((prev) => [...prev, '[ERR] 无法连接 gateway']));
   };
 
   return (
@@ -1035,52 +1054,102 @@ function SecuritySettings({
   shellEnabled: boolean;
   onShellChange: (enabled: boolean) => void;
 }) {
-  const items = [
-    { key: 'illegal', label: '非法请求拦截', defaultOn: true },
-    { key: 'personal', label: '人身紧急事件', defaultOn: true },
-    { key: 'property', label: '财产紧急事件', defaultOn: true },
-    { key: 'file', label: '文件访问仅限项目目录', defaultOn: true },
-    { key: 'external', label: '外部 API 调用权限', defaultOn: false },
+  const [config, setConfig] = useState<{
+    shellEnabled: boolean;
+    fileAccess: string;
+    externalApiEnabled: boolean;
+    illegalEnabled: boolean;
+    personalEmergencyEnabled: boolean;
+    propertyEmergencyEnabled: boolean;
+  }>({
+    shellEnabled: false,
+    fileAccess: 'project-only',
+    externalApiEnabled: false,
+    illegalEnabled: true,
+    personalEmergencyEnabled: true,
+    propertyEmergencyEnabled: true,
+  });
+
+  const load = () => {
+    fetch(`${GATEWAY_URL}/api/security`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((data: typeof config | null) => {
+        if (data) {
+          setConfig(data);
+          onShellChange(data.shellEnabled);
+        }
+      })
+      .catch(() => undefined);
+  };
+
+  useEffect(load, []);
+
+  const persist = async (patch: Partial<typeof config>) => {
+    const next = { ...config, ...patch };
+    setConfig(next);
+    if (typeof patch.shellEnabled === 'boolean') onShellChange(patch.shellEnabled);
+    await fetch(`${GATEWAY_URL}/api/security/persist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(next),
+    });
+  };
+
+  const items: Array<{ key: keyof typeof config; label: string }> = [
+    { key: 'illegalEnabled', label: '非法请求拦截' },
+    { key: 'personalEmergencyEnabled', label: '人身紧急事件' },
+    { key: 'propertyEmergencyEnabled', label: '财产紧急事件' },
+    { key: 'externalApiEnabled', label: '外部 API 调用权限' },
   ];
+
   return (
     <div className="settings-form">
-      {items.map((item) => (
-        <ToggleRow key={item.key} label={item.label} defaultOn={item.defaultOn} />
-      ))}
-      <ToggleRow label="Shell 命令权限" defaultOn={shellEnabled} onChange={onShellChange} danger />
+      {items.map((item) => {
+        const on = config[item.key] === true;
+        return (
+          <div className="toggle-row" key={item.key}>
+            <span>{item.label}</span>
+            <button
+              className={`toggle ${on ? 'on' : ''}`}
+              onClick={() => persist({ [item.key]: !on } as Partial<typeof config>)}
+              aria-pressed={on}
+            >
+              <i />
+            </button>
+          </div>
+        );
+      })}
+      <div className="toggle-row">
+        <span>Shell 命令权限</span>
+        <button
+          className={`toggle ${shellEnabled ? 'on danger' : ''}`}
+          onClick={() => {
+            const next = !shellEnabled;
+            if (next && !window.confirm('是否允许 Agent 执行 Shell 命令？此操作可能修改系统文件。')) {
+              return;
+            }
+            persist({ shellEnabled: next });
+          }}
+          aria-pressed={shellEnabled}
+        >
+          <i />
+        </button>
+      </div>
+      <div className="toggle-row">
+        <span>文件访问仅限项目目录</span>
+        <button
+          className={`toggle ${config.fileAccess === 'project-only' ? 'on' : ''}`}
+          onClick={() =>
+            persist({ fileAccess: config.fileAccess === 'project-only' ? 'all' : 'project-only' })
+          }
+          aria-pressed={config.fileAccess === 'project-only'}
+        >
+          <i />
+        </button>
+      </div>
       <p className="settings-note">
         Shell 权限默认关闭；切换工程开发模式不会自动开启。首次执行命令需二次确认。
       </p>
-    </div>
-  );
-}
-
-function ToggleRow({
-  label,
-  defaultOn,
-  onChange,
-  danger,
-}: {
-  label: string;
-  defaultOn: boolean;
-  onChange?: (value: boolean) => void;
-  danger?: boolean;
-}) {
-  const [on, setOn] = useState(defaultOn);
-  return (
-    <div className="toggle-row">
-      <span>{label}</span>
-      <button
-        className={`toggle ${on ? 'on' : ''} ${danger ? 'danger' : ''}`}
-        onClick={() => {
-          const next = !on;
-          setOn(next);
-          onChange?.(next);
-        }}
-        aria-pressed={on}
-      >
-        <i />
-      </button>
     </div>
   );
 }

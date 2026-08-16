@@ -1588,9 +1588,11 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/config/provider-order.ts` | Provider 默认顺序持久化（data/provider-order.json） |
 | `src/config/skills-config.ts` | Skill 启用/禁用持久化（data/skills-config.json） |
 | `src/config/usage-budget.ts` | Token 预算持久化（data/usage-budget.json，阈值 P-108） |
+| `src/config/security-config.ts` | 安全中心配置持久化（data/security-config.json） |
 | `src/gateway/app.ts` | TurnLoop gateway 路由（/api/ask / health / model-providers） |
 | `src/gateway/server.ts` | gateway 启动器（复用 CLI 同款依赖） |
 | `src/gateway/attachments.ts` | base64 data URL 附件 → RawFileLike |
+| `src/gateway/terminal.ts` | 终端命令执行通道（Shell 权限门控） |
 
 > 完整代码目录为实施期产物：v0.1 落地后按 §0.1 文档治理规则补全并登记版本快照。当前仅列已定架构的关键模块。
 
@@ -2460,6 +2462,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：`UserContextStore` 与 `ExperienceManager` 增加公开读取/删除方法；gateway 新增 `GET /api/memory`、`POST /api/memory/forget`，注入现有存储实例；UI 记忆管理页展示 L1/L2 合并视图，支持筛选、搜索、遗忘。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 329/329 + 集成 17/17 全绿（新增 memory 读取与遗忘集成测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-memory-settings-api.md`。
 - affects: §13 | bench:na(new-param) 理由：记忆读写 API 与 UI 接线，无 §5/§6 参数或行为变更
+
+### 2026-08-16（安全中心真实配置 + 终端执行通道 E115）
+
+- **变更**：新增 `src/config/security-config.ts` 持久化安全策略；新增 `src/gateway/terminal.ts` 执行通道；gateway 新增 `GET /api/security`、`POST /api/security/persist`、`POST /api/terminal/exec`（Shell 默认关闭返回 403）；UI 安全中心改为真实开关，终端命令经 gateway 执行并回显 stdout/stderr/exitCode。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 332/332 + 集成 17/17 全绿（新增 security-config/terminal 与 403 门控测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-security-terminal-channel.md`。
+- affects: §13 | bench:na(new-param) 理由：安全配置与终端执行 API 接线，无 §5/§6 参数或行为变更
 
 ### v2.5（2026-08-12）
 

@@ -10,6 +10,7 @@ import { RouteCaseStore } from '../agent/route-case-store.js';
 import { routeV2 } from '../agent/router-v2.js';
 import { ExperienceManager } from '../memory/experience.js';
 import { UserContextStore } from '../memory/user-context-store.js';
+import { writeSecurityConfig } from '../config/security-config.js';
 import type { ChatMessage, LLMClient } from '../search/llm.js';
 import type {
   SearchProvider,
@@ -370,6 +371,42 @@ test('gateway: /api/memory 读取与遗忘', async () => {
     server.close();
     userContext.close();
     experience.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('gateway: /api/security 读取，Shell 关闭时终端 403', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-security-'));
+  const file = join(dir, 'security-config.json');
+  writeSecurityConfig(
+    {
+      shellEnabled: false,
+      fileAccess: 'project-only',
+      externalApiEnabled: false,
+      illegalEnabled: true,
+      personalEmergencyEnabled: true,
+      propertyEmergencyEnabled: true,
+    },
+    file,
+  );
+  const app = createGatewayApp({ deps: testDeps(), securityConfigPath: file });
+  const server = createServer(app);
+  try {
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}`;
+    const secResp = await fetch(`${base}/api/security`);
+    const sec = (await secResp.json()) as { shellEnabled?: boolean };
+    assert.equal(sec.shellEnabled, false);
+
+    const execResp = await fetch(`${base}/api/terminal/exec`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'echo hi' }),
+    });
+    assert.equal(execResp.status, 403);
+  } finally {
+    server.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });

@@ -21,13 +21,14 @@
 15. **技能库设置接真实数据（E112）**：新增 `src/config/skills-config.ts` 持久化禁用列表；pipeline 执行跳过禁用 Skill；gateway 新增 `/api/skills`、`/api/skills/sync`；UI 技能库显示真实 19 项，支持启用/禁用、类别筛选；单测 325/325 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-skills-settings-api.md`。
 16. **Token 计量真实数据（E113）**：新增 `src/usage/usage-store.ts` 与 `src/config/usage-budget.ts`；LLM 响应 `usage` 自动记账；gateway 新增 `/api/usage/stats`、`/api/usage/budget`；UI Token 用量页展示真实 Tokens、模型占比与预算；单测 328/328 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-usage-metering-api.md`。
 17. **记忆管理设置接真实数据（E114）**：UserContextStore/ExperienceManager 增加公开读取删除方法；gateway 新增 `/api/memory`、`/api/memory/forget`；UI 记忆管理页展示 L1/L2 合并视图，支持筛选、搜索、遗忘；单测 329/329 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-memory-settings-api.md`。
+18. **安全中心真实配置 + 终端执行通道（E115）**：新增 `src/config/security-config.ts` 与 `src/gateway/terminal.ts`；gateway 新增 `/api/security`、`/api/security/persist`、`/api/terminal/exec`；UI 安全中心真实开关，终端命令经 gateway 执行；单测 332/332 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-security-terminal-channel.md`。
 
 ## 明天继续（按优先级）
 
 1. 解决“低置信兜底话术”回升：强化浏览器兜底/重试/查询改写（SM18/SM31/C08/ET20 等搜索质量类）。
 2. 按新基线重打分（旧定稿分只代表旧行为），推进 A/B 套评测拆分。
 3. 给 35 条 Bug 清单补状态字段与回归用例，验证 C05 打包与 C06 README 抓取在真实环境稳定。
-4. 设置面板写操作接真实 API 已基本完成（Provider/路由/技能/记忆/Token），剩余置顶记忆与 L0 视图；下一步 artifact 事件流与右侧文件列表联动、终端真实执行通道。
+4. artifact 事件流与右侧文件列表联动；终端命令白名单/审批流细化；桌面端封装。
 
 ## 常用命令
 

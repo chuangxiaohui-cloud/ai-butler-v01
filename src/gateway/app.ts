@@ -15,9 +15,11 @@ import { pipeline, type PipelineDeps } from '../search/pipeline.js';
 import { listSkillMetadata } from '../skills/registry.js';
 import { writeDisabledSkills } from '../config/skills-config.js';
 import { readUsageBudget, writeUsageBudget } from '../config/usage-budget.js';
+import { readSecurityConfig, writeSecurityConfig } from '../config/security-config.js';
 import { ExperienceManager } from '../memory/experience.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { aggregateUsage, readUsage } from '../usage/usage-store.js';
+import { runCommand } from './terminal.js';
 import type { RawFileLike } from '../skills/deps.js';
 import { dataUrlToRawFile, type AttachmentPayload } from './attachments.js';
 
@@ -27,6 +29,7 @@ export interface GatewayOptions {
   routeCaseStore?: RouteCaseStore;
   userContextStore?: UserContextStore;
   experienceManager?: ExperienceManager;
+  securityConfigPath?: string;
 }
 
 interface AskBody {
@@ -202,6 +205,51 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       return;
     }
     res.json({ ok: false, error: '不支持的记忆类型' });
+  });
+
+  app.get('/api/security', (_req, res) => {
+    res.json(readSecurityConfig(opts.securityConfigPath));
+  });
+
+  app.post('/api/security/persist', (req, res) => {
+    const body = (req.body ?? {}) as Partial<Record<string, unknown>>;
+    const current = readSecurityConfig(opts.securityConfigPath);
+    const next = {
+      shellEnabled: typeof body.shellEnabled === 'boolean' ? body.shellEnabled : current.shellEnabled,
+      fileAccess: body.fileAccess === 'all' ? ('all' as const) : current.fileAccess,
+      externalApiEnabled:
+        typeof body.externalApiEnabled === 'boolean'
+          ? body.externalApiEnabled
+          : current.externalApiEnabled,
+      illegalEnabled:
+        typeof body.illegalEnabled === 'boolean' ? body.illegalEnabled : current.illegalEnabled,
+      personalEmergencyEnabled:
+        typeof body.personalEmergencyEnabled === 'boolean'
+          ? body.personalEmergencyEnabled
+          : current.personalEmergencyEnabled,
+      propertyEmergencyEnabled:
+        typeof body.propertyEmergencyEnabled === 'boolean'
+          ? body.propertyEmergencyEnabled
+          : current.propertyEmergencyEnabled,
+    };
+    writeSecurityConfig(next, opts.securityConfigPath);
+    res.json({ ok: true, security: next });
+  });
+
+  app.post('/api/terminal/exec', async (req, res) => {
+    const body = (req.body ?? {}) as { command?: unknown };
+    const command = typeof body.command === 'string' ? body.command.trim() : '';
+    if (!command) {
+      res.status(400).json({ error: 'command 不能为空' });
+      return;
+    }
+    const security = readSecurityConfig(opts.securityConfigPath);
+    if (!security.shellEnabled) {
+      res.status(403).json({ error: 'Shell 权限未开启，请先到安全中心开启' });
+      return;
+    }
+    const result = await runCommand(command, { timeoutMs: 15000, cwd: process.cwd() });
+    res.json({ command, ...result });
   });
 
   app.post('/api/usage/budget', (req, res) => {
