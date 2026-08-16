@@ -13,6 +13,7 @@
   "build": {
     "appId": "com.one-person-agent.desktop",
     "productName": "一人公司AI-Agent",
+    "forceCodeSigning": false,
     "directories": {
       "output": "release"
     },
@@ -31,6 +32,7 @@
     ],
     "win": {
       "icon": "build/icon.ico",
+      "signAndEditExecutable": true,
       "target": [
         "nsis",
         "portable"
