@@ -609,6 +609,9 @@ Agent 尝试解决问题
 | P-92 | 30天未访问衰减系数 | 0.9 | numeric | provisional@2026-08-13 | |
 | P-93 | 90天未访问衰减系数 | 0.7 | numeric | provisional@2026-08-13 | |
 | P-94 | 长期事实归档阈值 | 0.3 | numeric | provisional@2026-08-13 | |
+| P-105 | 模型路由默认档 | medium | conditional | provisional@2026-08-16 | |
+| P-106 | 模型路由轻档最低置信度 | 0.9 | numeric | provisional@2026-08-16 | |
+| P-107 | Provider fallback 链上限 | 3家 | numeric | provisional@2026-08-16 | |
 
 > **约束注解**（lint 可评估，语法为线性不等式）：
 > - `P-15+P-13 <= P-14`（分配之和 ≤ 约束）
@@ -635,7 +638,7 @@ Agent 尝试解决问题
   → Stage 2 意图分类 + Query 构造（≤[P-04]）
   → Stage 3 搜索执行（≤[P-02]）
   → Stage 4 结果处理（≤[P-05]，纯本地）
-  → Stage 5 秘书级合成（重模型）
+  → Stage 5 秘书级合成（按任务难度选模型 [P-105]，便宜优先）
   → Stage 6 后处理 + 记忆写入
 ```
 
@@ -936,7 +939,7 @@ final_score = w_relevance * relevance([P-22])
 | Stage 2 意图分类 | ≤ [P-04] | 降级为 factual 意图 |
 | Stage 3 搜索执行 | ≤ [P-02] | 任一常开路超时→另一路兜底；双路超时→缓存命中 |
 | Stage 4 结果处理 | ≤ [P-05] | 降为 Top-3 快速打分 |
-| Stage 5 秘书合成 | ≤ [P-06] | 重模型→轻模型摘要→"搜索超时，以下是我已有的信息…" |
+| Stage 5 秘书合成 | ≤ [P-06] | 按档模型→轻模型摘要→"搜索超时，以下是我已有的信息…" |
 | Stage 6 后处理 | ≤ [P-21] | 跳过润色，直接输出 |
 | **总计** | **≤ [P-15]** | **超总预算→跳过 Stage 6 润色 + 记忆写入，直接输出 Stage 5 结果** |
 
@@ -1562,6 +1565,9 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `scripts/doc-lint.ts` | 文档宪法执法（§0.6 七检查 + §0.7 迁移期） |
 | `bench/run.ts` | 基准跑分：产出 B-<id>、追加 raw CSV、打印聚合 diff |
 | `src/search/pipeline.ts` | 搜索管道 Stage 1-6 编排 |
+| `src/search/llm-client.ts` | OpenAI 兼容 LLM 客户端（与 provider 解耦） |
+| `src/search/llm-registry.ts` | Provider Registry + fallback 链（[P-107]） |
+| `src/search/model-router.ts` | 模型分档路由（[P-105]/[P-106]） |
 | `src/search/providers/bocha.ts` | Bocha 引擎适配 |
 | `src/search/providers/anysearch.ts` | AnySearch 引擎适配 |
 | `src/search/providers/tavily.ts` | Tavily 引擎适配（含 [P-35] 超时保护） |
@@ -1569,6 +1575,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/search/authority.ts` | 来源权威注入（域名权威度表 + 原厂域名映射） |
 | `src/memory/store.ts` | MemoryStore 接口 + SqliteDirectStore/MemoryCoreStore |
 | `src/memory/experience.ts` | ExperienceManager（embedding 检索 + 置信度演化） |
+| `scripts/bench-provider-router.ts` | Provider Registry / 模型分档本地 bench |
 
 > 完整代码目录为实施期产物：v0.1 落地后按 §0.1 文档治理规则补全并登记版本快照。当前仅列已定架构的关键模块。
 
@@ -2372,6 +2379,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：审阅本地 `opensquilla/` v0.5.3 源码与文档，形成「可直接借鉴 / 需裁剪 / 不建议照搬」清单并登记 `docs/borrowed-designs.md`；确定下阶段优先借鉴 Provider Registry + 便宜优先模型路由、单一共享 TurnLoop、路由/模型决策数据飞轮闭环、记忆双通道召回、分层沙箱 + 拒绝账本、工具结果压缩/上下文预算、Skill 按需过滤。
 - **验证**：`npm run build` + `npm run test:all` 通过；doc-lint 通过；未改动 `opensquilla/` 外部仓库；详见 `docs/plans/2026-08-16-opensquilla-review.md`。
 - affects: §4.1,§8,§10,§13 | bench:na(new-param) 理由：外部设计审阅登记，无 §5/§6 参数或行为变更
+
+### 2026-08-16（Provider Registry + 模型分档路由 E104）
+
+- **变更**：`OpenAiCompatibleClient` 拆到 `src/search/llm-client.ts`；新增 `llm-registry.ts`（DeepSeek/MiniMax/智谱三厂 OpenAI 兼容抽象，`LLM_PROVIDER_ORDER` 控制便宜优先顺序，primary 失败自动 fallback，链上限 [P-107]）；新增 `model-router.ts`（重档 execute/write_doc/github_analysis/rewrite/pack_project/plan/文档摘要结构，默认中档 [P-105]，轻档置信门 [P-106]）；Stage 5 合成按档选模型，旧 `LLM_PRIMARY_*` 单家配置行为不变；新增 `npm run bench:provider-router` 与 `.env.example` 三厂配置。
+- **验证**：`npm run build` 通过；`npm run test:all` 单测 308/308 + 集成 17/17 全绿（新增 registry fallback 与分档 11 条）；`npm run bench:provider-router` 产出 `bench:B-20260816-04`；doc-lint 通过；详见 `docs/plans/2026-08-16-provider-registry.md`。
+- affects: §5,§6,§13 | bench:B-20260816-04 | E104 Provider Registry + 模型分档路由落地，Stage 5 按任务难度选模型
 
 ### v2.5（2026-08-12）
 

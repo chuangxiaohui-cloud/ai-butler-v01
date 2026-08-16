@@ -4,7 +4,8 @@
  */
 
 import type { LLMClient } from '../llm.js';
-import { createHeavyClient } from '../llm.js';
+import { createClientForRole } from '../llm.js';
+import type { ModelTier } from '../model-router.js';
 import type { FusedOutput } from '../fusion.js';
 import type { ClassifiedQuery } from './s2_classify.js';
 import type { PrimaryLens } from '../../agent/types.js';
@@ -19,6 +20,7 @@ export interface SynthesizeOptions {
   skillHints?: string[];
   skillOutputs?: string[];
   primaryLens?: PrimaryLens;
+  modelTier?: ModelTier;
 }
 
 export interface SynthesizeResult {
@@ -133,7 +135,7 @@ export async function synthesizeAnswer(
   ];
 
   try {
-    const client = opts.llm ?? createHeavyClient();
+    const client = opts.llm ?? createClientForRole(opts.modelTier ?? 'heavy');
     const raw = await client.complete(messages, { maxTokens: 800, temperature: 0.3 });
     const answer = raw.trim();
     if (!answer) throw new Error('空答案');

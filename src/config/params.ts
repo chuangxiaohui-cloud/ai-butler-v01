@@ -52,6 +52,12 @@ export const PARAMS = {
   routeBaseThreshold: 0.29,
   /** P-104 单次路由最多候选数 */
   routeMaxCandidates: 3,
+  /** P-105 模型路由默认档（便宜优先，缺省中档） */
+  modelRouterDefaultTier: 'medium',
+  /** P-106 模型路由轻档最低置信度（仅无搜索需求时启用） */
+  modelRouterLightConfidence: 0.9,
+  /** P-107 Provider fallback 链上限 */
+  providerFallbackMax: 3,
 } as const;
 
 export type ParamKey = keyof typeof PARAMS;
@@ -81,4 +87,7 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   hasDocumentWeight: 'P-102',
   routeBaseThreshold: 'P-103',
   routeMaxCandidates: 'P-104',
+  modelRouterDefaultTier: 'P-105',
+  modelRouterLightConfidence: 'P-106',
+  providerFallbackMax: 'P-107',
 };

@@ -41,6 +41,7 @@ import { runSearchLoop, type BrowserFetcher } from './search-loop.js';
 import { synthesizeAnswer } from './stages/s5_synthesize.js';
 import { postProcess } from './stages/s6_post.js';
 import { parseDocumentFile } from './document-parser.js';
+import { resolveModelTier } from './model-router.js';
 
 export interface Evidence {
   title: string;
@@ -555,6 +556,15 @@ export async function pipeline(
     skillHints,
     skillOutputs,
     primaryLens: routeSelected.primaryLens,
+    modelTier: resolveModelTier({
+      intent: routeSelected.intent,
+      actionType: route.features.actionType,
+      searchNeed: routeSelected.searchNeed,
+      confidence: route.confidence,
+      hasImage: route.features.hasImage,
+      hasDocument: route.features.hasDocument,
+      hasGithubLink: route.features.hasGithubLink,
+    }),
   });
   recordTrajectory({
     type: 'synthesize',

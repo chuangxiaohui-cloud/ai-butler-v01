@@ -1,4 +1,4 @@
-# 借鉴设计登记（agent-skills / deepseek-harness）
+# 借鉴设计登记（agent-skills / deepseek-harness / opensquilla）
 
 > 用途：继续开发「一人公司 AI-Agent」前先读本页，避免优秀设计被漏掉，
 > 也避免把外部框架误当成底座。
@@ -42,6 +42,16 @@
   文件超过 5 个提示拆细；缺关键字段判 `invalid`。
 - 触发词：计划校验 / 校验计划 / 检查计划 / 任务清单。
 
+### 2.5 opensquilla → Provider Registry + 模型分档路由
+
+- 文件：`src/search/llm-client.ts` / `src/search/llm-registry.ts` / `src/search/model-router.ts`
+- 内容：三厂（DeepSeek/MiniMax/智谱）OpenAI 兼容统一抽象；`LLM_PROVIDER_ORDER`
+  控制便宜优先顺序；primary 失败自动 fallback（链上限 [P-107]）；按任务难度分档
+  （重档 / 中档 / 轻档，[P-105]/[P-106]），Stage 5 合成按档选模型。
+- 接入：`src/search/llm.ts` 全部旧入口签名不变；`.env.example` 补三厂配置；
+  `npm run bench:provider-router` 本地验证。
+- 状态：E104 已落地，需求文档附录 A 登记；bench:B-20260816-04。
+
 ## 3. 待借入（按优先级）
 
 | 设计 | 来源 | 价值 | 前置条件 |
@@ -52,7 +62,6 @@
 | Session Fork / Replay | Harness | 基于轨迹做分叉、恢复、回放 | TrajectoryLog 使用稳定 |
 | 可回放上下文压缩 | Harness | 用 replacement 事件保留原始历史的压缩 | §8.3 工作记忆开发时 |
 | 计划权限/异常分支校验 | Harness | 校验命令是否可执行、步骤是否越权、异常分支是否完整 | plan-validation 有真实使用反馈 |
-| Provider Registry + 便宜优先模型路由 | OpenSquilla | 三厂（DeepSeek/MiniMax/智谱）统一抽象 + 按难度分档 + fallback 链 | llm.ts 重构 + .env 多厂配置 |
 | 单一共享 TurnLoop | OpenSquilla | UI/CLI/API 共用同一 pipeline，UI 只做薄客户端 | §4.2/§6.3 契约稳定后接网关 |
 | 路由数据飞轮闭环 | OpenSquilla | route/model 决策 + 用户反馈自动进校准队列 | route-case-store 扩展字段 |
 | 记忆双通道召回 | OpenSquilla | SQLite FTS + embedding 语义，低分关键词兜底 | §8 语义检索实现时 |
@@ -88,9 +97,11 @@
 
 1. OpenSquilla 最值钱的三样：**按任务难度选模型并便宜优先**、**所有入口共用同一
    TurnLoop**、**路由决策自动变训练数据（数据飞轮）**。
-2. 分别对应我们的模型切换器、CLI/UI 双皮问题、路由校准闭环，都可直接落地；
-   详见 `docs/plans/2026-08-16-opensquilla-review.md`。
-3. 复杂 ML 路由、B5 集成、全渠道接入暂缓：当前规则 + 轻分类 + 三厂抽象足够，
+2. 分别对应我们的模型切换器、CLI/UI 双皮问题、路由校准闭环；第 1 项已落地
+   （E104），另两项仍待推进。
+3. 详见 `docs/plans/2026-08-16-opensquilla-review.md` 与
+   `docs/plans/2026-08-16-provider-registry.md`。
+4. 复杂 ML 路由、B5 集成、全渠道接入暂缓：当前规则 + 轻分类 + 三厂抽象足够，
    等真实数据积累后再评估。
 
 ## 6. 来源

@@ -1,98 +1,40 @@
 /**
- * 轻模型 LLM 客户端（OpenAI 兼容协议，DeepSeek 优先）
- * 供 Stage 2 意图分类 / Query 构造使用，超时遵循 [P-04]。
+ * LLM 客户端入口：OpenAI 兼容客户端 + Provider Registry / fallback 链。
+ * 轻/重/视觉客户端签名保持不变；provider 与模型改由 llm-registry 解析。
  */
 
-import { loadEnvFile } from '../config/env.js';
 import type { VLMClient } from '../skills/deps.js';
+import {
+  defaultRegistry,
+  type ModelRole,
+  type ProviderProfile,
+  type FallbackClientOptions,
+} from './llm-registry.js';
+import type {
+  ChatMessage,
+  CompleteOptions,
+  LLMClient,
+  OpenAiCompatibleClientOptions,
+} from './llm-client.js';
+import { OpenAiCompatibleClient } from './llm-client.js';
 
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
+export type { ChatMessage, CompleteOptions, LLMClient, OpenAiCompatibleClientOptions };
+export { OpenAiCompatibleClient };
+export type { ModelRole, ProviderProfile, FallbackClientOptions } from './llm-registry.js';
 
-export interface CompleteOptions {
-  temperature?: number;
-  maxTokens?: number;
-  json?: boolean;
-}
-
-export interface LLMClient {
-  complete(messages: ChatMessage[], opts?: CompleteOptions): Promise<string>;
-}
-
-export interface OpenAiCompatibleClientOptions {
-  baseUrl: string;
-  apiKey: string;
-  model: string;
-  timeoutMs: number;
-}
-
-export class OpenAiCompatibleClient implements LLMClient {
-  constructor(private readonly opts: OpenAiCompatibleClientOptions) {}
-
-  async complete(messages: ChatMessage[], opts: CompleteOptions = {}): Promise<string> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs);
-    try {
-      const resp = await fetch(`${this.opts.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.opts.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: this.opts.model,
-          messages,
-          temperature: opts.temperature ?? 0,
-          max_tokens: opts.maxTokens,
-          response_format: opts.json ? { type: 'json_object' } : undefined,
-        }),
-        signal: controller.signal,
-      });
-      if (!resp.ok) {
-        const detail = await resp.text().catch(() => '');
-        throw new Error(`LLM HTTP ${resp.status}: ${detail.slice(0, 120)}`);
-      }
-      const data = (await resp.json()) as {
-        choices?: Array<{ message?: { content?: unknown } }>;
-      };
-      const content = data.choices?.[0]?.message?.content;
-      if (typeof content !== 'string' || !content.trim()) throw new Error('LLM 返回空内容');
-      return content;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
+export function createClientForRole(
+  role: ModelRole,
+  opts?: FallbackClientOptions & { timeoutMs?: number },
+): LLMClient {
+  return defaultRegistry().createForRole(role, opts);
 }
 
 export function createLightClient(opts?: { timeoutMs?: number }): LLMClient {
-  loadEnvFile();
-  const apiKey =
-    process.env.DEEPSEEK_API_KEY?.trim() || process.env.LLM_PRIMARY_API_KEY?.trim();
-  if (!apiKey) throw new Error('未配置 LLM API Key（DEEPSEEK_API_KEY 或 LLM_PRIMARY_API_KEY）');
-  const timeoutMs =
-    opts?.timeoutMs ?? Number(process.env.LLM_CLASSIFY_TIMEOUT_MS ?? '2000');
-  return new OpenAiCompatibleClient({
-    baseUrl: process.env.LLM_PRIMARY_BASE_URL?.trim() || 'https://api.deepseek.com/v1',
-    apiKey,
-    model: process.env.LLM_LIGHT_MODEL?.trim() || 'deepseek-chat',
-    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 2000,
-  });
+  return createClientForRole('light', opts);
 }
 
 export function createHeavyClient(): LLMClient {
-  loadEnvFile();
-  const apiKey =
-    process.env.DEEPSEEK_API_KEY?.trim() || process.env.LLM_PRIMARY_API_KEY?.trim();
-  if (!apiKey) throw new Error('未配置 LLM API Key（DEEPSEEK_API_KEY 或 LLM_PRIMARY_API_KEY）');
-  const timeoutMs = Number(process.env.LLM_SYNTHESIZE_TIMEOUT_MS ?? '30000');
-  return new OpenAiCompatibleClient({
-    baseUrl: process.env.LLM_PRIMARY_BASE_URL?.trim() || 'https://api.deepseek.com/v1',
-    apiKey,
-    model: process.env.LLM_HEAVY_MODEL?.trim() || 'deepseek-chat',
-    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 30000,
-  });
+  return createClientForRole('heavy');
 }
 
 /**
@@ -100,21 +42,14 @@ export function createHeavyClient(): LLMClient {
  * VLMClient：image 必须是 data URL；返回纯文本。
  */
 export function createVisionClient(opts?: { timeoutMs?: number }): VLMClient {
-  loadEnvFile();
-  const apiKey =
-    process.env.VLM_API_KEY?.trim() || process.env.LLM_PRIMARY_API_KEY?.trim();
-  if (!apiKey) throw new Error('未配置 VLM API Key（VLM_API_KEY 或 LLM_PRIMARY_API_KEY）');
-  const baseUrl =
-    process.env.VLM_BASE_URL?.trim() ||
-    process.env.LLM_PRIMARY_BASE_URL?.trim() ||
-    'https://api.deepseek.com/v1';
-  const model =
-    process.env.VLM_MODEL?.trim() ||
-    process.env.LLM_HEAVY_MODEL?.trim() ||
-    process.env.LLM_LIGHT_MODEL?.trim() ||
-    'gpt-4o-mini';
-  const timeoutMs =
-    opts?.timeoutMs ?? Number(process.env.VLM_TIMEOUT_MS ?? '8000');
+  const profile = defaultRegistry().resolveProfile('vision');
+  if (!profile) {
+    throw new Error('未配置 VLM API Key（VLM_API_KEY 或 LLM_PRIMARY_API_KEY）');
+  }
+  const baseUrl = profile.baseUrl;
+  const apiKey = profile.apiKey;
+  const model = profile.models.vision;
+  const timeoutMs = opts?.timeoutMs ?? Number(process.env.VLM_TIMEOUT_MS ?? '8000');
 
   return async (input, options = {}) => {
     const controller = new AbortController();
@@ -156,4 +91,8 @@ export function createVisionClient(opts?: { timeoutMs?: number }): VLMClient {
       clearTimeout(timer);
     }
   };
+}
+
+export function resolveVisionProfile(): ProviderProfile | null {
+  return defaultRegistry().resolveProfile('vision');
 }
