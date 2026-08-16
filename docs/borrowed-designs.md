@@ -52,6 +52,13 @@
 | Session Fork / Replay | Harness | 基于轨迹做分叉、恢复、回放 | TrajectoryLog 使用稳定 |
 | 可回放上下文压缩 | Harness | 用 replacement 事件保留原始历史的压缩 | §8.3 工作记忆开发时 |
 | 计划权限/异常分支校验 | Harness | 校验命令是否可执行、步骤是否越权、异常分支是否完整 | plan-validation 有真实使用反馈 |
+| Provider Registry + 便宜优先模型路由 | OpenSquilla | 三厂（DeepSeek/MiniMax/智谱）统一抽象 + 按难度分档 + fallback 链 | llm.ts 重构 + .env 多厂配置 |
+| 单一共享 TurnLoop | OpenSquilla | UI/CLI/API 共用同一 pipeline，UI 只做薄客户端 | §4.2/§6.3 契约稳定后接网关 |
+| 路由数据飞轮闭环 | OpenSquilla | route/model 决策 + 用户反馈自动进校准队列 | route-case-store 扩展字段 |
+| 记忆双通道召回 | OpenSquilla | SQLite FTS + embedding 语义，低分关键词兜底 | §8 语义检索实现时 |
+| 分层沙箱 + 拒绝账本 | OpenSquilla | Standard/Strict/Locked 三档 + 连续拒绝暂停自主执行 | sandbox.ts 档位化 |
+| 工具结果压缩 + 上下文预算 | OpenSquilla | bounded preview + handle + compact 摘要 | §8.3 工作记忆开发时 |
+| Skill 按需过滤 + eligibility | OpenSquilla | 每轮检索/门控后注入，环境依赖不可用则不注入 | Skill 元数据扩展 |
 
 ## 4. 不借 / 暂缓
 
@@ -61,6 +68,12 @@
   与事件流，三栏仍要自建。
 - **角色插件化直接抄**：dsh 没有内置“老板 / PM / 架构师 / 秘书”插件；它只有
   Agent Preset 机制，角色逻辑、人格层和意图分类仍要自己实现。
+- **SquillaRouter ML 分类器照搬**：LightGBM/ONNX 本地分类器维护成本高，先沿用
+  规则 + 轻模型分类，数据量大到能证明收益再上 ML。
+- **B5 Ensemble 全量照搬**：4 proposer + 1 aggregator 是 N+1 次模型调用，只在
+  低置信/高风险场景按需做双模型交叉验证。
+- **20+ Provider / WebUI / 聊天频道整套迁移**：只做三厂 + OpenAI 兼容抽象；
+  三栏 UI 保持自研薄客户端；cron/频道等非当前痛点。
 
 ## 5. 审阅结论摘要（2026-08-14）
 
@@ -71,9 +84,20 @@
 4. 文档宪法能保护需求稳定，但不能消除外部代码迁移成本；需要在外部与内部之间
    保留稳定适配层。
 
+## 审阅结论摘要（2026-08-16 OpenSquilla）
+
+1. OpenSquilla 最值钱的三样：**按任务难度选模型并便宜优先**、**所有入口共用同一
+   TurnLoop**、**路由决策自动变训练数据（数据飞轮）**。
+2. 分别对应我们的模型切换器、CLI/UI 双皮问题、路由校准闭环，都可直接落地；
+   详见 `docs/plans/2026-08-16-opensquilla-review.md`。
+3. 复杂 ML 路由、B5 集成、全渠道接入暂缓：当前规则 + 轻分类 + 三厂抽象足够，
+   等真实数据积累后再评估。
+
 ## 6. 来源
 
 - agent-skills：<https://github.com/addyosmani/agent-skills>
 - dsh 官方架构文档：<https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.zh.md>
 - dsh MCP Client：<https://github.com/deepseek-ai/deepseek-harness/tree/master/packages/mcp/mcp-client>
 - InfoQ 分析：<https://www.sohu.com/a/1062640652_122014422>
+- OpenSquilla：<https://github.com/opensquilla/opensquilla>（本地 `opensquilla/` v0.5.3）
+- OpenSquilla Agentic Routing 技术报告：<https://arxiv.org/abs/2607.11399>

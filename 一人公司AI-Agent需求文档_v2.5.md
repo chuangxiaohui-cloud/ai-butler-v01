@@ -2367,6 +2367,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：C02/E39 CLI 实测生成完整代码；C05 无路径澄清、C06 抓取 README/仓库链接兜底；P03 多意图拆分；全量测试通过，122 条基线路由选项 0、JSON 0、35/35 系统 Bug 修复。
 - affects: §5,§6 | bench:B-20260816-03 | E102 执行器运行时、打包/GitHub Skill、多意图与指代豁免
 
+### 2026-08-16（OpenSquilla 借鉴审阅 E103）
+
+- **变更**：审阅本地 `opensquilla/` v0.5.3 源码与文档，形成「可直接借鉴 / 需裁剪 / 不建议照搬」清单并登记 `docs/borrowed-designs.md`；确定下阶段优先借鉴 Provider Registry + 便宜优先模型路由、单一共享 TurnLoop、路由/模型决策数据飞轮闭环、记忆双通道召回、分层沙箱 + 拒绝账本、工具结果压缩/上下文预算、Skill 按需过滤。
+- **验证**：`npm run build` + `npm run test:all` 通过；doc-lint 通过；未改动 `opensquilla/` 外部仓库；详见 `docs/plans/2026-08-16-opensquilla-review.md`。
+- affects: §4.1,§8,§10,§13 | bench:na(new-param) 理由：外部设计审阅登记，无 §5/§6 参数或行为变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
