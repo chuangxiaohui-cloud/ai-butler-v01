@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-16T02:55:19.727Z",
+  "generatedAt": "2026-08-16T14:22:30.484Z",
   "defaultTier": "medium",
   "tiers": [
     "light",
@@ -23,6 +23,24 @@
       "id": "deepseek:heavy",
       "provider": "DeepSeek",
       "label": "deepseek-chat",
+      "note": "旗舰 · 推理"
+    },
+    {
+      "id": "minimax:light",
+      "provider": "MiniMax",
+      "label": "MiniMax-M2.7",
+      "note": "快速"
+    },
+    {
+      "id": "minimax:medium",
+      "provider": "MiniMax",
+      "label": "MiniMax-M2.7",
+      "note": "均衡"
+    },
+    {
+      "id": "minimax:heavy",
+      "provider": "MiniMax",
+      "label": "MiniMax-M3",
       "note": "旗舰 · 推理"
     },
     {
