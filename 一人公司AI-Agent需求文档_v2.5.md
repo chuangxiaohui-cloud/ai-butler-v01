@@ -2513,6 +2513,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`electron-builder --dir` 后打包 exe 的 `--smoke` 实测通过（内置 gateway 启动 + UI 加载 + 退出码 0）；`npm run dist` 产出 NSIS Setup（129.3 MB）与便携版（129.0 MB）；主项目与 UI build、`npm run test:all` 单测 340/340 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-16-desktop-installer.md`。
 - affects: §13 | bench:na(new-param) 理由：安装包资源准备与打包分支新增，无 §5/§6 参数或行为变更
 
+### 2026-08-16（应用图标 E123）
+
+- **变更**：新增 `desktop/scripts/make-icon.ps1` 用 System.Drawing 生成 512×512 应用图标（深色圆角底 + 青蓝渐变聊天气泡 + 三圆点 + 火花）；生成 `desktop/build/icon.png`、`icon-256.png` 与标准 `icon.ico`；`win.icon` 指向 `build/icon.ico`。
+- **验证**：重新执行 `npm run dist`，打包日志不再出现默认图标警告，NSIS 与便携版重新产出；打包后 exe smoke 实测通过（退出码 0，`DESKTOP_READY`）；主项目与 UI build、`npm run test:all` 单测 340/340 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-16-app-icon.md`。
+- affects: §13 | bench:na(new-param) 理由：应用图标资源与打包配置新增，无 §5/§6 参数或行为变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
