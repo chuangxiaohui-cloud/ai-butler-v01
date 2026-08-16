@@ -298,6 +298,13 @@ function App() {
     }),
     [],
   );
+  const contextUsage = useMemo(() => {
+    const chars = activeMessages.reduce(
+      (sum, msg) => sum + (msg.text?.length ?? 0) + (msg.images?.length ?? 0) * 1200,
+      0,
+    );
+    return Math.min(100, Math.round(6 + chars / 400));
+  }, [activeMessages]);
 
   return (
     <div className="app-shell">
@@ -398,6 +405,7 @@ function App() {
                   model={model}
                   onModelChange={setModel}
                   models={models}
+                  contextUsage={contextUsage}
                 />
               </section>
 
@@ -494,6 +502,7 @@ function App() {
                   model={model}
                   onModelChange={setModel}
                   models={models}
+                  contextUsage={contextUsage}
                 />
               </section>
 
@@ -662,6 +671,7 @@ function Composer({
   model,
   onModelChange,
   models,
+  contextUsage,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -671,13 +681,16 @@ function Composer({
   model: string;
   onModelChange: (model: string) => void;
   models: ModelOption[];
+  contextUsage: number;
 }) {
   const [attachOpen, setAttachOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
+  const [modeOpen, setModeOpen] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentModel = models.find((item) => item.id === model) ?? models[0];
+  const currentMode = MODES.find((item) => item.key === mode) ?? MODES[0];
   const providers = Array.from(new Set(models.map((item) => item.provider)));
   const addFile = (file: File) => {
     const reader = new FileReader();
@@ -800,17 +813,34 @@ function Composer({
             </div>
           )}
         </div>
-        <div className="mode-switch" role="group" aria-label="执行方式">
-          {MODES.map((m) => (
-            <button
-              key={m.key}
-              className={mode === m.key ? 'active' : ''}
-              onClick={() => onModeChange(m.key)}
-            >
-              {m.label}
-              <small>{m.hint}</small>
-            </button>
-          ))}
+        <div className="mode-switch">
+          <button
+            className={modeOpen ? 'active' : ''}
+            onClick={() => setModeOpen((prev) => !prev)}
+            aria-label="执行方式"
+          >
+            <Wrench size={14} />
+            <strong>{currentMode.label}</strong>
+            <small>{currentMode.hint}</small>
+            <ChevronDown size={14} />
+          </button>
+          {modeOpen && (
+            <div className="mode-popover">
+              {MODES.map((m) => (
+                <button
+                  key={m.key}
+                  className={mode === m.key ? 'active' : ''}
+                  onClick={() => {
+                    onModeChange(m.key);
+                    setModeOpen(false);
+                  }}
+                >
+                  <span>{m.label}</span>
+                  <small>{m.hint}</small>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="model-switch">
           <button
@@ -847,6 +877,26 @@ function Composer({
           )}
         </div>
         <span className="composer-hint">{currentModel.note}</span>
+        <div
+          className="context-meter"
+          role="img"
+          aria-label={`上下文用量 ${contextUsage}%`}
+          title={`上下文用量 ${contextUsage}%`}
+        >
+          <svg viewBox="0 0 36 36" aria-hidden="true">
+            <circle className="context-meter-track" cx="18" cy="18" r="15" />
+            <circle
+              className="context-meter-value"
+              cx="18"
+              cy="18"
+              r="15"
+              style={{
+                strokeDashoffset: 94.25 * (1 - contextUsage / 100),
+              }}
+            />
+          </svg>
+          <span>{contextUsage}%</span>
+        </div>
       </div>
     </div>
   );

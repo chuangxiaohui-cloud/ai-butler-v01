@@ -14,6 +14,7 @@
 8. **模型路由数据飞轮 + UI 目录接入（E105）**：trajectory 新增 `model_route` 事件；route-case 新增 `modelRoute` 字段与 `attachModelRoute`；Stage 5 合成成功后自动写轨迹并回写 case；新增 `npm run model:export`，UI 模型切换器优先读 `ui/prototype/public/model-providers.json`；单测 310/310 + 集成 17/17 全绿，UI 构建通过；详见 `docs/plans/2026-08-16-model-data-flywheel.md`。
 9. **单一共享 TurnLoop Gateway（E106）**：新增 Express gateway（`npm run gateway`，`http://127.0.0.1:8787`），`POST /api/ask` 走同一 `answer(query)` 契约；UI `send()` 优先调 gateway，失败回落本地草稿；模型 id（`<provider>:<role>`）经 `PipelineOptions.modelSelection` 覆盖 Stage 5；`src/config/model-catalog.ts` 统一模型目录；单测 316/316 + 集成 17/17 全绿，UI 构建通过，gateway 已启动；详见 `docs/plans/2026-08-16-shared-turnloop-gateway.md`。
 10. **Gateway 附件接口 + UI 上传（E107）**：`/api/ask` 接收 base64 data URL 附件并解码为 `RawFileLike`，图片/文档走与 CLI 相同的 Skill 链路；UI `+` 菜单接图片/文件上传，粘贴图片继续可用，`send()` 携带附件；单测 319/319 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-gateway-attachments.md`。
+11. **输入框用量图 + 模式收缩（E108）**：聊天输入框右下角新增上下文用量环（消息长度估算）；Ask/Craft/Plan 改为可收缩单按钮 + 弹出层；UI 构建通过，Playwright 验证无横向溢出、弹出层选择后收起；详见 `docs/plans/2026-08-16-composer-refine.md`。
 
 ## 明天继续（按优先级）
 

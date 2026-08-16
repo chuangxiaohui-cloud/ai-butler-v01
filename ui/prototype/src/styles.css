@@ -143,38 +143,72 @@ button {
 }
 
 .mode-switch {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg);
+  position: relative;
 }
 
-.mode-switch button {
+.mode-switch > button {
   display: flex;
-  align-items: baseline;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
   padding: 6px 9px;
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: transparent;
+  background: var(--panel-2);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
+}
+
+.mode-switch > button.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(91, 141, 239, 0.4);
+}
+
+.mode-switch > button strong {
+  color: var(--ink);
   font-weight: 700;
 }
 
-.mode-switch button small {
+.mode-popover {
+  position: absolute;
+  left: 0;
+  bottom: 36px;
+  width: 190px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: var(--shadow);
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mode-popover button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 9px;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12px;
+}
+
+.mode-popover button:hover,
+.mode-popover button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.mode-popover button span {
+  font-weight: 700;
+}
+
+.mode-popover button small {
   font-size: 9px;
-  font-weight: 500;
-}
-
-.mode-switch button.active {
-  background: var(--accent);
-  color: #fff;
-}
-
-.mode-switch button.active small {
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--muted);
 }
 
 .status-pill {
@@ -719,6 +753,37 @@ button {
   margin-left: 8px;
   font-size: 10px;
   color: var(--muted);
+}
+
+.context-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.context-meter svg {
+  width: 26px;
+  height: 26px;
+  transform: rotate(-90deg);
+}
+
+.context-meter-track {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 3;
+}
+
+.context-meter-value {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 94.25;
+  transition: stroke-dashoffset 0.3s ease;
 }
 
 .composer textarea {

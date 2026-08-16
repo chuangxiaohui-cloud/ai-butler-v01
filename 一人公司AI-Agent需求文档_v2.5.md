@@ -2410,6 +2410,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 319/319 + 集成 17/17 全绿（新增附件解码与图片附件走 VLM Skill）；doc-lint 通过；详见 `docs/plans/2026-08-16-gateway-attachments.md`。
 - affects: §13 | bench:na(new-param) 理由：附件接口与 UI 上传，无 §5/§6 参数或行为变更
 
+### 2026-08-16（输入框用量图 + 模式收缩 E108）
+
+- **变更**：聊天输入框右下角新增上下文用量环（按当前会话消息长度估算，6% 起封顶 100%）；Ask/Craft/Plan 从常驻三按钮改为可收缩单按钮 + 弹出层，选择后自动收起。
+- **验证**：UI `npm run build` 通过；Playwright 检查 1280px 无横向溢出、模式按钮数为 1、用量图位于工具行右下角，弹出层含 3 项且选择后收起；详见 `docs/plans/2026-08-16-composer-refine.md`。
+- affects: §4.1 | bench:na(new-param) 理由：UI 布局与交互调整，无 §5/§6 参数或行为变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
