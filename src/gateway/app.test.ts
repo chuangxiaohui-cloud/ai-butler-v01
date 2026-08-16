@@ -16,6 +16,22 @@ class FakeLLM implements LLMClient {
   async complete(messages: ChatMessage[]): Promise<string> {
     const system = messages[0]?.content ?? '';
     if (system.includes('意图特征提取器')) {
+      if (system.includes('这个图')) {
+        return JSON.stringify({
+          actionType: 'qa',
+          targetDomain: 'unknown',
+          scope: 'atomic',
+          requiresExternalSearch: false,
+          searchSourceHint: 'none',
+          hasImplicitContext: true,
+          urgency: 'normal',
+          rawEntities: [],
+          ambiguityFlags: ['missing_referent'],
+          hasImage: true,
+          hasDocument: false,
+          attachmentTypes: ['image/png'],
+        });
+      }
       return JSON.stringify({
         actionType: 'query',
         targetDomain: 'search',
@@ -73,6 +89,9 @@ function testDeps(): PipelineDeps {
     memoryStore: {
       put: async () => '1',
       recall: async () => [],
+    },
+    skillDeps: {
+      callVLM: async () => '截图：对话界面，含表格与代码块。',
     },
   };
 }
@@ -151,6 +170,32 @@ test('gateway: /api/model-providers 返回 UI 可用的模型目录', async () =
       assert.ok(item.provider);
       assert.ok(item.label);
     }
+  } finally {
+    server.close();
+  }
+});
+
+test('gateway: /api/ask 接收图片附件并走 VLM Skill', async () => {
+  const { server, base } = await startApp();
+  try {
+    const resp = await fetch(`${base}/api/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: '这个图是什么',
+        attachments: [
+          {
+            name: 'shot.png',
+            type: 'image/png',
+            dataUrl:
+              'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+          },
+        ],
+      }),
+    });
+    const body = (await resp.json()) as { answer?: string };
+    assert.equal(resp.status, 200);
+    assert.ok(body.answer?.includes('对话界面'), JSON.stringify(body));
   } finally {
     server.close();
   }

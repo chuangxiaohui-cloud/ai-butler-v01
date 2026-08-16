@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUpRight,
   Bell,
@@ -55,6 +55,12 @@ interface ModelOption {
   provider: string;
   label: string;
   note: string;
+}
+
+interface Attachment {
+  name: string;
+  type: string;
+  dataUrl: string;
 }
 
 const TABS: Array<{ key: TabKey; label: string; sub: string; icon: typeof Code2 }> = [
@@ -227,28 +233,37 @@ function App() {
 
   const activeMessages = messages[tab];
 
-  const send = async (images: string[] = []) => {
+  const send = async (attachments: Attachment[] = []) => {
     const text = input.trim();
-    if (!text && images.length === 0) return;
+    if (!text && attachments.length === 0) return;
     const userMsg: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
-      text: text || '已发送图片',
-      images,
+      text: text || '已发送附件',
+      images: attachments
+        .filter((item) => item.type.startsWith('image/'))
+        .map((item) => item.dataUrl),
     };
     setMessages((prev) => ({ ...prev, [tab]: [...prev[tab], userMsg] }));
     setInput('');
     const appendReply = (reply: Message) =>
       setMessages((prev) => ({ ...prev, [tab]: [...prev[tab], reply] }));
-    if (images.length > 0) {
-      appendReply(ReplyDraft(tab, mode, text));
-      return;
-    }
     try {
       const resp = await fetch(`${GATEWAY_URL}/api/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: text, modelId: model, tab, mode, userId: 'ui-user' }),
+        body: JSON.stringify({
+          query: text,
+          modelId: model,
+          tab,
+          mode,
+          userId: 'ui-user',
+          attachments: attachments.map((item) => ({
+            name: item.name,
+            type: item.type,
+            dataUrl: item.dataUrl,
+          })),
+        }),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = (await resp.json()) as {
@@ -650,7 +665,7 @@ function Composer({
 }: {
   value: string;
   onChange: (value: string) => void;
-  onSend: (images: string[]) => void;
+  onSend: (attachments: Attachment[]) => void;
   mode: Mode;
   onModeChange: (mode: Mode) => void;
   model: string;
@@ -659,19 +674,66 @@ function Composer({
 }) {
   const [attachOpen, setAttachOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const currentModel = models.find((item) => item.id === model) ?? models[0];
   const providers = Array.from(new Set(models.map((item) => item.provider)));
+  const addFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setAttachments((prev) => [
+          ...prev,
+          { name: file.name, type: file.type, dataUrl: reader.result as string },
+        ]);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+  const addFiles = (files: FileList | null) => {
+    Array.from(files ?? []).forEach(addFile);
+  };
   return (
     <div className="composer">
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(event) => {
+          addFiles(event.target.files);
+          event.target.value = '';
+        }}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        hidden
+        onChange={(event) => {
+          addFiles(event.target.files);
+          event.target.value = '';
+        }}
+      />
       {attachments.length > 0 && (
         <div className="attach-previews">
-          {attachments.map((src) => (
-            <div className="attach-preview" key={src}>
-              <img src={src} alt="待发送图片" />
+          {attachments.map((att) => (
+            <div className="attach-preview" key={`${att.name}-${att.dataUrl.length}`}>
+              {att.type.startsWith('image/') ? (
+                <img src={att.dataUrl} alt={att.name} />
+              ) : (
+                <div className="attach-file">
+                  <FileText size={18} />
+                  <span className="attach-name">{att.name}</span>
+                </div>
+              )}
               <button
-                aria-label="移除图片"
-                onClick={() => setAttachments((prev) => prev.filter((item) => item !== src))}
+                aria-label="移除附件"
+                onClick={() =>
+                  setAttachments((prev) => prev.filter((item) => item !== att))
+                }
               >
                 <X size={13} />
               </button>
@@ -691,13 +753,7 @@ function Composer({
             event.preventDefault();
             const file = image.getAsFile();
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-              if (typeof reader.result === 'string') {
-                setAttachments((prev) => [...prev, reader.result as string]);
-              }
-            };
-            reader.readAsDataURL(file);
+            addFile(file);
           }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
@@ -729,11 +785,11 @@ function Composer({
           </button>
           {attachOpen && (
             <div className="attach-popover">
-              <button>
+              <button onClick={() => imageInputRef.current?.click()}>
                 <Image size={15} />
                 上传图片
               </button>
-              <button>
+              <button onClick={() => fileInputRef.current?.click()}>
                 <Paperclip size={15} />
                 上传文件
               </button>

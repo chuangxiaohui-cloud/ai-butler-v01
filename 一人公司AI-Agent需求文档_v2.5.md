@@ -1581,6 +1581,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/config/model-catalog.ts` | 共享模型目录（UI / gateway 共用） |
 | `src/gateway/app.ts` | TurnLoop gateway 路由（/api/ask / health / model-providers） |
 | `src/gateway/server.ts` | gateway 启动器（复用 CLI 同款依赖） |
+| `src/gateway/attachments.ts` | base64 data URL 附件 → RawFileLike |
 
 > 完整代码目录为实施期产物：v0.1 落地后按 §0.1 文档治理规则补全并登记版本快照。当前仅列已定架构的关键模块。
 
@@ -2402,6 +2403,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：新增 Express gateway（`src/gateway/app.ts` + `server.ts` + `npm run gateway`），`POST /api/ask` 走同一 `answer(query)` 契约，空 query 400 且不泄露原始错误；`GET /api/model-providers` 返回共享模型目录；UI `send()` 优先调 gateway，失败回落本地草稿；`PipelineOptions.modelSelection` 支持 UI 模型 id（`<provider>:<role>`）覆盖 Stage 5 档位/provider；`src/config/model-catalog.ts` 统一目录生成。
 - **验证**：主项目 `npm run build` 通过；`npm run test:all` 单测 316/316 + 集成 17/17 全绿；UI 构建通过；doc-lint 通过；gateway 启动于 `http://127.0.0.1:8787`；详见 `docs/plans/2026-08-16-shared-turnloop-gateway.md`。
 - affects: §13 | bench:na(new-param) 理由：gateway 与 UI 接线，无 §5/§6 参数或行为变更
+
+### 2026-08-16（Gateway 附件接口 + UI 上传 E107）
+
+- **变更**：`/api/ask` 接收 `attachments[]`（base64 data URL），`src/gateway/attachments.ts` 解码为 `RawFileLike` 后进 pipeline，与 CLI 同链路；JSON body 上限提到 25MB；UI `+` 菜单接图片/文件上传，粘贴图片继续可用，`send()` 携带附件，失败回落本地草稿。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 319/319 + 集成 17/17 全绿（新增附件解码与图片附件走 VLM Skill）；doc-lint 通过；详见 `docs/plans/2026-08-16-gateway-attachments.md`。
+- affects: §13 | bench:na(new-param) 理由：附件接口与 UI 上传，无 §5/§6 参数或行为变更
 
 ### v2.5（2026-08-12）
 

@@ -538,6 +538,27 @@ button {
   display: block;
 }
 
+.attach-preview .attach-file {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px;
+  color: var(--muted);
+}
+
+.attach-preview .attach-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
 .attach-preview button {
   position: absolute;
   top: 4px;
