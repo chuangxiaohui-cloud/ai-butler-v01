@@ -378,6 +378,15 @@ test('pipeline: onProgress 按阶段回调', async () => {
   }
 });
 
+test('pipeline: onArtifact 记录 Skill 生成/完成', async () => {
+  const artifacts: Array<{ skill: string; state: string }> = [];
+  await pipeline('查一下我今天的日程', deps, {
+    onArtifact: (event) => artifacts.push(event),
+  });
+  assert.ok(artifacts.some((a) => a.skill === 'calendar-skill' && a.state === 'generating'));
+  assert.ok(artifacts.some((a) => a.skill === 'calendar-skill' && a.state === 'done'));
+});
+
 test('pipeline: 本地日历查询走 calendar-skill 执行', async () => {
   const r = await pipeline('查一下我今天的日程', deps);
   assert.ok(r.answer.includes('日程'));

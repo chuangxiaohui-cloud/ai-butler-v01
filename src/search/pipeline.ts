@@ -92,6 +92,11 @@ export interface PipelineOptions {
   userId?: string;
   modelSelection?: ModelSelection;
   onProgress?: (stage: string) => void;
+  onArtifact?: (event: {
+    skill: string;
+    state: 'generating' | 'done' | 'failed';
+    path?: string;
+  }) => void;
 }
 
 export async function pipeline(
@@ -106,6 +111,17 @@ export async function pipeline(
       opts.onProgress?.(stage);
     } catch {
       // 进度回调失败不阻塞主对话
+    }
+  };
+  const safeArtifact = (event: {
+    skill: string;
+    state: 'generating' | 'done' | 'failed';
+    path?: string;
+  }) => {
+    try {
+      opts.onArtifact?.(event);
+    } catch {
+      // 产物事件失败不阻塞主对话
     }
   };
   const recordTrajectory = (event: TrajectoryEventBody) => {
@@ -304,6 +320,7 @@ export async function pipeline(
     const skillName = executor.replaceAll('_', '-');
     const skill = getSkills().find((s) => s.name === skillName && isSkillEnabled(s.name));
     if (skill && status === 'available') {
+      safeArtifact({ skill: skill.name, state: 'generating' });
       try {
         const skillDeps = deps.skillDeps ?? { callVLM: async () => '' };
         const output = await skill.execute(
@@ -317,6 +334,11 @@ export async function pipeline(
           skillDeps,
         );
         let answer = toDisplayText(output.result);
+        safeArtifact({
+          skill: skill.name,
+          state: 'done',
+          path: extractArtifactPath(answer),
+        });
         if (routeSelected.postProcess === 'cultural_reply') {
           answer = culturalReplyPostProcess({
             skillOutput: output,
@@ -364,6 +386,7 @@ export async function pipeline(
         };
       } catch {
         // Skill 执行失败，落到诚实降级
+        safeArtifact({ skill: skill.name, state: 'failed' });
       }
     }
     return {
@@ -677,4 +700,11 @@ export async function pipeline(
     mode: uiRoute.mode,
     submode: uiRoute.submode,
   };
+}
+
+const ARTIFACT_PATH_RE = /[\w./\\:-]+\.(zip|kicad_sch|kicad_pcb|net|pdf|html?|md|txt)/i;
+
+function extractArtifactPath(text: string): string | undefined {
+  const match = ARTIFACT_PATH_RE.exec(text);
+  return match?.[0];
 }

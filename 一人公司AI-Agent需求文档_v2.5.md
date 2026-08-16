@@ -2495,6 +2495,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 338/338 + 集成 17/17 全绿（新增 onProgress/progress 事件/HTML 分类测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-pipeline-progress-html-preview.md`。
 - affects: §13 | bench:na(new-param) 理由：进度事件与 HTML 预览接线，无 §5/§6 参数或行为变更
 
+### 2026-08-16（Skill 级“生成中”状态 E120）
+
+- **变更**：`PipelineOptions` 增加 `onArtifact`（generating/done/failed + path）；pipeline 直接 Skill 路径执行前发 `generating`、完成后解析产物路径发 `done`、失败发 `failed`；gateway `/api/ask` 发布 SSE `artifact` 事件；UI 文件列表顶部实时显示“生成中”Skill 行并在完成/失败后移除。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 339/339 + 集成 17/17 全绿（新增 onArtifact 与 artifact 事件断言）；doc-lint 通过；详见 `docs/plans/2026-08-16-skill-artifact-status.md`。
+- affects: §13 | bench:na(new-param) 理由：Skill 级产物状态事件与 UI 接线，无 §5/§6 参数或行为变更
+
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）

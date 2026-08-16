@@ -1,6 +1,6 @@
 # 进度交接 2026-08-16（v0.2b 续作）
 
-> 当前分支：`v0.2b`｜最新提交：`74eeedf`｜Gitee 与 GitHub 已同步。
+> 当前分支：`v0.2b`｜最新提交：`<E120 提交后回填>`｜Gitee 与 GitHub 已同步。
 
 ## 今日已收口
 
@@ -26,13 +26,14 @@
 20. **终端命令白名单细化（E117）**：`SecurityConfig` 新增 `allowedCommandPrefixes`；gateway 执行前校验，未授权前缀 403；UI 安全中心增加命令前缀输入；单测 335/335 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-terminal-allowlist.md`。
 21. **Artifact 事件流（E118）**：新增 `src/gateway/artifact-bus.ts` 事件总线；gateway 新增 `GET /api/events` SSE，`/api/ask` 完成后广播 `files_changed`；UI 右侧栏 EventSource 自动刷新文件列表；单测 337/337 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-artifact-event-stream.md`。
 22. **Pipeline 进度事件 + HTML 预览自动弹出（E119）**：`PipelineOptions.onProgress` 六阶段回调；gateway 发布 SSE `progress`；`files.ts` 识别 HTML 产物；UI 顶部显示进度，HTML 产物出现时自动展开浏览器 Tab；单测 338/338 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-pipeline-progress-html-preview.md`。
+23. **Skill 级“生成中”状态（E120）**：`PipelineOptions.onArtifact`（generating/done/failed + path）；gateway 发布 SSE `artifact`；UI 文件列表顶部实时显示/移除生成中 Skill 行；单测 339/339 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-skill-artifact-status.md`。
 
 ## 明天继续（按优先级）
 
 1. 解决“低置信兜底话术”回升：强化浏览器兜底/重试/查询改写（SM18/SM31/C08/ET20 等搜索质量类）。
 2. 按新基线重打分（旧定稿分只代表旧行为），推进 A/B 套评测拆分。
 3. 给 35 条 Bug 清单补状态字段与回归用例，验证 C05 打包与 C06 README 抓取在真实环境稳定。
-4. 文件“生成中”逐条实时状态（Skill 级事件）；桌面端封装。
+4. 桌面端封装（Electron/Tauri 选型后落地）。
 
 ## 常用命令
 

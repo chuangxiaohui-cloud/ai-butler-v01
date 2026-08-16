@@ -41,6 +41,22 @@ class FakeLLM implements LLMClient {
           attachmentTypes: ['image/png'],
         });
       }
+      if (system.includes('日程')) {
+        return JSON.stringify({
+          actionType: 'query',
+          targetDomain: 'schedule',
+          scope: 'atomic',
+          requiresExternalSearch: false,
+          searchSourceHint: 'local_skill',
+          hasImplicitContext: false,
+          urgency: 'normal',
+          rawEntities: [],
+          ambiguityFlags: [],
+          hasImage: false,
+          hasDocument: false,
+          attachmentTypes: [],
+        });
+      }
       return JSON.stringify({
         actionType: 'query',
         targetDomain: 'search',
@@ -484,4 +500,5 @@ test('gateway: /api/ask 完成时发布 files_changed 事件', async () => {
   }
   assert.ok(events.includes('files_changed'));
   assert.ok(events.includes('progress'));
+  assert.ok(events.includes('artifact'));
 });
