@@ -17,13 +17,14 @@
 11. **输入框用量图 + 模式收缩（E108）**：聊天输入框右下角新增上下文用量环（消息长度估算）；Ask/Craft/Plan 改为可收缩单按钮 + 弹出层；UI 构建通过，Playwright 验证无横向溢出、弹出层选择后收起；详见 `docs/plans/2026-08-16-composer-refine.md`。
 12. **UI v2 外壳 + mode/submode 契约（E109）**：按《AI-Agent-v2.5_3》重构 UI 为 L0/L1 侧边栏 + 右侧产物栏 + 终端抽屉 + 设置双栏 + 对话区顶部模式胶囊；新增 `src/agent/mode-mapper.ts`，`/api/ask` 返回 `mode/submode`；单测 321/321 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-ui-v2-shell.md`。
 13. **路由校准设置面板接真实数据（E110）**：gateway 新增 `/api/routing/cases`、`/api/routing/batch-mark`、`/api/routing/export`；UI 路由校准表格读取真实 route-case，支持标记正确、刷新、导出 CSV；单测 322/322 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-routing-calibration-api.md`。
+14. **服务商设置接真实数据（E111）**：新增 `src/config/provider-order.ts` 持久化默认 provider 顺序；gateway 新增 `/api/providers`、`/api/providers/default`、`/api/providers/test`；UI 服务商设置显示真实状态，支持测试连接、设为默认；单测 323/323 + 集成 17/17 全绿；详见 `docs/plans/2026-08-16-provider-settings-api.md`。
 
 ## 明天继续（按优先级）
 
 1. 解决“低置信兜底话术”回升：强化浏览器兜底/重试/查询改写（SM18/SM31/C08/ET20 等搜索质量类）。
 2. 按新基线重打分（旧定稿分只代表旧行为），推进 A/B 套评测拆分。
 3. 给 35 条 Bug 清单补状态字段与回归用例，验证 C05 打包与 C06 README 抓取在真实环境稳定。
-4. 设置面板写操作接真实 API（Provider/技能库/记忆/Token 计量）、artifact 事件流与右侧文件列表联动、终端真实执行通道。
+4. 设置面板写操作接真实 API（技能库/记忆/Token 计量）、artifact 事件流与右侧文件列表联动、终端真实执行通道。
 
 ## 常用命令
 

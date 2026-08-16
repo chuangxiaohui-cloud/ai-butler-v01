@@ -1583,6 +1583,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `scripts/bench-provider-router.ts` | Provider Registry / 模型分档本地 bench |
 | `scripts/export-model-catalog.ts` | 导出 Provider Registry 模型目录给 UI |
 | `src/config/model-catalog.ts` | 共享模型目录（UI / gateway 共用） |
+| `src/config/provider-order.ts` | Provider 默认顺序持久化（data/provider-order.json） |
 | `src/gateway/app.ts` | TurnLoop gateway 路由（/api/ask / health / model-providers） |
 | `src/gateway/server.ts` | gateway 启动器（复用 CLI 同款依赖） |
 | `src/gateway/attachments.ts` | base64 data URL 附件 → RawFileLike |
@@ -2431,6 +2432,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：gateway 新增 `GET /api/routing/cases`、`POST /api/routing/batch-mark`、`POST /api/routing/export`（CSV/JSON），读取/标记/导出 `data/route-cases.jsonl`；`GatewayOptions` 支持注入 `RouteCaseStore`；UI 路由校准表格改为拉取真实 case，支持标记正确、刷新、导出 CSV。
 - **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 322/322 + 集成 17/17 全绿（新增 cases/batch-mark/export 集成测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-routing-calibration-api.md`。
 - affects: §13 | bench:na(new-param) 理由：路由校准读写 API 与 UI 接线，无 §5/§6 参数或行为变更
+
+### 2026-08-16（服务商设置接真实数据 E111）
+
+- **变更**：新增 `src/config/provider-order.ts` 持久化默认 provider 顺序；registry 支持 `order()/setOrder()/listStatuses()`；gateway 新增 `GET /api/providers`、`POST /api/providers/default`、`POST /api/providers/test`；UI 服务商设置显示真实配置状态，支持测试连接、设为默认。
+- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 323/323 + 集成 17/17 全绿（新增 providers 状态与安全失败测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-provider-settings-api.md`。
+- affects: §13 | bench:na(new-param) 理由：服务商读写 API 与 UI 接线，无 §5/§6 参数或行为变更
 
 ### v2.5（2026-08-12）
 

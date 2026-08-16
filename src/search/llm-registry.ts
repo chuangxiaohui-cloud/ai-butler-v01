@@ -6,6 +6,7 @@
 
 import { loadEnvFile } from '../config/env.js';
 import { PARAMS } from '../config/params.js';
+import { readProviderOrder, writeProviderOrder } from '../config/provider-order.js';
 import {
   OpenAiCompatibleClient,
   type ChatMessage,
@@ -199,20 +200,55 @@ export class FallbackLLMClient implements LLMClient {
 
 export class LlmProviderRegistry {
   private readonly env: Record<string, string | undefined>;
+  private readonly usesProcessEnv: boolean;
 
   constructor(env: Record<string, string | undefined> = process.env) {
     loadEnvFile();
     this.env = env;
+    this.usesProcessEnv = env === process.env;
   }
 
-  listProfiles(role: ModelRole): ProviderProfile[] {
+  order(): string[] {
     const order = (this.env.LLM_PROVIDER_ORDER ?? DEFAULT_PROVIDER_ORDER)
       .split(',')
       .map((id) => id.trim())
       .filter(Boolean);
+    if (order.length > 0) return order;
+    if (this.usesProcessEnv) {
+      const fileOrder = readProviderOrder();
+      if (fileOrder) return fileOrder;
+    }
+    return DEFAULT_PROVIDER_ORDER.split(',').map((id) => id.trim());
+  }
+
+  setOrder(order: string[]): void {
+    if (!this.usesProcessEnv) {
+      throw new Error('仅运行时 registry 支持持久化 provider 顺序');
+    }
+    writeProviderOrder(order);
+  }
+
+  listStatuses(): Array<{
+    id: string;
+    label: string;
+    configured: boolean;
+    models: Record<ModelRole, string>;
+  }> {
+    return PROVIDER_DEFS.map((def) => {
+      const profile = buildProviderProfile(def, this.env);
+      return {
+        id: def.id,
+        label: def.label,
+        configured: profile !== null,
+        models: profile?.models ?? def.defaultModels,
+      };
+    });
+  }
+
+  listProfiles(role: ModelRole): ProviderProfile[] {
     const profiles: ProviderProfile[] = [];
     const seen = new Set<string>();
-    for (const id of order) {
+    for (const id of this.order()) {
       const def = PROVIDER_DEFS.find((d) => d.id === id);
       if (!def || seen.has(def.id)) continue;
       const profile = buildProviderProfile(def, this.env);

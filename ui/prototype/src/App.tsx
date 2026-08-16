@@ -946,28 +946,82 @@ function SettingsPanel({
 }
 
 function ProvidersSettings() {
-  const rows = [
-    { name: 'DeepSeek', model: 'deepseek-chat', status: '连接正常', default: true },
-    { name: '智谱', model: 'glm-5.3', status: '连接正常', default: false },
-    { name: 'MiniMax', model: 'MiniMax-M3', status: '未配置', default: false },
-  ];
+  const [providers, setProviders] = useState<
+    Array<{ id: string; label: string; configured: boolean; models: Record<string, string> }>
+  >([]);
+  const [order, setOrder] = useState<string[]>([]);
+  const [testing, setTesting] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<Record<string, string>>({});
+
+  const load = () => {
+    fetch(`${GATEWAY_URL}/api/providers`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((data: { order?: string[]; providers?: typeof providers } | null) => {
+        setProviders(data?.providers ?? []);
+        setOrder(data?.order ?? []);
+      })
+      .catch(() => {
+        setProviders([]);
+        setOrder([]);
+      });
+  };
+
+  useEffect(load, []);
+
+  const test = async (id: string) => {
+    setTesting(id);
+    setTestResult((prev) => ({ ...prev, [id]: '测试中…' }));
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/providers/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ providerId: id }),
+      });
+      const body = (await resp.json()) as { ok?: boolean; error?: string };
+      setTestResult((prev) => ({
+        ...prev,
+        [id]: body.ok ? '连接正常' : (body.error ?? '连接失败'),
+      }));
+    } catch {
+      setTestResult((prev) => ({ ...prev, [id]: '连接失败' }));
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  const setDefault = async (id: string) => {
+    await fetch(`${GATEWAY_URL}/api/providers/default`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ providerId: id }),
+    });
+    load();
+  };
+
   return (
     <div className="settings-form">
-      <button className="add-provider">
+      <button className="add-provider" disabled title="在 .env 中配置 API Key 后刷新">
         <Plus size={14} />
         添加服务商
       </button>
-      {rows.map((row) => (
-        <div className="provider-row" key={row.name}>
+      {providers.length === 0 && <p className="settings-note">加载中…</p>}
+      {providers.map((row) => (
+        <div className="provider-row" key={row.id}>
           <div>
-            <strong>{row.name}</strong>
-            <span>{row.model}</span>
+            <strong>{row.label}</strong>
+            <span>{row.models.heavy ?? '-'}</span>
           </div>
-          <em className={row.status === '连接正常' ? 'ok' : ''}>{row.status}</em>
-          <button>设为默认</button>
-          <button>测试连接</button>
-          <button>编辑</button>
-          <button className="danger">删除</button>
+          <em className={row.configured ? 'ok' : ''}>
+            {row.configured ? '已配置' : '未配置'}
+          </em>
+          {order[0] === row.id && <span className="default-tag">默认</span>}
+          <button disabled={!row.configured} onClick={() => setDefault(row.id)}>
+            设为默认
+          </button>
+          <button disabled={!row.configured} onClick={() => test(row.id)}>
+            {testing === row.id ? '测试中…' : '测试连接'}
+          </button>
+          {testResult[row.id] && <span className="provider-test">{testResult[row.id]}</span>}
         </div>
       ))}
     </div>

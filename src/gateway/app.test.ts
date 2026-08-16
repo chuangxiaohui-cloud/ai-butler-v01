@@ -247,3 +247,35 @@ test('gateway: 路由校准 cases / batch-mark / export', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('gateway: /api/providers 返回状态，测试连接安全失败', async () => {
+  const { server, base } = await startApp();
+  try {
+    const listResp = await fetch(`${base}/api/providers`);
+    const list = (await listResp.json()) as {
+      order?: string[];
+      providers?: Array<{ id: string; label: string; configured: boolean }>;
+    };
+    assert.equal(listResp.status, 200);
+    assert.ok(list.order?.includes('deepseek'));
+    assert.ok((list.providers ?? []).some((p) => p.id === 'deepseek'));
+
+    const testResp = await fetch(`${base}/api/providers/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ providerId: 'missing' }),
+    });
+    const testBody = (await testResp.json()) as { ok?: boolean; error?: string };
+    assert.equal(testBody.ok, false);
+    assert.ok(testBody.error);
+
+    const defaultResp = await fetch(`${base}/api/providers/default`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ providerId: 'nope' }),
+    });
+    assert.equal(defaultResp.status, 400);
+  } finally {
+    server.close();
+  }
+});

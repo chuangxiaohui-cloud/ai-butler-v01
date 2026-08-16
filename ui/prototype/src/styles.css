@@ -1459,6 +1459,29 @@ button {
   color: var(--red);
 }
 
+.provider-row button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.provider-row .default-tag {
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 9px;
+}
+
+.provider-row .provider-test {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.add-provider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .toggle-row {
   display: flex;
   align-items: center;

@@ -8,6 +8,8 @@ import express from 'express';
 import { auditRouteCases } from '../agent/route-case-audit.js';
 import { RouteCaseStore, type RouteCaseRecord, type RouteFeedback } from '../agent/route-case-store.js';
 import { buildModelCatalog } from '../config/model-catalog.js';
+import { defaultRegistry } from '../search/llm-registry.js';
+import { OpenAiCompatibleClient } from '../search/llm-client.js';
 import { parseModelId } from '../search/model-id.js';
 import { pipeline, type PipelineDeps } from '../search/pipeline.js';
 import type { RawFileLike } from '../skills/deps.js';
@@ -39,6 +41,57 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
 
   app.get('/api/model-providers', (_req, res) => {
     res.json(buildModelCatalog());
+  });
+
+  app.get('/api/providers', (_req, res) => {
+    const registry = defaultRegistry();
+    res.json({
+      order: registry.order(),
+      providers: registry.listStatuses(),
+    });
+  });
+
+  app.post('/api/providers/default', (req, res) => {
+    const body = (req.body ?? {}) as { providerId?: unknown };
+    const providerId = typeof body.providerId === 'string' ? body.providerId.trim() : '';
+    const registry = defaultRegistry();
+    if (!providerId || !registry.listStatuses().some((p) => p.id === providerId)) {
+      res.status(400).json({ error: 'providerId 无效' });
+      return;
+    }
+    try {
+      const order = [providerId, ...registry.order().filter((id) => id !== providerId)];
+      registry.setOrder(order);
+      res.json({ ok: true, order });
+    } catch {
+      res.status(500).json({ error: '设置默认服务商失败' });
+    }
+  });
+
+  app.post('/api/providers/test', async (req, res) => {
+    const body = (req.body ?? {}) as { providerId?: unknown };
+    const providerId = typeof body.providerId === 'string' ? body.providerId.trim() : '';
+    const registry = defaultRegistry();
+    const profile = providerId
+      ? (registry.listProfiles('heavy').find((p) => p.id === providerId) ?? null)
+      : null;
+    if (!profile) {
+      res.status(200).json({ ok: false, error: '未配置 API Key' });
+      return;
+    }
+    const started = Date.now();
+    try {
+      const client = new OpenAiCompatibleClient({
+        baseUrl: profile.baseUrl,
+        apiKey: profile.apiKey,
+        model: profile.models.heavy,
+        timeoutMs: 5000,
+      });
+      await client.complete([{ role: 'user', content: 'ping' }], { maxTokens: 1 });
+      res.json({ ok: true, model: profile.models.heavy, latencyMs: Date.now() - started });
+    } catch {
+      res.json({ ok: false, error: '连接失败或 API Key 无效' });
+    }
   });
 
   app.get('/api/routing/cases', (_req, res) => {
