@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpRight,
   Bell,
@@ -50,6 +50,13 @@ interface Message {
   meta?: string;
 }
 
+interface ModelOption {
+  id: string;
+  provider: string;
+  label: string;
+  note: string;
+}
+
 const TABS: Array<{ key: TabKey; label: string; sub: string; icon: typeof Code2 }> = [
   { key: 'engineering', label: '工程开发', sub: '架构师 + PM + 老板 · 项目协作', icon: Code2 },
   { key: 'knowledge', label: '知识咨询', sub: '30年老专家 · 直接回答 + 联网补坑', icon: BookOpen },
@@ -62,7 +69,7 @@ const MODES: Array<{ key: Mode; label: string; hint: string }> = [
   { key: 'plan', label: 'Plan', hint: '先出方案' },
 ];
 
-const MODELS = [
+const FALLBACK_MODELS: ModelOption[] = [
   { id: 'deepseek-v4-flash', provider: 'DeepSeek', label: 'DeepSeek V4 Flash', note: '快速 · 默认' },
   { id: 'deepseek-v4-pro', provider: 'DeepSeek', label: 'DeepSeek V4 Pro', note: '旗舰 · 推理' },
   { id: 'MiniMax-M3', provider: 'MiniMax', label: 'MiniMax M3', note: '新一代' },
@@ -70,7 +77,7 @@ const MODELS = [
   { id: 'glm-5.3', provider: '智谱', label: 'GLM-5.3', note: '旗舰' },
   { id: 'glm-5.2', provider: '智谱', label: 'GLM-5.2', note: '均衡' },
   { id: 'glm-5-turbo', provider: '智谱', label: 'GLM-5-Turbo', note: '快速' },
-] as const;
+];
 
 const INITIAL_MESSAGES: Record<TabKey, Message[]> = {
   engineering: [
@@ -193,10 +200,28 @@ function App() {
   const [mode, setMode] = useState<Mode>('ask');
   const [messages, setMessages] = useState<Record<TabKey, Message[]>>(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
-  const [model, setModel] = useState<string>(MODELS[0].id);
+  const [models, setModels] = useState<ModelOption[]>(FALLBACK_MODELS);
+  const [model, setModel] = useState<string>(FALLBACK_MODELS[0].id);
   const [terminalOpen, setTerminalOpen] = useState(true);
   const [browserOpen, setBrowserOpen] = useState(false);
   const [liked, setLiked] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}model-providers.json`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((catalog: { models?: ModelOption[] } | null) => {
+        const loaded = catalog?.models ?? [];
+        if (loaded.length) {
+          setModels(loaded);
+          setModel((prev) =>
+            loaded.some((item) => item.id === prev) ? prev : (loaded[0]?.id ?? prev),
+          );
+        }
+      })
+      .catch(() => {
+        // 目录缺失时保留静态列表
+      });
+  }, []);
 
   const activeMessages = messages[tab];
 
@@ -324,6 +349,7 @@ function App() {
                   onModeChange={setMode}
                   model={model}
                   onModelChange={setModel}
+                  models={models}
                 />
               </section>
 
@@ -419,6 +445,7 @@ function App() {
                   onModeChange={setMode}
                   model={model}
                   onModelChange={setModel}
+                  models={models}
                 />
               </section>
 
@@ -586,6 +613,7 @@ function Composer({
   onModeChange,
   model,
   onModelChange,
+  models,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -594,11 +622,13 @@ function Composer({
   onModeChange: (mode: Mode) => void;
   model: string;
   onModelChange: (model: string) => void;
+  models: ModelOption[];
 }) {
   const [attachOpen, setAttachOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
-  const currentModel = MODELS.find((item) => item.id === model) ?? MODELS[0];
+  const currentModel = models.find((item) => item.id === model) ?? models[0];
+  const providers = Array.from(new Set(models.map((item) => item.provider)));
   return (
     <div className="composer">
       {attachments.length > 0 && (
@@ -706,10 +736,10 @@ function Composer({
           </button>
           {modelOpen && (
             <div className="model-popover">
-              {['DeepSeek', 'MiniMax', '智谱'].map((provider) => (
+              {providers.map((provider) => (
                 <div className="model-group" key={provider}>
                   <div className="model-group-name">{provider}</div>
-                  {MODELS.filter((item) => item.provider === provider).map((item) => (
+                  {models.filter((item) => item.provider === provider).map((item) => (
                     <button
                       key={item.id}
                       className={model === item.id ? 'active' : ''}

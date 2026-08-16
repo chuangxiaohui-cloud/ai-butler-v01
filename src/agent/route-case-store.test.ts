@@ -40,6 +40,30 @@ test('route-case-store: 不存在的反馈 id 返回 false', () => {
   }
 });
 
+test('route-case-store: attachModelRoute 回写模型路由信息', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'route-case-model-route-'));
+  const file = join(dir, 'route-cases.jsonl');
+  try {
+    const store = new RouteCaseStore(file);
+    const id = store.record(routeV2('帮我查一下 STM32 主频'), { source: 'pipeline' });
+    const ok = store.attachModelRoute(id, {
+      tier: 'medium',
+      provider: 'deepseek',
+      model: 'deepseek-chat',
+      fallbacks: [{ from: 'deepseek', to: 'zhipu' }],
+      at: 42,
+    });
+    assert.equal(ok, true);
+    const records = store.list();
+    assert.equal(records[0]?.modelRoute?.tier, 'medium');
+    assert.equal(records[0]?.modelRoute?.provider, 'deepseek');
+    assert.deepEqual(records[0]?.modelRoute?.fallbacks, [{ from: 'deepseek', to: 'zhipu' }]);
+    assert.equal(store.attachModelRoute('missing', { tier: 'heavy', provider: 'x', model: 'y', fallbacks: [], at: 1 }), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('confidence-calibration: 拒绝样本抬高 low 阈值', () => {
   const records = [
     { result: { confidence: 0.5 } },

@@ -6,6 +6,7 @@
 import type { VLMClient } from '../skills/deps.js';
 import {
   defaultRegistry,
+  FallbackLLMClient,
   type ModelRole,
   type ProviderProfile,
   type FallbackClientOptions,
@@ -95,4 +96,18 @@ export function createVisionClient(opts?: { timeoutMs?: number }): VLMClient {
 
 export function resolveVisionProfile(): ProviderProfile | null {
   return defaultRegistry().resolveProfile('vision');
+}
+
+export interface UsedModelInfo {
+  provider: string;
+  model: string;
+  fallbacks: Array<{ from: string; to: string }>;
+}
+
+export function describeUsedModel(client: LLMClient): UsedModelInfo | null {
+  if (client instanceof FallbackLLMClient) return client.describe();
+  if (client instanceof OpenAiCompatibleClient) {
+    return { provider: 'direct', model: client.model, fallbacks: [] };
+  }
+  return null;
 }

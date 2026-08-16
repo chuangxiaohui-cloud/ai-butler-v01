@@ -11,13 +11,14 @@
 5. **今日收尾修复（E102）**：LLM 重模型超时 8s→30s（C02/E39 实测生成代码）、新增 project-packager Skill（C05）、github-reader 转真（C06）、天气+芯片多意图拆分（P03）、s1 动作词豁免指代澄清；全量测试通过；详见 `docs/plans/2026-08-16-devil-minimal-fix.md`。
 6. **OpenSquilla 借鉴审阅（E103）**：审阅本地 `opensquilla/` v0.5.3 源码与文档；确定 7 项可直接借鉴（Provider Registry + 便宜优先模型路由、单一共享 TurnLoop、路由数据飞轮闭环、记忆双通道召回、分层沙箱 + 拒绝账本、工具结果压缩/上下文预算、Skill 按需过滤）；登记 `docs/borrowed-designs.md` 与需求文档附录 A；详见 `docs/plans/2026-08-16-opensquilla-review.md`。
 7. **Provider Registry + 模型分档路由（E104）**：`OpenAiCompatibleClient` 拆到 `llm-client.ts`；新增 `llm-registry.ts`（三厂抽象 + `LLM_PROVIDER_ORDER` 便宜优先 + fallback 链 [P-107]）与 `model-router.ts`（重/中/轻分档 [P-105]/[P-106]）；Stage 5 按档选模型，旧单家配置行为不变；新增 `npm run bench:provider-router` 与 `.env.example` 三厂配置；单测 308/308 + 集成 17/17 全绿，bench:B-20260816-04；详见 `docs/plans/2026-08-16-provider-registry.md`。
+8. **模型路由数据飞轮 + UI 目录接入（E105）**：trajectory 新增 `model_route` 事件；route-case 新增 `modelRoute` 字段与 `attachModelRoute`；Stage 5 合成成功后自动写轨迹并回写 case；新增 `npm run model:export`，UI 模型切换器优先读 `ui/prototype/public/model-providers.json`；单测 310/310 + 集成 17/17 全绿，UI 构建通过；详见 `docs/plans/2026-08-16-model-data-flywheel.md`。
 
 ## 明天继续（按优先级）
 
 1. 解决“低置信兜底话术”回升：强化浏览器兜底/重试/查询改写（SM18/SM31/C08/ET20 等搜索质量类）。
 2. 按新基线重打分（旧定稿分只代表旧行为），推进 A/B 套评测拆分。
 3. 给 35 条 Bug 清单补状态字段与回归用例，验证 C05 打包与 C06 README 抓取在真实环境稳定。
-4. 数据飞轮闭环（E105 候选）：模型路由决策（档位/provider/fallback）写入 trajectory 与 route-case，UI 模型切换器接 registry 配置。
+4. 单一共享 TurnLoop：UI 薄客户端 + gateway，把 `answer(query)` 契约接到三栏；模型选择经 registry 下发到后端请求。
 
 ## 常用命令
 

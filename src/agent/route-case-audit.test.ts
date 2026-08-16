@@ -18,9 +18,10 @@ test('route-case-audit: 统计来源/决策/反馈与校准进度', () => {
   const audit = auditRouteCases([
     record('a', { source: 'seed', feedback: 'reject', correctedRoute: { primaryLens: 'product_manager', intent: 'write_doc' } }),
     record('b', { source: 'pipeline', feedback: 'accept' }),
-    record('c', { source: 'pipeline' }),
+    record('c', { source: 'pipeline', modelRoute: { tier: 'medium', provider: 'deepseek', model: 'deepseek-chat', fallbacks: [], at: 1 } }),
   ]);
   assert.equal(audit.total, 3);
+  assert.equal(audit.withModelRoute, 1);
   assert.equal(audit.bySource.pipeline, 2);
   assert.equal(audit.byDecision.direct, 3);
   assert.equal(audit.calibrationProgress.accepted, 1);

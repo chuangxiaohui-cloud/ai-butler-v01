@@ -22,6 +22,7 @@
     "score-sheet:devil-v25": "tsx scripts/gen-devil-score-sheet.ts",
     "compare:devil-v25": "tsx scripts/compare-devil-baseline.ts",
     "bench:provider-router": "tsx scripts/bench-provider-router.ts",
+    "model:export": "tsx scripts/export-model-catalog.ts",
     "score:v02a": "tsx scripts/score-v02a.ts",
     "worksheet:v02a": "tsx scripts/export-v02a-answers.ts",
     "migrate:memorycore": "tsx scripts/migrate-to-memorycore.ts",

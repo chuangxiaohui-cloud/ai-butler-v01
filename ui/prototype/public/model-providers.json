@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-08-16T02:46:57.920Z",
+  "defaultTier": "medium",
+  "tiers": [
+    "light",
+    "medium",
+    "heavy",
+    "vision"
+  ],
+  "models": [
+    {
+      "id": "deepseek:light",
+      "provider": "DeepSeek",
+      "label": "deepseek-chat",
+      "note": "快速"
+    },
+    {
+      "id": "deepseek:medium",
+      "provider": "DeepSeek",
+      "label": "deepseek-chat",
+      "note": "均衡"
+    },
+    {
+      "id": "deepseek:heavy",
+      "provider": "DeepSeek",
+      "label": "deepseek-chat",
+      "note": "旗舰 · 推理"
+    },
+    {
+      "id": "deepseek:vision",
+      "provider": "DeepSeek",
+      "label": "deepseek-chat",
+      "note": "视觉"
+    },
+    {
+      "id": "zhipu:light",
+      "provider": "智谱",
+      "label": "glm-5-turbo",
+      "note": "快速"
+    },
+    {
+      "id": "zhipu:medium",
+      "provider": "智谱",
+      "label": "glm-5.2",
+      "note": "均衡"
+    },
+    {
+      "id": "zhipu:heavy",
+      "provider": "智谱",
+      "label": "glm-5.3",
+      "note": "旗舰 · 推理"
+    },
+    {
+      "id": "zhipu:vision",
+      "provider": "智谱",
+      "label": "glm-5.2",
+      "note": "视觉"
+    }
+  ]
+}

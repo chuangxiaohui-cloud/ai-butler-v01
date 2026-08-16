@@ -1576,6 +1576,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/memory/store.ts` | MemoryStore 接口 + SqliteDirectStore/MemoryCoreStore |
 | `src/memory/experience.ts` | ExperienceManager（embedding 检索 + 置信度演化） |
 | `scripts/bench-provider-router.ts` | Provider Registry / 模型分档本地 bench |
+| `scripts/export-model-catalog.ts` | 导出 Provider Registry 模型目录给 UI |
 
 > 完整代码目录为实施期产物：v0.1 落地后按 §0.1 文档治理规则补全并登记版本快照。当前仅列已定架构的关键模块。
 
@@ -2385,6 +2386,12 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：`OpenAiCompatibleClient` 拆到 `src/search/llm-client.ts`；新增 `llm-registry.ts`（DeepSeek/MiniMax/智谱三厂 OpenAI 兼容抽象，`LLM_PROVIDER_ORDER` 控制便宜优先顺序，primary 失败自动 fallback，链上限 [P-107]）；新增 `model-router.ts`（重档 execute/write_doc/github_analysis/rewrite/pack_project/plan/文档摘要结构，默认中档 [P-105]，轻档置信门 [P-106]）；Stage 5 合成按档选模型，旧 `LLM_PRIMARY_*` 单家配置行为不变；新增 `npm run bench:provider-router` 与 `.env.example` 三厂配置。
 - **验证**：`npm run build` 通过；`npm run test:all` 单测 308/308 + 集成 17/17 全绿（新增 registry fallback 与分档 11 条）；`npm run bench:provider-router` 产出 `bench:B-20260816-04`；doc-lint 通过；详见 `docs/plans/2026-08-16-provider-registry.md`。
 - affects: §5,§6,§13 | bench:B-20260816-04 | E104 Provider Registry + 模型分档路由落地，Stage 5 按任务难度选模型
+
+### 2026-08-16（模型路由数据飞轮 + UI 目录接入 E105）
+
+- **变更**：客户端暴露 model/baseUrl，`FallbackLLMClient` 记录最后使用 provider 与 fallback 序列；trajectory 新增 `model_route` 事件；route-case 新增 `modelRoute` 字段与 `attachModelRoute`，audit 统计 `withModelRoute`；pipeline 在 Stage 5 合成成功后写轨迹并回写 case；新增 `scripts/export-model-catalog.ts` 与 `npm run model:export`，UI 模型切换器优先读 `ui/prototype/public/model-providers.json`，缺失回落静态列表。
+- **验证**：主项目 `npm run build` 通过；`npm run test:all` 单测 310/310 + 集成 17/17 全绿；UI 构建通过；`npm run model:export` 产出 8 项模型目录；doc-lint 通过；详见 `docs/plans/2026-08-16-model-data-flywheel.md`。
+- affects: §13 | bench:na(new-param) 理由：模型路由观测与 UI 目录导出，无 §5/§6 参数或行为变更
 
 ### v2.5（2026-08-12）
 

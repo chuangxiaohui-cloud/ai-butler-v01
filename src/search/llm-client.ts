@@ -27,6 +27,14 @@ export interface OpenAiCompatibleClientOptions {
 export class OpenAiCompatibleClient implements LLMClient {
   constructor(private readonly opts: OpenAiCompatibleClientOptions) {}
 
+  get model(): string {
+    return this.opts.model;
+  }
+
+  get baseUrl(): string {
+    return this.opts.baseUrl;
+  }
+
   async complete(messages: ChatMessage[], opts: CompleteOptions = {}): Promise<string> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs);

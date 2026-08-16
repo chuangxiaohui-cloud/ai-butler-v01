@@ -153,11 +153,13 @@ export interface FallbackClientOptions {
 }
 
 export class FallbackLLMClient implements LLMClient {
-  private readonly chain: Array<{ providerId: string; client: LLMClient }>;
+  private readonly chain: Array<{ providerId: string; model: string; client: LLMClient }>;
   private readonly onFallback?: (from: string, to: string, error: unknown) => void;
+  private lastUsedProviderId: string | null = null;
+  private fallbackEvents: Array<{ from: string; to: string }> = [];
 
   constructor(
-    chain: Array<{ providerId: string; client: LLMClient }>,
+    chain: Array<{ providerId: string; model: string; client: LLMClient }>,
     onFallback?: (from: string, to: string, error: unknown) => void,
   ) {
     this.chain = chain;
@@ -169,15 +171,29 @@ export class FallbackLLMClient implements LLMClient {
     for (let i = 0; i < this.chain.length; i++) {
       const { providerId, client } = this.chain[i];
       try {
+        this.lastUsedProviderId = providerId;
         return await client.complete(messages, opts);
       } catch (err) {
         lastError = err;
         if (i < this.chain.length - 1) {
-          this.onFallback?.(providerId, this.chain[i + 1].providerId, err);
+          const to = this.chain[i + 1].providerId;
+          this.fallbackEvents.push({ from: providerId, to });
+          this.onFallback?.(providerId, to, err);
         }
       }
     }
     throw lastError ?? new Error('无可用 LLM Provider');
+  }
+
+  describe(): { provider: string; model: string; fallbacks: Array<{ from: string; to: string }> } | null {
+    const current =
+      this.chain.find((c) => c.providerId === this.lastUsedProviderId) ?? this.chain[0];
+    if (!current) return null;
+    return {
+      provider: current.providerId,
+      model: current.model,
+      fallbacks: [...this.fallbackEvents],
+    };
   }
 }
 
@@ -235,6 +251,7 @@ export class LlmProviderRegistry {
     const timeoutMs = resolveTimeoutMs(role, this.env, opts.timeoutMs);
     const chain = profiles.map((p) => ({
       providerId: p.id,
+      model: p.models[role],
       client: new OpenAiCompatibleClient({
         baseUrl: p.baseUrl,
         apiKey: p.apiKey,

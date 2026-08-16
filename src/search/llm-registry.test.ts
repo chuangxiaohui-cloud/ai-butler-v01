@@ -70,20 +70,25 @@ describe('llm-registry: fallback 链', () => {
     const events: Array<{ from: string; to: string }> = [];
     const client = new FallbackLLMClient(
       [
-        { providerId: 'deepseek', client: clientThrowing('timeout') },
-        { providerId: 'zhipu', client: clientReturning('ok') },
+        { providerId: 'deepseek', model: 'deepseek-chat', client: clientThrowing('timeout') },
+        { providerId: 'zhipu', model: 'glm-5.2', client: clientReturning('ok') },
       ],
       (from, to) => events.push({ from, to }),
     );
     const answer = await client.complete([{ role: 'user', content: 'hi' }]);
     assert.equal(answer, 'ok:1');
     assert.deepEqual(events, [{ from: 'deepseek', to: 'zhipu' }]);
+    assert.deepEqual(client.describe(), {
+      provider: 'zhipu',
+      model: 'glm-5.2',
+      fallbacks: [{ from: 'deepseek', to: 'zhipu' }],
+    });
   });
 
   it('全部失败时抛出最后错误', async () => {
     const client = new FallbackLLMClient([
-      { providerId: 'deepseek', client: clientThrowing('a') },
-      { providerId: 'zhipu', client: clientThrowing('b') },
+      { providerId: 'deepseek', model: 'deepseek-chat', client: clientThrowing('a') },
+      { providerId: 'zhipu', model: 'glm-5.2', client: clientThrowing('b') },
     ]);
     await assert.rejects(() => client.complete([{ role: 'user', content: 'hi' }]), /b/);
   });

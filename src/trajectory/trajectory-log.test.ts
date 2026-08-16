@@ -32,11 +32,21 @@ test('trajectory-log: 事件只追加不覆盖，且携带 id/timestamp/sessionI
         elapsedMs: 12,
       },
     });
+    log.record({
+      type: 'model_route',
+      sessionId: 's1',
+      modelRoute: {
+        tier: 'medium',
+        provider: 'deepseek',
+        model: 'deepseek-chat',
+        fallbacks: [{ from: 'deepseek', to: 'zhipu' }],
+      },
+    });
 
     const lines = readFileSync(file, 'utf-8')
       .split(/\r?\n/)
       .filter((line) => line.trim());
-    assert.equal(lines.length, 2);
+    assert.equal(lines.length, 3);
     for (const line of lines) {
       const event = JSON.parse(line) as {
         id: string;
@@ -47,7 +57,7 @@ test('trajectory-log: 事件只追加不覆盖，且携带 id/timestamp/sessionI
       assert.ok(event.id);
       assert.ok(Number.isFinite(event.timestamp));
       assert.equal(event.sessionId, 's1');
-      assert.ok(event.type === 'route' || event.type === 'answer');
+      assert.ok(['route', 'answer', 'model_route'].includes(event.type));
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });

@@ -8,6 +8,7 @@ import type { RouteCaseRecord } from './route-case-store.js';
 export interface RouteCaseAudit {
   total: number;
   withFeedback: number;
+  withModelRoute: number;
   bySource: Record<string, number>;
   byDecision: Record<string, number>;
   byFeedback: Record<string, number>;
@@ -28,8 +29,10 @@ export function auditRouteCases(records: RouteCaseRecord[]): RouteCaseAudit {
   const byFeedback: Record<string, number> = {};
   const ids = new Set<string>();
   const issues: string[] = [];
+  let byModelRoute = 0;
 
   for (const record of records) {
+    if (record.modelRoute) byModelRoute += 1;
     bySource[record.source ?? 'unknown'] = (bySource[record.source ?? 'unknown'] ?? 0) + 1;
     byDecision[record.result.decision.type] =
       (byDecision[record.result.decision.type] ?? 0) + 1;
@@ -58,6 +61,7 @@ export function auditRouteCases(records: RouteCaseRecord[]): RouteCaseAudit {
   return {
     total: records.length,
     withFeedback: records.filter((r) => r.feedback).length,
+    withModelRoute: byModelRoute,
     bySource,
     byDecision,
     byFeedback,

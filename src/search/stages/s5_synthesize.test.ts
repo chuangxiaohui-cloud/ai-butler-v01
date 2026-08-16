@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import type { ChatMessage, LLMClient } from '../llm.js';
+import { FallbackLLMClient } from '../llm-registry.js';
 import type { FusedOutput, FusionItem } from '../fusion.js';
 import type { ClassifiedQuery } from './s2_classify.js';
 import { synthesizeAnswer } from './s5_synthesize.js';
@@ -63,6 +64,44 @@ test('s5: LLM 合成答案并引用证据', async () => {
   });
   assert.equal(r.source, 'llm');
   assert.ok(r.answer.includes('72MHz'));
+});
+
+test('s5: 合成成功后回调模型路由信息', async () => {
+  let captured: unknown;
+  const fallback = new FallbackLLMClient([
+    {
+      providerId: 'deepseek',
+      model: 'deepseek-chat',
+      client: {
+        async complete(): Promise<string> {
+          throw new Error('timeout');
+        },
+      },
+    },
+    {
+      providerId: 'zhipu',
+      model: 'glm-5.2',
+      client: {
+        async complete(): Promise<string> {
+          return '根据证据，最大主频是 72MHz。';
+        },
+      },
+    },
+  ]);
+  const r = await synthesizeAnswer('STM32F103C8T6 最大主频是多少', fusedOk, classified, {
+    llm: fallback,
+    modelTier: 'medium',
+    onModelRoute: (info) => {
+      captured = info;
+    },
+  });
+  assert.equal(r.source, 'llm');
+  assert.deepEqual(captured, {
+    tier: 'medium',
+    provider: 'zhipu',
+    model: 'glm-5.2',
+    fallbacks: [{ from: 'deepseek', to: 'zhipu' }],
+  });
 });
 
 test('s5: 无证据时不硬答', async () => {

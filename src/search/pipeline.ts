@@ -42,6 +42,7 @@ import { synthesizeAnswer } from './stages/s5_synthesize.js';
 import { postProcess } from './stages/s6_post.js';
 import { parseDocumentFile } from './document-parser.js';
 import { resolveModelTier } from './model-router.js';
+import type { ModelRouteInfo } from './model-router.js';
 
 export interface Evidence {
   title: string;
@@ -66,7 +67,7 @@ export interface PipelineDeps {
   quota?: QuotaStoreLike;
   memoryStore?: Pick<MemoryStore, 'put' | 'recall'>;
   userContextStore?: Pick<UserContextStore, 'load' | 'addSessionSummary'>;
-  routeCaseStore?: Pick<RouteCaseStore, 'record'>;
+  routeCaseStore?: Pick<RouteCaseStore, 'record' | 'attachModelRoute'>;
   skillDeps?: SkillDeps;
   tavily?: { enabled?: boolean };
   experienceManager?: {
@@ -175,8 +176,9 @@ export async function pipeline(
       matchedRules: route.candidates.map((c) => c.matchedRule),
     },
   });
+  let routeCaseId: string | undefined;
   try {
-    deps.routeCaseStore?.record(route, { userId, source: 'pipeline' });
+    routeCaseId = deps.routeCaseStore?.record(route, { userId, source: 'pipeline' });
   } catch {
     // 路由 case 采集失败不阻塞主对话
   }
@@ -547,6 +549,7 @@ export async function pipeline(
   }
 
   // Stage 5：秘书级合成
+  let lastModelRoute: ModelRouteInfo | undefined;
   const synthesized = await synthesizeAnswer(prepared.cleanQuery, fused, classified, {
     llm: deps.llm,
     serious: rule3.serious,
@@ -565,7 +568,21 @@ export async function pipeline(
       hasDocument: route.features.hasDocument,
       hasGithubLink: route.features.hasGithubLink,
     }),
+    onModelRoute: (info) => {
+      lastModelRoute = info;
+      recordTrajectory({ type: 'model_route', modelRoute: info });
+    },
   });
+  if (routeCaseId && lastModelRoute) {
+    try {
+      deps.routeCaseStore?.attachModelRoute?.(routeCaseId, {
+        ...lastModelRoute,
+        at: Date.now(),
+      });
+    } catch {
+      // 模型路由回写失败不阻塞主对话
+    }
+  }
   recordTrajectory({
     type: 'synthesize',
     synthesize: {

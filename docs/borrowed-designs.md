@@ -52,6 +52,17 @@
   `npm run bench:provider-router` 本地验证。
 - 状态：E104 已落地，需求文档附录 A 登记；bench:B-20260816-04。
 
+### 2.6 opensquilla → 模型路由数据飞轮
+
+- 文件：`src/search/llm-registry.ts` / `src/trajectory/trajectory-log.ts` /
+  `src/agent/route-case-store.ts` / `src/search/pipeline.ts`
+- 内容：每次 Stage 5 合成成功后把模型路由决策（档位 / provider / model /
+  fallback 序列）写入 trajectory 的 `model_route` 事件，并回写到 route-case
+  `modelRoute` 字段；配合既有 accept/reject 反馈，路由失败可自动沉淀校准样本。
+- 接入：`npm run model:export` 把 registry 解析结果导出给 UI；
+  UI 模型切换器优先读 `ui/prototype/public/model-providers.json`。
+- 状态：E105 已落地，需求文档附录 A 登记。
+
 ## 3. 待借入（按优先级）
 
 | 设计 | 来源 | 价值 | 前置条件 |
@@ -63,7 +74,6 @@
 | 可回放上下文压缩 | Harness | 用 replacement 事件保留原始历史的压缩 | §8.3 工作记忆开发时 |
 | 计划权限/异常分支校验 | Harness | 校验命令是否可执行、步骤是否越权、异常分支是否完整 | plan-validation 有真实使用反馈 |
 | 单一共享 TurnLoop | OpenSquilla | UI/CLI/API 共用同一 pipeline，UI 只做薄客户端 | §4.2/§6.3 契约稳定后接网关 |
-| 路由数据飞轮闭环 | OpenSquilla | route/model 决策 + 用户反馈自动进校准队列 | route-case-store 扩展字段 |
 | 记忆双通道召回 | OpenSquilla | SQLite FTS + embedding 语义，低分关键词兜底 | §8 语义检索实现时 |
 | 分层沙箱 + 拒绝账本 | OpenSquilla | Standard/Strict/Locked 三档 + 连续拒绝暂停自主执行 | sandbox.ts 档位化 |
 | 工具结果压缩 + 上下文预算 | OpenSquilla | bounded preview + handle + compact 摘要 | §8.3 工作记忆开发时 |
@@ -97,8 +107,8 @@
 
 1. OpenSquilla 最值钱的三样：**按任务难度选模型并便宜优先**、**所有入口共用同一
    TurnLoop**、**路由决策自动变训练数据（数据飞轮）**。
-2. 分别对应我们的模型切换器、CLI/UI 双皮问题、路由校准闭环；第 1 项已落地
-   （E104），另两项仍待推进。
+2. 分别对应我们的模型切换器、CLI/UI 双皮问题、路由校准闭环；前两项已落地
+   （E104/E105），第三项（UI/CLI 同一 loop）待 gateway 落地。
 3. 详见 `docs/plans/2026-08-16-opensquilla-review.md` 与
    `docs/plans/2026-08-16-provider-registry.md`。
 4. 复杂 ML 路由、B5 集成、全渠道接入暂缓：当前规则 + 轻分类 + 三厂抽象足够，

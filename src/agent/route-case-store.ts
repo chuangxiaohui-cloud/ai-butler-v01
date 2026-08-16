@@ -17,6 +17,14 @@ import type { RouteResultV2 } from './router-v2.js';
 
 export type RouteFeedback = 'accept' | 'reject' | 'correct';
 
+export interface ModelRouteRecord {
+  tier: string;
+  provider: string;
+  model: string;
+  fallbacks: Array<{ from: string; to: string }>;
+  at: number;
+}
+
 export interface RouteCaseRecord {
   id: string;
   timestamp: number;
@@ -26,6 +34,7 @@ export interface RouteCaseRecord {
   result: RouteResultV2;
   feedback?: RouteFeedback;
   correctedRoute?: { primaryLens?: string; intent?: string };
+  modelRoute?: ModelRouteRecord;
 }
 
 export interface RouteCaseMeta {
@@ -82,6 +91,19 @@ export class RouteCaseStore {
       feedback,
       ...(correctedRoute ? { correctedRoute } : {}),
     };
+    writeFileSync(
+      this.filePath,
+      `${records.map((r) => JSON.stringify(r)).join('\n')}\n`,
+      'utf-8',
+    );
+    return true;
+  }
+
+  attachModelRoute(id: string, modelRoute: ModelRouteRecord): boolean {
+    const records = this.list();
+    const index = records.findIndex((r) => r.id === id);
+    if (index < 0) return false;
+    records[index] = { ...records[index], modelRoute };
     writeFileSync(
       this.filePath,
       `${records.map((r) => JSON.stringify(r)).join('\n')}\n`,

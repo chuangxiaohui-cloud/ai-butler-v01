@@ -7,6 +7,13 @@ import { PARAMS } from '../config/params.js';
 
 export type ModelTier = 'light' | 'medium' | 'heavy';
 
+export interface ModelRouteInfo {
+  tier: ModelTier;
+  provider: string;
+  model: string;
+  fallbacks: Array<{ from: string; to: string }>;
+}
+
 export interface ModelTierSignals {
   intent?: string;
   actionType?: string;

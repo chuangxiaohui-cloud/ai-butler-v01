@@ -37,6 +37,13 @@ export interface TrajectorySynthesize {
   evidenceCount: number;
 }
 
+export interface TrajectoryModelRoute {
+  tier: string;
+  provider: string;
+  model: string;
+  fallbacks: Array<{ from: string; to: string }>;
+}
+
 export interface TrajectoryAnswer {
   answerSnippet: string;
   confidence: number;
@@ -49,6 +56,7 @@ export type TrajectoryEvent =
   | { type: 'skill'; sessionId: string; skill: TrajectorySkill }
   | { type: 'search'; sessionId: string; search: TrajectorySearch }
   | { type: 'synthesize'; sessionId: string; synthesize: TrajectorySynthesize }
+  | { type: 'model_route'; sessionId: string; modelRoute: TrajectoryModelRoute }
   | { type: 'answer'; sessionId: string; answer: TrajectoryAnswer };
 
 export type TrajectoryEventBody =
@@ -56,6 +64,7 @@ export type TrajectoryEventBody =
   | { type: 'skill'; skill: TrajectorySkill }
   | { type: 'search'; search: TrajectorySearch }
   | { type: 'synthesize'; synthesize: TrajectorySynthesize }
+  | { type: 'model_route'; modelRoute: TrajectoryModelRoute }
   | { type: 'answer'; answer: TrajectoryAnswer };
 
 export interface TrajectoryLogLike {
