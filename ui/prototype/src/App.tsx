@@ -46,12 +46,26 @@ interface Evidence {
   hard?: boolean;
 }
 
+interface VideoCard {
+  title: string;
+  url: string;
+  platform: string;
+}
+
+const PLATFORM_LABELS: Record<string, string> = {
+  bilibili: 'B站',
+  youtube: 'YouTube',
+  douyin: '抖音',
+  other: '视频',
+};
+
 interface Message {
   id: string;
   role: 'user' | 'agent';
   text: string;
   images?: string[];
   evidence?: Evidence[];
+  videos?: VideoCard[];
   meta?: string;
 }
 
@@ -336,6 +350,7 @@ function App() {
       const data = (await resp.json()) as {
         answer?: string;
         evidence?: Array<{ title: string; url: string; type: string }>;
+        videos?: Array<{ title: string; url: string; platform: string }>;
         mode?: UiMode;
         submode?: string;
       };
@@ -353,6 +368,11 @@ function App() {
         role: 'agent',
         text: data.answer ?? '（后端没有返回内容）',
         evidence,
+        videos: (data.videos ?? []).map((v) => ({
+          title: v.title,
+          url: v.url,
+          platform: v.platform,
+        })),
         meta: `${MODES.find((m) => m.key === mode)?.label} · 后端`,
       });
       loadFiles();
@@ -682,6 +702,23 @@ function MessageItem({
           </div>
         )}
         <div className="message-text">{msg.text}</div>
+        {msg.videos && msg.videos.length > 0 && (
+          <div className="video-cards">
+            {msg.videos.map((v, i) => (
+              <a
+                className="video-card"
+                key={`${v.url}-${i}`}
+                href={v.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <span className="video-thumb">▶</span>
+                <strong>{v.title}</strong>
+                <small>{PLATFORM_LABELS[v.platform] ?? v.platform}</small>
+              </a>
+            ))}
+          </div>
+        )}
         {msg.evidence && msg.evidence.length > 0 && (
           <div className="evidence-list">
             {msg.evidence.map((ev, i) => (

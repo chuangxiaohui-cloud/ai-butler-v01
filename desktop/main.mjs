@@ -10,11 +10,22 @@ import { fileURLToPath } from 'node:url';
 
 import { app, BrowserWindow, shell } from 'electron';
 
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+if (!app.isPackaged) {
+  app.setPath('userData', join(repoRoot, 'data', 'electron-dev'));
+}
 const host = process.env.GATEWAY_HOST ?? '127.0.0.1';
 const port = Number(process.env.GATEWAY_PORT ?? '8787');
 const uiUrl = `http://${host}:${port}/`;
 const isSmoke = process.argv.includes('--smoke');
+if (isSmoke) {
+  app.commandLine.appendSwitch('no-sandbox');
+  app.commandLine.appendSwitch('in-process-gpu');
+  app.commandLine.appendSwitch('disable-software-rasterizer');
+}
 
 let gateway = null;
 let mainWindow = null;
