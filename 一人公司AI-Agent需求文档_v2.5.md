@@ -1675,9 +1675,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | §12.2 可验证证据链 + §10.6 证据链交互 + §10.7 轻量反馈 | §9.1-9.3 | 2026-08-12 | ✅ 归零 | [hard]/[soft] 定义入 §9.1，联动 §6；👎降权引 [P-79]；界面 UI 结构入代码围栏 |
 | §0.4 重复条款压缩（"永远不要"清单） | §0 | 2026-08-12 | — | 与 0.1 规则2/0.2 规则1 重复，删除；行数 102→100 达标全量 C3 |
 
-### 2026-08-12（WP3 P-04 参数修正 E1）
-
-- **变更**：[P-04] Stage 2 意图分类预算值上调并转 provisional@2026-08-12；依据 10 条基准 query 重跑冒烟（bench:B-20260812-01）。
+### 2026-08-12（WP3 P-04 参数修正 E1）<br>- **变更**：[P-04] Stage 2 意图分类预算值上调并转 provisional@2026-08-12；依据 10 条基准 query 重跑冒烟（bench:B-20260812-01）。
 - **安全叙事**：S02/L05 两例误判均在 WP5 规则③兜底覆盖内，安全不变量不受影响；低预算下的降级为质量失败而非安全失败，本次为低风险质量/时延权衡。
 - **预算交叉检查**：Stage 各预算为独立上限，非可加约束（§5 约束注解），[P-04] 上调不击穿 [P-15]/[P-14] 约束；无关联参数需对冲。
 - affects: §5,§6 | bench:B-20260812-01 | E2/E3 交叉引用
@@ -2536,6 +2534,36 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **变更**：保留旧评分表作参照，清空结果后全量重跑 122 条魔鬼训练；新增 `scripts/export-devil-baseline.ts` 与 `npm run baseline:devil-v25`，导出新基线自动评分 CSV 与聚合摘要，供 A/B 套评测拆分使用。
 - **验证**：全量重跑完成；平均自动分 1.59 → 1.73，0 分 17 → 12，“我暂时无法确认” 10 → 6；35 条系统级 Bug 修复 35/35，8 条能力项 6/8 有进展；主项目 build、单测 348/348 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-17-rescore-new-baseline.md`。
 - affects: §13,附录A | bench:na(new-param) 理由：新基线导出工具与评测流程新增，无 §5/§6 参数变更
+
+### 2026-08-17（35条Bug状态与回归用例 + C05打包链路 E127）
+
+- **变更**：新增 `bench/devil-v25/bug-regression-status.md` 逐条登记 35 条 Bug 状态与回归用例；router-v2 补 5 条路由回归、emergency-reply 补 `rm -rf` 拒绝、github-reader 补 mock fetch 成功与兜底；project-packager 测试断言 zip 排除 `.git/node_modules/build`；pipeline 移除 `pack_project` 提前返回，本地打包 Skill 改用原始 query 保留 Windows 路径。
+- **验证**：主项目 build；单测 357/357 + 集成 17/17 全绿；CLI 实测 `打包 M:\202608111\src\wiki` 成功产出 zip；C06 raw.githubusercontent 不可达时稳定返回仓库链接兜底；doc-lint 通过；详见 `docs/plans/2026-08-17-bug-regression-status.md`。
+- affects: §13 | bench:na(new-param) 理由：Bug 状态台账与回归用例补全、C05 打包执行链路修复，无 §5/§6 参数变更
+
+### 2026-08-18/19（官方源子查询与视频结果 E128/E146）<br>- **变更**：`ruleBasedRewrite` 对 STM32/ADC/看门狗/PWM/RTOS/BUCK/Altium/SPICE 自动生成官方域子查询；`authority` 新增技术题官方域映射与 `e2e.ti.com` / `community.st.com` / `freertos.org` 官方标记；`search-loop` 空结果回退候选与 Tavily 兜底覆盖技术官方域；搜索证据含 B站/YouTube/抖音视频时，结果返回 `videos` 字段并追加“相关视频教程”区块。**验证**：主项目 build；单测 435/435 + 集成 17/17 全绿；CLI 真跑 ET20/ET24/ET26/C01/E37/E38，5 条搜索类全部带回官方/专业站证据；视频结果单测通过；doc-lint 通过；详见 `docs/plans/2026-08-18-official-source-subquery.md` 与 `docs/plans/2026-08-19-video-results.md`；affects: §6,§13 | bench:B-20260818-01 理由：查询改写、官方源兜底与视频结果行为变更，登记 spot 基准。
+
+### 2026-08-18（A/B 套评测拆分 E129）<br>- **变更**：新增 `scripts/split-devil-ab.ts` 与 `npm run split:devil-ab`，122 条拆为 A 套 108 条单发评测与 B 套 14 条记忆/上下文/多轮依赖题；`bench-devil-v25.ts` 支持 `--set=a|b`；新增 `scripts/bench-devil-b.ts` 与 `npm run bench:devil-b` 跑 B 套多轮会话评测。**验证**：A/B 集合无重复无遗漏；A 套平均参考分 1.84、B 套 0.86；B 套 14 场景多轮全部落盘，P10/P07/C01/C05 等上下文链路生效；单测 376/376 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-18-ab-split.md` 与 `docs/plans/2026-08-18-b-multiturn.md`；affects: §13,附录A | bench:na(new-param) 理由：评测集拆分工具与流程，无 §5/§6 行为变更。
+
+### 2026-08-18（P01/P06/EC31/C01 专用分支 E130）<br>- **变更**：新增 `chat` / `apply_to_project` 意图与 `R_CHAT` / `R_APPLY_TO_PROJECT`；P01 未知黑话、P06 缺城市在 Stage 1 澄清；EC31 走陪伴专用回复；C01 新增 `project-writer` Skill 真实落盘（沙箱校验 + 覆盖前备份）。**验证**：CLI 四题均不再搜索或乱猜，`sandbox/` 内真实写入并生成备份，单测 376/376 + 集成 17/17 全绿，doc-lint 通过，详见 `docs/plans/2026-08-18-specialized-branches.md` 与 `docs/plans/2026-08-18-c01-project-writer.md`；affects: §2,§4,§10,§13 | bench:na(new-param) 理由：意图路由、专用回复与工程文件写入，无 §5/§6 参数变更。
+
+### 2026-08-18（B 套记忆上下文链路 E131）<br>- **变更**：L0 记忆按 `userId` 分会话读写；`session_summaries` 摘要升级为 `Q: 原文\nA: 回答`；LLM 意图特征提取注入历史上下文；rewrite 分支从近期记忆取原文润色，无原文仍澄清；`bench-devil-b` 重跑保留旧人工评分与点评。**验证**：主项目 build；单测 384/384 + 集成 17/17 全绿；B 套 28 轮人工评分回填完成、平均 2.25；doc-lint 通过，详见 `docs/plans/2026-08-18-memory-context-chain.md` 与 `docs/plans/2026-08-18-b-multiturn.md`；affects: §2,§6,§8,§13 | bench:na(new-param) 理由：记忆/路由上下文链路行为变更，无 §5/§6 参数变更。
+
+### 2026-08-18（B 套第二轮修复 E132）<br>- **变更**：Stage 5 增加状态追问诚实边界，历史方案/建议不得当作执行记录；`project-writer` 写入后回读校验、返回备份或新建说明，缺内容时从 `workingMemory` 取上一轮代码块；scope 识别补 `写个/写一段/单个`，`帮我写个 PID 算法` 直接进 execute。**验证**：主项目 build；单测 389/389 + 集成 17/17 全绿；CLI 真跑 C02 直接输出 PID 实现、EC02 正式轮明确“没有执行记录”；B 套全量重跑完成、原人工分保留；doc-lint 通过，详见 `docs/plans/2026-08-18-b-round2-honesty-c01-c02.md`；affects: §2,§6,§8,§10,§13 | bench:na(new-param) 理由：诚实边界、工程写入校验与路由 scope 行为变更，无 §5/§6 参数变更。
+
+### 2026-08-19（显式记住指令与回溯边界 E133/E134）<br>- **变更**：新增 `extractRememberInstruction`，`记住：...` 在路由前写入 `user_facts`（`user_explicit`）并返回“已记住”，不再搜索；Stage 5 增加“刚才/上次”回溯边界，只能引用历史记忆，记忆里没有就明说。**验证**：主项目 build；单测 394/394 + 集成 17/17 全绿；CLI 真跑“记住→老规矩”跨轮召回事实；doc-lint 通过，详见 `docs/plans/2026-08-19-remember-facts.md`；affects: §6,§8,§13 | bench:na(new-param) 理由：显式记忆写入与回溯诚实边界行为变更，无 §5/§6 参数变更。
+
+### 2026-08-19（Agent 回滚、PDF 原理图 BOM、独立写入路由与会话隔离 E135/E136/E139/E140）<br>- **变更**：新增 `src/security/operation-log.ts`，`project-writer` 写入后登记操作日志，`撤销/回滚` 按 conversationId 恢复最近备份或删除新建文件；新增 `schematic-bom` Skill 与 `generate_bom`/`R_BOM` 路由，从 PDF 文本/OCR 提取位号与参数聚合生成 CSV BOM；`写入/保存到/写到 <盘符路径>` 用原始 query 直接路由 `project_writer`。**验证**：主项目 build；单测 422/422 + 集成 17/17 全绿；CLI E2E 回滚与直接写入均生效；B 套 C07 不再误删其他场景文件；doc-lint 通过，详见 `docs/plans/2026-08-19-agent-rollback.md`、`docs/plans/2026-08-19-schematic-bom.md`、`docs/plans/2026-08-19-write-path-route.md` 与 `docs/plans/2026-08-19-rollback-conversation.md`；affects: §4,§6,§8,§10,§11,§13 | bench:na(new-param) 理由：Agent 文件回滚、PDF 原理图 BOM、写入路径路由与会话隔离行为变更，无 §5/§6 参数变更。
+
+### 2026-08-19（办公日常、主动提醒、表格与文档格式 E137/E138/E141/E142/E144/E145）<br>- **变更**：新增 `office-daily` Skill 与 `R_OFFICE_DAILY` 路由，支持考勤表模板 CSV、CSV/xlsx/xlsm 占比分析、回复邮件草稿、图片压缩 200KB、Word 排版（.docx/.md/.txt/PDF）、PDF→Word、项目汇报 PPT 与主题色定制、主动提醒；`.xls/.xlsb/.doc` 老格式诚实提示另存；新增 `ReminderStore` 与共享 `parseTimeExpression`，gateway 定时把到期提醒推到 SSE 事件流；支持 `OFFICE_PYTHON` 指定 Python；calendar/im Skill 改为执行时懒打开 SQLite，消除并发测试锁。**验证**：主项目 build；单测 431/431 + 集成 17/17 全绿；CLI 真跑“明天下午3点提醒我开会”返回已设置提醒；xlsm/markdown/PDF 排版测试通过；doc-lint 通过，详见 `docs/plans/2026-08-19-office-daily-skills.md`、`docs/plans/2026-08-19-office-daily-next.md`、`docs/plans/2026-08-19-ppt-theme.md`、`docs/plans/2026-08-19-active-reminders.md`、`docs/plans/2026-08-19-spreadsheet-formats.md` 与 `docs/plans/2026-08-19-document-formats.md`；affects: §4,§6,§8,§13 | bench:na(new-param) 理由：生活助手办公日常、PPT 主题、主动提醒、表格与文档格式识别、Skill 懒加载，无 §5/§6 参数变更。
+
+### 2026-08-19（桌面壳冒烟兼容 E143）<br>- **变更**：Electron 壳开发模式将 `userData` 指向 `data/electron-dev`，禁用硬件加速，冒烟模式追加 `no-sandbox/in-process-gpu/disable-software-rasterizer`，适配无可用 GPU 的环境。**验证**：`npm run desktop:smoke` 输出 `DESKTOP_READY` 且退出码 0；详见 `docs/plans/2026-08-19-desktop-smoke.md`；affects: §13 | bench:na(new-param) 理由：桌面壳运行兼容性修复，无 §5/§6 参数变更。
+
+### 2026-08-19（UI 视频卡片 E147）<br>- **变更**：三栏 UI 知识咨询栏解析后端 `videos`，把 B站/YouTube/抖音视频渲染为卡片区。**验证**：`npm --prefix ui/prototype run build` 通过；单测 435/435 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-19-ui-video-cards.md`；affects: §13 | bench:na(new-param) 理由：UI 视频卡片展示，无 §5/§6 参数变更。
+
+### 2026-08-19（视频学习转 Skill、生命周期接入、ASR/关键帧、B站浏览器兜底、BOM 坐标 Week 1-3 与办公老格式 E148-E154）<br>- **变更**：新增 `video-learner` Skill 与 `learn_video`/`R_LEARN_VIDEO` 路由，用 yt-dlp 提取 YouTube 等视频字幕，无字幕时下载音频经 OpenAI 兼容 ASR 或本地 whisper 转文字，并用 ffmpeg 抽关键帧交给 VLM 描述；B站 yt-dlp 被 412 时改用浏览器会话直连 API 拉取播放流与媒体，媒体请求带 Referer，字幕走 `player/wbi/v2` 稳定接口；字幕、ASR、画面三类材料统一进入 LLM，结构化生成 Skill JSON 并落盘 `data/learned-videos/`，自动写入 ExperienceManager；PDF 原理图 BOM 坐标感知完成 Week 1-3：PyMuPDF 坐标/包围盒提取、按页最近邻绑定、三层过滤与 BOM Change 备注合并，坐标解析已接入 `schematic-bom` Skill；办公日常新增 `.xls/.xlsb` 占比分析、`.doc` 排版原生读取与 `.docx/.doc → PDF`（Excel/Word COM）。**验证**：主项目 build；单测 451/451 + 集成 17/17 全绿；CLI 真跑 B站视频生成 Skill 并接入经验库；`npm run pdf:symbols` 在 DM365 电源页输出 70 个文本候选包围盒、35 个含位号；XLS 对照坐标+BOM Change 版 MB/PB/LB 召回 94.5%/93.8%/92.3%、精度 83.1%/92.9%/85.7%；`.xls/.xlsb`/`.doc`/Word→PDF 真跑成功；doc-lint 通过；详见 `docs/plans/2026-08-19-video-learner.md`、`docs/plans/2026-08-19-video-skill-lifecycle.md`、`docs/plans/2026-08-19-video-asr-keyframes.md`、`docs/plans/2026-08-19-video-bilibili-browser.md`、`docs/plans/2026-08-19-schematic-bom-coordinate.md`、`docs/plans/2026-08-20-legacy-office-formats.md` 与 `docs/plans/2026-08-20-docx-to-pdf.md`；affects: §4,§6,§8,§13 | bench:na(new-param) 理由：视频字幕/ASR/关键帧提取、B站浏览器播放流兜底、Skill 生成与经验库接入、BOM 坐标提取/过滤/变更合并、办公老格式读取与 Word→PDF 能力，无 §5/§6 参数变更。
+
+### 2026-08-20（生活助手 PDF 合并/加密与图片格式扩展 E155-E157）<br>- **变更**：`office-daily` 新增 PDF 合并（多 PDF 按上传顺序合成为一个，pypdf）、PDF 加密（识别“密码/口令”或默认 123456，AES-256）与图片格式转换（PNG/JPG/JPEG/WebP/BMP，Pillow）；新脚本 `scripts/office_pdf_merge.py` / `scripts/office_pdf_encrypt.py` / `scripts/office_image_convert.py`；`modeFrom` 与意图路由补对应关键词，未接入能力仍诚实提示。**验证**：主项目 build；单测 454/454 + 集成 17/17 全绿；新增 3 条单测：PDF 合并输出 3 页、PDF 加密后 pypdf 解密回验 1 页、PNG→JPG 落盘；doc-lint 通过；详见 `docs/plans/2026-08-20-office-daily-pdf-image.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手办公日常新增 PDF 合并/加密与图片格式转换能力，无 §5/§6 参数变更。
 
 ### v2.5（2026-08-12）
 

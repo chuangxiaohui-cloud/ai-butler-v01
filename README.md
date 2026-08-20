@@ -9,6 +9,19 @@
 
 ---
 
+## 🧭 开发全景阅读链
+
+从需求到 Agent 运行时约束的推导链：
+
+`一人公司AI-Agent需求文档_v2.5.md` → [ADR 索引](docs/adrs/README.md) + [ADR-0001 基础架构](docs/adrs/0001-architecture-foundation.md) → [文档资产总账](docs/documentation-map.md) → [代码目录与模块职责表](docs/code-directory.md) → [目录结构与接口契约](docs/directory-structure.md) → [AGENTS.md](AGENTS.md)
+
+- 人类开发入口：本文件
+- AI Agent 入口：`AGENTS.md`
+- 第三方审核入口：[审核导航](docs/audit-navigation.md)
+- 每次推进先读 `docs/plans/README.md`，按“计划 → 执行 → 结果”记录
+
+---
+
 ## 📐 文档治理与验收（§0 宪法）
 
 文档由 `scripts/doc-lint.ts` 执法，七项检查（C1 数值扫描 / C2 废弃格式 / C3 行数预算 / C4 引用解析 / C5 bench 联动 / C6 共变 / C7 provisional 超期）。
@@ -69,6 +82,8 @@ npm run score:v01           # [P-07] 评分判定（读取 bench/v01-scores.json
 ---
 
 ## 📁 目录结构
+
+> 完整版见 [目录结构与接口契约](docs/directory-structure.md)；下表为常用速查。
 
 | 路径 | 说明 |
 |------|------|

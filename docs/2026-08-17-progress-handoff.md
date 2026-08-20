@@ -18,6 +18,23 @@
    35 条系统级 Bug 修复 35/35，8 条能力项 6/8 有进展（P03/C05 仍兜底）；
    新增 `npm run baseline:devil-v25` 导出新基线 CSV + 摘要；
    详见 `docs/plans/2026-08-17-rescore-new-baseline.md`。
+3. **开发全景文档链补全**：新增 `docs/adrs/README.md` 与 ADR-0001（技术选型 /
+   分层策略 / 模块划分原则）、`docs/directory-structure.md`（目录与接口契约）；
+   AGENTS.md 与 README 已接入推导链入口。
+   详见 `docs/plans/2026-08-17-dev-overview-docs.md`。
+4. **文档资产矩阵整理**：新增 `docs/documentation-map.md` 与 `docs/code-directory.md`；
+   补齐架构层 5 份、设计层 7 份、工程层 4 份文档；交付期报告登记生成时机，不预置结论。
+   详见 `docs/plans/2026-08-17-documentation-matrix.md`。
+5. **第三方审核导航**：新增 `docs/audit-navigation.md`，把建议的逻辑目录
+   （pipeline/router/search-providers/llm/ui/src-tauri/memory-core 等）映射到真实路径；
+   不移动现有代码。
+   详见 `docs/plans/2026-08-17-audit-navigation.md`。
+6. **35 条 Bug 状态与回归用例（E127）**：新增
+   `bench/devil-v25/bug-regression-status.md` 逐条登记状态/回归用例/验证依据；
+   router-v2 补 5 条路由回归、`rm -rf` 拒绝、github-reader mock、project-packager
+   zip 排除断言；CLI 实测发现并修复 C05 `pack_project` 提前短路 + Windows 路径被
+   Stage 1 脱敏剥掉的问题；单测 357/357 + 集成 17/17 全绿，doc-lint 通过。
+   详见 `docs/plans/2026-08-17-bug-regression-status.md`。
 
 ## 明天继续（按优先级）
 
