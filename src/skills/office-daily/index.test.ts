@@ -27,6 +27,21 @@ function pythonHasFitz(): boolean {
 
 const HAS_FITZ = pythonHasFitz();
 
+function pythonHasLocalRapidOcr(): boolean {
+  try {
+    const out = execFileSync(
+      'python',
+      ['-c', "import importlib.util as u; print('1' if u.find_spec('rapidocr_onnxruntime') else '0')"],
+      { encoding: 'utf8' },
+    ).trim();
+    return out === '1';
+  } catch {
+    return false;
+  }
+}
+
+const HAS_LOCAL_RAPIDOCR = pythonHasLocalRapidOcr();
+
 
 function tempDir(): string {
   return mkdtempSync(join(tmpdir(), 'office-daily-test-'));
@@ -757,6 +772,82 @@ print('1' if ok else '0')`,
   }
 });
 
+
+test('office-daily: 图片 OCR 引擎不可用时诚实提示', async () => {
+  const dir = tempDir();
+  const oldOcr = process.env.PDF_OCR;
+  process.env.PDF_OCR = '0';
+  try {
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+      'base64',
+    );
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张图的文字',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'scan.png' }],
+        rawFiles: [fakeFile('scan.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('图片文字识别失败'));
+  } finally {
+    process.env.PDF_OCR = oldOcr;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 图片 OCR 真识别', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+img = Image.new('RGB', (480, 120), 'white')
+d = ImageDraw.Draw(img)
+font = None
+for fp in [r'C:\\Windows\\Fonts\\arialbd.ttf', r'C:\\Windows\\Fonts\\arial.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 44)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+d.text((20, 30), 'OCR TEST 2026', fill='black', font=font)
+buf = io.BytesIO()
+img.save(buf, 'PNG')
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const png = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张图的文字',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'scan.png' }],
+        rawFiles: [fakeFile('scan.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; text?: string; chars?: number; path?: string };
+    assert.ok(result.answer?.includes('已识别图片文字'));
+    assert.ok((result.chars ?? 0) > 0);
+    assert.ok((result.text ?? '').includes('OCR') || (result.text ?? '').includes('TEST') || (result.text ?? '').includes('2026'));
+    assert.ok(existsSync(result.path as string));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('office-daily: PDF 指定体积目标时降采样重渲染', { skip: !HAS_FITZ }, async () => {
   const dir = tempDir();

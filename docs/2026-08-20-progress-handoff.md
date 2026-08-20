@@ -59,10 +59,13 @@
 13. **主动提醒管理：列出/取消（E163）**：`ReminderStore` 新增 `cancel(id)`；
     `office-daily` 提醒模式扩展为“设置/列出/取消”闭环（列出待触发提醒，
     支持“第 N 条”编号或内容关键词取消）；单测新增 4 条。
+14. **图片 OCR 文字提取（E164）**：新增 `scripts/office_image_ocr.py`（Pillow 解码
+    + RapidOCR/PaddleOCR），`office-daily` 新增 `image_ocr` 模式，识别结果摘要
+    + 落盘 txt，引擎缺失诚实提示安装命令；单测新增 2 条（含本地真识别）。
 
 ## 今日验证
 
-- 全量单测 471/471 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
+- 全量单测 473/473 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
 - `doc-lint` 0 FAIL 0 WARN。
 - 真跑验证：DM365 XLS 对照、`.xls/.xlsb/.doc` 读取、Word→PDF 转换均成功。
 
@@ -77,10 +80,11 @@
   `docs/plans/2026-08-20-image-input-normalize.md`（E161）。
   `docs/plans/2026-08-20-calendar-reminder-email.md`（E162）。
   `docs/plans/2026-08-20-reminder-manage.md`（E163）。
+  `docs/plans/2026-08-20-image-ocr.md`（E164）。
 
 ## 明天继续（按优先级）
 
-1. 统一确认并提交 E163 批次（E162 已提交，E163 待提交）。
+1. 统一确认并提交 E164 批次（E163 已提交，E164 待提交）。
 2. 继续补齐生活助手能力：重复日程/取消提醒、OCR 输入、真实日历/邮件服务接入评估。
 
 ## 常用命令

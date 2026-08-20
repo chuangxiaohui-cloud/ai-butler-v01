@@ -34,6 +34,7 @@ type OfficeMode =
   | 'pdf_compress'
   | 'pptx'
   | 'reminder'
+  | 'image_ocr'
   | 'unsupported';
 
 const COMPRESS_SCRIPT = fileURLToPath(
@@ -50,6 +51,9 @@ const PDF_COMPRESS_SCRIPT = fileURLToPath(
 );
 const IMAGE_CONVERT_SCRIPT = fileURLToPath(
   new URL('../../../scripts/office_image_convert.py', import.meta.url),
+);
+const IMAGE_OCR_SCRIPT = fileURLToPath(
+  new URL('../../../scripts/office_image_ocr.py', import.meta.url),
 );
 const XLSX_READ_SCRIPT = fileURLToPath(
   new URL('../../../scripts/office_xlsx_read.py', import.meta.url),
@@ -157,6 +161,7 @@ function modeFrom(query: string): OfficeMode {
   if (/PDF.*(合并|拼|合成)|(合并|拼).*PDF/.test(query)) return 'merge_pdf';
   if (/PDF.*(加密|加锁|设密码|加密码)|(加密|加锁|设密码|加密码).*PDF/.test(query)) return 'encrypt_pdf';
   if (/PDF.*(压缩|减小|优化|体积)|(压缩|减小|体积).*PDF/.test(query)) return 'pdf_compress';
+  if (/识别.*(文字|图片)|提取.*(文字|文本)|图片.*(文字|识别)|扫描.*文字|OCR/i.test(query)) return 'image_ocr';
   if (/转成\s*(png|jpe?g|webp|bmp)|图片.*(转|换).*格式|格式.*(转|换).*图片/i.test(query)) return 'image_convert';
   if (/转成PDF|转.*PDF|导出PDF|PDF导出/.test(query)) return 'to_pdf';
   if (/PDF.*(转|换)成Word|转成Word|转Word/.test(query)) return 'pdf_to_word';
@@ -363,7 +368,7 @@ export function createOfficeDailySkill(opts?: {
       if (mode === 'unsupported') {
         return {
           result: {
-            answer: '这项能力还没接入，目前 office-daily 支持：考勤表模板、占比分析、回复邮件、图片压缩/格式转换、Word 排版、Word↔PDF、PDF 合并/加密、PPT、主动提醒。',
+            answer: '这项能力还没接入，目前 office-daily 支持：考勤表模板、占比分析、回复邮件、图片压缩/格式转换、图片 OCR 文字提取、Word 排版、Word↔PDF、PDF 合并/加密、PPT、主动提醒。',
           },
           confidence: 0.4,
         };
@@ -1056,7 +1061,60 @@ ${timeLabel}
         }
       }
 
-            if (mode === 'image_convert') {
+      if (mode === 'image_ocr') {
+        const file = findImageFile(input);
+        if (!file) {
+          return {
+            result: { answer: '请上传要识别文字的图片。' },
+            confidence: 0.4,
+          };
+        }
+        try {
+          const buffer = Buffer.from(await file.arrayBuffer());
+          const base = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '_') || 'file';
+          const ext = (file.name.match(/\.[a-zA-Z0-9]+$/) ?? [''])[0];
+          const tmpInput = join(outDir, 'tmp-ocr-' + Date.now() + '-' + base + ext);
+          const txtOutput = join(outDir, '识别文字-' + Date.now() + '.txt');
+          writeFileSync(tmpInput, buffer);
+          const stdout = await runPython([IMAGE_OCR_SCRIPT, tmpInput, txtOutput]);
+          rmSync(tmpInput, { force: true });
+          const result = JSON.parse(stdout.trim()) as {
+            ok?: boolean;
+            text?: string;
+            chars?: number;
+            error?: string;
+          };
+          if (!result.ok) {
+            return {
+              result: { answer: '图片文字识别失败：' + (result.error ?? '未知错误') },
+              confidence: 0.2,
+            };
+          }
+          const text = (result.text ?? '').trim();
+          const preview = text.slice(0, 120) + (text.length > 120 ? '…' : '');
+          return {
+            result: {
+              answer: text
+                ? '已识别图片文字（' + (result.chars ?? 0) + ' 字）：' + preview + '；完整文本已保存：' + txtOutput
+                : '未识别到文字；完整文本已保存：' + txtOutput,
+              path: txtOutput,
+              text,
+              chars: result.chars ?? 0,
+            },
+            confidence: 0.8,
+            followUpAction: '需要把识别结果整理成 Word/Markdown 或进一步翻译，随时说。',
+          };
+        } catch (err) {
+          return {
+            result: {
+              answer: '图片文字识别失败：' + (err instanceof Error ? err.message : String(err)),
+            },
+            confidence: 0.2,
+          };
+        }
+      }
+
+      if (mode === 'image_convert') {
         const target = targetImageFormat(input.query);
         const file = findImageFile(input);
         if (!target) {
