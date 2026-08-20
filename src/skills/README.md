@@ -33,6 +33,10 @@ v0.1 冷启动采用 **2 项核心 + 4 项占位** 策略，占位项先建目�
 | `quote-compare/` | 报价对比 | 本地供应商报价库查询/对比（SQLite） | 无外部依赖 |
 | `im-dispatch/` | 消息待发队列 | 写入本地 outbox（SQLite） | 真实 IM 待接 |
 | `engineer/` | 代码实现 | 按需求生成代码/实现方案 | 文本 LLM |
+| `project-writer/` | 工程落地 | 按路径+内容写入工程文件，覆盖前备份，路径过沙箱白名单 | 无外部依赖 |
+| `schematic-bom/` | PDF 原理图 BOM | PyMuPDF 坐标最近邻绑定位号/值/封装，三层过滤噪声并合并 BOM Change 备注后聚合生成 CSV BOM；坐标失败回退文本/OCR | PyMuPDF + parseDocument + 可选 LLM |
+| `office-daily/` | 办公日常 | 考勤表模板 / CSV+xlsx+xlsm+xls+xlsb 占比 / 回复邮件草稿 / 图片压缩+格式转换 / 文档排版（docx/md/txt/pdf/doc）/ Word↔PDF / PDF 合并+加密 / PPT / 主动提醒 | openpyxl + python-docx + python-pptx + Pillow + pypdf + Excel/Word COM（Python）+ 可选 LLM |
+| `video-learner/` | 视频学习 | 字幕 / ASR 音频转文字 / 关键帧 VLM 理解后生成 Skill 定义，落盘并接入经验库；B站 yt-dlp 被 412 时走浏览器会话拉播放流 | yt-dlp + ffmpeg + 浏览器会话 + 可选 whisper/ASR API + VLM + LLM |
 | `delivery-workflow/` | 工程工作流 | 蒸馏自 agent-skills：需求访谈/规格/拆解/TDD/增量/审查/安全/性能/调试/上线 | 无外部依赖，供 LLM 注入 |
 | `plan-validation/` | 计划编译校验 | 借鉴 DeepSeek Harness 计划校验思想：检查验收/验证/依赖/文件范围 | 可选文本 LLM；JSON 可直接校验 |
 

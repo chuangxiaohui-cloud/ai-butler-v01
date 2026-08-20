@@ -23,6 +23,11 @@ export const ACTION_TYPES = [
   'pack',
   'schedule',
   'compare',
+  'chat',
+  'apply_to_project',
+  'generate_bom',
+  'office_daily',
+  'learn_video',
   'unknown',
 ] as const;
 
@@ -91,14 +96,19 @@ const ACTION_RE: Array<[ActionType, RegExp]> = [
     /急救|120|119|110|火灾|地震|溺水|落水|触电|电击|大出血|呼吸困难|窒息|蛇咬|毒蛇|咬伤|中毒|昏迷|心梗|胸痛|心肌梗死|跟踪|遇袭|抢劫|挟持/,
   ],
   ['cultural_reference', /小鸡啄米|唐伯虎|周星驰|星爷|梗|名场面|表情包|meme|经典桥段|鬼畜|抽象|玩梗/],
+  ['office_daily', /考勤表|部门占比|回复邮件|写.*邮件|邮件.*回复|压缩.*(KB|图片)|图片.*压缩|表格模板|占比|PPT|幻灯片|汇报|Word|docx|PDF.*(转|换)成Word|转成Word|转Word|PDF.*(合并|加密|加锁)|(合并|加密|加锁).*PDF|转成\s*(png|jpe?g|webp|bmp)|图片.*格式|排版|Excel|xlsx|主动提醒|提醒我|设置提醒/i],
+  ['learn_video', /学习这个视频|视频学习|视频总结|总结这个视频/],
   ['compare', /对比|比较|对照|PK/],
   ['analyze', ANALYZE_RE],
   ['qa', QA_RE],
   ['query', /查一下|查询|看下|看看|问一下|帮我查|查查/],
   ['summarize', /总结|摘要|提炼|要点|概述|概括/],
   ['extract_structure', /结构|大纲|目录|框架|拆解|分节|章节/],
+  ['generate_bom', /BOM|物料清单|元器件清单|元件清单/],
   ['rewrite', /重写|润色|改写|语气|风格/],
   ['pack', /打包|压缩.*项目|项目.*压缩/],
+  ['apply_to_project', /按你说的|按你的建议|在我的工程|帮我加上|应用刚才|落地到|写入.*工程|(?:写入|保存到|写到|落地到)\s+[A-Za-z]:\\/],
+  ['chat', /心情不好|陪我聊|聊聊|聊聊天|倾诉|安慰|难过|不开心|孤独|压力大|焦虑|emo/],
   ['send', /发消息|发邮件|通知|发给|转发|发送|微信|QQ|飞书/],
   ['schedule', /安排|预约|预定|订个|约个|帮我订/],
   ['modify', /修改|改下|更新|重构|修复|不对|改成|换成|我要的是|修正|调整/],
@@ -110,9 +120,9 @@ const DOMAIN_RE: Array<[TargetDomain, RegExp]> = [
   ['message', /消息|邮件|微信|QQ|飞书|老张/],
   ['security', /安全|权限|危险|急救|病毒/],
   ['search', /搜索|最新|行情|天气|价格|库存|评测|资料/],
-  ['code', /代码|接口|函数|模块|App|前端|后端|PCB|固件|登录|芯片|STM32|原理图|算法|PID|位置式|积分限幅/],
+  ['code', /代码|接口|函数|模块|App|前端|后端|PCB|固件|登录|芯片|STM32|原理图|算法|PID|位置式|积分限幅|工程/],
   ['finance', /(?<!时间)(?<!学习)(?<!人力)成本|预算|收益|报价|值不值|ROI|利润/],
-  ['document', /PRD|文档|方案|报告|需求文档|说明|总结/],
+  ['document', /PRD|文档|方案|报告|需求文档|说明|总结|BOM|物料清单|元器件清单|元件清单|原理图/],
   ['color', /颜色|配色|色号|色彩|主色|取色/],
 ];
 
@@ -201,11 +211,12 @@ export function extractIntentFeatureRuleBased(
       ? 'project_level'
       : /PRD|文档|设计|规划|拆解|搭建/.test(q)
         ? 'multi_step'
-        : /单文件|一段|一个|登录接口/.test(q)
+        : /单文件|写个|写一个|写一段|一段|一个|单个|登录接口/.test(q)
           ? 'atomic'
           : 'unknown';
 
-  const hasImplicitContext = /(这个|那个|它|他|她|这项目|那项目)/.test(q);
+  const hasImplicitContext =
+    /(这个|那个|它|他|她|这项目|那项目)/.test(q) || actionType === 'apply_to_project';
   const hasGithubLink = /github\.com|github\.io|\/github\//i.test(q);
   const requiresExternalSearch =
     /最新|行情|天气|价格|库存|评测|报错|怎么解决|datasheet|github|搜索|(^|[^检])查一下|资料/.test(q) ||
@@ -265,13 +276,20 @@ export function extractIntentFeatureRuleBased(
 export function buildIntentFeaturePrompt(
   query: string,
   attachments: AttachmentSignal[] = [],
+  contextHints: string[] = [],
 ): string {
   const attachmentBlock =
     attachments.length > 0
       ? `\n附件信号：${attachments.map((a) => `${a.type}:${a.mimeType}:${a.fileName}`).join('、')}`
       : '';
+  const contextBlock =
+    contextHints.length > 0
+      ? `\n历史上下文（仅用于消歧，不要当成当前输入）：\n${contextHints
+          .map((h) => `- ${h.slice(0, 300)}`)
+          .join('\n')}`
+      : '';
   return `你是一个意图特征提取器。只输出 JSON，不要做路由决策。
-字段：actionType(create|modify|query|send|analyze|clarify|emergency|illegal_request|property_emergency|cultural_reference|qa|summarize|extract_structure|rewrite|pack|schedule|compare|unknown), targetDomain(code|document|schedule|message|search|finance|security|color|unknown), scope(atomic|multi_step|project_level|unknown), requiresExternalSearch(boolean), searchSourceHint(local_skill|web_search|internal_db|vendor_db|none), hasImplicitContext(boolean), hasGithubLink(boolean), urgency(normal|urgent|critical), rawEntities(string[]), ambiguityFlags(missing_referent|scope_unclear|target_ambiguous[])。
+字段：actionType(create|modify|query|send|analyze|clarify|emergency|illegal_request|property_emergency|cultural_reference|office_daily|learn_video|qa|summarize|extract_structure|generate_bom|rewrite|pack|schedule|compare|chat|apply_to_project|unknown), targetDomain(code|document|schedule|message|search|finance|security|color|unknown), scope(atomic|multi_step|project_level|unknown), requiresExternalSearch(boolean), searchSourceHint(local_skill|web_search|internal_db|vendor_db|none), hasImplicitContext(boolean), hasGithubLink(boolean), urgency(normal|urgent|critical), rawEntities(string[]), ambiguityFlags(missing_referent|scope_unclear|target_ambiguous[])。
 hasImage(boolean), hasDocument(boolean), attachmentTypes(string[]), fastImageDescription(string|undefined), timeExpression(string|undefined), hasTimeExpression(boolean)。
-用户输入：${query}${attachmentBlock}`;
+用户输入：${query}${attachmentBlock}${contextBlock}`;
 }
