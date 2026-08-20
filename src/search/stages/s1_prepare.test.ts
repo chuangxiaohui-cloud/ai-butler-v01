@@ -67,3 +67,19 @@ test('s1: 明确动作指令不触发指代澄清', () => {
   const prepared = prepareQuery('把这个项目打包发给我');
   assert.equal(prepared.clarify, null);
 });
+
+test('s1: 附近美食缺城市触发位置澄清', () => {
+  const out = detectClarify('我饿了，附近有啥好吃的？别给我推那些网红店，找点实惠的。');
+  assert.equal(out?.reason, 'location_missing');
+  assert.ok(out?.question.includes('城市或区域'));
+});
+
+test('s1: 已给位置时附近查询不触发位置澄清', () => {
+  assert.equal(detectClarify('华强北附近有啥好吃的'), null);
+});
+
+test('s1: 大殖子黑话未登记时触发澄清而非乱猜', () => {
+  const out = detectClarify('帮我查一下那个大殖子最新的驱动库。');
+  assert.equal(out?.reason, 'unknown_jargon');
+  assert.ok(out?.question.includes('大殖子'));
+});

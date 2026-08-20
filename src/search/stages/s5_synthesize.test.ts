@@ -163,6 +163,38 @@ test('s5: 历史记忆注入合成上下文', async () => {
   assert.ok(userContent.includes('之前问过主频'));
 });
 
+test('s5: 状态追问禁止把方案记忆当执行记录', async () => {
+  let systemPrompt = '';
+  let userContent = '';
+  const fake = new FakeLLM((messages) => {
+    systemPrompt = messages[0]?.content ?? '';
+    userContent = messages[1]?.content ?? '';
+    return '答案';
+  });
+  await synthesizeAnswer('我上个月提的那个功耗问题你解决了吗？', fusedOk, classified, {
+    llm: fake,
+    memoryNotes: ['Q: 帮我解决功耗偏高 → A: 建议采用 Deep-sleep。'],
+  });
+  assert.ok(systemPrompt.includes('执行记录'));
+  assert.ok(userContent.includes('不代表已经执行完成'));
+});
+
+test('s5: 刚才说的提问只能回溯历史记忆', async () => {
+  let systemPrompt = '';
+  let userContent = '';
+  const fake = new FakeLLM((messages) => {
+    systemPrompt = messages[0]?.content ?? '';
+    userContent = messages[1]?.content ?? '';
+    return '答案';
+  });
+  await synthesizeAnswer('你刚才说的那个 HAL 库的坑是啥来着？', fusedOk, classified, {
+    llm: fake,
+    memoryNotes: ['Q: 帮我写 STM32 HAL 代码 → A: GPIO 初始化示例。'],
+  });
+  assert.ok(systemPrompt.includes('只能引用下方历史记忆'));
+  assert.ok(userContent.includes('唯一可回溯依据'));
+});
+
 test('s5: 项目经验与命中技能注入合成上下文', async () => {
   let userContent = '';
   const fake = new FakeLLM((messages) => {

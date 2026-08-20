@@ -47,6 +47,19 @@ function multiIntentFallback(query: string): string | null {
     `2. 芯片库存/替代：我可以继续查立创商城、华强北渠道或原厂，您把具体型号和地区确认一下，我马上查。`;
 }
 
+const STATUS_QUESTION_RE =
+  /(?:解决|完成|做好|搞定|落地|处理|写完|改完|修好|上线|交付)(?:了)?(?:吗|没有|没)|(?:进度|进展|结果)(?:怎么样|如何|如何了)/;
+const RECALL_REF_RE =
+  /(?:刚才|上次|之前|前面).{0,8}(?:说|讲|提|聊|给)/;
+
+function isStatusQuestion(query: string): boolean {
+  return STATUS_QUESTION_RE.test(query);
+}
+
+function isRecallReference(query: string): boolean {
+  return RECALL_REF_RE.test(query);
+}
+
 function buildSystemPrompt(serious: boolean, primaryLens?: PrimaryLens, query?: string): string {
   const lines = [
     '你是「她」，一位拥有三十年经验的老专家兼贴身女秘书。',
@@ -64,6 +77,18 @@ function buildSystemPrompt(serious: boolean, primaryLens?: PrimaryLens, query?: 
   );
   if (serious) {
     lines.push('5. 本问题属医疗/税务等严肃领域，必须谨慎，并在结尾提示以官方或专业人士判断为准。');
+  }
+  if (query && isStatusQuestion(query)) {
+    lines.push(
+      '诚实边界：当用户询问“是否已解决/完成/落地”时，历史记忆中的方案/建议不能当作已执行；' +
+        '没有执行记录就明确说没有执行记录，不要编造进展。',
+    );
+  }
+  if (query && isRecallReference(query)) {
+    lines.push(
+      '回溯边界：当用户问“刚才说的/上次说的”内容时，只能引用下方历史记忆；' +
+        '历史记忆里没有该内容就明确说没有，不能把通用经验说成刚才说过。',
+    );
   }
   if (query && isRecencySensitiveQuery(query)) {
     lines.push(
@@ -100,7 +125,7 @@ export async function synthesizeAnswer(
     (opts.memoryNotes ?? []).length > 0
       ? `\n\n历史记忆（仅作参考，以最新证据为准）：\n${(opts.memoryNotes ?? [])
           .map((n) => `- ${n}`)
-          .join('\n')}`
+          .join('\n')}${isStatusQuestion(query) ? '\n- 注意：以上历史记忆是讨论/建议记录，不代表已经执行完成；没有执行记录时必须明说。' : ''}${isRecallReference(query) ? '\n- 注意：以上历史记忆是唯一可回溯依据，记忆里没有就明说，不要编造。' : ''}`
       : '';
   const aiAnswerBlock =
     (opts.aiAnswers ?? []).length > 0

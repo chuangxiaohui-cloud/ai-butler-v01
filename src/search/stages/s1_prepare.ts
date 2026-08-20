@@ -36,6 +36,10 @@ const ACTION_VERB_RE = /打包|重写|改写|画|写|生成|导出|发给|发送
 const PART_NUMBER_RE = /[A-Z]{2,}[0-9A-Z-]{2,}|[A-Z]{2,}[0-9]{2,}/;
 const URL_RE = /https?:\/\/\S+/;
 const MARKDOWN_LINK_RE = /\[([^\]]+)\]\(([^)\s]+)\)/g;
+const LOCATION_DEPENDENT_RE =
+  /附近|周边|哪里有|哪家|好吃|餐厅|餐馆|外卖|天气|快递|门店|维修|加油站/;
+const LOCATION_HINT_RE =
+  /[\u4e00-\u9fff]{2,}(市|区|县|镇|路|街|站|机场)|(深圳|北京|上海|广州|成都|杭州|武汉|南京|重庆|西安|苏州|天津|长沙|郑州|青岛|大连|厦门|福州|合肥|昆明|南宁|贵阳|海口|乌鲁木齐|拉萨|兰州|西宁|银川|呼和浩特|哈尔滨|长春|沈阳|石家庄|太原|济南|华强北|中关村)/;
 
 export function normalizeMarkdownLinks(query: string): string {
   return query.replace(
@@ -65,6 +69,18 @@ export function sanitizeQuery(query: string): string {
 }
 
 export function detectClarify(query: string): ClarifySuggestion | null {
+  if (LOCATION_DEPENDENT_RE.test(query) && !LOCATION_HINT_RE.test(query)) {
+    return {
+      reason: 'location_missing',
+      question: '请告诉我你在哪个城市或区域，我按当地给你查。',
+    };
+  }
+  if (/大殖子/.test(query) && !/[A-Za-z0-9]{4,}/.test(query)) {
+    return {
+      reason: 'unknown_jargon',
+      question: '“大殖子”这个说法我还没记住，你先告诉我它指哪个工具或项目，我记下来下次直接用。',
+    };
+  }
   // 已给出链接时视为指代已解决，不再要求补充型号/链接
   if (URL_RE.test(query)) return null;
   // 有明确动作指令时，指代由执行链处理，不在此处澄清

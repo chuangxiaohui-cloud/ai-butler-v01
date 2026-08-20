@@ -13,8 +13,11 @@ interface DomainRule {
 
 const DOMAIN_RULES: DomainRule[] = [
   { pattern: /(^|\.)ti\.com$/, authority: 1.0, official: true },
+  { pattern: /(^|\.)e2e\.ti\.com$/, authority: 1.0, official: true },
   { pattern: /(^|\.)infineon\.com$/, authority: 1.0, official: true },
   { pattern: /(^|\.)st\.com$/, authority: 1.0, official: true },
+  { pattern: /(^|\.)community\.st\.com$/, authority: 1.0, official: true },
+  { pattern: /(^|\.)freertos\.org$/, authority: 1.0, official: true },
   { pattern: /(^|\.)analog\.com$/, authority: 1.0, official: true },
   { pattern: /(^|\.)espressif\.com$/, authority: 1.0, official: true },
   { pattern: /(^|\.)github\.com$/, authority: 0.9, official: true },
@@ -53,6 +56,37 @@ const SOFTWARE_OFFICIAL_RULES: Array<{ names: string[]; hosts: string[] }> = [
   { names: ['openworker'], hosts: ['github.com'] },
   { names: ['openclaw'], hosts: ['github.com', 'docs.openclaw.ai', 'docs2.openclaw.ai'] },
 ];
+
+const TECH_OFFICIAL_DOMAINS: Array<{ pattern: RegExp; domains: string[] }> = [
+  {
+    pattern: /stm32|adc|看门狗|watchdog|pwm|定时器|rtos|freertos|spi|i2c/i,
+    domains: ['st.com', 'community.st.com'],
+  },
+  {
+    pattern: /altium|spice/i,
+    domains: ['altium.com', 'techdocs.altium.com'],
+  },
+  {
+    pattern: /ltspice/i,
+    domains: ['analog.com'],
+  },
+  {
+    pattern: /rtos|freertos/i,
+    domains: ['freertos.org'],
+  },
+  {
+    pattern: /buck|电感/i,
+    domains: ['ti.com', 'e2e.ti.com'],
+  },
+];
+
+export function techOfficialDomainsForQuery(query: string): string[] {
+  const out: string[] = [];
+  for (const rule of TECH_OFFICIAL_DOMAINS) {
+    if (rule.pattern.test(query)) out.push(...rule.domains);
+  }
+  return [...new Set(out)];
+}
 
 const SPACE_STATUS_RE = /航天员|宇航员|空间站|在轨|载人航天/;
 export const SPACE_STATUS_DOMAINS = ['cmse.gov.cn', 'cnsa.gov.cn', 'people.com.cn', 'news.cn'];
@@ -140,6 +174,13 @@ export function isOfficialForQuery(url: string, query: string): boolean {
     const nameHit = rule.names.some((name) => new RegExp(`\\b${name}\\b`).test(q));
     const hostHit = rule.hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`));
     if (nameHit && hostHit) return true;
+  }
+  if (
+    techOfficialDomainsForQuery(query).some(
+      (host) => hostname === host || hostname.endsWith(`.${host}`),
+    )
+  ) {
+    return true;
   }
   if (isSpaceStatusQuery(q)) {
     return SPACE_STATUS_DOMAINS.some(

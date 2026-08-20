@@ -1,5 +1,12 @@
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { test } from 'node:test';
@@ -10,6 +17,7 @@ import type { MemoryRecord, MemoryStore } from '../memory/store.js';
 import type { SearchProvider, SearchProviderResult, SearchResultItem } from './providers/types.js';
 import { pipeline } from './pipeline.js';
 import { UserContextStore } from '../memory/user-context-store.js';
+import { appendOperation } from '../security/operation-log.js';
 import type { TrajectoryEvent } from '../trajectory/trajectory-log.js';
 
 process.env.SEARCH_METRICS_LOG = join(tmpdir(), 'pipeline-search-metrics-test.jsonl');
@@ -303,6 +311,34 @@ test('pipeline: 搜索使用 s2 构造的 search_query', async () => {
   assert.ok(seen.includes('MRT-AL10 入网型号 对应手机型号'));
 });
 
+test('pipeline: 搜索结果含视频时返回 videos 并追加视频区块', async () => {
+  const provider: SearchProvider = {
+    id: 'bocha' as const,
+    async search(query: string): Promise<SearchProviderResult> {
+      return {
+        provider: 'bocha',
+        ok: true,
+        results: [
+          {
+            title: 'OpenClaw 安装教程',
+            url: 'https://www.bilibili.com/video/BV1xx',
+            content: `${query} 安装 步骤 完整 参数 说明 示例 `.repeat(5),
+            provider: 'bocha',
+          },
+        ],
+        latencyMs: 1,
+      };
+    },
+  };
+  const r = await pipeline('openclaw 的安装方法', {
+    ...deps,
+    providers: [provider],
+  });
+  assert.ok(Array.isArray(r.videos));
+  assert.equal(r.videos?.[0].platform, 'bilibili');
+  assert.ok(r.answer.includes('相关视频教程'));
+});
+
 test('pipeline: 指代不明先澄清', async () => {
   const r = await pipeline('这个芯片怎么样？', deps);
   assert.ok(r.answer.includes('具体型号'));
@@ -397,6 +433,182 @@ test('pipeline: 发消息走 im-dispatch 待发送队列', async () => {
   assert.ok(r.answer.includes('pending'));
 });
 
+test('pipeline: 项目打包带路径走 project-packager 真实执行', async (t) => {
+  if (process.platform !== 'win32') {
+    t.skip('需要 Windows PowerShell Compress-Archive');
+    return;
+  }
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-pack-'));
+  mkdirSync(join(dir, 'src'));
+  writeFileSync(join(dir, 'src', 'main.c'), 'int main(void){return 0;}\n');
+  try {
+    const r = await pipeline(`打包 ${dir}`, { ...deps, llm: undefined });
+    assert.ok(r.answer.includes('已打包'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: 陪伴聊天走 life 专用回复且不搜索', async () => {
+  const r = await pipeline('今天心情不好，陪我聊聊天。', { ...deps, llm: undefined });
+  assert.ok(r.answer.includes('我在呢'));
+  assert.equal(r.mode, 'life');
+  assert.equal(r.evidence.length, 0);
+});
+
+test('pipeline: 按你说的加工程返回结构化澄清', async () => {
+  const r = await pipeline('行，按你说的在我的工程里加上。', { ...deps, llm: undefined });
+  assert.ok(r.answer.includes('工程路径'));
+  assert.equal(r.mode, 'engineering');
+});
+
+test('pipeline: 帮我写个 PID 算法 走 engineer 直接执行', async () => {
+  const r = await pipeline(
+    '帮我写个 PID 算法。',
+    {
+      ...deps,
+      llm: undefined,
+      skillDeps: {
+        callVLM: async () => '',
+        complete: {
+          complete: async () => '# PID 算法实现\n\n完整实现。',
+        },
+      },
+    },
+    { userId: 'u1' },
+  );
+  assert.ok(r.answer.includes('PID'));
+  assert.equal(r.mode, 'engineering');
+});
+
+test('pipeline: project-writer 从上一轮记忆自动回溯写入', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-writer-'));
+  const oldEnv = process.env.SANDBOX_ALLOWED_DIRS;
+  process.env.SANDBOX_ALLOWED_DIRS = dir;
+  const memoryStore: Pick<MemoryStore, 'put' | 'recall'> = {
+    async recall() {
+      return [
+        {
+          session_id: 'v0.1-cli:u1',
+          query: 'STM32 的 ADC 怎么配置？',
+          answer: '```c\nint main(void){return 0;}\n```',
+          confidence: 0.8,
+          evidence_hash: 'h',
+          timestamp: Date.now(),
+        },
+      ];
+    },
+    async put() {
+      return '1';
+    },
+  };
+  try {
+    const target = join(dir, 'adc.c');
+    const r = await pipeline(
+      `按你说的写入 ${target}`,
+      {
+        ...deps,
+        llm: undefined,
+        memoryStore,
+        skillDeps: { callVLM: async () => '' },
+      },
+      { userId: 'u1' },
+    );
+    assert.ok(r.answer.includes('已写入'));
+    assert.ok(r.answer.includes('已使用上一轮生成内容'));
+    assert.equal(readFileSync(target, 'utf-8'), 'int main(void){return 0;}');
+  } finally {
+    process.env.SANDBOX_ALLOWED_DIRS = oldEnv;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: 直接“写入 <路径>”走 project-writer', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-write-path-'));
+  const oldSandbox = process.env.SANDBOX_ALLOWED_DIRS;
+  const oldLog = process.env.OPERATIONS_LOG_PATH;
+  process.env.SANDBOX_ALLOWED_DIRS = dir;
+  process.env.OPERATIONS_LOG_PATH = join(dir, 'operations.jsonl');
+  const memoryStore: Pick<MemoryStore, 'put' | 'recall'> = {
+    recall: async () => [],
+    put: async () => '1',
+  };
+  try {
+    const target = join(dir, 'src', 'main.c');
+    const r = await pipeline(
+      `写入 ${target}，内容：int main(void){return 0;}`,
+      {
+        ...deps,
+        llm: undefined,
+        memoryStore,
+        skillDeps: { callVLM: async () => '' },
+      },
+      { userId: 'u1' },
+    );
+    assert.ok(r.answer.includes('已写入'));
+    assert.equal(readFileSync(target, 'utf-8'), 'int main(void){return 0;}');
+  } finally {
+    process.env.SANDBOX_ALLOWED_DIRS = oldSandbox;
+    process.env.OPERATIONS_LOG_PATH = oldLog;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: rewrite 从近期记忆取原文润色', async () => {
+  let recalledSession = '';
+  const memoryStore: Pick<MemoryStore, 'put' | 'recall'> = {
+    async recall(sessionId: string) {
+      recalledSession = sessionId;
+      return [
+        {
+          session_id: sessionId,
+          query: '这段话：这个方案我觉得还行，就是报价有点高。',
+          answer: '老板，方案本身认可。',
+          confidence: 0.8,
+          evidence_hash: 'h',
+          timestamp: Date.now(),
+        },
+      ];
+    },
+    async put() {
+      return '1';
+    },
+  };
+  const r = await pipeline(
+    '把刚才那段话，用更专业的语气重写一遍，我要发给客户。',
+    {
+      ...deps,
+      llm: undefined,
+      memoryStore,
+      skillDeps: {
+        callVLM: async () => '',
+        complete: {
+          complete: async () => '该方案整体可行，不过报价仍有优化空间。',
+        },
+      },
+    },
+    { userId: 'u1' },
+  );
+  assert.equal(recalledSession, 'v0.1-cli:u1');
+  assert.ok(r.answer.includes('报价仍有优化空间'));
+});
+
+test('pipeline: rewrite 无原文时保留澄清', async () => {
+  const r = await pipeline(
+    '把刚才那段话，用更专业的语气重写一遍。',
+    {
+      ...deps,
+      llm: undefined,
+      memoryStore: {
+        recall: async () => [],
+        put: async () => '1',
+      },
+    },
+    { userId: 'u1' },
+  );
+  assert.ok(r.answer.includes('请把要重写的内容发给我'));
+});
+
 test('pipeline: 完整项目路由到 PM 执行器待接入', async () => {
   const r = await pipeline('帮我做一个完整的 App 前端', deps);
   assert.ok(r.answer.includes('project_manager/plan'));
@@ -461,6 +673,139 @@ test('pipeline: 文化梗走 memory 驱动的秘书回复', async () => {
   }
 });
 
+test('pipeline: 记住指令直接写入长期事实且不搜索', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-remember-'));
+  const store = new UserContextStore(join(dir, 'user-context.db'));
+  try {
+    const r = await pipeline(
+      '记住：导出嘉立创时，Gerber 要关闭钻孔文件、勾选使用原文件名。',
+      { ...deps, llm: undefined, userContextStore: store },
+      { userId: 'u1' },
+    );
+    assert.ok(r.answer.includes('已记住'));
+    assert.equal(r.evidence.length, 0);
+    const ctx = store.load('u1');
+    assert.ok(ctx.longTermFacts.some((f) => f.content.includes('关闭钻孔文件')));
+  } finally {
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: 记住的事实注入后续老规矩提问', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-remember-recall-'));
+  const store = new UserContextStore(join(dir, 'user-context.db'));
+  try {
+    store.addFact(
+      'u1',
+      '导出嘉立创时，Gerber 要关闭钻孔文件、勾选使用原文件名。',
+      'user_explicit',
+    );
+    const llm = new FakeLLM();
+    const r = await pipeline(
+      '老规矩，把这个原理图导出给嘉立创。',
+      { ...deps, llm, userContextStore: store },
+      { userId: 'u1' },
+    );
+    assert.equal(r.gate_triggered, 'none');
+    assert.ok(llm.lastUserContent.includes('关闭钻孔文件'));
+  } finally {
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: 撤销指令恢复最近写入备份', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-rollback-'));
+  const oldLog = process.env.OPERATIONS_LOG_PATH;
+  const oldSandbox = process.env.SANDBOX_ALLOWED_DIRS;
+  process.env.OPERATIONS_LOG_PATH = join(dir, 'operations.jsonl');
+  process.env.SANDBOX_ALLOWED_DIRS = dir;
+  const target = join(dir, 'src', 'main.c');
+  const backup = join(dir, 'backups', 'main.c.bak');
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  mkdirSync(join(dir, 'backups'), { recursive: true });
+  writeFileSync(target, 'new', 'utf-8');
+  writeFileSync(backup, 'old', 'utf-8');
+  appendOperation({
+    userId: 'u1',
+    action: 'write',
+    path: target,
+    backup,
+    created: false,
+  });
+  try {
+    const r = await pipeline(
+      '撤销刚才的操作，我感觉改错了。',
+      { ...deps, llm: undefined },
+      { userId: 'u1' },
+    );
+    assert.ok(r.answer.includes('已回滚'));
+    assert.equal(readFileSync(target, 'utf-8'), 'old');
+  } finally {
+    process.env.OPERATIONS_LOG_PATH = oldLog;
+    process.env.SANDBOX_ALLOWED_DIRS = oldSandbox;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: 撤销无记录时诚实说明', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-rollback-empty-'));
+  const oldLog = process.env.OPERATIONS_LOG_PATH;
+  process.env.OPERATIONS_LOG_PATH = join(dir, 'operations.jsonl');
+  try {
+    const r = await pipeline(
+      '撤销刚才的操作，我感觉改错了。',
+      { ...deps, llm: undefined },
+      { userId: 'u1' },
+    );
+    assert.ok(r.answer.includes('没有找到最近由我执行的写入操作'));
+  } finally {
+    process.env.OPERATIONS_LOG_PATH = oldLog;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: 撤销只作用于同一会话', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-rollback-conv-'));
+  const oldLog = process.env.OPERATIONS_LOG_PATH;
+  const oldSandbox = process.env.SANDBOX_ALLOWED_DIRS;
+  process.env.OPERATIONS_LOG_PATH = join(dir, 'operations.jsonl');
+  process.env.SANDBOX_ALLOWED_DIRS = dir;
+  const target = join(dir, 'src', 'main.c');
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(target, 'new', 'utf-8');
+  appendOperation({
+    userId: 'u1',
+    conversationId: 'conv1',
+    action: 'write',
+    path: target,
+    backup: null,
+    created: true,
+  });
+  try {
+    const other = await pipeline(
+      '撤销刚才的操作，我感觉改错了。',
+      { ...deps, llm: undefined },
+      { userId: 'u1', conversationId: 'conv2' },
+    );
+    assert.ok(other.answer.includes('没有找到最近由我执行的写入操作'));
+    assert.equal(existsSync(target), true);
+
+    const same = await pipeline(
+      '撤销刚才的操作，我感觉改错了。',
+      { ...deps, llm: undefined },
+      { userId: 'u1', conversationId: 'conv1' },
+    );
+    assert.ok(same.answer.includes('已回滚'));
+    assert.equal(existsSync(target), false);
+  } finally {
+    process.env.OPERATIONS_LOG_PATH = oldLog;
+    process.env.SANDBOX_ALLOWED_DIRS = oldSandbox;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('pipeline: 文档总结经 document-qa 执行', async () => {
   const md = `# 一人公司Agent
 
@@ -489,4 +834,34 @@ test('pipeline: 文档总结经 document-qa 执行', async () => {
     },
   );
   assert.ok(r.answer.includes('最小闭环'));
+});
+
+test('pipeline: PDF 原理图生成 BOM 走 schematic-bom', async () => {
+  const text = 'R1 10k 0603\nR2 10k 0603\nC1 100nF 0603\nU1 STM32F103 LQFP48\n';
+  const r = await pipeline(
+    '帮我把这个PDF的原理图生成BOM表',
+    {
+      ...deps,
+      llm: undefined,
+      skillDeps: {
+        callVLM: async () => '',
+        parseDocument: async () => text,
+      },
+    },
+    { files: [fakeFile('schematic.pdf', 'application/pdf', text)] },
+  );
+  assert.ok(r.answer.includes('已生成 BOM'));
+  assert.ok(r.answer.includes('schematic'));
+  assert.equal(r.evidence.length, 0);
+});
+
+test('pipeline: 考勤表模板走 office-daily 且不搜索', async () => {
+  const r = await pipeline(
+    '帮我做一个考勤表模板',
+    { ...deps, llm: undefined, skillDeps: { callVLM: async () => '' } },
+    { userId: 'u1' },
+  );
+  assert.ok(r.answer.includes('考勤表模板'));
+  assert.equal(r.mode, 'life');
+  assert.equal(r.evidence.length, 0);
 });

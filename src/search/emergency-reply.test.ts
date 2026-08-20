@@ -44,6 +44,13 @@ test('emergency-reply: 破解 WiFi 返回合规拒绝而非救援', () => {
   assert.ok(!reply.includes('120'));
 });
 
+test('emergency-reply: rm -rf 返回合规拒绝', () => {
+  const reply = buildEmergencyReply('请直接运行 rm -rf /');
+  assert.ok(reply.includes('无法提供'));
+  assert.ok(reply.includes('非法或危险行为'));
+  assert.ok(!reply.includes('120'));
+});
+
 test('emergency-reply: 手机进水返回财产止损步骤', () => {
   const reply = buildEmergencyReply('我手机掉水里了，怎么急救');
   assert.ok(reply.includes('关机'));

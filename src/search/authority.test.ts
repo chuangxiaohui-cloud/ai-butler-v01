@@ -6,6 +6,7 @@ import {
   isHighTrustDatasheetUrl,
   isOfficialForQuery,
   officialSourceHintForQuery,
+  techOfficialDomainsForQuery,
 } from './authority.js';
 
 test('authority: 器件型号前缀映射官方域', () => {
@@ -115,4 +116,31 @@ test('authority: 原厂与国内资料站都算高可信资料源', () => {
     isHighTrustDatasheetUrl('https://guba.eastmoney.com/list/002465.html', '北斗芯片 上市公司'),
     false,
   );
+});
+
+test('authority: 技术题官方域映射', () => {
+  assert.deepEqual(techOfficialDomainsForQuery('STM32 看门狗 PWM'), [
+    'st.com',
+    'community.st.com',
+  ]);
+  assert.ok(techOfficialDomainsForQuery('BUCK电路电感发烫').includes('e2e.ti.com'));
+  assert.ok(techOfficialDomainsForQuery('Altium SPICE .sub').includes('techdocs.altium.com'));
+});
+
+test('authority: e2e/community/freertos 域识别为官方源', () => {
+  assert.equal(
+    isOfficialForQuery('https://e2e.ti.com/support/power-management/', 'BUCK 电感发烫'),
+    true,
+  );
+  assert.equal(
+    isOfficialForQuery('https://community.st.com/t5/stm32-mcus/', 'STM32 看门狗'),
+    true,
+  );
+  assert.equal(
+    isOfficialForQuery('https://www.freertos.org/', 'FreeRTOS 异常处理'),
+    true,
+  );
+  assert.equal(getDomainAuthority('https://e2e.ti.com/') >= 1.0, true);
+  assert.equal(getDomainAuthority('https://community.st.com/') >= 1.0, true);
+  assert.equal(getDomainAuthority('https://www.freertos.org/') >= 1.0, true);
 });

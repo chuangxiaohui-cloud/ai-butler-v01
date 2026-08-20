@@ -10,6 +10,7 @@ import {
   extractPartNumber,
   isSpaceStatusQuery,
   officialSourceHintForQuery,
+  techOfficialDomainsForQuery,
 } from './authority.js';
 
 export interface RewriteResult {
@@ -30,6 +31,20 @@ const DOMESTIC_SITE_NAMES: Record<string, string> = {
   'xcc.com': '芯查查',
   'semiee.com': '半导小芯',
 };
+
+function coreTechQuery(query: string): string {
+  return query
+    .replace(/[（(][^）)]*[)）]/g, ' ')
+    .replace(/[？?。！!，,]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^(如何|怎么|怎样|帮我|请帮我|团队|我们|我想|需要|请问|请)\s*/g, '')
+    .trim();
+}
+
+function techOfficialQueries(query: string): string[] {
+  const core = coreTechQuery(query);
+  return techOfficialDomainsForQuery(query).map((domain) => `${core} site:${domain}`);
+}
 
 export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
   if (intent === 'news') {
@@ -77,6 +92,7 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
   }
   const part = extractPartNumber(query);
   const officialHint = officialSourceHintForQuery(query);
+  const techQueries = techOfficialQueries(query);
   if (part && officialHint) {
     const domesticQueries = DOMESTIC_DATASHEET_DOMAINS.flatMap((domain) => {
       const siteName = DOMESTIC_SITE_NAMES[domain] ?? domain;
@@ -86,6 +102,7 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
       ];
     });
     return uniqueQueries([
+      ...techQueries,
       `${part} site:${officialHint.domain} datasheet`,
       `${part} ${officialHint.domain} 官方 数据手册`,
       ...domesticQueries,
@@ -94,6 +111,7 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
   }
   if (part) {
     return uniqueQueries([
+      ...techQueries,
       ...DOMESTIC_DATASHEET_DOMAINS.flatMap((domain) => {
         const siteName = DOMESTIC_SITE_NAMES[domain] ?? domain;
         return [
@@ -104,7 +122,7 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
       query,
     ]);
   }
-  return [query];
+  return uniqueQueries([...techQueries, query]);
 }
 
 function uniqueQueries(queries: string[]): string[] {

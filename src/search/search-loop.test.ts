@@ -177,6 +177,14 @@ test('search-loop: 空结果回退候选含原句与简化句', () => {
   assert.ok(candidates.some((q) => q.includes('硬件定时器生成') && !q.includes('如何')));
 });
 
+test('search-loop: 空结果回退候选含官方域子查询', () => {
+  const stm32 = buildEmptyFallbackQueries('如何用 STM32 定时器生成 PWM？');
+  assert.ok(stm32.some((q) => q.includes('site:st.com')));
+  assert.ok(stm32.some((q) => q.includes('site:community.st.com')));
+  const buck = buildEmptyFallbackQueries('BUCK电路的电感发烫');
+  assert.ok(buck.some((q) => q.includes('site:e2e.ti.com')));
+});
+
 test('search-loop: LLM 追加子查询直到覆盖足够', async () => {
   const records: Array<{ source: string; intent: string; ok: boolean; latencyMs: number }> = [];
   const r = await runSearchLoop('q', {

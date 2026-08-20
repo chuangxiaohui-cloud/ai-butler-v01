@@ -29,11 +29,15 @@ import {
   buildSafetyRefusalReply,
 } from './emergency-reply.js';
 import { weekendMarketReply } from './weekend-market.js';
+import { buildCompanionReply } from './companion-reply.js';
 import { routeV2WithLLM } from '../agent/router-v2.js';
 import { mapRouteToUiMode, type UiMode } from '../agent/mode-mapper.js';
 import { preprocessUserMessage } from '../agent/multimodal-preprocessor.js';
 import { buildMemoryInjection, type UserContext } from '../memory/user-context.js';
 import type { UserContextStore } from '../memory/user-context-store.js';
+import { rewriteWithMemory } from '../agent/rewrite-with-memory.js';
+import { extractRememberInstruction } from '../agent/memory-instruction.js';
+import { isRollbackQuery, rollbackLatest } from '../security/operation-log.js';
 import { culturalReplyPostProcess } from '../postprocess/cultural-reply.js';
 import type { RouteCaseStore } from '../agent/route-case-store.js';
 import { prepareQuery } from './stages/s1_prepare.js';
@@ -41,6 +45,11 @@ import { classifyQuery } from './stages/s2_classify.js';
 import { runSearchLoop, type BrowserFetcher } from './search-loop.js';
 import { synthesizeAnswer } from './stages/s5_synthesize.js';
 import { postProcess } from './stages/s6_post.js';
+import {
+  buildVideoBlock,
+  collectVideoResults,
+  type VideoResult,
+} from './videos.js';
 import { parseDocumentFile } from './document-parser.js';
 import { resolveModelTier } from './model-router.js';
 import type { ModelRouteInfo } from './model-router.js';
@@ -63,6 +72,7 @@ export interface AnswerResult {
   elapsed_ms: number;
   mode?: UiMode;
   submode?: string;
+  videos?: VideoResult[];
 }
 
 export interface PipelineDeps {
@@ -70,13 +80,21 @@ export interface PipelineDeps {
   providers?: SearchProvider[];
   quota?: QuotaStoreLike;
   memoryStore?: Pick<MemoryStore, 'put' | 'recall'>;
-  userContextStore?: Pick<UserContextStore, 'load' | 'addSessionSummary'>;
+  userContextStore?: Pick<UserContextStore, 'load' | 'addSessionSummary' | 'addFact'>;
   routeCaseStore?: Pick<RouteCaseStore, 'record' | 'attachModelRoute'>;
   skillDeps?: SkillDeps;
   tavily?: { enabled?: boolean };
   experienceManager?: {
     search(query: string, opts?: { limit?: number }): ExperienceEntry[];
     recordUse?(id: string): void;
+    add?(entry: {
+      id: string;
+      skillName: string;
+      content: string;
+      keywords: string[];
+      createdAt: number;
+      lastUsedAt: number | null;
+    }): void;
   };
   sourceStats?: Pick<SearchSourceStats, 'record'>;
   skillLifecycle?: {
@@ -90,6 +108,7 @@ export interface PipelineDeps {
 export interface PipelineOptions {
   files?: RawFileLike[];
   userId?: string;
+  conversationId?: string;
   modelSelection?: ModelSelection;
   onProgress?: (stage: string) => void;
   onArtifact?: (event: {
@@ -151,6 +170,7 @@ export async function pipeline(
 
   // 用户上下文（Week 4 起接入）：意图提取与最终回复双端注入
   const userId = opts.userId ?? 'default';
+  const memorySessionId = userId === 'default' ? 'v0.1-cli' : `v0.1-cli:${userId}`;
   const userStore = deps.userContextStore;
   let userContext: UserContext | null = null;
   let memoryBlock = '';
@@ -166,11 +186,13 @@ export async function pipeline(
   // 记忆调用（L0/L1，§6.1.1）：读取最近历史问答作为上下文
   const memoryStore = deps.memoryStore ?? defaultMemoryStore();
   let memoryNotes: string[] = [];
+  let recentMemory: Array<{ query: string; answer: string }> = [];
   try {
-    const history = await memoryStore.recall('v0.1-cli', 3);
+    const history = await memoryStore.recall(memorySessionId, 3);
     memoryNotes = history.map(
       (m) => `Q: ${m.query} → A: ${m.answer.slice(0, 120)}`,
     );
+    recentMemory = history.map((m) => ({ query: m.query, answer: m.answer }));
   } catch {
     // 记忆读取失败不阻塞主对话
   }
@@ -179,9 +201,69 @@ export async function pipeline(
     ? [...memoryNotes, ...memoryBlock.split('\n').filter((line) => line.trim())]
     : memoryNotes;
 
+  // 本地写路径需要原始 query 路由，Stage 1 脱敏会剥掉盘符
+  const routeQuery =
+    /(?:写入|保存到|写到|落地到)\s+[A-Za-z]:\\/.test(prepared.originalQuery)
+      ? prepared.originalQuery
+      : prepared.cleanQuery;
+
+  // 显式“记住：...”指令：直接写长期事实，不走搜索
+  const rememberContent = extractRememberInstruction(prepared.originalQuery);
+  if (rememberContent) {
+    try {
+      userStore?.addFact?.(userId, rememberContent, 'user_explicit');
+    } catch {
+      // 记忆写入失败不阻塞确认回复
+    }
+    const answer = `已记住：${rememberContent}`;
+    recordTrajectory({
+      type: 'answer',
+      answer: {
+        answerSnippet: answer.slice(0, 300),
+        confidence: 0.95,
+        gateTriggered: 'none',
+        elapsedMs: Date.now() - start,
+      },
+    });
+    return {
+      query,
+      answer,
+      confidence: 0.95,
+      evidence: [],
+      gate_triggered: 'none',
+      elapsed_ms: Date.now() - start,
+      mode: 'knowledge',
+    };
+  }
+
+  // 撤销/回滚指令：优先恢复最近一次 Agent 写入操作
+  if (isRollbackQuery(prepared.cleanQuery)) {
+    const rollback = rollbackLatest(userId, {
+      conversationId: opts.conversationId,
+    });
+    recordTrajectory({
+      type: 'answer',
+      answer: {
+        answerSnippet: rollback.message.slice(0, 300),
+        confidence: rollback.ok ? 0.9 : 0.6,
+        gateTriggered: 'none',
+        elapsedMs: Date.now() - start,
+      },
+    });
+    return {
+      query,
+      answer: rollback.message,
+      confidence: rollback.ok ? 0.9 : 0.6,
+      evidence: [],
+      gate_triggered: 'none',
+      elapsed_ms: Date.now() - start,
+      mode: 'engineering',
+    };
+  }
+
   // 主 Agent 意图路由（三层：特征 → 规则表 → 置信度门控；携带工作记忆做上下文消歧）
   const route = await routeV2WithLLM(
-    prepared.cleanQuery,
+    routeQuery,
     deps.llm,
     contextHints,
     processed.attachmentSignals,
@@ -291,6 +373,45 @@ export async function pipeline(
     };
   }
   if (routeSelected.intent === 'rewrite') {
+    const rewritten = await rewriteWithMemory(
+      prepared.cleanQuery,
+      contextHints,
+      deps.skillDeps?.complete,
+    );
+    if (rewritten) {
+      try {
+        await postProcess(
+          {
+            query,
+            answer: rewritten,
+            confidence: Math.max(0.7, route.confidence),
+            evidence: [],
+            gateTriggered: 'none',
+            elapsedMs: Date.now() - start,
+            sessionId: memorySessionId,
+          },
+          { store: deps.memoryStore ?? defaultMemoryStore() },
+        );
+        userStore?.addSessionSummary?.(
+          userId,
+          `s-${Date.now()}`,
+          `Q: ${query}\nA: ${rewritten.slice(0, 200)}`,
+          [routeSelected.intent, ...route.features.rawEntities],
+        );
+      } catch {
+        // 记忆写入失败不阻塞润色结果
+      }
+      return {
+        query,
+        answer: rewritten,
+        confidence: Math.max(0.7, route.confidence),
+        evidence: [],
+        gate_triggered: 'none',
+        elapsed_ms: Date.now() - start,
+        mode: uiRoute.mode,
+        submode: uiRoute.submode,
+      };
+    }
     return {
       query,
       answer: '请把要重写的内容发给我，我按更专业的语气润色。',
@@ -302,16 +423,15 @@ export async function pipeline(
       submode: uiRoute.submode,
     };
   }
-  if (routeSelected.intent === 'pack_project') {
+  if (routeSelected.intent === 'companion_chat') {
     return {
       query,
-      answer: '请告诉我打包哪个项目目录；我会排除 .git、node_modules、build 后生成压缩包。',
-      confidence: route.confidence,
+      answer: buildCompanionReply(query),
+      confidence: 0.8,
       evidence: [],
       gate_triggered: 'none',
       elapsed_ms: Date.now() - start,
-      mode: uiRoute.mode,
-      submode: uiRoute.submode,
+      mode: 'life',
     };
   }
   if (!routeSelected.searchNeed && routeSelected.intent !== 'web_search') {
@@ -323,15 +443,34 @@ export async function pipeline(
       safeArtifact({ skill: skill.name, state: 'generating' });
       try {
         const skillDeps = deps.skillDeps ?? { callVLM: async () => '' };
+        const skillDepsForRun: SkillDeps = {
+          ...skillDeps,
+          ...(deps.experienceManager
+            ? {
+                experienceManager: deps.experienceManager as SkillDeps['experienceManager'],
+              }
+            : {}),
+          ...(deps.browserSession ? { browserSession: deps.browserSession } : {}),
+        };
+        // 本地打包需要原始路径，不能用 Stage 1 脱敏后的 cleanQuery（Windows 路径会被剥掉）
+        const skillInputQuery =
+          skillName === 'project-packager' || skillName === 'project-writer'
+            ? prepared.originalQuery
+            : prepared.cleanQuery;
         const output = await skill.execute(
           {
-            query: prepared.cleanQuery,
+            query: skillInputQuery,
             attachmentSignals: processed.attachmentSignals,
             rawFiles: processed.rawFiles,
             memory: userContext,
-            params: { mode: routeSelected.intent },
+            workingMemory: recentMemory,
+            params: {
+              mode: routeSelected.intent,
+              userId,
+              conversationId: opts.conversationId ?? userId,
+            },
           },
-          skillDeps,
+          skillDepsForRun,
         );
         let answer = toDisplayText(output.result);
         safeArtifact({
@@ -365,10 +504,22 @@ export async function pipeline(
           },
         });
         try {
+          await postProcess(
+            {
+              query,
+              answer,
+              confidence: route.confidence,
+              evidence: [],
+              gateTriggered: 'none',
+              elapsedMs: Date.now() - start,
+              sessionId: memorySessionId,
+            },
+            { store: deps.memoryStore ?? defaultMemoryStore() },
+          );
           userStore?.addSessionSummary?.(
             userId,
             `s-${Date.now()}`,
-            answer.slice(0, 200),
+            `Q: ${query}\nA: ${answer.slice(0, 200)}`,
             [routeSelected.intent, ...route.features.rawEntities],
           );
         } catch {
@@ -432,7 +583,10 @@ export async function pipeline(
         );
         if (skill) {
           try {
-            const skillDeps: SkillDeps = { callVLM: async () => '' };
+            const skillDeps: SkillDeps = {
+              callVLM: async () => '',
+              ...(deps.browserSession ? { browserSession: deps.browserSession } : {}),
+            };
             const output = await skill.execute(
               {
                 query: prepared.cleanQuery,
@@ -614,6 +768,9 @@ export async function pipeline(
     }
   }
 
+  const videoResults = collectVideoResults(evidence);
+  const videoBlock = buildVideoBlock(videoResults);
+
   // Stage 5：秘书级合成
   let lastModelRoute: ModelRouteInfo | undefined;
   const routeModelTier = resolveModelTier({
@@ -669,11 +826,12 @@ export async function pipeline(
   const final = await postProcess(
     {
       query,
-      answer: synthesized.answer,
+      answer: synthesized.answer + videoBlock,
       confidence,
       evidence,
       gateTriggered: gate,
       elapsedMs: Date.now() - start,
+      sessionId: memorySessionId,
     },
     { store: deps.memoryStore ?? defaultMemoryStore() },
   );
@@ -692,7 +850,7 @@ export async function pipeline(
     userStore?.addSessionSummary?.(
       userId,
       `s-${Date.now()}`,
-      final.answer.slice(0, 200),
+      `Q: ${query}\nA: ${final.answer.slice(0, 200)}`,
       [routeSelected.intent, ...route.features.rawEntities],
     );
   } catch {
@@ -708,6 +866,7 @@ export async function pipeline(
     elapsed_ms: final.elapsedMs,
     mode: uiRoute.mode,
     submode: uiRoute.submode,
+    videos: videoResults.length > 0 ? videoResults : undefined,
   };
 }
 

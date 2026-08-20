@@ -21,6 +21,7 @@ import {
   isDomesticDatasheetUrl,
   isHighTrustDatasheetUrl,
   officialSourceHintForQuery,
+  techOfficialDomainsForQuery,
 } from './authority.js';
 import { FileMonthlyQuotaStore } from './quota.js';
 import { tavilyProvider } from './providers/tavily.js';
@@ -43,6 +44,7 @@ export interface BrowserFetcher {
   downloadFile(
     url: string,
     destPath: string,
+    headers?: Record<string, string>,
   ): Promise<{ ok: boolean; size: number; error?: string }>;
 }
 
@@ -100,7 +102,11 @@ export function buildEmptyFallbackQueries(query: string, originalQuery?: string)
   if (originalQuery && !out.includes(originalQuery)) out.push(originalQuery);
   if (simplified && !out.includes(simplified)) out.push(simplified);
   if (query && !out.includes(query)) out.push(query);
-  return out.slice(0, 2);
+  for (const domain of techOfficialDomainsForQuery(query)) {
+    const officialQuery = `${simplified || query} site:${domain}`;
+    if (!out.includes(officialQuery)) out.push(officialQuery);
+  }
+  return out.slice(0, 4);
 }
 
 export function buildCoverageJudgeMessages(
@@ -228,31 +234,34 @@ export async function runSearchLoop(
 
   if (results.length === 0 && opts.browserSession?.searchWeb) {
     const engines = ['bing', 'baidu'] as const;
-    for (const engine of engines) {
+    for (const fallbackQuery of buildEmptyFallbackQueries(query, opts.originalQuery)) {
       if (results.length > 0) break;
-      const attemptStart = Date.now();
-      try {
-        const items = await opts.browserSession.searchWeb(opts.originalQuery ?? query, {
-          engine,
-          count: 8,
-        });
-        const ok = items.length > 0;
-        attempts.push({
-          provider: 'browser',
-          ok,
-          latencyMs: Date.now() - attemptStart,
-          error: ok ? undefined : '浏览器搜索无结果',
-        });
-        opts.sourceStats?.record('browser', opts.intent, ok, Date.now() - attemptStart);
-        if (ok) results.push(...items);
-      } catch (err) {
-        attempts.push({
-          provider: 'browser',
-          ok: false,
-          latencyMs: Date.now() - attemptStart,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        opts.sourceStats?.record('browser', opts.intent, false, Date.now() - attemptStart);
+      for (const engine of engines) {
+        if (results.length > 0) break;
+        const attemptStart = Date.now();
+        try {
+          const items = await opts.browserSession.searchWeb(fallbackQuery, {
+            engine,
+            count: 8,
+          });
+          const ok = items.length > 0;
+          attempts.push({
+            provider: 'browser',
+            ok,
+            latencyMs: Date.now() - attemptStart,
+            error: ok ? undefined : '浏览器搜索无结果',
+          });
+          opts.sourceStats?.record('browser', opts.intent, ok, Date.now() - attemptStart);
+          if (ok) results.push(...items);
+        } catch (err) {
+          attempts.push({
+            provider: 'browser',
+            ok: false,
+            latencyMs: Date.now() - attemptStart,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          opts.sourceStats?.record('browser', opts.intent, false, Date.now() - attemptStart);
+        }
       }
     }
   }
@@ -296,7 +305,13 @@ export async function runSearchLoop(
   }
 
   const officialHint = officialSourceHintForQuery(query);
-  if (opts.tavily?.enabled && part && !browserCovered && needsMoreEvidence()) {
+  const techDomains = techOfficialDomainsForQuery(query);
+  if (
+    opts.tavily?.enabled &&
+    (part || techDomains.length > 0) &&
+    !browserCovered &&
+    needsMoreEvidence()
+  ) {
     const officialProvider = opts.officialProvider ?? tavilyProvider;
     const monthly =
       opts.tavilyMonthlyQuota ??
@@ -307,6 +322,12 @@ export async function runSearchLoop(
         query: string;
         includeDomains: string[];
       }> = [];
+      for (const domain of techDomains) {
+        fallbackSearches.push({
+          query: `${query} site:${domain}`,
+          includeDomains: [domain],
+        });
+      }
       if (officialHint) {
         fallbackSearches.push({
           query: `${part} ${officialHint.domain} datasheet`,
