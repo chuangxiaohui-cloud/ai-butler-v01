@@ -42,6 +42,7 @@ export interface GatewayOptions {
 interface AskBody {
   query?: unknown;
   userId?: unknown;
+  conversationId?: unknown;
   modelId?: unknown;
   tab?: unknown;
   mode?: unknown;
@@ -409,6 +410,8 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     const modelSelection = parseModelId(modelId) ?? undefined;
     const userId =
       typeof body.userId === 'string' ? body.userId : (opts.defaultUserId ?? 'ui-user');
+    const conversationId =
+      typeof body.conversationId === 'string' ? body.conversationId : undefined;
     const files: RawFileLike[] = [];
     const rawAttachments = Array.isArray(body.attachments) ? body.attachments : [];
     for (const item of rawAttachments) {
@@ -437,6 +440,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     try {
       const result = await pipeline(query, opts.deps ?? {}, {
         userId,
+        conversationId,
         modelSelection,
         files,
         onProgress: (stage) =>

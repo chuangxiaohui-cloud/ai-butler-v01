@@ -33,6 +33,7 @@ export async function extractIntentFeature(
   query: string,
   llm?: LLMClient,
   attachments: AttachmentSignal[] = [],
+  contextHints: string[] = [],
 ): Promise<ExtractionResult> {
   if (!llm) {
     return {
@@ -43,7 +44,12 @@ export async function extractIntentFeature(
   }
   try {
     const raw = await llm.complete(
-      [{ role: 'user', content: buildIntentFeaturePrompt(query, attachments) }],
+      [
+        {
+          role: 'user',
+          content: buildIntentFeaturePrompt(query, attachments, contextHints),
+        },
+      ],
       { temperature: 0, maxTokens: 200, json: true },
     );
     const parsed = extractJsonObject(raw);

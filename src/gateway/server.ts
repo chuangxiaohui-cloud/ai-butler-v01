@@ -17,6 +17,8 @@ import { SkillLifecycle } from '../skills/lifecycle.js';
 import type { SkillDeps } from '../skills/deps.js';
 import { TrajectoryLog } from '../trajectory/trajectory-log.js';
 import { createGatewayApp } from './app.js';
+import { publishArtifactEvent } from './artifact-bus.js';
+import { ReminderStore } from '../reminder/reminder-store.js';
 
 const HOST = process.env.GATEWAY_HOST ?? '127.0.0.1';
 const PORT = Number(process.env.GATEWAY_PORT ?? '8787');
@@ -60,12 +62,29 @@ const app = createGatewayApp({
 });
 
 const server = createServer(app);
+const reminderStore = new ReminderStore();
+const reminderTimer = setInterval(() => {
+  try {
+    for (const reminder of reminderStore.dueReminders()) {
+      publishArtifactEvent('reminder', {
+        message: reminder.message,
+        remindAt: reminder.remindAt,
+        at: Date.now(),
+      });
+    }
+  } catch {
+    // 提醒检查失败不阻塞 gateway
+  }
+}, 30_000);
+reminderTimer.unref();
 server.listen(PORT, HOST, () => {
   console.log(`TurnLoop gateway: http://${HOST}:${PORT}`);
   console.log('POST /api/ask | GET /api/health | GET /api/model-providers');
 });
 
 function shutdown(): void {
+  clearInterval(reminderTimer);
+  reminderStore.close();
   server.close(() => {
     experienceManager.close();
     skillLifecycle.close();

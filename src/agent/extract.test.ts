@@ -54,3 +54,31 @@ test('extract: 附件信号进入特征', async () => {
   assert.equal(r.features.hasImage, true);
   assert.deepEqual(r.features.attachmentTypes, ['image/png']);
 });
+
+test('extract: 历史上下文进入 LLM prompt', async () => {
+  let prompt = '';
+  const llm = new FakeLLM((messages) => {
+    prompt = messages[0]?.content ?? '';
+    return JSON.stringify({
+      actionType: 'rewrite',
+      targetDomain: 'document',
+      scope: 'atomic',
+      requiresExternalSearch: false,
+      searchSourceHint: 'none',
+      hasImplicitContext: true,
+      urgency: 'normal',
+      rawEntities: [],
+      ambiguityFlags: [],
+    });
+  });
+  const r = await extractIntentFeature(
+    '把刚才那段话，用更专业的语气重写一遍。',
+    llm,
+    [],
+    ['Q: 这段话：这个方案我觉得还行，就是报价有点高。 → A: 老板，方案本身认可。'],
+  );
+  assert.equal(r.source, 'llm');
+  assert.equal(r.features.actionType, 'rewrite');
+  assert.ok(prompt.includes('历史上下文'));
+  assert.ok(prompt.includes('这个方案我觉得还行'));
+});
