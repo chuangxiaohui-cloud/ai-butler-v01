@@ -823,24 +823,85 @@ export function createOfficeDailySkill(opts?: {
       }
 
       if (mode === 'reminder') {
-        const timeExpression = extractTimeExpression(input.query);
-        if (!timeExpression) {
-          return {
-            result: { answer: '请告诉我提醒时间，例如“明天下午3点提醒我开会”。' },
-            confidence: 0.4,
-          };
-        }
-        const message =
-          input.query
-            .replace(/提醒我|帮我提醒|设置提醒|主动提醒|提醒/g, '')
-            .replace(timeExpression, '')
-            .replace(/[，。！!？?：:]/g, '')
-            .trim() || '提醒';
-        const { startAt } = parseTimeExpression(timeExpression);
+        const userId = String(input.params?.userId ?? 'default');
         const store = new ReminderStore();
         try {
+          // E163：列出待触发提醒
+          if (/查.*提醒|有哪些提醒|列出提醒|看(下|看)?提醒/.test(input.query)) {
+            const upcoming = store.list(userId).filter((r) => !r.fired);
+            if (upcoming.length === 0) {
+              return {
+                result: { answer: '暂无待触发的提醒。' },
+                confidence: 0.8,
+                followUpAction: '需要设置新提醒，告诉我时间和内容即可。',
+              };
+            }
+            return {
+              result: {
+                answer: `共 ${upcoming.length} 条待触发提醒：${upcoming
+                  .map(
+                    (r) =>
+                      `${r.id}. ${new Date(r.remindAt).toLocaleString('zh-CN', { hour12: false })} ${r.message}`,
+                  )
+                  .join('；')}`,
+              },
+              confidence: 0.8,
+              followUpAction: '要取消某条提醒，告诉我编号或内容关键词。',
+            };
+          }
+          // E163：按编号或关键词取消提醒
+          if (/取消.*提醒|删除.*提醒|去掉.*提醒/.test(input.query)) {
+            const all = store.list(userId);
+            const idMatch = input.query.match(/第\s*(\d+)\s*[条个]/);
+            let removed = 0;
+            if (idMatch) {
+              const id = Number(idMatch[1]);
+              const target = all.find((r) => r.id === id);
+              if (target && store.cancel(id)) removed = 1;
+            } else {
+              const keyword = input.query
+                .replace(/取消|删除|去掉|提醒/g, '')
+                .replace(/[，。！!？?：:]/g, '')
+                .trim();
+              if (!keyword) {
+                return {
+                  result: { answer: '请告诉我要取消哪条提醒，例如“取消第 2 条提醒”或“取消开会提醒”。' },
+                  confidence: 0.4,
+                  followUpAction: '可以先“查一下提醒”看列表，再按编号或关键词取消。',
+                };
+              }
+              for (const r of all) {
+                if (r.message.includes(keyword) && store.cancel(r.id)) removed += 1;
+              }
+            }
+            return removed > 0
+              ? {
+                  result: { answer: `已取消 ${removed} 条提醒。` },
+                  confidence: 0.8,
+                  followUpAction: '还需要调整其他提醒，随时说。',
+                }
+              : {
+                  result: { answer: '没有找到要取消的提醒。' },
+                  confidence: 0.5,
+                  followUpAction: '可以用“查一下提醒”查看当前列表。',
+                };
+          }
+          const timeExpression = extractTimeExpression(input.query);
+          if (!timeExpression) {
+            return {
+              result: { answer: '请告诉我提醒时间，例如“明天下午3点提醒我开会”。' },
+              confidence: 0.4,
+            };
+          }
+          const message =
+            input.query
+              .replace(/提醒我|帮我提醒|设置提醒|主动提醒|提醒/g, '')
+              .replace(timeExpression, '')
+              .replace(/[，。！!？?：:]/g, '')
+              .trim() || '提醒';
+          const { startAt } = parseTimeExpression(timeExpression);
           const reminder = store.add({
-            userId: String(input.params?.userId ?? 'default'),
+            userId,
             conversationId: String(input.params?.conversationId ?? ''),
             message,
             remindAt: Date.parse(startAt),
@@ -852,7 +913,7 @@ export function createOfficeDailySkill(opts?: {
               remindAt: reminder.remindAt,
             },
             confidence: 0.9,
-            followUpAction: '到点我会在事件流里推送提醒；需要改时间或取消随时说。',
+            followUpAction: '到点我会在事件流里推送提醒；需要改时间、查看或取消随时说。',
           };
         } finally {
           store.close();

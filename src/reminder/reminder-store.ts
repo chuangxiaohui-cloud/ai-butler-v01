@@ -85,6 +85,12 @@ export class ReminderStore {
     return rows.map(mapRow);
   }
 
+  /** E163：按 id 取消提醒，返回是否命中 */
+  cancel(id: number): boolean {
+    const result = this.db.prepare('DELETE FROM reminders WHERE id = ?').run(id);
+    return Number(result.changes) > 0;
+  }
+
   list(userId: string, now = Date.now()): Reminder[] {
     const rows = this.db
       .prepare(

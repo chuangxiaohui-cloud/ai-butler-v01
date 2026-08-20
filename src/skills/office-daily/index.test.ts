@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
+import { ReminderStore } from '../../reminder/reminder-store.js';
 import { accentFromQuery, createOfficeDailySkill } from './index.js';
 
 const RUNTIME_PYTHON =
@@ -417,6 +418,125 @@ test('office-daily: 设置主动提醒', async () => {
     assert.ok(result.answer?.includes('开会'));
     assert.ok((result.id ?? 0) > 0);
     assert.ok((result.remindAt ?? 0) > Date.now());
+  } finally {
+    process.env.REMINDERS_DB_PATH = oldDb;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 列出待触发提醒', async () => {
+  const dir = tempDir();
+  const oldDb = process.env.REMINDERS_DB_PATH;
+  const dbPath = join(dir, 'reminders.db');
+  process.env.REMINDERS_DB_PATH = dbPath;
+  try {
+    const store = new ReminderStore(dbPath);
+    try {
+      const now = Date.now();
+      store.add({ userId: 'u1', message: '周会', remindAt: now + 60_000 });
+      store.add({ userId: 'u1', message: '取快递', remindAt: now + 120_000 });
+    } finally {
+      store.close();
+    }
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '查一下我的提醒',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: { userId: 'u1' },
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('2 条待触发提醒'));
+    assert.ok(result.answer?.includes('周会'));
+    assert.ok(result.answer?.includes('取快递'));
+  } finally {
+    process.env.REMINDERS_DB_PATH = oldDb;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 按关键词取消提醒', async () => {
+  const dir = tempDir();
+  const oldDb = process.env.REMINDERS_DB_PATH;
+  const dbPath = join(dir, 'reminders.db');
+  process.env.REMINDERS_DB_PATH = dbPath;
+  try {
+    const store = new ReminderStore(dbPath);
+    try {
+      const now = Date.now();
+      store.add({ userId: 'u1', message: '明天开会', remindAt: now + 60_000 });
+      store.add({ userId: 'u1', message: '下午取快递', remindAt: now + 120_000 });
+    } finally {
+      store.close();
+    }
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '取消开会提醒',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: { userId: 'u1' },
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('已取消 1 条提醒'));
+    const verify = new ReminderStore(dbPath);
+    try {
+      const left = verify.list('u1');
+      assert.equal(left.length, 1);
+      assert.equal(left[0].message, '下午取快递');
+    } finally {
+      verify.close();
+    }
+  } finally {
+    process.env.REMINDERS_DB_PATH = oldDb;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 按编号取消提醒', async () => {
+  const dir = tempDir();
+  const oldDb = process.env.REMINDERS_DB_PATH;
+  const dbPath = join(dir, 'reminders.db');
+  process.env.REMINDERS_DB_PATH = dbPath;
+  try {
+    const store = new ReminderStore(dbPath);
+    let firstId = 0;
+    try {
+      const now = Date.now();
+      const r1 = store.add({ userId: 'u1', message: '周会', remindAt: now + 60_000 });
+      firstId = r1.id;
+      store.add({ userId: 'u1', message: '取快递', remindAt: now + 120_000 });
+    } finally {
+      store.close();
+    }
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '取消第 2 条提醒',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: { userId: 'u1' },
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('已取消 1 条提醒'));
+    const verify = new ReminderStore(dbPath);
+    try {
+      const left = verify.list('u1');
+      assert.equal(left.length, 1);
+      assert.equal(left[0].id, firstId);
+    } finally {
+      verify.close();
+    }
   } finally {
     process.env.REMINDERS_DB_PATH = oldDb;
     rmSync(dir, { recursive: true, force: true });

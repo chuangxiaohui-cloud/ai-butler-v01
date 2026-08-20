@@ -11,6 +11,25 @@ function tempDb(): { path: string; dir: string } {
   return { path: join(dir, 'reminders.db'), dir };
 }
 
+test('reminder-store: cancel 按 id 取消', () => {
+  const { path, dir } = tempDb();
+  const store = new ReminderStore(path);
+  try {
+    const now = Date.now();
+    const r1 = store.add({ userId: 'u1', message: '开会', remindAt: now + 1000 }, now);
+    const r2 = store.add({ userId: 'u1', message: '取快递', remindAt: now + 2000 }, now);
+    assert.equal(store.list('u1').length, 2);
+    assert.equal(store.cancel(r1.id), true);
+    assert.equal(store.cancel(99999), false);
+    const left = store.list('u1');
+    assert.equal(left.length, 1);
+    assert.equal(left[0].id, r2.id);
+  } finally {
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('reminder-store: add/due/list 往返且只触发一次', () => {
   const { path, dir } = tempDb();
   const store = new ReminderStore(path);
