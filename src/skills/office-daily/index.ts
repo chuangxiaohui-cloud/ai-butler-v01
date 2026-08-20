@@ -31,6 +31,7 @@ type OfficeMode =
   | 'pdf_to_word'
   | 'merge_pdf'
   | 'encrypt_pdf'
+  | 'pdf_compress'
   | 'pptx'
   | 'reminder'
   | 'unsupported';
@@ -43,6 +44,9 @@ const PDF_MERGE_SCRIPT = fileURLToPath(
 );
 const PDF_ENCRYPT_SCRIPT = fileURLToPath(
   new URL('../../../scripts/office_pdf_encrypt.py', import.meta.url),
+);
+const PDF_COMPRESS_SCRIPT = fileURLToPath(
+  new URL('../../../scripts/office_pdf_compress.py', import.meta.url),
 );
 const IMAGE_CONVERT_SCRIPT = fileURLToPath(
   new URL('../../../scripts/office_image_convert.py', import.meta.url),
@@ -152,6 +156,7 @@ export function computeGroupShare(
 function modeFrom(query: string): OfficeMode {
   if (/PDF.*(合并|拼|合成)|(合并|拼).*PDF/.test(query)) return 'merge_pdf';
   if (/PDF.*(加密|加锁|设密码|加密码)|(加密|加锁|设密码|加密码).*PDF/.test(query)) return 'encrypt_pdf';
+  if (/PDF.*(压缩|减小|优化|体积)|(压缩|减小|体积).*PDF/.test(query)) return 'pdf_compress';
   if (/转成\s*(png|jpe?g|webp|bmp)|图片.*(转|换).*格式|格式.*(转|换).*图片/i.test(query)) return 'image_convert';
   if (/转成PDF|转.*PDF|导出PDF|PDF导出/.test(query)) return 'to_pdf';
   if (/PDF.*(转|换)成Word|转成Word|转Word/.test(query)) return 'pdf_to_word';
@@ -176,7 +181,7 @@ function findDataFile(input: SkillInput): RawFileLike | undefined {
 
 function findImageFile(input: SkillInput): RawFileLike | undefined {
   return input.rawFiles.find(
-    (f) => f.type.startsWith('image/') || /\.(png|jpe?g|webp|bmp|gif)$/i.test(f.name),
+    (f) => f.type.startsWith('image/') || /\.(png|jpe?g|webp|bmp|gif|heic|heif|tiff?|avif)$/i.test(f.name),
   );
 }
 
@@ -878,7 +883,71 @@ export function createOfficeDailySkill(opts?: {
         };
       }
 
-      if (mode === 'image_convert') {
+      if (mode === 'pdf_compress') {
+        const file = findPdfFile(input);
+        if (!file) {
+          return {
+            result: { answer: '请上传要压缩的 PDF 文件。' },
+            confidence: 0.4,
+          };
+        }
+        try {
+          const buffer = await bufferFromFile(file);
+          const tmpInput = join(outDir, `tmp-${Date.now()}-${safeName(file.name)}.pdf`);
+          const output = join(outDir, `压缩-${Date.now()}.pdf`);
+          writeFileSync(tmpInput, buffer);
+          const maxKb = /(\d+)\s*KB/i.exec(input.query)?.[1];
+          const args = [PDF_COMPRESS_SCRIPT, tmpInput, output];
+          if (maxKb) args.push(maxKb);
+          const stdout = await runPython(args);
+          rmSync(tmpInput, { force: true });
+          const result = JSON.parse(stdout.trim()) as {
+            ok?: boolean;
+            path?: string;
+            pages?: number;
+            size_before?: number;
+            size_after?: number;
+            method?: string;
+            target_not_met?: boolean;
+            error?: string;
+          };
+          if (!result.ok) {
+            return {
+              result: { answer: `PDF 压缩失败：${result.error ?? '未知错误'}` },
+              confidence: 0.2,
+            };
+          }
+          const before = result.size_before ?? 0;
+          const after = result.size_after ?? 0;
+          const reduced = before > 0 ? ((before - after) / before * 100).toFixed(1) : '0.0';
+          let answer =
+            `已压缩 PDF：${result.path}（${(before / 1024).toFixed(1)}KB → ${(after / 1024).toFixed(1)}KB，减小 ${reduced}%）`;
+          if (result.target_not_met) {
+            answer += `；目标 ${maxKb}KB 未达到，建议用更低 DPI 重新导出。`;
+          }
+          return {
+            result: {
+              answer,
+              path: result.path,
+              pages: result.pages,
+              sizeBefore: before,
+              sizeAfter: after,
+              method: result.method,
+            },
+            confidence: 0.85,
+            followUpAction: '需要继续压到更小体积，或对图片型 PDF 做降采样重导出，随时说。',
+          };
+        } catch (err) {
+          return {
+            result: {
+              answer: `PDF 压缩失败：${err instanceof Error ? err.message : String(err)}`,
+            },
+            confidence: 0.2,
+          };
+        }
+      }
+
+            if (mode === 'image_convert') {
         const target = targetImageFormat(input.query);
         const file = findImageFile(input);
         if (!target) {

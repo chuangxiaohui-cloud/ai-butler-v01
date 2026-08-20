@@ -33,10 +33,16 @@
    PDF 密码加密（AES-256，识别“密码/口令”或默认 123456）、
    图片格式转换（PNG/JPG/JPEG/WebP/BMP，Pillow）；未接入能力改为诚实提示；
    单测新增 3 条：合并输出 3 页、加密后 pypdf 解密回验 1 页、PNG→JPG 落盘。
+8. **生活助手 PDF 压缩与图片输入扩展（E158-E159）**：新增
+   `scripts/office_pdf_compress.py`，`office-daily` 支持 PDF 压缩/体积优化
+   （PyMuPDF 无损优化，缺失回退 pypdf 去重，支持目标 KB 提示）；
+   图片输入扩展 HEIC/HEIF（尽力解码链 pillow-heif → imagecodecs → ffmpeg，
+   均不可用诚实提示）、AVIF、TIFF；单测新增 3 条：PDF 压缩页数保留、
+   AVIF→PNG 落盘、HEIC 无解码器诚实提示。
 
 ## 今日验证
 
-- 全量单测 454/454、集成 17/17 全绿。
+- 全量单测 457/457、集成 17/17 全绿。
 - `doc-lint` 0 FAIL 0 WARN。
 - 真跑验证：DM365 XLS 对照、`.xls/.xlsb/.doc` 读取、Word→PDF 转换均成功。
 
@@ -45,13 +51,14 @@
 - 所有改动仍未提交，继续留在待统一确认批次。
 - 相关计划：`docs/plans/2026-08-19-schematic-bom-coordinate.md`、
   `docs/plans/2026-08-20-legacy-office-formats.md`、
-  `docs/plans/2026-08-20-docx-to-pdf.md` 与
-  `docs/plans/2026-08-20-office-daily-pdf-image.md`。
+  `docs/plans/2026-08-20-docx-to-pdf.md`、
+  `docs/plans/2026-08-20-office-daily-pdf-image.md` 与
+  `docs/plans/2026-08-20-office-daily-pdf-compress-heic.md`。
 
 ## 明天继续（按优先级）
 
-1. 继续补齐生活助手能力：PDF 压缩/体积优化、HEIC 等图片输入扩展。
-2. 统一确认并提交当前 E127-E157 批次。
+1. 统一确认并提交当前 E127-E159 批次（E158-E159 为本轮新增，单独提交）。
+2. 继续补齐生活助手能力：图片型 PDF 降采样/重编码压缩、AVIF/WebP 更广泛输入。
 
 ## 常用命令
 

@@ -503,3 +503,99 @@ test('office-daily: 未接入能力诚实提示', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('office-daily: PDF 压缩输出有效文件', async () => {
+  const dir = tempDir();
+  try {
+    const pdfB = Buffer.from(PDF_B, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '把这个PDF压缩一下',
+        attachmentSignals: [{ type: 'document', mimeType: 'application/pdf', sizeBytes: pdfB.length, fileName: 'b.pdf' }],
+        rawFiles: [fakeFile('b.pdf', 'application/pdf', pdfB)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; path?: string; pages?: number; sizeAfter?: number; method?: string };
+    assert.ok(result.answer?.includes('已压缩 PDF'));
+    assert.equal(result.pages, 2);
+    assert.ok((result.sizeAfter ?? 0) > 0);
+    assert.ok(result.method === 'pypdf' || result.method === 'pymupdf');
+    assert.ok(existsSync(result.path as string));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 图片格式转换 AVIF→PNG', async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `from PIL import Image
+import base64, io
+img = Image.new('RGB', (24, 16), (80, 160, 40))
+buf = io.BytesIO()
+img.save(buf, 'AVIF')
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const avif = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '把这张图转成PNG',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/avif', sizeBytes: avif.length, fileName: 'img.avif' }],
+        rawFiles: [fakeFile('img.avif', 'image/avif', avif)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; format?: string; path?: string };
+    assert.ok(result.answer?.includes('已转换为 PNG'));
+    assert.equal(result.format, 'png');
+    assert.ok(existsSync(result.path as string));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: HEIC 无解码器时诚实提示', async () => {
+  const dir = tempDir();
+  try {
+    const probe = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import importlib.util as u, shutil
+ok = bool(u.find_spec('pillow_heif') or u.find_spec('imagecodecs'))
+if not ok:
+    ok = bool(shutil.which('ffmpeg'))
+print('1' if ok else '0')`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    if (probe === '1') return; // 环境具备 HEIC 解码能力时该用例不适用
+    const fake = Buffer.from('not-a-heic', 'utf8');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '把这张HEIC图转成JPG',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/heic', sizeBytes: fake.length, fileName: 'photo.heic' }],
+        rawFiles: [fakeFile('photo.heic', 'image/heic', fake)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('HEIC'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+

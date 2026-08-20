@@ -1687,9 +1687,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 
 </details>
 
-### 2026-08-12（WP4 验收口径修订 E2）
-
-- **变更**：非参数变更，[P-02] 状态不触及（注册表维持 provisional@2026-08-12），定稿交 WP11 复验门（见下）；验收口径修订：门控 = 10/10 query 经任一路径返回可用结果且数量满足 Stage 4 融合输入下限；双返回率转观察指标（软下限七成，本轮九成/八成满足）。
+### 2026-08-12（WP4 验收口径修订 E2）<br>- **变更**：非参数变更，[P-02] 状态不触及（注册表维持 provisional@2026-08-12），定稿交 WP11 复验门（见下）；验收口径修订：门控 = 10/10 query 经任一路径返回可用结果且数量满足 Stage 4 融合输入下限；双返回率转观察指标（软下限七成，本轮九成/八成满足）。
 - **依据**：§6.7（单路超时另一路兜底）；附本轮两轮冒烟证据。
 - **对冲四件**：① 每条请求记录分引擎时延（bocha_ms / anysearch_ms / timeout 标志）进 bench JSONL ② 单路兜底在输出与验收报告中显式标记，禁止静默 ③ WP11 双返回率低于七成时触发 [P-02] 重新决策 ④ 缓存条目打引擎覆盖标记（both/single），防 single 结果在 TTL 内丢失冗余。
 - affects: §5,§6 | bench:B-20260812-01 | E1 交叉引用
@@ -2564,6 +2562,8 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-19（视频学习转 Skill、生命周期接入、ASR/关键帧、B站浏览器兜底、BOM 坐标 Week 1-3 与办公老格式 E148-E154）<br>- **变更**：新增 `video-learner` Skill 与 `learn_video`/`R_LEARN_VIDEO` 路由，用 yt-dlp 提取 YouTube 等视频字幕，无字幕时下载音频经 OpenAI 兼容 ASR 或本地 whisper 转文字，并用 ffmpeg 抽关键帧交给 VLM 描述；B站 yt-dlp 被 412 时改用浏览器会话直连 API 拉取播放流与媒体，媒体请求带 Referer，字幕走 `player/wbi/v2` 稳定接口；字幕、ASR、画面三类材料统一进入 LLM，结构化生成 Skill JSON 并落盘 `data/learned-videos/`，自动写入 ExperienceManager；PDF 原理图 BOM 坐标感知完成 Week 1-3：PyMuPDF 坐标/包围盒提取、按页最近邻绑定、三层过滤与 BOM Change 备注合并，坐标解析已接入 `schematic-bom` Skill；办公日常新增 `.xls/.xlsb` 占比分析、`.doc` 排版原生读取与 `.docx/.doc → PDF`（Excel/Word COM）。**验证**：主项目 build；单测 451/451 + 集成 17/17 全绿；CLI 真跑 B站视频生成 Skill 并接入经验库；`npm run pdf:symbols` 在 DM365 电源页输出 70 个文本候选包围盒、35 个含位号；XLS 对照坐标+BOM Change 版 MB/PB/LB 召回 94.5%/93.8%/92.3%、精度 83.1%/92.9%/85.7%；`.xls/.xlsb`/`.doc`/Word→PDF 真跑成功；doc-lint 通过；详见 `docs/plans/2026-08-19-video-learner.md`、`docs/plans/2026-08-19-video-skill-lifecycle.md`、`docs/plans/2026-08-19-video-asr-keyframes.md`、`docs/plans/2026-08-19-video-bilibili-browser.md`、`docs/plans/2026-08-19-schematic-bom-coordinate.md`、`docs/plans/2026-08-20-legacy-office-formats.md` 与 `docs/plans/2026-08-20-docx-to-pdf.md`；affects: §4,§6,§8,§13 | bench:na(new-param) 理由：视频字幕/ASR/关键帧提取、B站浏览器播放流兜底、Skill 生成与经验库接入、BOM 坐标提取/过滤/变更合并、办公老格式读取与 Word→PDF 能力，无 §5/§6 参数变更。
 
 ### 2026-08-20（生活助手 PDF 合并/加密与图片格式扩展 E155-E157）<br>- **变更**：`office-daily` 新增 PDF 合并（多 PDF 按上传顺序合成为一个，pypdf）、PDF 加密（识别“密码/口令”或默认 123456，AES-256）与图片格式转换（PNG/JPG/JPEG/WebP/BMP，Pillow）；新脚本 `scripts/office_pdf_merge.py` / `scripts/office_pdf_encrypt.py` / `scripts/office_image_convert.py`；`modeFrom` 与意图路由补对应关键词，未接入能力仍诚实提示。**验证**：主项目 build；单测 454/454 + 集成 17/17 全绿；新增 3 条单测：PDF 合并输出 3 页、PDF 加密后 pypdf 解密回验 1 页、PNG→JPG 落盘；doc-lint 通过；详见 `docs/plans/2026-08-20-office-daily-pdf-image.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手办公日常新增 PDF 合并/加密与图片格式转换能力，无 §5/§6 参数变更。
+
+### 2026-08-20（生活助手 PDF 压缩与图片输入扩展 E158-E159）<br>- **变更**：`office-daily` 新增 PDF 压缩/体积优化模式（PyMuPDF 无损优化 garbage/deflate，缺失时回退 pypdf 去重，支持目标 KB 提示），新脚本 `scripts/office_pdf_compress.py`；图片输入扩展：识别 HEIC/HEIF（尽力解码链 pillow-heif → imagecodecs → ffmpeg，均不可用时诚实提示）、AVIF、TIFF，`findImageFile` 与 `office_image_convert.py`/`compress_image.py` 同步支持，输出格式不变。**验证**：主项目 build；单测 457/457 + 集成 17/17 全绿；新增 3 条单测：PDF 压缩页数保留且输出有效、AVIF→PNG 落盘、HEIC 无解码器时诚实提示；doc-lint 通过；详见 `docs/plans/2026-08-20-office-daily-pdf-compress-heic.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手办公日常新增 PDF 压缩与图片输入格式扩展，无 §5/§6 参数变更。
 
 ### v2.5（2026-08-12）
 
