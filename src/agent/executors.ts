@@ -18,6 +18,10 @@ export const EXECUTOR_REGISTRY: Record<string, { status: ExecutorStatus }> = {
   quote_compare: { status: 'available' },
   github_reader: { status: 'available' },
   project_packager: { status: 'available' },
+  project_writer: { status: 'available' },
+  schematic_bom: { status: 'available' },
+  office_daily: { status: 'available' },
+  video_learner: { status: 'available' },
 };
 
 export function executorStatus(name: string | undefined): ExecutorStatus {

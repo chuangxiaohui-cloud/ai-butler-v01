@@ -13,5 +13,9 @@ test('executors: engineer 已登记，content_writer/calendar/im 未接入', () 
   assert.equal(executorStatus('calendar_skill'), 'available');
   assert.equal(executorStatus('im_dispatch'), 'available');
   assert.equal(executorStatus('quote_compare'), 'available');
+  assert.equal(executorStatus('project_writer'), 'available');
+  assert.equal(executorStatus('schematic_bom'), 'available');
+  assert.equal(executorStatus('office_daily'), 'available');
+  assert.equal(executorStatus('video_learner'), 'available');
   assert.equal(executorStatus(undefined), 'available');
 });

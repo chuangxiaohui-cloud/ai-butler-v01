@@ -17,17 +17,23 @@ export function createImDispatchSkill(
     opts?.dbPath ??
     process.env.MESSAGES_DB_PATH ??
     join(process.cwd(), 'data', 'messages.db');
-  mkdirSync(dirname(dbPath), { recursive: true });
-  const db = new DatabaseSync(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS message_outbox (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      recipient TEXT NOT NULL,
-      content TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'pending',
-      created_at INTEGER NOT NULL
-    );
-  `);
+  let db: DatabaseSync | null = null;
+  function ensureDb(): DatabaseSync {
+    if (!db) {
+      mkdirSync(dirname(dbPath), { recursive: true });
+      db = new DatabaseSync(dbPath);
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS message_outbox (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          recipient TEXT NOT NULL,
+          content TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          created_at INTEGER NOT NULL
+        );
+      `);
+    }
+    return db;
+  }
 
   const skill: ExecutableSkill = {
     name: 'im-dispatch',
@@ -50,7 +56,8 @@ export function createImDispatchSkill(
           .replace(/帮我|请|发消息给|发送给|发给|给|通知|说|告诉|老张/g, '')
           .trim() || '（未指定内容）';
       const now = Date.now();
-      const inserted = db
+      const database = ensureDb();
+      const inserted = database
         .prepare(
           `INSERT INTO message_outbox (recipient, content, status, created_at)
            VALUES (?, ?, 'pending', ?)`,
@@ -63,5 +70,10 @@ export function createImDispatchSkill(
       };
     },
   };
-  return Object.assign(skill, { close: () => db.close() });
+  return Object.assign(skill, {
+    close: () => {
+      db?.close();
+      db = null;
+    },
+  });
 }

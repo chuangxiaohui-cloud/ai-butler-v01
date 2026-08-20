@@ -22,6 +22,7 @@ test('mode-mapper: 工程开发角色映射', () => {
 test('mode-mapper: secretary 按意图拆生活/知识', () => {
   assert.deepEqual(mapRouteToUiMode('secretary', 'create_calendar'), { mode: 'life' });
   assert.deepEqual(mapRouteToUiMode('secretary', 'local_query'), { mode: 'life' });
+  assert.deepEqual(mapRouteToUiMode('secretary', 'office_daily'), { mode: 'life' });
   assert.deepEqual(mapRouteToUiMode('secretary', 'web_search'), { mode: 'knowledge' });
   assert.deepEqual(mapRouteToUiMode('secretary', 'document_qa'), { mode: 'knowledge' });
 });

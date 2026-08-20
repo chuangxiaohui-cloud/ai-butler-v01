@@ -192,7 +192,9 @@ export function routeFromFeatures(
     decision = { type: 'direct', selected: top };
   } else if (
     (features.actionType === 'rewrite' && top?.intent === 'rewrite') ||
-    (features.actionType === 'pack' && top?.intent === 'pack_project')
+    (features.actionType === 'pack' && top?.intent === 'pack_project') ||
+    (features.actionType === 'chat' && top?.intent === 'companion_chat') ||
+    (features.actionType === 'apply_to_project' && top?.intent === 'apply_to_project')
   ) {
     decision = { type: 'direct', selected: top };
   } else if (
@@ -286,6 +288,11 @@ export async function routeV2WithLLM(
   contextHints: string[] = [],
   attachments: AttachmentSignal[] = [],
 ): Promise<RouteResultV2> {
-  const extraction = await extractIntentFeature(query, llm, attachments);
+  const extraction = await extractIntentFeature(
+    query,
+    llm,
+    attachments,
+    contextHints,
+  );
   return routeFromFeatures(query, extraction.features, extraction.source, contextHints);
 }

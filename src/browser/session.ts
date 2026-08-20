@@ -40,9 +40,9 @@ function defaultExecutablePath(): string | null {
   const envPath = process.env.BROWSER_EXECUTABLE;
   if (envPath && existsSync(envPath)) return envPath;
   const candidates = [
-    'C:/Users/zhxh/AppData/Local/ms-playwright/chromium-1208/chrome-win64/chrome.exe',
-    'C:/Program Files/Google/Chrome/Application/chrome.exe',
     'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    'C:/Users/zhxh/AppData/Local/ms-playwright/chromium-1208/chrome-win64/chrome.exe',
   ];
   return candidates.find((p) => existsSync(p)) ?? null;
 }
@@ -287,9 +287,10 @@ export class BrowserSessionManager {
   async downloadFile(
     url: string,
     destPath: string,
+    headers?: Record<string, string>,
   ): Promise<{ ok: boolean; size: number; error?: string }> {
     const context = await this.ensureContext();
-    const resp = await context.request.get(url, { timeout: 30_000 });
+    const resp = await context.request.get(url, { headers, timeout: 30_000 });
     if (!resp.ok()) {
       return { ok: false, size: 0, error: `HTTP ${resp.status()}` };
     }

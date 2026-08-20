@@ -3,6 +3,8 @@
  */
 
 import type { LLMClient } from '../search/llm.js';
+import type { ExperienceManager } from '../memory/experience.js';
+import type { BrowserFetcher } from '../search/search-loop.js';
 
 /** Node CLI 无全局 File；浏览器 File 结构上天然兼容 */
 export interface RawFileLike {
@@ -32,4 +34,6 @@ export interface SkillDeps {
   parseDocument?: (file: RawFileLike) => Promise<string>; // Week 3 文档解析用
   complete?: LLMClient; // 文本 LLM，文档 QA/摘要用（Week 3 起）
   now?: () => number; // 衰减逻辑可测时间
+  experienceManager?: Pick<ExperienceManager, 'add'>; // 视频学习等 Skill 回写经验库
+  browserSession?: BrowserFetcher; // B站等浏览器会话兜底
 }

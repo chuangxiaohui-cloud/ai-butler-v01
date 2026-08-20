@@ -19,6 +19,7 @@ const LIFE_INTENTS = new Set([
   'send_message',
   'emergency',
   'property_emergency',
+  'office_daily',
 ]);
 
 export function mapRouteToUiMode(primaryLens: PrimaryLens, intent: string): UiModeResult {

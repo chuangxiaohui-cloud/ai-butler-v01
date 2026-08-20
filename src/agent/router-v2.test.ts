@@ -287,6 +287,50 @@ test('router-v2: 文档结构提取 → architect document_qa', () => {
   }
 });
 
+test('router-v2: PDF 原理图生成 BOM → schematic-bom', () => {
+  const f = extractIntentFeatureRuleBased('帮我把这个PDF的原理图生成BOM表', [
+    { type: 'document', mimeType: 'application/pdf', sizeBytes: 80, fileName: 'schematic.pdf' },
+  ]);
+  const r = routeFromFeatures('帮我把这个PDF的原理图生成BOM表', f, 'rule');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'generate_bom');
+    assert.equal(r.decision.selected.executor, 'schematic_bom');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
+test('router-v2: 考勤表模板 → office-daily', () => {
+  const r = routeV2('帮我做一个考勤表模板');
+  assert.equal(r.features.actionType, 'office_daily');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'office_daily');
+    assert.equal(r.decision.selected.executor, 'office_daily');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
+test('router-v2: 项目汇报PPT → office-daily', () => {
+  const r = routeV2('帮我做一份项目汇报PPT');
+  assert.equal(r.features.actionType, 'office_daily');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'office_daily');
+    assert.equal(r.decision.selected.executor, 'office_daily');
+  }
+});
+
+test('router-v2: 视频学习 → video-learner', () => {
+  const r = routeV2('学习这个视频 https://www.bilibili.com/video/BV1xx');
+  assert.equal(r.features.actionType, 'learn_video');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.executor, 'video_learner');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
 test('router-v2: 非法请求 → safety_refusal', () => {
   const r = routeV2('如何破解隔壁 WiFi 密码');
   assert.equal(r.features.actionType, 'illegal_request');
@@ -325,6 +369,29 @@ for (const [id, query] of questionNegativeSamples) {
     assert.equal(r.features.actionType, 'qa');
     assert.equal(r.decision.type, 'direct');
     if (r.decision.type === 'direct') {
+      assert.equal(r.decision.selected.intent, 'web_search');
+    }
+  });
+}
+
+const routeRegressionSamples: Array<[string, string]> = [
+  [
+    'BUG-008',
+    '项目中使用的芯片有停产风险，怎么提前规划替代型号并评估改动工作量？',
+  ],
+  ['BUG-015', '去火星的飞船方案给我一个。'],
+  ['BUG-016', '我需要一个能抗 500V 的 DC-DC 电源方案，但没有任何负载要求。'],
+  ['BUG-020', '那个谁，上次推荐的那个电源芯片叫啥来着？'],
+  ['BUG-023', '对比一下 KiCad和AD，然后帮我用KiCad新建一个STM32的工程。'],
+];
+
+for (const [bugId, query] of routeRegressionSamples) {
+  test(`router-v2: 回归 ${bugId} 不再路由到执行型意图`, () => {
+    const r = routeV2(query);
+    assert.notEqual(r.features.actionType, 'create');
+    assert.notEqual(r.features.actionType, 'schedule');
+    assert.ok(r.decision.type === 'direct' || r.decision.type === 'confirm');
+    if (r.decision.type === 'direct' || r.decision.type === 'confirm') {
       assert.equal(r.decision.selected.intent, 'web_search');
     }
   });
@@ -386,6 +453,17 @@ test('router-v2: 明确单文件代码 → execute 直接执行', () => {
   }
 });
 
+test('router-v2: 帮我写个 PID 算法 → execute 直接执行', () => {
+  const r = routeV2('帮我写个 PID 算法。');
+  assert.equal(r.features.actionType, 'create');
+  assert.equal(r.features.targetDomain, 'code');
+  assert.equal(r.features.scope, 'atomic');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'execute');
+  }
+});
+
 test('router-v2: 缺功能信息写代码 → 澄清功能/语言', () => {
   const r = routeV2('帮我写一段代码，但我现在不方便说功能，你先写个通用的。');
   assert.equal(r.decision.type, 'must_clarify');
@@ -428,5 +506,34 @@ test('router-v2: 修正指令 → modify/execute 而非排期选项', () => {
   assert.equal(r.decision.type, 'direct');
   if (r.decision.type === 'direct') {
     assert.equal(r.decision.selected.intent, 'execute');
+  }
+});
+
+test('router-v2: 陪伴聊天 → secretary/companion_chat 不搜索', () => {
+  const r = routeV2('今天心情不好，陪我聊聊天。');
+  assert.equal(r.features.actionType, 'chat');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'companion_chat');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
+test('router-v2: 按你说的加工程 → project_manager/apply_to_project', () => {
+  const r = routeV2('行，按你说的在我的工程里加上。');
+  assert.equal(r.features.actionType, 'apply_to_project');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'apply_to_project');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
+test('router-v2: 直接写入盘符路径 → project_writer', () => {
+  const r = routeV2('写入 M:\\projects\\demo\\main.c，内容：int main(void){return 0;}');
+  assert.equal(r.features.actionType, 'apply_to_project');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.executor, 'project_writer');
   }
 });
