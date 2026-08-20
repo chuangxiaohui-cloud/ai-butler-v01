@@ -115,6 +115,29 @@ test('office-daily: 回复邮件草稿落盘', async () => {
   }
 });
 
+test('office-daily: 会议邀请邮件草稿', async () => {
+  const dir = tempDir();
+  try {
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '写封会议邀请邮件，明天下午3点开周会，邀请张三和李四参加',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; path?: string; email?: string };
+    assert.ok(result.answer?.includes('会议邀请邮件草稿'));
+    assert.ok(result.email?.includes('会议邀请'));
+    assert.ok(result.email?.includes('明天下午3点'));
+    assert.ok(existsSync(result.path as string));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('office-daily: 图片压缩到 200KB 以内', async () => {
   const dir = tempDir();
   try {

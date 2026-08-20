@@ -52,10 +52,14 @@
     转 PNG（OFFICE_PYTHON → python/python3，15s 超时），解码不可用诚实降级
     原样透传；`image-analysis`/`color-recognition` 的 firstImage 同步扩展名兜底；
     单测新增 7 条（TIFF/AVIF→PNG 真解码、HEIC 降级等）。
+12. **日程↔提醒联动与会议邀请邮件草稿（E162）**：`calendar-skill` 创建日程
+    自动登记提醒（ReminderStore，默认到点，支持“提前 N 分钟/小时”），查询
+    日程显示已设提醒状态；`office-daily` 邮件模式新增会议邀请草稿
+    （主题+时间+参会人/地点/议程占位）；单测新增 3 条。
 
 ## 今日验证
 
-- 全量单测 464/464 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
+- 全量单测 467/467 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
 - `doc-lint` 0 FAIL 0 WARN。
 - 真跑验证：DM365 XLS 对照、`.xls/.xlsb/.doc` 读取、Word→PDF 转换均成功。
 
@@ -68,11 +72,12 @@
   `docs/plans/2026-08-20-office-daily-pdf-image.md` 与
   `docs/plans/2026-08-20-office-daily-pdf-compress-heic.md`（含 E160 增量）。
   `docs/plans/2026-08-20-image-input-normalize.md`（E161）。
+  `docs/plans/2026-08-20-calendar-reminder-email.md`（E162）。
 
 ## 明天继续（按优先级）
 
-1. 统一确认并提交 E161 批次（E160/脚本入库已提交，E161 待提交）。
-2. 继续补齐生活助手能力：邮件/日历联动、提醒增强、OCR 输入等。
+1. 统一确认并提交 E162 批次（E161 已提交，E162 待提交）。
+2. 继续补齐生活助手能力：重复日程/取消提醒、OCR 输入、真实日历/邮件服务接入评估。
 
 ## 常用命令
 

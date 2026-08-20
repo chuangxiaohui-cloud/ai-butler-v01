@@ -860,6 +860,47 @@ export function createOfficeDailySkill(opts?: {
       }
 
       if (mode === 'email') {
+        // E162：会议邀请草稿（主题+时间+参会人/议程占位）
+        if (/会议邀请|邀请.*(参会|参加|来开会|开会|会议)|通知.*会议|会议.*通知/.test(input.query)) {
+          const timeExpression = extractTimeExpression(input.query);
+          const parsed = timeExpression ? parseTimeExpression(timeExpression) : null;
+          const timeLabel = parsed ? timeExpression + '（' + parsed.startAt + '）' : '（请补充时间）';
+          const topic =
+            input.query
+              .replace(/^(请|帮我|麻烦你)?(写|起草|生成)?(一封|一个)?(会议)?(邀请)?(邮件)?[：:]?/, '')
+              .replace(timeExpression ?? '', '')
+              .replace(/邀请.*(参会|参加|开会|来开会)|通知.*(参会|会议)/g, '')
+              .replace(/^(开|召开|举办|组织)/, '')
+              .replace(/[，。！!？?：:]/g, '')
+              .trim() || '会议';
+          const body = `# 会议邀请
+
+## 标题
+${topic}（${timeLabel}）
+
+## 时间
+${timeLabel}
+
+## 参会人
+- 
+
+## 地点
+（待补充）
+
+## 议程
+1. 
+2. 
+
+## 落款
+您的助理`;
+          const path = join(outDir, `会议邀请-${Date.now()}.md`);
+          writeFileSync(path, body.trim() + '\n', 'utf-8');
+          return {
+            result: { answer: `已生成会议邀请邮件草稿：${path}`, path, email: body.trim() },
+            confidence: 0.8,
+            followUpAction: '需要我把它加入日历并设置提醒，或调整参会人/议程，随时说。',
+          };
+        }
         const context = extractEmailContext(input.query);
         const body = deps.complete
           ? await deps.complete.complete(
