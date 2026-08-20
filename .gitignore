@@ -13,6 +13,10 @@ C5183894/
 # Python脚本
 *.py
 !scripts/pdf_text.py
+!scripts/office_*.py
+!scripts/compress_image.py
+!scripts/bom_reference.py
+!scripts/pdf_symbols.py
 __pycache__/
 
 # Benchmark原始数据（git跟踪bench/目录，不跟踪results/）

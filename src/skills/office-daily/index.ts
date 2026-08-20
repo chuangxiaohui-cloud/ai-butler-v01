@@ -908,6 +908,9 @@ export function createOfficeDailySkill(opts?: {
             size_before?: number;
             size_after?: number;
             method?: string;
+            render?: boolean;
+            dpi?: number;
+            note?: string;
             target_not_met?: boolean;
             error?: string;
           };
@@ -922,7 +925,9 @@ export function createOfficeDailySkill(opts?: {
           const reduced = before > 0 ? ((before - after) / before * 100).toFixed(1) : '0.0';
           let answer =
             `已压缩 PDF：${result.path}（${(before / 1024).toFixed(1)}KB → ${(after / 1024).toFixed(1)}KB，减小 ${reduced}%）`;
-          if (result.target_not_met) {
+          if (result.note) {
+            answer += `；${result.note}`;
+          } else if (result.target_not_met) {
             answer += `；目标 ${maxKb}KB 未达到，建议用更低 DPI 重新导出。`;
           }
           return {
@@ -933,9 +938,11 @@ export function createOfficeDailySkill(opts?: {
               sizeBefore: before,
               sizeAfter: after,
               method: result.method,
+              render: result.render,
+              dpi: result.dpi,
             },
             confidence: 0.85,
-            followUpAction: '需要继续压到更小体积，或对图片型 PDF 做降采样重导出，随时说。',
+            followUpAction: '需要调整压缩强度、改目标体积，或换无损/低 DPI 策略，随时说。',
           };
         } catch (err) {
           return {

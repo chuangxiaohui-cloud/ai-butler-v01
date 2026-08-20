@@ -39,10 +39,16 @@
    图片输入扩展 HEIC/HEIF（尽力解码链 pillow-heif → imagecodecs → ffmpeg，
    均不可用诚实提示）、AVIF、TIFF；单测新增 3 条：PDF 压缩页数保留、
    AVIF→PNG 落盘、HEIC 无解码器诚实提示。
+9. **生活助手图片型 PDF 降采样压缩（E160）**：`office_pdf_compress.py`
+   在指定目标体积且无损不足时，用 PyMuPDF 按 120/90/60 DPI 递减重渲染 +
+   JPEG 重编码（仅显式 max_kb 且可用 PyMuPDF 时启用），结果带 `render`/
+   `dpi` 与“文字不可选择”诚实提示；真跑图片型 PDF 234KB→193KB（DPI 120
+   达标 200KB）；新增 1 条 fitz 特性门控单测（无 PyMuPDF 环境自动跳过）。
+10. **办公日常/原理图 Python 脚本解除 gitignore 入库（修复）**：.gitignore 原 *.py 规则使 E137-E160 的办公日常、图片、BOM 参考脚本从未入库；现放行 scripts/office_*.py、scripts/compress_image.py、scripts/bom_reference.py、scripts/pdf_symbols.py，14 个 Python 脚本随 E160 批次一并入库。
 
 ## 今日验证
 
-- 全量单测 457/457、集成 17/17 全绿。
+- 全量单测 457/457 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
 - `doc-lint` 0 FAIL 0 WARN。
 - 真跑验证：DM365 XLS 对照、`.xls/.xlsb/.doc` 读取、Word→PDF 转换均成功。
 
@@ -53,12 +59,12 @@
   `docs/plans/2026-08-20-legacy-office-formats.md`、
   `docs/plans/2026-08-20-docx-to-pdf.md`、
   `docs/plans/2026-08-20-office-daily-pdf-image.md` 与
-  `docs/plans/2026-08-20-office-daily-pdf-compress-heic.md`。
+  `docs/plans/2026-08-20-office-daily-pdf-compress-heic.md`（含 E160 增量）。
 
 ## 明天继续（按优先级）
 
-1. 统一确认并提交当前 E127-E159 批次（E158-E159 为本轮新增，单独提交）。
-2. 继续补齐生活助手能力：图片型 PDF 降采样/重编码压缩、AVIF/WebP 更广泛输入。
+1. 统一确认并提交当前 E127-E160 批次（E158-E159 已提交，E160 待提交）。
+2. 继续补齐生活助手能力：AVIF/WebP 更广泛输入、邮件/日历联动等。
 
 ## 常用命令
 

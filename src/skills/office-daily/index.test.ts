@@ -11,6 +11,21 @@ const RUNTIME_PYTHON =
   process.env.OFFICE_PYTHON ??
   'C:\\Users\\zhxh\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe';
 process.env.OFFICE_PYTHON = RUNTIME_PYTHON;
+function pythonHasFitz(): boolean {
+  try {
+    const out = execFileSync(
+      RUNTIME_PYTHON,
+      ['-c', "import importlib.util as u; print('1' if u.find_spec('fitz') else '0')"],
+      { encoding: 'utf8' },
+    ).trim();
+    return out === '1';
+  } catch {
+    return false;
+  }
+}
+
+const HAS_FITZ = pythonHasFitz();
+
 
 function tempDir(): string {
   return mkdtempSync(join(tmpdir(), 'office-daily-test-'));
@@ -594,6 +609,55 @@ print('1' if ok else '0')`,
     );
     const result = out.result as { answer?: string };
     assert.ok(result.answer?.includes('HEIC'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+
+test('office-daily: PDF 指定体积目标时降采样重渲染', { skip: !HAS_FITZ }, async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, os, random, tempfile
+from PIL import Image
+from reportlab.pdfgen import canvas
+tmp = tempfile.mkdtemp()
+random.seed(7)
+img = Image.new('RGB', (600, 450))
+img.putdata([(random.randint(0, 255),) * 3 for _ in range(600 * 450)])
+jpg = os.path.join(tmp, 'big.jpg')
+img.save(jpg, 'JPEG', quality=85)
+pdfbuf = io.BytesIO()
+c = canvas.Canvas(pdfbuf)
+for _ in range(2):
+    c.drawImage(jpg, 20, 20, width=550, height=412)
+    c.showPage()
+c.save()
+print(base64.b64encode(pdfbuf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const pdf = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '把这个PDF压缩到 200KB 以内',
+        attachmentSignals: [{ type: 'document', mimeType: 'application/pdf', sizeBytes: pdf.length, fileName: 'scan.pdf' }],
+        rawFiles: [fakeFile('scan.pdf', 'application/pdf', pdf)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; path?: string; render?: boolean; dpi?: number; sizeAfter?: number };
+    assert.ok(result.answer?.includes('已压缩 PDF'));
+    assert.equal(result.render, true);
+    assert.ok((result.dpi ?? 0) > 0);
+    assert.ok((result.sizeAfter ?? 0) <= 200 * 1024);
+    assert.ok(existsSync(result.path as string));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

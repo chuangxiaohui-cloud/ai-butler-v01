@@ -1700,9 +1700,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 
 </details>
 
-### 2026-08-12（预算交叉检查 E3）
-
-- **变更**：E1 落地后完成预算总和交叉检查；Stage 各预算为独立上限，非可加约束（§5 约束注解），[P-04] 上调未击穿 [P-15]/[P-14] 约束；触发条件核销，无需对冲，不留矛盾定稿参数。
+### 2026-08-12（预算交叉检查 E3）<br>- **变更**：E1 落地后完成预算总和交叉检查；Stage 各预算为独立上限，非可加约束（§5 约束注解），[P-04] 上调未击穿 [P-15]/[P-14] 约束；触发条件核销，无需对冲，不留矛盾定稿参数。
 - affects: §5,§6 | bench:B-20260812-01 | E1/E2 交叉引用
 
 ### 2026-08-12（SQLite 技术偏离登记 E4）
@@ -2564,6 +2562,8 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-20（生活助手 PDF 合并/加密与图片格式扩展 E155-E157）<br>- **变更**：`office-daily` 新增 PDF 合并（多 PDF 按上传顺序合成为一个，pypdf）、PDF 加密（识别“密码/口令”或默认 123456，AES-256）与图片格式转换（PNG/JPG/JPEG/WebP/BMP，Pillow）；新脚本 `scripts/office_pdf_merge.py` / `scripts/office_pdf_encrypt.py` / `scripts/office_image_convert.py`；`modeFrom` 与意图路由补对应关键词，未接入能力仍诚实提示。**验证**：主项目 build；单测 454/454 + 集成 17/17 全绿；新增 3 条单测：PDF 合并输出 3 页、PDF 加密后 pypdf 解密回验 1 页、PNG→JPG 落盘；doc-lint 通过；详见 `docs/plans/2026-08-20-office-daily-pdf-image.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手办公日常新增 PDF 合并/加密与图片格式转换能力，无 §5/§6 参数变更。
 
 ### 2026-08-20（生活助手 PDF 压缩与图片输入扩展 E158-E159）<br>- **变更**：`office-daily` 新增 PDF 压缩/体积优化模式（PyMuPDF 无损优化 garbage/deflate，缺失时回退 pypdf 去重，支持目标 KB 提示），新脚本 `scripts/office_pdf_compress.py`；图片输入扩展：识别 HEIC/HEIF（尽力解码链 pillow-heif → imagecodecs → ffmpeg，均不可用时诚实提示）、AVIF、TIFF，`findImageFile` 与 `office_image_convert.py`/`compress_image.py` 同步支持，输出格式不变。**验证**：主项目 build；单测 457/457 + 集成 17/17 全绿；新增 3 条单测：PDF 压缩页数保留且输出有效、AVIF→PNG 落盘、HEIC 无解码器时诚实提示；doc-lint 通过；详见 `docs/plans/2026-08-20-office-daily-pdf-compress-heic.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手办公日常新增 PDF 压缩与图片输入格式扩展，无 §5/§6 参数变更。
+
+### 2026-08-20（生活助手图片型 PDF 降采样压缩 E160）<br>- **变更**：`office_pdf_compress.py` 在用户指定目标体积（如“压缩到 200KB”）且无损优化未达标时，若可用 PyMuPDF 则按 120/90/60 DPI 递减重渲染页面并做 JPEG 重编码，直到达标或最低 DPI，结果带 `render`/`dpi` 与“文字不可选择”诚实提示；`office-daily` 的 `pdf_compress` 分支透出该信息。**验证**：主项目 build；单测 457/457 通过 + 1 条 fitz 特性门控用例按环境跳过 + 集成 17/17 全绿；真跑图片型 PDF 234KB→193KB（DPI 120，达 200KB 目标）且页数保留；doc-lint 通过；详见 `docs/plans/2026-08-20-office-daily-pdf-compress-heic.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手办公日常 PDF 压缩新增图片型降采样重渲染，无 §5/§6 参数变更。
 
 ### v2.5（2026-08-12）
 
