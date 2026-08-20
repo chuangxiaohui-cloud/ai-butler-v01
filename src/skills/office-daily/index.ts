@@ -35,6 +35,7 @@ type OfficeMode =
   | 'pptx'
   | 'reminder'
   | 'image_ocr'
+  | 'table_ocr'
   | 'unsupported';
 
 const COMPRESS_SCRIPT = fileURLToPath(
@@ -162,6 +163,7 @@ function modeFrom(query: string): OfficeMode {
   if (/PDF.*(加密|加锁|设密码|加密码)|(加密|加锁|设密码|加密码).*PDF/.test(query)) return 'encrypt_pdf';
   if (/PDF.*(压缩|减小|优化|体积)|(压缩|减小|体积).*PDF/.test(query)) return 'pdf_compress';
   if (/识别.*(文字|图片)|提取.*(文字|文本)|图片.*(文字|识别)|扫描.*文字|OCR/i.test(query)) return 'image_ocr';
+  if (/识别.*表格|提取.*表格|表格.*(识别|提取|转\s*CSV)|图片.*表格/i.test(query)) return 'table_ocr';
   if (/转成\s*(png|jpe?g|webp|bmp)|图片.*(转|换).*格式|格式.*(转|换).*图片/i.test(query)) return 'image_convert';
   if (/转成PDF|转.*PDF|导出PDF|PDF导出/.test(query)) return 'to_pdf';
   if (/PDF.*(转|换)成Word|转成Word|转Word/.test(query)) return 'pdf_to_word';
@@ -372,7 +374,7 @@ export function createOfficeDailySkill(opts?: {
       if (mode === 'unsupported') {
         return {
           result: {
-            answer: '这项能力还没接入，目前 office-daily 支持：考勤表模板、占比分析、回复邮件、图片压缩/格式转换、图片 OCR 文字提取、Word 排版、Word↔PDF、PDF 合并/加密、PPT、主动提醒。',
+            answer: '这项能力还没接入，目前 office-daily 支持：考勤表模板、占比分析、回复邮件、图片压缩/格式转换、图片 OCR 文字提取、图片表格识别、Word 排版、Word↔PDF、PDF 合并/加密、PPT、主动提醒。',
           },
           confidence: 0.4,
         };
@@ -1176,6 +1178,57 @@ ${timeLabel}
         } catch (err) {
           return {
             result: { answer: '图片文字识别失败：' + (err instanceof Error ? err.message : String(err)) },
+            confidence: 0.2,
+          };
+        }
+      }
+      if (mode === 'table_ocr') {
+        // E168：图片表格结构识别 → CSV（复用 OCR 引擎坐标框）
+        const file = findImageFile(input);
+        if (!file) {
+          return {
+            result: { answer: '请上传要识别表格的图片。' },
+            confidence: 0.4,
+          };
+        }
+        try {
+          const buffer = Buffer.from(await file.arrayBuffer());
+          const base = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '_') || 'file';
+          const ext = (file.name.match(/\.[a-zA-Z0-9]+$/) ?? [''])[0];
+          const tmpInput = join(outDir, 'tmp-table-' + Date.now() + '-' + base + ext);
+          const csvOutput = join(outDir, '表格识别-' + Date.now() + '.csv');
+          writeFileSync(tmpInput, buffer);
+          const stdout = await runPython([IMAGE_OCR_SCRIPT, '--table', tmpInput, csvOutput]);
+          rmSync(tmpInput, { force: true });
+          const result = JSON.parse(stdout.trim()) as {
+            ok?: boolean;
+            csv?: string;
+            rows?: number;
+            cols?: number;
+            error?: string;
+          };
+          if (!result.ok) {
+            return {
+              result: { answer: '表格识别失败：' + (result.error ?? '未知错误') },
+              confidence: 0.2,
+            };
+          }
+          const csvText = (result.csv ?? '').trim();
+          const preview = csvText.slice(0, 120) + (csvText.length > 120 ? '…' : '');
+          return {
+            result: {
+              answer: `已识别表格（${result.rows ?? 0} 行 × ${result.cols ?? 0} 列）：${preview}；CSV 已保存：${csvOutput}`,
+              path: csvOutput,
+              csv: csvText,
+              rows: result.rows ?? 0,
+              cols: result.cols ?? 0,
+            },
+            confidence: 0.8,
+            followUpAction: '需要把表格转成 Excel/Word 或继续整理，随时说。',
+          };
+        } catch (err) {
+          return {
+            result: { answer: '表格识别失败：' + (err instanceof Error ? err.message : String(err)) },
             confidence: 0.2,
           };
         }

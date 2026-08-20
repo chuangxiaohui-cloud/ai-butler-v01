@@ -1124,3 +1124,93 @@ test('office-daily: 批量 OCR 单张损坏返回其余结果', { skip: !HAS_LOC
     rmSync(dir, { recursive: true, force: true });
   }
 });
+test('office-daily: 表格识别引擎不可用时诚实提示', async () => {
+  const dir = tempDir();
+  const oldOcr = process.env.PDF_OCR;
+  process.env.PDF_OCR = '0';
+  try {
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+      'base64',
+    );
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+        rawFiles: [fakeFile('table.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('表格识别失败'));
+  } finally {
+    process.env.PDF_OCR = oldOcr;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 图片表格识别真跑', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+img = Image.new('RGB', (400, 120), 'white')
+d = ImageDraw.Draw(img)
+for x in (0, 200, 400):
+    d.line([(x, 0), (x, 120)], fill='black', width=2)
+for y in (0, 60, 120):
+    d.line([(0, y), (400, y)], fill='black', width=2)
+font = None
+for fp in [r'C:\\Windows\\Fonts\\arialbd.ttf', r'C:\\Windows\\Fonts\\arial.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 36)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+d.text((40, 12), 'A1', fill='black', font=font)
+d.text((250, 12), 'B1', fill='black', font=font)
+d.text((40, 72), 'A2', fill='black', font=font)
+d.text((250, 72), 'B2', fill='black', font=font)
+buf = io.BytesIO()
+img.save(buf, 'PNG')
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const png = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+        rawFiles: [fakeFile('table.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as {
+      answer?: string;
+      csv?: string;
+      rows?: number;
+      cols?: number;
+      path?: string;
+    };
+    assert.ok(result.answer?.includes('已识别表格'));
+    assert.ok((result.rows ?? 0) >= 2, `rows=${result.rows}`);
+    assert.ok((result.cols ?? 0) >= 2, `cols=${result.cols}`);
+    assert.ok((result.csv ?? '').includes('A1'), result.csv);
+    assert.ok((result.csv ?? '').includes('B2'), result.csv);
+    assert.ok(existsSync(result.path as string));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
