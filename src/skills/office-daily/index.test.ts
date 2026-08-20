@@ -1001,3 +1001,126 @@ test('office-daily: 工作日等复杂周期诚实提示', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+function makeTextPng(text: string): Buffer {
+  const b64 = execFileSync(
+    RUNTIME_PYTHON,
+    [
+      '-c',
+      `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+img = Image.new('RGB', (480, 120), 'white')
+d = ImageDraw.Draw(img)
+font = None
+for fp in [r'C:\\Windows\\Fonts\\arialbd.ttf', r'C:\\Windows\\Fonts\\arial.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 44)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+d.text((20, 30), '${text}', fill='black', font=font)
+buf = io.BytesIO()
+img.save(buf, 'PNG')
+print(base64.b64encode(buf.getvalue()).decode())`,
+    ],
+    { encoding: 'utf8' },
+  ).trim();
+  return Buffer.from(b64, 'base64');
+}
+
+test('office-daily: 批量 OCR 引擎不可用时诚实提示', async () => {
+  const dir = tempDir();
+  const oldOcr = process.env.PDF_OCR;
+  process.env.PDF_OCR = '0';
+  try {
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+      'base64',
+    );
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这两张图的文字',
+        attachmentSignals: [
+          { type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'a.png' },
+          { type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'b.png' },
+        ],
+        rawFiles: [fakeFile('a.png', 'image/png', png), fakeFile('b.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('图片文字识别失败'));
+  } finally {
+    process.env.PDF_OCR = oldOcr;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 批量 OCR 真识别', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const pngA = makeTextPng('AAA 111');
+    const pngB = makeTextPng('BBB 222');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这两张图的文字',
+        attachmentSignals: [
+          { type: 'image', mimeType: 'image/png', sizeBytes: pngA.length, fileName: 'a.png' },
+          { type: 'image', mimeType: 'image/png', sizeBytes: pngB.length, fileName: 'b.png' },
+        ],
+        rawFiles: [fakeFile('a.png', 'image/png', pngA), fakeFile('b.png', 'image/png', pngB)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as {
+      answer?: string;
+      text?: string;
+      chars?: number;
+      path?: string;
+      imageCount?: number;
+    };
+    assert.ok(result.answer?.includes('已批量识别 2/2 张图片'));
+    assert.ok((result.chars ?? 0) > 0);
+    assert.equal(result.imageCount, 2);
+    const text = result.text ?? '';
+    assert.ok(text.includes('111') || text.includes('AAA'), text);
+    assert.ok(text.includes('222') || text.includes('BBB'), text);
+    assert.ok(existsSync(result.path as string));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 批量 OCR 单张损坏返回其余结果', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const png = makeTextPng('CCC 333');
+    const broken = Buffer.from('not a real png file at all');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这两张图的文字',
+        attachmentSignals: [
+          { type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'good.png' },
+          { type: 'image', mimeType: 'image/png', sizeBytes: broken.length, fileName: 'broken.png' },
+        ],
+        rawFiles: [fakeFile('good.png', 'image/png', png), fakeFile('broken.png', 'image/png', broken)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; text?: string; errors?: string[]; imageCount?: number };
+    assert.ok(result.answer?.includes('已批量识别 1/2 张图片'));
+    assert.ok(result.answer?.includes('未识别 1 张'));
+    assert.equal(result.imageCount, 2);
+    assert.equal((result.errors ?? []).length, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

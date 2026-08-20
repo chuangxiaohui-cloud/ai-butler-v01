@@ -1,6 +1,6 @@
 # 进度交接 2026-08-20（v0.2b 续作）
 
-> 当前分支：`v0.2b`｜待提交：E166（E160-E165 已提交）。上一份交接见 `docs/2026-08-19-progress-handoff.md`。
+> 当前分支：`v0.2b`｜待提交：E167（E160-E166 已提交）。上一份交接见 `docs/2026-08-19-progress-handoff.md`。
 
 ## 今日已收口
 
@@ -71,16 +71,20 @@
     查询展示周期；“工作日/每周末/每月”等复杂周期诚实提示；`time-expression` 抽共用助手
     `detectRepeat`/`extractTimeExpressionOrBare`/`parseRepeatQuery`，`office-daily` 改用共用
     助手（行为不变）；单测新增 6 条。
+17. **多图批量 OCR（E167）**：`scripts/office_image_ocr.py` 新增 `--batch` 模式（单次引擎
+    初始化、逐图异常不中断批次）；`office-daily` `image_ocr` 分支 ≥2 张附件走批量链路，
+    合并文本按图分段落盘 txt，结果带“成功 n/总数、未识别 m 张（原因）”诚实提示；
+    单图链路不变；单测新增 3 条。
 
 ## 今日验证
 
-- 全量单测 488/488 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
+- 全量单测 491/491 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
 - `doc-lint` 0 FAIL 0 WARN。
 - 真跑验证：DM365 XLS 对照、`.xls/.xlsb/.doc` 读取、Word→PDF 转换均成功。
 
 ## 今日收尾状态
 
-- 当前待提交：E166（E160-E165 已提交）。
+- 当前待提交：E167（E160-E166 已提交）。
 - 相关计划：`docs/plans/2026-08-19-schematic-bom-coordinate.md`、
   `docs/plans/2026-08-20-legacy-office-formats.md`、
   `docs/plans/2026-08-20-docx-to-pdf.md`、
@@ -92,11 +96,12 @@
   `docs/plans/2026-08-20-image-ocr.md`（E164）。
   `docs/plans/2026-08-20-repeat-reminders.md`（E165）。
   `docs/plans/2026-08-20-recurring-calendar.md`（E166）。
+  `docs/plans/2026-08-20-multi-image-ocr.md`（E167）。
 
 ## 明天继续（按优先级）
 
-1. 统一确认并提交 E166 批次（E160-E165 已提交，E166 待提交）。
-2. 继续补齐生活助手能力：多图批量 OCR/表格结构识别、真实日历/邮件服务接入评估、UI 集成新能力。
+1. 统一确认并提交 E167 批次（E160-E166 已提交，E167 待提交）。
+2. 继续补齐生活助手能力：表格结构识别、真实日历/邮件服务接入评估、UI 集成新能力。
 
 ## 常用命令
 

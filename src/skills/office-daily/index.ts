@@ -184,10 +184,14 @@ function findDataFile(input: SkillInput): RawFileLike | undefined {
   );
 }
 
-function findImageFile(input: SkillInput): RawFileLike | undefined {
-  return input.rawFiles.find(
+function findImageFiles(input: SkillInput): RawFileLike[] {
+  return input.rawFiles.filter(
     (f) => f.type.startsWith('image/') || /\.(png|jpe?g|webp|bmp|gif|heic|heif|tiff?|avif)$/i.test(f.name),
   );
+}
+
+function findImageFile(input: SkillInput): RawFileLike | undefined {
+  return findImageFiles(input)[0];
 }
 
 function isSpreadsheet(input: SkillInput): boolean {
@@ -1077,58 +1081,105 @@ ${timeLabel}
       }
 
       if (mode === 'image_ocr') {
-        const file = findImageFile(input);
-        if (!file) {
+        const imageFiles = findImageFiles(input);
+        if (imageFiles.length === 0) {
           return {
             result: { answer: '请上传要识别文字的图片。' },
             confidence: 0.4,
           };
         }
         try {
-          const buffer = Buffer.from(await file.arrayBuffer());
-          const base = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '_') || 'file';
-          const ext = (file.name.match(/\.[a-zA-Z0-9]+$/) ?? [''])[0];
-          const tmpInput = join(outDir, 'tmp-ocr-' + Date.now() + '-' + base + ext);
-          const txtOutput = join(outDir, '识别文字-' + Date.now() + '.txt');
-          writeFileSync(tmpInput, buffer);
-          const stdout = await runPython([IMAGE_OCR_SCRIPT, tmpInput, txtOutput]);
-          rmSync(tmpInput, { force: true });
+          if (imageFiles.length === 1) {
+            // E164：单图识别（既有链路）
+            const file = imageFiles[0];
+            const buffer = Buffer.from(await file.arrayBuffer());
+            const base = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '_') || 'file';
+            const ext = (file.name.match(/\.[a-zA-Z0-9]+$/) ?? [''])[0];
+            const tmpInput = join(outDir, 'tmp-ocr-' + Date.now() + '-' + base + ext);
+            const txtOutput = join(outDir, '识别文字-' + Date.now() + '.txt');
+            writeFileSync(tmpInput, buffer);
+            const stdout = await runPython([IMAGE_OCR_SCRIPT, tmpInput, txtOutput]);
+            rmSync(tmpInput, { force: true });
+            const result = JSON.parse(stdout.trim()) as {
+              ok?: boolean;
+              text?: string;
+              chars?: number;
+              error?: string;
+            };
+            if (!result.ok) {
+              return {
+                result: { answer: '图片文字识别失败：' + (result.error ?? '未知错误') },
+                confidence: 0.2,
+              };
+            }
+            const text = (result.text ?? '').trim();
+            const preview = text.slice(0, 120) + (text.length > 120 ? '…' : '');
+            return {
+              result: {
+                answer: text
+                  ? '已识别图片文字（' + (result.chars ?? 0) + ' 字）：' + preview + '；完整文本已保存：' + txtOutput
+                  : '未识别到文字；完整文本已保存：' + txtOutput,
+                path: txtOutput,
+                text,
+                chars: result.chars ?? 0,
+              },
+              confidence: 0.8,
+              followUpAction: '需要把识别结果整理成 Word/Markdown 或进一步翻译，随时说。',
+            };
+          }
+          // E167：多图批量识别（单次引擎初始化）
+          const tmpInputs = imageFiles.map((f, i) => {
+            const base = f.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '_') || 'image';
+            const ext = (f.name.match(/\.[a-zA-Z0-9]+$/) ?? [''])[0];
+            return join(outDir, `tmp-ocr-${Date.now()}-${i}-${base}${ext}`);
+          });
+          for (let i = 0; i < imageFiles.length; i++) {
+            writeFileSync(tmpInputs[i], Buffer.from(await imageFiles[i].arrayBuffer()));
+          }
+          const txtOutput = join(outDir, '批量识别文字-' + Date.now() + '.txt');
+          const stdout = await runPython([IMAGE_OCR_SCRIPT, '--batch', txtOutput, ...tmpInputs]);
+          tmpInputs.forEach((p) => rmSync(p, { force: true }));
           const result = JSON.parse(stdout.trim()) as {
             ok?: boolean;
             text?: string;
             chars?: number;
             error?: string;
+            images?: Array<{ file: string; text: string; chars: number }>;
+            errors?: string[];
           };
           if (!result.ok) {
             return {
-              result: { answer: '图片文字识别失败：' + (result.error ?? '未知错误') },
+              result: { answer: '批量图片文字识别失败：' + (result.error ?? '未知错误') },
               confidence: 0.2,
             };
           }
+          const errors = result.errors ?? [];
+          const total = result.chars ?? 0;
           const text = (result.text ?? '').trim();
           const preview = text.slice(0, 120) + (text.length > 120 ? '…' : '');
+          const success = imageFiles.length - errors.length;
+          const errorNote = errors.length > 0 ? `；未识别 ${errors.length} 张（${errors.join('；')}）` : '';
           return {
             result: {
               answer: text
-                ? '已识别图片文字（' + (result.chars ?? 0) + ' 字）：' + preview + '；完整文本已保存：' + txtOutput
-                : '未识别到文字；完整文本已保存：' + txtOutput,
+                ? `已批量识别 ${success}/${imageFiles.length} 张图片（共 ${total} 字）：${preview}${errorNote}；完整文本已保存：${txtOutput}`
+                : `已批量识别 ${success}/${imageFiles.length} 张图片（未识别到文字）${errorNote}；完整文本已保存：${txtOutput}`,
               path: txtOutput,
               text,
-              chars: result.chars ?? 0,
+              chars: total,
+              imageCount: imageFiles.length,
+              errors,
             },
             confidence: 0.8,
             followUpAction: '需要把识别结果整理成 Word/Markdown 或进一步翻译，随时说。',
           };
         } catch (err) {
           return {
-            result: {
-              answer: '图片文字识别失败：' + (err instanceof Error ? err.message : String(err)),
-            },
+            result: { answer: '图片文字识别失败：' + (err instanceof Error ? err.message : String(err)) },
             confidence: 0.2,
           };
         }
       }
-
       if (mode === 'image_convert') {
         const target = targetImageFormat(input.query);
         const file = findImageFile(input);

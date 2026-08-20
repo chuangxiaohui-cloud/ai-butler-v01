@@ -1,4 +1,8 @@
-"""Extract text from an image using Pillow + RapidOCR/PaddleOCR (mirror pdf_text.py engine)."""
+"""Extract text from image(s) using Pillow + RapidOCR/PaddleOCR (mirror pdf_text.py engine).
+
+单图：office_image_ocr.py <input-image> [output-txt]
+批量：office_image_ocr.py --batch <output-txt> <img1> [img2 ...]   # E167
+"""
 
 import json
 import os
@@ -56,40 +60,75 @@ def extract_texts(result) -> list[str]:
     return []
 
 
-def main() -> int:
-    if len(sys.argv) < 2:
-        return fail("usage: office_image_ocr.py <input-image> [output-txt]")
-    src, out_txt = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else None)
-    try:
-        import numpy as np
-        from PIL import Image
+def load_image(src: str):
+    """解码单张图片为 RGB/L 数组；HEIC/HEIF 复用既有解码链。"""
+    import numpy as np
+    from PIL import Image
 
-        ext = os.path.splitext(src)[1].lower()
-        if ext in (".heic", ".heif"):
-            from office_image_convert import decode_heic
+    ext = os.path.splitext(src)[1].lower()
+    if ext in (".heic", ".heif"):
+        from office_image_convert import decode_heic
 
-            with tempfile.TemporaryDirectory() as td:
-                tmp = os.path.join(td, "decoded.png")
-                err = decode_heic(src, tmp)
-                if err:
-                    return fail(err)
-                img = Image.open(tmp)
-                img.load()
-        else:
-            img = Image.open(src)
+        with tempfile.TemporaryDirectory() as td:
+            tmp = os.path.join(td, "decoded.png")
+            err = decode_heic(src, tmp)
+            if err:
+                raise RuntimeError(err)
+            img = Image.open(tmp)
             img.load()
-        if img.mode not in ("RGB", "L"):
-            img = img.convert("RGB")
-        arr = np.asarray(img)
+    else:
+        img = Image.open(src)
+        img.load()
+    if img.mode not in ("RGB", "L"):
+        img = img.convert("RGB")
+    return np.asarray(img)
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    batch = len(args) >= 1 and args[0] == "--batch"
+    if batch:
+        if len(args) < 3:
+            return fail("usage: office_image_ocr.py --batch <output-txt> <img1> [img2 ...]")
+        out_txt, srcs = args[1], args[2:]
+    elif len(args) < 1:
+        return fail("usage: office_image_ocr.py <input-image> [output-txt]")
+    else:
+        src, out_txt = args[0], (args[1] if len(args) > 1 else None)
+        srcs = [src]
+
+    try:
         engine, err = get_engine()
         if engine is None:
             return fail(err or "OCR 引擎不可用")
-        result = engine(arr)
-        lines = extract_texts(result)
-        text = "\n".join(lines)
+
+        images: list[dict] = []
+        errors: list[str] = []
+        sections: list[str] = []
+        for src in srcs:
+            name = os.path.basename(src)
+            try:
+                arr = load_image(src)
+                result = engine(arr)
+                text = "\n".join(extract_texts(result))
+                images.append({"file": name, "text": text, "chars": len(text)})
+                if text:
+                    sections.append(f"=== {name} ===\n{text}")
+            except Exception as exc:
+                errors.append(f"{name}：{exc}")
+
+        if not batch and not images:
+            return fail(errors[0] if errors else "图片 OCR 失败")
+
+        text = "\n\n".join(sections)
         if out_txt:
             pathlib.Path(out_txt).write_text(text, encoding="utf-8")
-        print(json.dumps({"ok": True, "text": text, "lines": lines, "chars": len(text)}, ensure_ascii=False))
+        print(
+            json.dumps(
+                {"ok": True, "text": text, "chars": len(text), "images": images, "errors": errors},
+                ensure_ascii=False,
+            )
+        )
         return 0
     except Exception as exc:
         return fail(f"图片 OCR 失败：{exc}")
