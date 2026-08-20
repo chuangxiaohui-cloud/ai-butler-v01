@@ -17,8 +17,8 @@ import { fileURLToPath } from 'node:url';
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 import type { RawFileLike, SkillDeps } from '../deps.js';
 import { extractTimeExpression } from '../../agent/intent-feature.js';
-import { parseTimeExpression } from '../../agent/time-expression.js';
-import { ReminderStore, type ReminderRepeat } from '../../reminder/reminder-store.js';
+import { parseTimeExpression, parseRepeatQuery } from '../../agent/time-expression.js';
+import { ReminderStore } from '../../reminder/reminder-store.js';
 
 type OfficeMode =
   | 'table'
@@ -891,32 +891,16 @@ export function createOfficeDailySkill(opts?: {
                   followUpAction: '可以用“查一下提醒”查看当前列表。',
                 };
           }
-          // E165：周期识别（每天/每周），复杂周期诚实提示
-          const repeat: ReminderRepeat = /每天|每日|天天/.test(input.query)
-            ? 'daily'
-            : /每周|每星期/.test(input.query)
-              ? 'weekly'
-              : '';
-          const timeExpression =
-            extractTimeExpression(input.query) ??
-            // E165：每天/每周 + 纯时间（如“每天早上9点”）本地兜底组装
-            (repeat
-              ? input.query.match(/(?:早上|上午|中午|下午|晚上|傍晚)?\s*(\d{1,2}\s*[点时:：]\s*\d{0,2}|[一二三四五六七八九十]{1,2}\s*点)/)?.[0]
-              : undefined);
-          // 复杂周期只在与提醒时间同段（其前面）时判定，避免“每月报告”等内容词误伤
-          const complex = input.query.match(/工作日|每周末|每月|周[一二三四五六日天]到周/);
-          if (complex) {
-            const timeIdx = timeExpression ? input.query.indexOf(timeExpression) : -1;
-            const isRange = /周[一二三四五六日天]到周/.test(input.query);
-            if (timeIdx === -1 || (isRange ? complex.index! <= timeIdx : complex.index! < timeIdx)) {
-              return {
-                result: {
-                  answer: '目前暂不支持工作日、每周末、每月等复杂周期提醒，支持“每天”“每周”循环提醒。',
-                },
-                confidence: 0.5,
-                followUpAction: '例如“每天早上9点提醒我喝水”或“每周一9点提醒我开周会”。',
-              };
-            }
+          // E166：周期识别（每天/每周）与复杂周期诚实提示，共用 time-expression 助手
+          const { repeat, timeExpression, complexPeriod } = parseRepeatQuery(input.query);
+          if (complexPeriod) {
+            return {
+              result: {
+                answer: '目前暂不支持工作日、每周末、每月等复杂周期提醒，支持“每天”“每周”循环提醒。',
+              },
+              confidence: 0.5,
+              followUpAction: '例如“每天早上9点提醒我喝水”或“每周一9点提醒我开周会”。',
+            };
           }
           if (!timeExpression) {
             return {

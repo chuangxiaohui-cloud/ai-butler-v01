@@ -2,14 +2,14 @@
  * Skill: calendar-skill（R14 执行层）
  * 本地 SQLite 日历：创建日程 / 查询日程，暂不接真实日历服务。
  * E162：创建日程时按解析时间自动登记提醒（ReminderStore），支持“提前 N 分钟/小时”。
+ * E166：重复日程（每天/每周）复用 ReminderStore.repeat 机制，查询展示周期。
  */
 
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { DatabaseSync } from 'node:sqlite';
 
-import { extractTimeExpression } from '../../agent/intent-feature.js';
-import { parseTimeExpression } from '../../agent/time-expression.js';
+import { parseTimeExpression, parseRepeatQuery } from '../../agent/time-expression.js';
 import { ReminderStore } from '../../reminder/reminder-store.js';
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 import type { SkillDeps } from '../deps.js';
@@ -51,11 +51,17 @@ export function createCalendarSkill(
           title TEXT NOT NULL,
           time_expression TEXT NOT NULL,
           start_at TEXT NOT NULL DEFAULT '',
-          created_at INTEGER NOT NULL
+          created_at INTEGER NOT NULL,
+          repeat TEXT NOT NULL DEFAULT ''
         );
       `);
       try {
         db.exec("ALTER TABLE calendar_events ADD COLUMN start_at TEXT NOT NULL DEFAULT ''");
+      } catch {
+        // 列已存在则跳过
+      }
+      try {
+        db.exec("ALTER TABLE calendar_events ADD COLUMN repeat TEXT NOT NULL DEFAULT ''");
       } catch {
         // 列已存在则跳过
       }
@@ -70,7 +76,15 @@ export function createCalendarSkill(
     async execute(input: SkillInput, _deps: SkillDeps): Promise<SkillOutput> {
       const mode = typeof input.params?.mode === 'string' ? input.params.mode : '';
       if (mode === 'create_calendar' || /安排|预约|帮我订/.test(input.query)) {
-        const timeExpression = extractTimeExpression(input.query);
+        // E166：周期识别与复杂周期诚实提示（与提醒共用 time-expression 助手）
+        const { repeat, timeExpression, complexPeriod } = parseRepeatQuery(input.query);
+        if (complexPeriod) {
+          return {
+            result: '目前暂不支持工作日、每周末、每月等复杂周期日程，支持“每天”“每周”重复日程。',
+            confidence: 0.5,
+            followUpAction: '例如“每天早上9点安排站会”或“每周一9点安排周会”。',
+          };
+        }
         if (!timeExpression) {
           return {
             result: '请问您想安排在什么时间？例如“明天上午十点”。',
@@ -85,12 +99,12 @@ export function createCalendarSkill(
         const database = ensureDb();
         const inserted = database
           .prepare(
-            `INSERT INTO calendar_events (user_id, title, time_expression, start_at, created_at)
-             VALUES (?, ?, ?, ?, ?)`,
+            `INSERT INTO calendar_events (user_id, title, time_expression, start_at, created_at, repeat)
+             VALUES (?, ?, ?, ?, ?, ?)`,
           )
-          .run('default', title, timeExpression, parsed.startAt, now);
+          .run('default', title, timeExpression, parsed.startAt, now, repeat);
 
-        // E162：日程 ↔ 提醒联动——按解析时间自动登记提醒
+        // E162：日程 ↔ 提醒联动——按解析时间自动登记提醒（E166：重复日程透传周期）
         let reminderNote: string;
         const startMs = parsed.startAt ? Date.parse(parsed.startAt) : NaN;
         if (Number.isNaN(startMs)) {
@@ -107,6 +121,7 @@ export function createCalendarSkill(
                 userId: 'default',
                 message: `日程提醒：${title}（${timeExpression}）`,
                 remindAt,
+                repeat,
               });
             } finally {
               store.close();
@@ -116,8 +131,9 @@ export function createCalendarSkill(
             reminderNote = '提醒登记失败（提醒库不可用）';
           }
         }
+        const repeatLabel = repeat === 'daily' ? '每天' : repeat === 'weekly' ? '每周' : '';
         return {
-          result: `已创建日程：${title}（${timeExpression}，${parsed.startAt}）；${reminderNote}`,
+          result: `已创建日程：${title}（${timeExpression}，${parsed.startAt}${repeat ? `，${repeatLabel}重复` : ''}）；${reminderNote}`,
           confidence: 0.8,
           followUpAction: '需要调整提前量、改时间、取消日程，或生成会议邀请邮件，随时说。',
         };
@@ -143,18 +159,26 @@ export function createCalendarSkill(
         const database = ensureDb();
         const rows = database
           .prepare(
-            'SELECT id, title, time_expression, start_at, created_at FROM calendar_events WHERE user_id = ? ORDER BY created_at DESC LIMIT 10',
+            'SELECT id, title, time_expression, start_at, created_at, repeat FROM calendar_events WHERE user_id = ? ORDER BY created_at DESC LIMIT 10',
           )
-          .all('default');
+          .all('default') as unknown as Array<{
+          id: number;
+          title: string;
+          time_expression: string;
+          start_at: string;
+          created_at: number;
+          repeat: string;
+        }>;
         return {
           result:
             rows.length === 0
               ? '暂无日程。'
               : `共 ${rows.length} 条日程：${rows
-                  .map(
-                    (row) =>
-                      `${row.title}（${row.time_expression}，${row.start_at || '时间未定'}${reminderKeys.has(`${row.title}（${row.time_expression}）`) ? '；已设提醒' : '；未设提醒'}）`,
-                  )
+                  .map((row) => {
+                    const repeatLabel =
+                      row.repeat === 'daily' ? '每天' : row.repeat === 'weekly' ? '每周' : '';
+                    return `${row.title}（${row.time_expression}，${row.start_at || '时间未定'}${repeatLabel ? `，${repeatLabel}重复` : ''}${reminderKeys.has(`${row.title}（${row.time_expression}）`) ? '；已设提醒' : '；未设提醒'}）`;
+                  })
                   .join('；')}`,
           confidence: 0.8,
           followUpAction: '要新建日程、调整安排或生成会议邀请邮件，随时说。',

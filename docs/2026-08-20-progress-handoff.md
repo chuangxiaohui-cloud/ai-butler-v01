@@ -1,6 +1,6 @@
 # 进度交接 2026-08-20（v0.2b 续作）
 
-> 当前分支：`v0.2b`｜待提交：E165（E160-E164 已提交）。上一份交接见 `docs/2026-08-19-progress-handoff.md`。
+> 当前分支：`v0.2b`｜待提交：E166（E160-E165 已提交）。上一份交接见 `docs/2026-08-19-progress-handoff.md`。
 
 ## 今日已收口
 
@@ -66,16 +66,21 @@
     下一次（离线多日只补发一次防刷屏）；`parseTimeExpression` 支持“周X/下周X/星期X”；
     `office-daily` 提醒创建识别“每天/每日/每周/每星期”并带周期文案，“工作日/每周末/每月”
     等复杂周期诚实提示暂不支持；单测新增 9 条。
+16. **重复日程：每天/每周（E166）**：`calendar-skill` 创建日程识别“每天/每日/每周/每星期”
+    并落库 `repeat` 列（含 ALTER 迁移），自动登记同周期重复提醒（复用 ReminderStore.repeat），
+    查询展示周期；“工作日/每周末/每月”等复杂周期诚实提示；`time-expression` 抽共用助手
+    `detectRepeat`/`extractTimeExpressionOrBare`/`parseRepeatQuery`，`office-daily` 改用共用
+    助手（行为不变）；单测新增 6 条。
 
 ## 今日验证
 
-- 全量单测 482/482 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
+- 全量单测 488/488 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
 - `doc-lint` 0 FAIL 0 WARN。
 - 真跑验证：DM365 XLS 对照、`.xls/.xlsb/.doc` 读取、Word→PDF 转换均成功。
 
 ## 今日收尾状态
 
-- 当前待提交：E165（E160-E164 已提交）。
+- 当前待提交：E166（E160-E165 已提交）。
 - 相关计划：`docs/plans/2026-08-19-schematic-bom-coordinate.md`、
   `docs/plans/2026-08-20-legacy-office-formats.md`、
   `docs/plans/2026-08-20-docx-to-pdf.md`、
@@ -86,11 +91,12 @@
   `docs/plans/2026-08-20-reminder-manage.md`（E163）。
   `docs/plans/2026-08-20-image-ocr.md`（E164）。
   `docs/plans/2026-08-20-repeat-reminders.md`（E165）。
+  `docs/plans/2026-08-20-recurring-calendar.md`（E166）。
 
 ## 明天继续（按优先级）
 
-1. 统一确认并提交 E165 批次（E160-E164 已提交，E165 待提交）。
-2. 继续补齐生活助手能力：重复日程/取消提醒（复用 repeat 机制）、OCR 输入、真实日历/邮件服务接入评估。
+1. 统一确认并提交 E166 批次（E160-E165 已提交，E166 待提交）。
+2. 继续补齐生活助手能力：多图批量 OCR/表格结构识别、真实日历/邮件服务接入评估、UI 集成新能力。
 
 ## 常用命令
 
