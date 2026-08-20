@@ -3,7 +3,7 @@
  * L1 语义色名（VLM）→ L2 主色调 HEX（VLM JSON，解析失败时用语义名兜底）。
  */
 
-import { toDataUrl } from '../../agent/multimodal-preprocessor.js';
+import { isImageFile, toDataUrl } from '../../agent/multimodal-preprocessor.js';
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 import type { RawFileLike, SkillDeps } from '../deps.js';
 
@@ -62,7 +62,7 @@ function parsePalette(text: string): Array<{ name: string; hex: string }> | null
 }
 
 function firstImage(input: SkillInput): RawFileLike | undefined {
-  return input.rawFiles.find((f) => f.type.startsWith('image/'));
+  return input.rawFiles.find((f) => isImageFile(f));
 }
 
 export function createColorRecognitionSkill(): ExecutableSkill {

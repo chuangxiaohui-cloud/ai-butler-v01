@@ -3,12 +3,12 @@
  * 通用图片描述：VLM 一次调用，按需触发，不占预处理成本。
  */
 
-import { toDataUrl } from '../../agent/multimodal-preprocessor.js';
+import { isImageFile, toDataUrl } from '../../agent/multimodal-preprocessor.js';
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 import type { RawFileLike, SkillDeps } from '../deps.js';
 
 function firstImage(input: SkillInput): RawFileLike | undefined {
-  return input.rawFiles.find((f) => f.type.startsWith('image/'));
+  return input.rawFiles.find((f) => isImageFile(f));
 }
 
 export function createImageAnalysisSkill(): ExecutableSkill {

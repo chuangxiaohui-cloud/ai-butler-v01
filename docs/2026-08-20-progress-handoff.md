@@ -45,10 +45,17 @@
    `dpi` 与“文字不可选择”诚实提示；真跑图片型 PDF 234KB→193KB（DPI 120
    达标 200KB）；新增 1 条 fitz 特性门控单测（无 PyMuPDF 环境自动跳过）。
 10. **办公日常/原理图 Python 脚本解除 gitignore 入库（修复）**：.gitignore 原 *.py 规则使 E137-E160 的办公日常、图片、BOM 参考脚本从未入库；现放行 scripts/office_*.py、scripts/compress_image.py、scripts/bom_reference.py、scripts/pdf_symbols.py，14 个 Python 脚本随 E160 批次一并入库。
+11. **图片理解输入归一化与扩展识别（E161）**：`multimodal-preprocessor`
+    附件按扩展名兜底识别图片（HEIC/HEIF/AVIF/TIFF/WebP/BMP，type 缺失或
+    octet-stream 也生效，路由 hasImage 正确触发）；`toDataUrl` 对 VLM 非安全
+    格式（AVIF/TIFF/HEIC/HEIF/BMP）用 `scripts/office_image_convert.py` 尽力
+    转 PNG（OFFICE_PYTHON → python/python3，15s 超时），解码不可用诚实降级
+    原样透传；`image-analysis`/`color-recognition` 的 firstImage 同步扩展名兜底；
+    单测新增 7 条（TIFF/AVIF→PNG 真解码、HEIC 降级等）。
 
 ## 今日验证
 
-- 全量单测 457/457 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
+- 全量单测 464/464 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
 - `doc-lint` 0 FAIL 0 WARN。
 - 真跑验证：DM365 XLS 对照、`.xls/.xlsb/.doc` 读取、Word→PDF 转换均成功。
 
@@ -60,11 +67,12 @@
   `docs/plans/2026-08-20-docx-to-pdf.md`、
   `docs/plans/2026-08-20-office-daily-pdf-image.md` 与
   `docs/plans/2026-08-20-office-daily-pdf-compress-heic.md`（含 E160 增量）。
+  `docs/plans/2026-08-20-image-input-normalize.md`（E161）。
 
 ## 明天继续（按优先级）
 
-1. 统一确认并提交当前 E127-E160 批次（E158-E159 已提交，E160 待提交）。
-2. 继续补齐生活助手能力：AVIF/WebP 更广泛输入、邮件/日历联动等。
+1. 统一确认并提交 E161 批次（E160/脚本入库已提交，E161 待提交）。
+2. 继续补齐生活助手能力：邮件/日历联动、提醒增强、OCR 输入等。
 
 ## 常用命令
 
