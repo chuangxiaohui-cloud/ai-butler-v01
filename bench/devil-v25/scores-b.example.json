@@ -1,0 +1,89 @@
+{
+  "note": "复制为 scores.json 后人工回填 0-3；score=0 时 hardAnswer 必须 false。",
+  "scores": [
+    {
+      "id": "EC02",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC10",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "EC24",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "EC29",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "P02",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "P04",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "P07",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "P08",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "P10",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "C01",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 0
+    },
+    {
+      "id": "C02",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "C03",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "C05",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 1
+    },
+    {
+      "id": "C07",
+      "score": null,
+      "hardAnswer": false,
+      "autoScore": 2
+    }
+  ]
+}

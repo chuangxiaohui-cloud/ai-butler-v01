@@ -8,6 +8,7 @@
  *   npm run bench:devil-v25                # 全量，默认单条超时 120s
  *   npm run bench:devil-v25 -- 60000       # 自定义超时
  *   npm run bench:devil-v25:reset          # 清空上次增量结果后重跑
+ *   npm run bench:devil-v25 -- --set=a     # 只跑 A 套（先 npm run split:devil-ab）
  */
 
 import {
@@ -59,14 +60,16 @@ const csvPath = csvArg
   : join(root, 'AI-Agent_魔鬼训练_v2.5_整理版');
 const outDir = join(root, 'bench', 'devil-v25');
 const jsonlPath = join(outDir, 'results.jsonl');
-const reportPath = join(outDir, 'report.md');
-const worksheetPath = join(outDir, 'scoring-worksheet.md');
 const scoresPath = join(outDir, 'scores.json');
-const scoresExamplePath = join(outDir, 'scores.example.json');
 const timeoutArg = Number(process.argv[2]);
 const timeoutMs = Number.isFinite(timeoutArg) && timeoutArg > 0 ? timeoutArg : 120000;
 const limitArg = process.argv.find((a) => a.startsWith('--limit='))?.split('=')[1];
 const limit = limitArg ? Number(limitArg) : undefined;
+const setArg = process.argv.find((a) => a.startsWith('--set='))?.split('=')[1]?.toUpperCase();
+const suffix = setArg ? `-${setArg.toLowerCase()}` : '';
+const reportPath = join(outDir, `report${suffix}.md`);
+const worksheetPath = join(outDir, `scoring-worksheet${suffix}.md`);
+const scoresExamplePath = join(outDir, `scores${suffix}.example.json`);
 
 const AUTHORITY_DOMAINS = [
   'st.com',
@@ -374,7 +377,19 @@ async function main(): Promise<void> {
     trajectory: trajectoryLog,
     browserSession,
   };
-  const rowsAll = loadRows();
+  let rowsAll = loadRows();
+  if (setArg) {
+    const abPath = join(outDir, 'ab-sets.json');
+    if (!existsSync(abPath)) {
+      throw new Error('缺少 ab-sets.json，请先运行 npm run split:devil-ab');
+    }
+    const sets = JSON.parse(readFileSync(abPath, 'utf-8')) as {
+      A: string[];
+      B: string[];
+    };
+    const ids = new Set(sets[setArg as 'A' | 'B'] ?? []);
+    rowsAll = rowsAll.filter((r) => ids.has(r.id));
+  }
   const rows = limit ? rowsAll.slice(0, limit) : rowsAll;
   const done = loadDone();
   const todo = rows.filter((r) => !done.has(r.id));
