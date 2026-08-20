@@ -897,3 +897,107 @@ print(base64.b64encode(pdfbuf.getvalue()).decode())`,
   }
 });
 
+
+test('office-daily: 设置每天提醒', async () => {
+  const dir = tempDir();
+  const oldDb = process.env.REMINDERS_DB_PATH;
+  const dbPath = join(dir, 'reminders.db');
+  process.env.REMINDERS_DB_PATH = dbPath;
+  try {
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '每天早上9点提醒我喝水',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: { userId: 'u1' },
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; repeat?: string };
+    assert.ok(result.answer?.includes('已设置每天提醒'));
+    assert.ok(result.answer?.includes('喝水'));
+    assert.equal(result.repeat, 'daily');
+    const verify = new ReminderStore(dbPath);
+    try {
+      const rows = verify.list('u1');
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].message, '喝水');
+      assert.equal(rows[0].repeat, 'daily');
+    } finally {
+      verify.close();
+    }
+  } finally {
+    process.env.REMINDERS_DB_PATH = oldDb;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 设置每周提醒', async () => {
+  const dir = tempDir();
+  const oldDb = process.env.REMINDERS_DB_PATH;
+  const dbPath = join(dir, 'reminders.db');
+  process.env.REMINDERS_DB_PATH = dbPath;
+  try {
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '每周一9点提醒我开周会',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: { userId: 'u1' },
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; repeat?: string };
+    assert.ok(result.answer?.includes('已设置每周提醒'));
+    assert.ok(result.answer?.includes('开周会'));
+    assert.equal(result.repeat, 'weekly');
+    const verify = new ReminderStore(dbPath);
+    try {
+      const rows = verify.list('u1');
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].message, '开周会');
+      assert.equal(rows[0].repeat, 'weekly');
+      assert.equal(new Date(rows[0].remindAt).getDay(), 1);
+    } finally {
+      verify.close();
+    }
+  } finally {
+    process.env.REMINDERS_DB_PATH = oldDb;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 工作日等复杂周期诚实提示', async () => {
+  const dir = tempDir();
+  const oldDb = process.env.REMINDERS_DB_PATH;
+  const dbPath = join(dir, 'reminders.db');
+  process.env.REMINDERS_DB_PATH = dbPath;
+  try {
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '每个工作日9点提醒我打卡',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: { userId: 'u1' },
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('暂不支持'));
+    const verify = new ReminderStore(dbPath);
+    try {
+      assert.equal(verify.list('u1').length, 0);
+    } finally {
+      verify.close();
+    }
+  } finally {
+    process.env.REMINDERS_DB_PATH = oldDb;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

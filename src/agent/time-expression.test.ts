@@ -19,3 +19,36 @@ test('time-expression: 今天上午10:30', () => {
   assert.equal(d.getHours(), 10);
   assert.equal(d.getMinutes(), 30);
 });
+
+test('time-expression: 周三上午10点解析到本周最近周三', () => {
+  const { startAt } = parseTimeExpression('周三上午10点');
+  const d = new Date(startAt);
+  assert.equal(d.getDay(), 3);
+  assert.equal(d.getHours(), 10);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(d);
+  target.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((target.getTime() - today.getTime()) / 86_400_000);
+  assert.ok(diffDays >= 0 && diffDays <= 6, `diffDays=${diffDays}`);
+});
+
+test('time-expression: 下周一下午3点解析到下一周', () => {
+  const { startAt } = parseTimeExpression('下周一下午3点');
+  const d = new Date(startAt);
+  assert.equal(d.getDay(), 1);
+  assert.equal(d.getHours(), 15);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(d);
+  target.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((target.getTime() - today.getTime()) / 86_400_000);
+  assert.ok(diffDays >= 7 && diffDays <= 13, `diffDays=${diffDays}`);
+});
+
+test('time-expression: 星期天晚上8点', () => {
+  const { startAt } = parseTimeExpression('星期天晚上8点');
+  const d = new Date(startAt);
+  assert.equal(d.getDay(), 0);
+  assert.equal(d.getHours(), 20);
+});

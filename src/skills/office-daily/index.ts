@@ -18,7 +18,7 @@ import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 import type { RawFileLike, SkillDeps } from '../deps.js';
 import { extractTimeExpression } from '../../agent/intent-feature.js';
 import { parseTimeExpression } from '../../agent/time-expression.js';
-import { ReminderStore } from '../../reminder/reminder-store.js';
+import { ReminderStore, type ReminderRepeat } from '../../reminder/reminder-store.js';
 
 type OfficeMode =
   | 'table'
@@ -891,10 +891,36 @@ export function createOfficeDailySkill(opts?: {
                   followUpAction: '可以用“查一下提醒”查看当前列表。',
                 };
           }
-          const timeExpression = extractTimeExpression(input.query);
+          // E165：周期识别（每天/每周），复杂周期诚实提示
+          const repeat: ReminderRepeat = /每天|每日|天天/.test(input.query)
+            ? 'daily'
+            : /每周|每星期/.test(input.query)
+              ? 'weekly'
+              : '';
+          const timeExpression =
+            extractTimeExpression(input.query) ??
+            // E165：每天/每周 + 纯时间（如“每天早上9点”）本地兜底组装
+            (repeat
+              ? input.query.match(/(?:早上|上午|中午|下午|晚上|傍晚)?\s*(\d{1,2}\s*[点时:：]\s*\d{0,2}|[一二三四五六七八九十]{1,2}\s*点)/)?.[0]
+              : undefined);
+          // 复杂周期只在与提醒时间同段（其前面）时判定，避免“每月报告”等内容词误伤
+          const complex = input.query.match(/工作日|每周末|每月|周[一二三四五六日天]到周/);
+          if (complex) {
+            const timeIdx = timeExpression ? input.query.indexOf(timeExpression) : -1;
+            const isRange = /周[一二三四五六日天]到周/.test(input.query);
+            if (timeIdx === -1 || (isRange ? complex.index! <= timeIdx : complex.index! < timeIdx)) {
+              return {
+                result: {
+                  answer: '目前暂不支持工作日、每周末、每月等复杂周期提醒，支持“每天”“每周”循环提醒。',
+                },
+                confidence: 0.5,
+                followUpAction: '例如“每天早上9点提醒我喝水”或“每周一9点提醒我开周会”。',
+              };
+            }
+          }
           if (!timeExpression) {
             return {
-              result: { answer: '请告诉我提醒时间，例如“明天下午3点提醒我开会”。' },
+              result: { answer: '请告诉我提醒时间，例如“明天下午3点提醒我开会”或“每天早上9点提醒我喝水”。' },
               confidence: 0.4,
             };
           }
@@ -902,6 +928,8 @@ export function createOfficeDailySkill(opts?: {
             input.query
               .replace(/提醒我|帮我提醒|设置提醒|主动提醒|提醒/g, '')
               .replace(timeExpression, '')
+              .replace(/每天|每日|天天|每周|每星期/g, '')
+              .replace(/^每/, '')
               .replace(/[，。！!？?：:]/g, '')
               .trim() || '提醒';
           const { startAt } = parseTimeExpression(timeExpression);
@@ -910,12 +938,15 @@ export function createOfficeDailySkill(opts?: {
             conversationId: String(input.params?.conversationId ?? ''),
             message,
             remindAt: Date.parse(startAt),
+            repeat,
           });
+          const repeatLabel = repeat === 'daily' ? '每天' : repeat === 'weekly' ? '每周' : '';
           return {
             result: {
-              answer: `已设置提醒：${new Date(reminder.remindAt).toLocaleString('zh-CN', { hour12: false })} ${message}`,
+              answer: `已设置${repeatLabel}提醒：${new Date(reminder.remindAt).toLocaleString('zh-CN', { hour12: false })} ${message}${repeat ? `（此后${repeatLabel}同一时间自动顺延）` : ''}`,
               id: reminder.id,
               remindAt: reminder.remindAt,
+              repeat,
             },
             confidence: 0.9,
             followUpAction: '到点我会在事件流里推送提醒；需要改时间、查看或取消随时说。',

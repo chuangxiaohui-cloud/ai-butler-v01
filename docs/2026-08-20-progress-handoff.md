@@ -1,7 +1,6 @@
 # 进度交接 2026-08-20（v0.2b 续作）
 
-> 当前分支：`v0.2b`｜未提交：E127-E157 行为修复、文档资产、A/B 与 B 套评测工具
-> 等一批改动等待统一确认。上一份交接见 `docs/2026-08-19-progress-handoff.md`。
+> 当前分支：`v0.2b`｜待提交：E165（E160-E164 已提交）。上一份交接见 `docs/2026-08-19-progress-handoff.md`。
 
 ## 今日已收口
 
@@ -62,16 +61,21 @@
 14. **图片 OCR 文字提取（E164）**：新增 `scripts/office_image_ocr.py`（Pillow 解码
     + RapidOCR/PaddleOCR），`office-daily` 新增 `image_ocr` 模式，识别结果摘要
     + 落盘 txt，引擎缺失诚实提示安装命令；单测新增 2 条（含本地真识别）。
+15. **重复提醒：每天/每周（E165）**：`ReminderStore` 表加 `repeat` 列（含 ALTER 迁移），
+    `add` 支持 repeat 且首次时间已过自动顺延，`dueReminders` 对重复提醒到期触发后顺延
+    下一次（离线多日只补发一次防刷屏）；`parseTimeExpression` 支持“周X/下周X/星期X”；
+    `office-daily` 提醒创建识别“每天/每日/每周/每星期”并带周期文案，“工作日/每周末/每月”
+    等复杂周期诚实提示暂不支持；单测新增 9 条。
 
 ## 今日验证
 
-- 全量单测 473/473 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
+- 全量单测 482/482 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
 - `doc-lint` 0 FAIL 0 WARN。
 - 真跑验证：DM365 XLS 对照、`.xls/.xlsb/.doc` 读取、Word→PDF 转换均成功。
 
 ## 今日收尾状态
 
-- 所有改动仍未提交，继续留在待统一确认批次。
+- 当前待提交：E165（E160-E164 已提交）。
 - 相关计划：`docs/plans/2026-08-19-schematic-bom-coordinate.md`、
   `docs/plans/2026-08-20-legacy-office-formats.md`、
   `docs/plans/2026-08-20-docx-to-pdf.md`、
@@ -81,11 +85,12 @@
   `docs/plans/2026-08-20-calendar-reminder-email.md`（E162）。
   `docs/plans/2026-08-20-reminder-manage.md`（E163）。
   `docs/plans/2026-08-20-image-ocr.md`（E164）。
+  `docs/plans/2026-08-20-repeat-reminders.md`（E165）。
 
 ## 明天继续（按优先级）
 
-1. 统一确认并提交 E164 批次（E163 已提交，E164 待提交）。
-2. 继续补齐生活助手能力：重复日程/取消提醒、OCR 输入、真实日历/邮件服务接入评估。
+1. 统一确认并提交 E165 批次（E160-E164 已提交，E165 待提交）。
+2. 继续补齐生活助手能力：重复日程/取消提醒（复用 repeat 机制）、OCR 输入、真实日历/邮件服务接入评估。
 
 ## 常用命令
 

@@ -1706,12 +1706,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-12（SQLite 技术偏离登记 E4）<br>- **偏离项**：§3.1 SQLite 实现：better-sqlite3 → node:sqlite（Node 22 内置）。<br>- **状态**：provisional@2026-08-12。<br>- **依据**：本机 better-sqlite3 原生绑定编译失败；node:sqlite 接口等价、零原生依赖。<br>- **已知代价**：运行时打印 ExperimentalWarning 走 stderr，不污染 stdout JSON 契约；JSON 契约命令用 npm run --silent。<br>- **复验门**：v0.2b MemoryCoreStore 切换时重新决策正式依赖。<br>- **关联**：与 E1-E3 独立，无参数联动。
 
 
-### 2026-08-13（P-63 单日配额调整 E5）
-
-- **变更**：[P-63] 由定稿值改为不设单日硬限（账户余额自管理），转 provisional@2026-08-13；保留日计数用于观察。
-- **理由**：Bocha 账户余额充足（详见下方），owner 拍板取消单日硬限；成本由账户余额与月度观测兜底，不再设日预算护栏。
-- **实现**：本地配额仍计数不拦截；`BOCHA_DAILY_LIMIT` 可配置覆盖。
-- affects: §5 | bench:B-20260813-01
+### 2026-08-13（P-63 单日配额调整 E5）<br>- **变更**：[P-63] 由定稿值改为不设单日硬限（账户余额自管理），转 provisional@2026-08-13；保留日计数用于观察。<br>- **理由**：Bocha 账户余额充足（详见下方），owner 拍板取消单日硬限；成本由账户余额与月度观测兜底，不再设日预算护栏。<br>- **实现**：本地配额仍计数不拦截；`BOCHA_DAILY_LIMIT` 可配置覆盖。<br>- affects: §5 | bench:B-20260813-01
 
 <details><summary>余额与观测（bench:B-20260813-01）</summary>
 
@@ -2561,6 +2556,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-20（日程↔提醒联动与会议邀请邮件草稿 E162）<br>- **变更**：`calendar-skill` 创建日程时按解析时间自动登记提醒（ReminderStore，默认到点，支持“提前 N 分钟/小时”），时间未定诚实提示；查询日程显示“已设提醒/未设提醒”；`office-daily` 邮件模式新增会议邀请草稿（识别“会议邀请/邀请参会/会议通知”，标题含主题+时间，正文含时间/地点/参会人/议程占位并落盘 md）。**验证**：主项目 build；单测 467/467 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 3 条单测（提前量提醒落库、查询带提醒状态、会议邀请草稿）；doc-lint 通过；详见 `docs/plans/2026-08-20-calendar-reminder-email.md`；affects: §6,§8.2,§12.2,§13 | bench:na(new-param) 理由：日历/提醒/邮件草稿联动，无 §5/§6 参数变更。
 ### 2026-08-20（主动提醒管理：列出/取消 E163）<br>- **变更**：`ReminderStore` 新增 `cancel(id)`；`office-daily` 提醒模式扩展为“设置/列出/取消”闭环：列出待触发提醒（编号+时间+内容），取消支持“第 N 条”编号或内容关键词，无目标时诚实提示。**验证**：主项目 build；单测 471/471 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 4 条单测（cancel 往返、列出、按关键词取消、按编号取消）；doc-lint 通过；详见 `docs/plans/2026-08-20-reminder-manage.md`；affects: §8.2,§12.2,§13 | bench:na(new-param) 理由：主动提醒管理扩展，无 §5/§6 参数变更。
 ### 2026-08-20（图片 OCR 文字提取 E164）<br>- **变更**：新增 `scripts/office_image_ocr.py`（Pillow 解码，HEIC 复用既有解码链，RapidOCR/PaddleOCR 识别，`PDF_OCR=0`/`PDF_OCR_ENGINE` 与 pdf_text.py 同款环境开关，失败同时写 stderr 透出原因）；`office-daily` 新增 `image_ocr` 模式（“识别/提取文字”关键词触发），识别结果摘要 + 落盘 txt，引擎缺失诚实提示安装命令。**验证**：主项目 build；单测 473/473 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 2 条单测（PDF_OCR=0 诚实提示、本地 rapidocr 真识别 “OCR TEST 2026”）；doc-lint 通过；详见 `docs/plans/2026-08-20-image-ocr.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手新增图片 OCR 文字提取，无 §5/§6 参数变更。
+### 2026-08-20（重复提醒：每天/每周 E165）<br>- **变更**：`ReminderStore` 表加 `repeat` 列（''/daily/weekly，含 ALTER 迁移），`add` 支持 repeat 且首次时间已过自动顺延到下一未来时刻，`dueReminders` 对重复提醒触发后顺延下一次（离线多日只补发一次防刷屏）；`parseTimeExpression` 支持“周X/下周X/星期X”；`office-daily` 提醒创建识别“每天/每日/每周/每星期”并带周期文案，“工作日/每周末/每月/周X到周X”等复杂周期诚实提示暂不支持，列出/取消兼容重复提醒。**验证**：主项目 build；单测 482/482 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 9 条单测（星期解析 3、重复顺延/离线补发/创建顺延 3、每天/每周/复杂周期提示 3）；doc-lint 通过；详见 `docs/plans/2026-08-20-repeat-reminders.md`；affects: §8.2,§12.2,§13 | bench:na(new-param) 理由：主动提醒新增重复周期与星期时间解析，无 §5/§6 参数变更。
 
 ### v2.5（2026-08-12）
 
