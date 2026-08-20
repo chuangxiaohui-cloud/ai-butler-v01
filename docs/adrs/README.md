@@ -23,3 +23,4 @@
 | ID | 主题 | 状态 | 日期 | 关联文档 |
 |----|------|------|------|----------|
 | [0001](./0001-architecture-foundation.md) | 基础架构：技术选型 / 分层 / 模块划分 | accepted | 2026-08-17 | [目录结构与接口契约](../directory-structure.md) |
+| [0002](./0002-calendar-email-integration.md) | 真实日历/邮件服务接入评估（.ics + SMTP 阶段式） | accepted | 2026-08-21 | `src/skills/calendar-skill/`、`src/reminder/` |
