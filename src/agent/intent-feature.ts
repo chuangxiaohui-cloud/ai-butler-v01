@@ -101,6 +101,8 @@ const ACTION_RE: Array<[ActionType, RegExp]> = [
   ['compare', /对比|比较|对照|PK/],
   ['analyze', ANALYZE_RE],
   ['qa', QA_RE],
+  // E169：日历/日程“导出/保存/下载/ics”视为 query，命中 R004 走 calendar_skill，避免偏到 web_search
+  ['query', /导(?:出|下载).*(日历|日程)|保存.*(?:日历|日程)|(?:日历|日程).*(导出|保存|下载|\.?ics)/i],
   ['query', /查一下|查询|看下|看看|问一下|帮我查|查查/],
   ['summarize', /总结|摘要|提炼|要点|概述|概括/],
   ['extract_structure', /结构|大纲|目录|框架|拆解|分节|章节/],

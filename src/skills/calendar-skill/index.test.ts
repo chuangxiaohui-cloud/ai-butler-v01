@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -201,6 +201,65 @@ test('calendar-skill: 创建每周重复日程（提前量）并查询展示周�
     );
     const listedResult = listed.result as string;
     assert.ok(listedResult.includes('每周重复'));
+  } finally {
+    delete process.env.REMINDERS_DB_PATH;
+    skill.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('calendar-skill: 导出日历生成 ICS（含重复规则与标题）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'calendar-skill-'));
+  const remindersPath = join(dir, 'reminders.db');
+  process.env.REMINDERS_DB_PATH = remindersPath;
+  const skill = createCalendarSkill({
+    dbPath: join(dir, 'calendar.db'),
+    outDir: join(dir, 'out'),
+  });
+  try {
+    await skill.execute(
+      {
+        query: '帮我安排每周一9点的周会',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: { mode: 'create_calendar' },
+      },
+      { callVLM: async () => '' },
+    );
+    await skill.execute(
+      {
+        query: '帮我安排每天9点的站会',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: { mode: 'create_calendar' },
+      },
+      { callVLM: async () => '' },
+    );
+    const exported = await skill.execute(
+      {
+        query: '导出我的日历',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: { mode: 'local_query' },
+      },
+      { callVLM: async () => '' },
+    );
+    const out = exported.result as { answer: string; path: string };
+    assert.ok(out.answer.includes('已导出 2 条日程'));
+    assert.ok(out.path.endsWith('.ics'));
+    assert.ok(existsSync(out.path));
+    const ics = readFileSync(out.path, 'utf-8');
+    assert.ok(ics.startsWith('BEGIN:VCALENDAR'));
+    assert.ok(ics.includes('END:VCALENDAR'));
+    assert.ok(ics.includes('BEGIN:VEVENT'));
+    assert.match(ics, /DTSTART:\d{8}T\d{6}Z/);
+    assert.ok(ics.includes('RRULE:FREQ=WEEKLY'));
+    assert.ok(ics.includes('RRULE:FREQ=DAILY'));
+    assert.ok(ics.includes('周会'));
+    assert.ok(ics.includes('站会'));
   } finally {
     delete process.env.REMINDERS_DB_PATH;
     skill.close();

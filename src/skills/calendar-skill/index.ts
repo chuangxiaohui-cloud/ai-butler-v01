@@ -5,7 +5,7 @@
  * E166：重复日程（每天/每周）复用 ReminderStore.repeat 机制，查询展示周期。
  */
 
-import { mkdirSync } from 'fs';
+import { mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -32,13 +32,36 @@ export function parseLeadMs(query: string): number {
   return m[2] === '小时' ? n * 3_600_000 : n * 60_000;
 }
 
+/** ICS 文本转义：反斜杠/换行/逗号/分号（RFC 5545 文本值） */
+function escapeIcsText(text: string): string {
+  return text
+    .replace(/\\/g, '\\\\')
+    .replace(/\n/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+}
+
+/** ISO 时间 → UTC ICS 时间 YYYYMMDDTHHMMSSZ；无法解析返回空串 */
+function toIcsDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+/** E169：日历/日程导出关键词检测（与意图层一致，避免“查保存的日程”误触发） */
+export function isCalendarExportQuery(query: string): boolean {
+  return /导(?:出|下载).*(日历|日程)|保存.*(?:日历|日程)|(?:日历|日程).*(导出|保存|下载|\.?ics)/i.test(query);
+}
+
 export function createCalendarSkill(
-  opts?: { dbPath?: string },
+  opts?: { dbPath?: string; outDir?: string },
 ): ExecutableSkill & { close(): void } {
   const dbPath =
     opts?.dbPath ??
     process.env.CALENDAR_DB_PATH ??
     join(process.cwd(), 'data', 'calendar.db');
+  const outDir =
+    opts?.outDir ?? process.env.CALENDAR_OUT_DIR ?? join(process.cwd(), 'data', 'office');
   let db: DatabaseSync | null = null;
   function ensureDb(): DatabaseSync {
     if (!db) {
@@ -140,6 +163,72 @@ export function createCalendarSkill(
       }
 
       if (mode === 'query_calendar' || mode === 'local_query' || /查.*(日程|日历|会议)/.test(input.query)) {
+        // E169：导出/保存/下载日历 → 生成 .ics 落盘（空日程诚实提示）
+        if (isCalendarExportQuery(input.query)) {
+          const database = ensureDb();
+          const rows = database
+            .prepare(
+              'SELECT id, title, time_expression, start_at, created_at, repeat FROM calendar_events WHERE user_id = ? ORDER BY created_at ASC',
+            )
+            .all('default') as unknown as Array<{
+            id: number;
+            title: string;
+            time_expression: string;
+            start_at: string;
+            created_at: number;
+            repeat: string;
+          }>;
+          if (rows.length === 0) {
+            return {
+              result: '暂无日程可导出，未生成 ICS 文件。',
+              confidence: 0.7,
+              followUpAction: '先告诉我需要安排的日程，例如“明天上午十点开会”。',
+            };
+          }
+          const nowIcs = toIcsDateTime(new Date().toISOString());
+          const events = rows.map((row) => {
+            const startIcs = toIcsDateTime(
+              row.start_at || new Date(row.created_at).toISOString(),
+            );
+            const rrule =
+              row.repeat === 'daily'
+                ? '\r\nRRULE:FREQ=DAILY'
+                : row.repeat === 'weekly'
+                  ? '\r\nRRULE:FREQ=WEEKLY'
+                  : '';
+            return [
+              'BEGIN:VEVENT',
+              `UID:event-${row.id}@ai-butler.local`,
+              `DTSTAMP:${nowIcs}`,
+              `DTSTART:${startIcs}`,
+              `SUMMARY:${escapeIcsText(row.title)}`,
+              rrule,
+              'END:VEVENT',
+            ]
+              .filter(Boolean)
+              .join('\r\n');
+          });
+          const ics = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//AI-Butler//LocalCalendar//CN',
+            'CALSCALE:GREGORIAN',
+            ...events,
+            'END:VCALENDAR',
+          ].join('\r\n');
+          mkdirSync(outDir, { recursive: true });
+          const filePath = join(outDir, `日历-${Date.now()}.ics`);
+          writeFileSync(filePath, `${ics}\r\n`, 'utf-8');
+          return {
+            result: {
+              answer: `已导出 ${rows.length} 条日程到 ICS 文件：${filePath}`,
+              path: filePath,
+              count: rows.length,
+            },
+            confidence: 0.8,
+            followUpAction: '该 .ics 可导入 Outlook / 苹果日历 / 谷歌日历；需要调整日程或生成会议邀请邮件，随时说。',
+          };
+        }
         // E162：查询时展示提醒状态（提醒库不可用则仅展示日程）
         let reminderKeys = new Set<string>();
         try {

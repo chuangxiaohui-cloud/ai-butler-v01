@@ -53,6 +53,21 @@ test('router-v2: 查日程 → secretary local_query + calendar skill', () => {
   }
 });
 
+test('router-v2: 导出日历/日程 → secretary local_query + calendar skill', () => {
+  for (const q of ['导出我的日历', '把日程导出成ics文件', '保存我的日历到文件']) {
+    const r = routeV2(q);
+    assert.equal(r.features.actionType, 'query');
+    assert.equal(r.features.targetDomain, 'schedule');
+    assert.equal(r.features.searchSourceHint, 'local_skill');
+    assert.equal(r.decision.type, 'direct');
+    if (r.decision.type === 'direct') {
+      assert.equal(r.decision.selected.intent, 'local_query');
+      assert.equal(r.decision.selected.skill, 'calendar_skill');
+      assert.ok(Math.abs(r.decision.selected.confidence - 0.85) < 1e-6);
+    }
+  }
+});
+
 test('router-v2: 发消息 → secretary send_message + im skill', () => {
   const r = routeV2('发消息给老张');
   assert.equal(r.features.actionType, 'send');

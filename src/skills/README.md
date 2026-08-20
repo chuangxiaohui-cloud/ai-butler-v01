@@ -29,7 +29,7 @@ v0.1 冷启动采用 **2 项核心 + 4 项占位** 策略，占位项先建目�
 | `image-analysis/` | 通用图片描述 | 按需 VLM 描述图片内容/文字 | VLM（DI 注入） |
 | `knowledge-qa/` | 文化梗/知识问答 | 简洁作答，已知梗做最小兜底 | 可选文本 LLM |
 | `content-writer/` | 文档/PRD 生成 | 按 query 生成结构化 Markdown 文档 | 文本 LLM |
-| `calendar-skill/` | 本地日历 | 创建/查询日程（SQLite，创建自动登记提醒，支持每天/每周重复） | 无外部依赖 |
+| `calendar-skill/` | 本地日历 | 创建/查询日程 + 导出 .ics（SQLite，创建自动登记提醒，支持每天/每周重复） | 无外部依赖 |
 | `quote-compare/` | 报价对比 | 本地供应商报价库查询/对比（SQLite） | 无外部依赖 |
 | `im-dispatch/` | 消息待发队列 | 写入本地 outbox（SQLite） | 真实 IM 待接 |
 | `engineer/` | 代码实现 | 按需求生成代码/实现方案 | 文本 LLM |
