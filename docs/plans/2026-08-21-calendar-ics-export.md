@@ -45,5 +45,5 @@
 
 - 验证：`npm run build`、`npm run test:all`、`npm exec tsx scripts/doc-lint.ts` 全绿。
 - 测试：单测 495/495 + 1 条 fitz 门控按环境跳过 + 集成 17/17。
-- 提交：`<hash>` · 推送：待 push:hosts
+- 提交：`061c618` · 推送：待 push:hosts
 - 遗留事项：邮件 SMTP 发送（ADR-0002 阶段 1）、ICS 导入。

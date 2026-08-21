@@ -8,6 +8,7 @@
 import { spawn } from 'node:child_process';
 import {
   mkdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -19,6 +20,8 @@ import type { RawFileLike, SkillDeps } from '../deps.js';
 import { extractTimeExpression } from '../../agent/intent-feature.js';
 import { parseTimeExpression, parseRepeatQuery } from '../../agent/time-expression.js';
 import { ReminderStore } from '../../reminder/reminder-store.js';
+import { loadCredentials } from '../../mail/credentials.js';
+import { sendMail } from '../../mail/smtp.js';
 
 type OfficeMode =
   | 'table'
@@ -274,6 +277,72 @@ function extractEmailContext(query: string): string {
     .trim();
 }
 
+/** E170：从查询中提取收件人邮箱（“给/发给/发送给/发送到/发送至 xxx@yyy.com”） */
+function extractMailRecipient(query: string): string {
+  return (
+    query.match(
+      /(?:给|发给|发送给|发送到|发送至)\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/,
+    )?.[1]?.trim() ?? ''
+  );
+}
+
+/** E170：从查询中提取邮件主题（“主题：…/标题：…”） */
+function extractMailSubject(query: string): string {
+  return query.match(/(?:主题|标题)[:：]\s*([^\n，。；,;]+)/)?.[1]?.trim() ?? '';
+}
+
+/** E170：从查询中提取邮件正文（优先“正文：…”，否则去关键词取剩余内容） */
+function extractMailBody(query: string): string {
+  const explicit = query.match(/(?:正文|内容)[:：]\s*([\s\S]+)/);
+  if (explicit) return explicit[1].trim();
+  return query
+    .replace(
+      /(?:发送|发给|发送给|发送到|发送至)\s*[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,
+      '',
+    )
+    .replace(/(?:主题|标题)[:：]\s*[^\n，。；,;]+/g, '')
+    .replace(/发送邮件|把.*邮件.*发(?:出去|出)|发邮件|发信|帮我|请/g, '')
+    .replace(/^[，。！!？?；;：:\s]+/, '')
+    .trim();
+}
+
+/** E170：从草稿 Markdown 中解析标题（## 标题） */
+function draftTitle(body: string): string {
+  return body.match(/## 标题\s*\n([^\n]+)/)?.[1]?.trim() ?? '';
+}
+
+/** E170：从草稿 Markdown 中解析正文（## 正文） */
+function draftText(body: string): string {
+  const m = body.match(/## 正文\s*\n([\s\S]+)/);
+  return m ? m[1].trim() : body.trim();
+}
+
+interface LatestDraft {
+  to: string;
+  subject: string;
+  text: string;
+  savedAt: number;
+}
+
+/** E170：落盘最近一次草稿，支持“把刚才那封发出去”两段式发送 */
+function saveLatestDraft(mailDir: string, draft: { to: string; subject: string; text: string }): void {
+  mkdirSync(mailDir, { recursive: true });
+  const payload: LatestDraft = { ...draft, savedAt: Date.now() };
+  writeFileSync(join(mailDir, 'latest-draft.json'), `${JSON.stringify(payload, null, 2)}\n`, 'utf-8');
+}
+
+function loadLatestDraft(mailDir: string): LatestDraft | null {
+  try {
+    const raw = readFileSync(join(mailDir, 'latest-draft.json'), 'utf-8');
+    const parsed = JSON.parse(raw) as LatestDraft;
+    if (typeof parsed.to !== 'string' || typeof parsed.subject !== 'string' || typeof parsed.text !== 'string') {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 function runPython(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     let lastError: Error | null = null;
@@ -348,6 +417,7 @@ export function accentFromQuery(query: string): string | undefined {
 
 export function createOfficeDailySkill(opts?: {
   outDir?: string;
+  mailDir?: string;
 }): ExecutableSkill {
   return {
     name: 'office-daily',
@@ -368,6 +438,7 @@ export function createOfficeDailySkill(opts?: {
     ],
     async execute(input: SkillInput, deps: SkillDeps): Promise<SkillOutput> {
       const outDir = opts?.outDir ?? join(process.cwd(), 'data', 'office');
+      const mailDir = opts?.mailDir ?? join(process.cwd(), 'data', 'mail');
       mkdirSync(outDir, { recursive: true });
       const mode = modeFrom(input.query);
 
@@ -947,6 +1018,67 @@ export function createOfficeDailySkill(opts?: {
       }
 
       if (mode === 'email') {
+        // E170：显式“发送/发出去/发给/发信”→ SMTP 发送（先取查询内信息，缺项回退最近草稿）
+        const isSendIntent =
+          /发送|发出去|发出|发信/.test(input.query) ||
+          (!/^(请|帮我|麻烦你)?(写|起草|生成|草拟)/.test(input.query) && /发给/.test(input.query));
+        if (isSendIntent) {
+          const draft = loadLatestDraft(mailDir);
+          const to = extractMailRecipient(input.query) || draft?.to || '';
+          const subject = extractMailSubject(input.query) || draft?.subject || '';
+          const text = extractMailBody(input.query) || draft?.text || '';
+          if (!to) {
+            return {
+              result: { answer: '请告诉我要发送给谁，例如“发送邮件给 xxx@example.com，主题：…，正文：…”。' },
+              confidence: 0.4,
+            };
+          }
+          if (!subject) {
+            return {
+              result: { answer: '请补充邮件主题，例如“主题：下周方案”。' },
+              confidence: 0.4,
+            };
+          }
+          if (!text) {
+            return {
+              result: { answer: '请补充邮件正文，例如“正文：下周给您完整方案。”' },
+              confidence: 0.4,
+            };
+          }
+          const creds = loadCredentials(join(mailDir, 'mail-credentials.json'));
+          if (!creds) {
+            return {
+              result: {
+                answer:
+                  '还没配置邮箱账号，我不会发送。请先运行 npm run mail:config 配置 SMTP 服务器、账号与授权码，例如：npm run mail:config -- --host smtp.qq.com --port 465 --secure 1 --user you@qq.com --pass <授权码> --from you@qq.com',
+              },
+              confidence: 0.4,
+              followUpAction: '配置完成后再说“发送邮件给 …”即可发信。',
+            };
+          }
+          try {
+            const sent = await sendMail(creds, { to, subject, text });
+            return {
+              result: {
+                answer: `邮件已发送：发件人 ${creds.from} → 收件人 ${sent.accepted}，主题：${subject}${sent.messageId ? `（Message-ID：${sent.messageId}）` : ''}`,
+                from: creds.from,
+                to: sent.accepted,
+                subject,
+                messageId: sent.messageId,
+              },
+              confidence: 0.9,
+              followUpAction: '需要再写或发送其他邮件，随时说。',
+            };
+          } catch (err) {
+            return {
+              result: {
+                answer: `邮件发送失败：${err instanceof Error ? err.message : String(err)}`,
+              },
+              confidence: 0.2,
+              followUpAction: '请检查 data/mail/mail-credentials.json 的服务器/端口/授权码，或稍后重试。',
+            };
+          }
+        }
         // E162：会议邀请草稿（主题+时间+参会人/议程占位）
         if (/会议邀请|邀请.*(参会|参加|来开会|开会|会议)|通知.*会议|会议.*通知/.test(input.query)) {
           const timeExpression = extractTimeExpression(input.query);
@@ -981,6 +1113,11 @@ ${timeLabel}
 ## 落款
 您的助理`;
           const path = join(outDir, `会议邀请-${Date.now()}.md`);
+          saveLatestDraft(mailDir, {
+            to: extractMailRecipient(input.query),
+            subject: topic,
+            text: body.trim(),
+          });
           writeFileSync(path, body.trim() + '\n', 'utf-8');
           return {
             result: { answer: `已生成会议邀请邮件草稿：${path}`, path, email: body.trim() },
@@ -1003,6 +1140,11 @@ ${timeLabel}
             )
           : `# 回复邮件\n\n## 标题\n${context || '回复：'}\n\n## 正文\n待补充。`;
         const path = join(outDir, `回复邮件-${Date.now()}.md`);
+        saveLatestDraft(mailDir, {
+          to: extractMailRecipient(input.query),
+          subject: draftTitle(body) || context || '回复',
+          text: draftText(body),
+        });
         writeFileSync(path, body.trim() + '\n', 'utf-8');
         return {
           result: { answer: `已生成回复邮件草稿：${path}`, path, email: body.trim() },
@@ -1341,3 +1483,12 @@ ${timeLabel}
     },
   };
 }
+
+
+
+
+
+
+
+
+

@@ -96,13 +96,15 @@ const ACTION_RE: Array<[ActionType, RegExp]> = [
     /急救|120|119|110|火灾|地震|溺水|落水|触电|电击|大出血|呼吸困难|窒息|蛇咬|毒蛇|咬伤|中毒|昏迷|心梗|胸痛|心肌梗死|跟踪|遇袭|抢劫|挟持/,
   ],
   ['cultural_reference', /小鸡啄米|唐伯虎|周星驰|星爷|梗|名场面|表情包|meme|经典桥段|鬼畜|抽象|玩梗/],
-  ['office_daily', /考勤表|部门占比|回复邮件|写.*邮件|邮件.*回复|压缩.*(KB|图片)|图片.*压缩|表格模板|占比|PPT|幻灯片|汇报|Word|docx|PDF.*(转|换)成Word|转成Word|转Word|PDF.*(合并|加密|加锁|压缩)|(合并|加密|加锁|压缩).*PDF|转成\s*(png|jpe?g|webp|bmp|heic|heif|avif|tiff?)|图片.*格式|HEIC|HEIF|AVIF|排版|Excel|xlsx|主动提醒|提醒我|设置提醒/i],
+  ['office_daily', /发.*邮件|发送.*邮件|邮件.*(发送|发出)|把.*邮件.*发|考勤表|部门占比|回复邮件|写.*邮件|邮件.*回复|压缩.*(KB|图片)|图片.*压缩|表格模板|占比|PPT|幻灯片|汇报|Word|docx|PDF.*(转|换)成Word|转成Word|转Word|PDF.*(合并|加密|加锁|压缩)|(合并|加密|加锁|压缩).*PDF|转成\s*(png|jpe?g|webp|bmp|heic|heif|avif|tiff?)|图片.*格式|HEIC|HEIF|AVIF|排版|Excel|xlsx|主动提醒|提醒我|设置提醒/i],
   ['learn_video', /学习这个视频|视频学习|视频总结|总结这个视频/],
   ['compare', /对比|比较|对照|PK/],
   ['analyze', ANALYZE_RE],
   ['qa', QA_RE],
   // E169：日历/日程“导出/保存/下载/ics”视为 query，命中 R004 走 calendar_skill，避免偏到 web_search
   ['query', /导(?:出|下载).*(日历|日程)|保存.*(?:日历|日程)|(?:日历|日程).*(导出|保存|下载|\.?ics)/i],
+  // E171：日历/日程“导入/读取 .ics”视为 query，命中 R004 走 calendar_skill，避免偏到 web_search
+  ['query', /导(?:入|进).*(日历|日程|ics)|(?:日历|日程|ics).*导(?:入|进)/i],
   ['query', /查一下|查询|看下|看看|问一下|帮我查|查查/],
   ['summarize', /总结|摘要|提炼|要点|概述|概括/],
   ['extract_structure', /结构|大纲|目录|框架|拆解|分节|章节/],
@@ -118,7 +120,7 @@ const ACTION_RE: Array<[ActionType, RegExp]> = [
 ];
 
 const DOMAIN_RE: Array<[TargetDomain, RegExp]> = [
-  ['schedule', /日程|安排|会议|日历|提醒|待办/],
+  ['schedule', /日程|安排|会议|日历|提醒|待办|\.ics/],
   ['message', /消息|邮件|微信|QQ|飞书|老张/],
   ['security', /安全|权限|危险|急救|病毒/],
   ['search', /搜索|最新|行情|天气|价格|库存|评测|资料/],

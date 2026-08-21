@@ -5,7 +5,7 @@
  * E166：重复日程（每天/每周）复用 ReminderStore.repeat 机制，查询展示周期。
  */
 
-import { mkdirSync, writeFileSync } from 'fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -49,6 +49,89 @@ function toIcsDateTime(iso: string): string {
 }
 
 /** E169：日历/日程导出关键词检测（与意图层一致，避免“查保存的日程”误触发） */
+/** E171：日历/日程导入关键词检测（与意图层一致） */
+export function isCalendarImportQuery(query: string): boolean {
+  return /导(?:入|进).*(日历|日程|ics)|(?:日历|日程|ics).*导(?:入|进)/i.test(query);
+}
+
+/** ICS 转义文本反转义：\\n→换行、\\,→逗号、\\;→分号、\\\\→反斜杠 */
+function unescapeIcsText(text: string): string {
+  return text
+    .replace(/\\n/g, '\n')
+    .replace(/\\,/g, ',')
+    .replace(/\\;/g, ';')
+    .replace(/\\\\/g, '\\');
+}
+
+/** 展开 RFC 5545 折叠行（续行以空格/制表符开头） */
+function unfoldIcs(text: string): string {
+  return text.replace(/\r?\n[ \t]/g, '');
+}
+
+/** 取属性值：忽略 DTSTART;VALUE=DATE 等参数，返回冒号后的值 */
+function icsValue(body: string, key: string): string {
+  const m = body.match(new RegExp(`^${key}(?:;[^\\r\\n:]*)?:(.*)$`, 'im'));
+  return m?.[1]?.trim() ?? '';
+}
+
+/** DTSTART → ISO 字符串；支持 UTC（Z）、本地时间、全天日期；无法解析返回空串 */
+function icsStartToIso(dtstart: string): string {
+  const m = dtstart.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?/);
+  if (!m) return '';
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const h = Number(m[4] ?? 0);
+  const mi = Number(m[5] ?? 0);
+  const s = Number(m[6] ?? 0);
+  if (m[7]) {
+    return new Date(Date.UTC(y, mo - 1, d, h, mi, s)).toISOString();
+  }
+  if (!m[4]) {
+    // 全天日期：按当天 00:00（UTC 表示）
+    return new Date(Date.UTC(y, mo - 1, d)).toISOString();
+  }
+  // 无时区：按本地时间解析
+  return new Date(y, mo - 1, d, h, mi, s).toISOString();
+}
+
+export interface IcsEvent {
+  uid: string;
+  summary: string;
+  dtstart: string;
+  startAtIso: string;
+  rrule: string;
+  repeat: 'daily' | 'weekly' | '';
+  complexRepeat: boolean;
+}
+
+/** 解析 .ics 文本为日程列表（支持多 VEVENT；无 DTSTART 的事件丢弃） */
+export function parseIcs(text: string): IcsEvent[] {
+  const unfolded = unfoldIcs(text.replace(/^\uFEFF/, ''));
+  const blocks = unfolded.split(/BEGIN:VEVENT/i).slice(1);
+  const events: IcsEvent[] = [];
+  for (const block of blocks) {
+    const end = block.search(/END:VEVENT/i);
+    const body = end >= 0 ? block.slice(0, end) : block;
+    const summary = unescapeIcsText(icsValue(body, 'SUMMARY')) || '未命名日程';
+    const dtstart = icsValue(body, 'DTSTART');
+    if (!dtstart) continue;
+    const rrule = icsValue(body, 'RRULE');
+    const freq = rrule.match(/FREQ=(\w+)/i)?.[1]?.toUpperCase() ?? '';
+    const repeat = freq === 'DAILY' ? 'daily' : freq === 'WEEKLY' ? 'weekly' : '';
+    events.push({
+      uid: icsValue(body, 'UID') || '',
+      summary,
+      dtstart,
+      startAtIso: icsStartToIso(dtstart),
+      rrule,
+      repeat,
+      complexRepeat: freq !== '' && repeat === '',
+    });
+  }
+  return events;
+}
+
 export function isCalendarExportQuery(query: string): boolean {
   return /导(?:出|下载).*(日历|日程)|保存.*(?:日历|日程)|(?:日历|日程).*(导出|保存|下载|\.?ics)/i.test(query);
 }
@@ -98,6 +181,77 @@ export function createCalendarSkill(
     triggers: ['日程', '会议', '安排', '预约', '日历'],
     async execute(input: SkillInput, _deps: SkillDeps): Promise<SkillOutput> {
       const mode = typeof input.params?.mode === 'string' ? input.params.mode : '';
+      // E171：导入 .ics 文件（附件或查询显式路径）→ 解析并写入本地日历
+      if (isCalendarImportQuery(input.query)) {
+        let icsText = '';
+        const attached = input.rawFiles.find(
+          (f) => /\.ics$/i.test(f.name) || f.type.includes('calendar'),
+        );
+        if (attached) {
+          const buf = Buffer.from(await attached.arrayBuffer());
+          icsText = buf.toString('utf-8');
+        } else {
+          const pathMatch = input.query.match(
+            /([A-Za-z]:[\\/][^\s，。；;]+\.ics|[\\/][^\s，。；;]+\.ics)/i,
+          );
+          if (pathMatch) {
+            try {
+              icsText = readFileSync(pathMatch[1].trim(), 'utf-8');
+            } catch (err) {
+              return {
+                result: `无法读取文件：${pathMatch[1].trim()}（${err instanceof Error ? err.message : String(err)}）`,
+                confidence: 0.3,
+                followUpAction: '请确认路径正确，或直接上传 .ics 文件。',
+              };
+            }
+          }
+        }
+        if (!icsText.trim()) {
+          return {
+            result: '请上传 .ics 文件，或告诉我文件路径（例如 M:\\events.ics），我来导入日程。',
+            confidence: 0.4,
+          };
+        }
+        const parsed = parseIcs(icsText);
+        if (parsed.length === 0) {
+          return {
+            result: '未在文件中解析到可导入的日程，请确认这是标准 iCalendar（.ics）文件。',
+            confidence: 0.4,
+          };
+        }
+        const database = ensureDb();
+        const now = Date.now();
+        let imported = 0;
+        let skipped = 0;
+        const seen = new Set<string>();
+        for (const ev of parsed) {
+          if (ev.complexRepeat || !ev.startAtIso) {
+            skipped += 1;
+            continue;
+          }
+          const dedupKey = `${ev.summary}|${ev.startAtIso}|${ev.repeat}`;
+          if (seen.has(dedupKey)) continue;
+          seen.add(dedupKey);
+          database
+            .prepare(
+              `INSERT INTO calendar_events (user_id, title, time_expression, start_at, created_at, repeat)
+               VALUES (?, ?, ?, ?, ?, ?)`,
+            )
+            .run('default', ev.summary, `导入：${ev.dtstart}`, ev.startAtIso, now, ev.repeat);
+          imported += 1;
+        }
+        let answer = `已从 .ics 导入 ${imported} 条日程`;
+        if (skipped > 0) {
+          answer += `，跳过 ${skipped} 条（无有效时间或每月/每年等复杂重复暂不支持）`;
+        }
+        answer += '；导入不自动设置提醒，需要提醒可单独说。';
+        return {
+          result: { answer, count: imported, skipped },
+          confidence: 0.85,
+          followUpAction: '可以查询日程确认，或继续导入其他日历文件。',
+        };
+      }
+
       if (mode === 'create_calendar' || /安排|预约|帮我订/.test(input.query)) {
         // E166：周期识别与复杂周期诚实提示（与提醒共用 time-expression 助手）
         const { repeat, timeExpression, complexPeriod } = parseRepeatQuery(input.query);
@@ -288,3 +442,4 @@ export function createCalendarSkill(
     },
   });
 }
+

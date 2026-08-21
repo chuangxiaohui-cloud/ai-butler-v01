@@ -326,6 +326,45 @@ test('router-v2: 考勤表模板 → office-daily', () => {
   }
 });
 
+test('router-v2: 导入日历文件 → calendar_skill local_query', () => {
+  const r = routeV2('导入这个日历文件');
+  assert.equal(r.features.actionType, 'query');
+  assert.equal(r.features.targetDomain, 'schedule');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'local_query');
+    assert.equal(r.decision.selected.skill, 'calendar_skill');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
+test('router-v2: 导入路径 .ics → calendar_skill local_query', () => {
+  const r = routeV2('导入 C:\\Users\\me\\events.ics');
+  assert.equal(r.features.actionType, 'query');
+  assert.equal(r.features.targetDomain, 'schedule');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.skill, 'calendar_skill');
+  }
+});
+
+test('router-v2: 发送邮件 → office-daily（不再偏到 im_dispatch）', () => {
+  const r = routeV2('发送邮件给 boss@example.com，主题：周报，正文：见附件');
+  assert.equal(r.features.actionType, 'office_daily');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'office_daily');
+    assert.equal(r.decision.selected.executor, 'office_daily');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
+test('router-v2: 发微信消息仍走 im_dispatch', () => {
+  const r = routeV2('发消息给老张，说晚上一起吃饭');
+  assert.equal(r.features.actionType, 'send');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.skill, 'im_dispatch');
+  }
+});
 test('router-v2: 项目汇报PPT → office-daily', () => {
   const r = routeV2('帮我做一份项目汇报PPT');
   assert.equal(r.features.actionType, 'office_daily');
@@ -552,3 +591,4 @@ test('router-v2: 直接写入盘符路径 → project_writer', () => {
     assert.equal(r.decision.selected.executor, 'project_writer');
   }
 });
+

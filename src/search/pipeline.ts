@@ -201,9 +201,10 @@ export async function pipeline(
     ? [...memoryNotes, ...memoryBlock.split('\n').filter((line) => line.trim())]
     : memoryNotes;
 
-  // 本地写路径需要原始 query 路由，Stage 1 脱敏会剥掉盘符
+  // 本地写路径 / .ics 导入路径需要原始 query 路由，Stage 1 脱敏会剥掉盘符
   const routeQuery =
-    /(?:写入|保存到|写到|落地到)\s+[A-Za-z]:\\/.test(prepared.originalQuery)
+    /(?:写入|保存到|写到|落地到)\s+[A-Za-z]:\\/.test(prepared.originalQuery) ||
+    /[A-Za-z]:\\[^\s]*\.ics/i.test(prepared.originalQuery)
       ? prepared.originalQuery
       : prepared.cleanQuery;
 
@@ -452,9 +453,12 @@ export async function pipeline(
             : {}),
           ...(deps.browserSession ? { browserSession: deps.browserSession } : {}),
         };
-        // 本地打包需要原始路径，不能用 Stage 1 脱敏后的 cleanQuery（Windows 路径会被剥掉）
+        // 本地打包 / .ics 导入需要原始路径，不能用 Stage 1 脱敏后的 cleanQuery（Windows 路径会被剥掉）
         const skillInputQuery =
-          skillName === 'project-packager' || skillName === 'project-writer'
+          skillName === 'project-packager' ||
+          skillName === 'project-writer' ||
+          (skillName === 'calendar-skill' &&
+            /[A-Za-z]:\\[^\s]*\.ics/i.test(prepared.originalQuery))
             ? prepared.originalQuery
             : prepared.cleanQuery;
         const output = await skill.execute(

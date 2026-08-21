@@ -428,6 +428,50 @@ test('pipeline: 本地日历查询走 calendar-skill 执行', async () => {
   assert.ok(r.answer.includes('日程'));
 });
 
+test('pipeline: 显式 .ics 路径导入走 calendar-skill 并入库', async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-ics-'));
+  const oldCal = process.env.CALENDAR_DB_PATH;
+  const oldRem = process.env.REMINDERS_DB_PATH;
+  process.env.CALENDAR_DB_PATH = join(dir, 'calendar.db');
+  process.env.REMINDERS_DB_PATH = join(dir, 'reminders.db');
+  const icsPath = join(dir, 'events.ics');
+  writeFileSync(
+    icsPath,
+    [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//T//CN',
+      'BEGIN:VEVENT',
+      'UID:1@t',
+      'DTSTAMP:20260821T000000Z',
+      'DTSTART:20260822T100000Z',
+      'SUMMARY:导入测试会',
+      'END:VEVENT',
+      'BEGIN:VEVENT',
+      'UID:2@t',
+      'DTSTAMP:20260821T000000Z',
+      'DTSTART:20260823T090000Z',
+      'RRULE:FREQ=MONTHLY',
+      'SUMMARY:每月复杂重复',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n') + '\r\n',
+    'utf-8',
+  );
+  try {
+    const freshModule = './pipeline.js?cal-ics-e2e';
+    const { pipeline: freshPipeline } = await import(freshModule);
+    const r = await freshPipeline(`导入 ${icsPath}`, { ...deps, llm: undefined });
+    assert.ok(r.answer.includes('已从 .ics 导入 1 条日程'), r.answer);
+    const q = await freshPipeline('查一下我今天的日程', { ...deps, llm: undefined });
+    assert.ok(q.answer.includes('导入测试会'), q.answer);
+  } finally {
+    process.env.CALENDAR_DB_PATH = oldCal;
+    process.env.REMINDERS_DB_PATH = oldRem;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('pipeline: 发消息走 im-dispatch 待发送队列', async () => {
   const r = await pipeline('发消息给老张，说明天下午开会', deps);
   assert.ok(r.answer.includes('pending'));

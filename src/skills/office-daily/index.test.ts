@@ -1,11 +1,13 @@
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
+import { createServer as createNetServer, type Socket } from 'node:net';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
 import { ReminderStore } from '../../reminder/reminder-store.js';
+import { saveCredentials } from '../../mail/credentials.js';
 import { accentFromQuery, createOfficeDailySkill } from './index.js';
 
 const RUNTIME_PYTHON =
@@ -1214,3 +1216,219 @@ print(base64.b64encode(buf.getvalue()).decode())`,
     rmSync(dir, { recursive: true, force: true });
   }
 });
+function startFakeSmtpServer(): Promise<{
+  port: number;
+  transcript: string[];
+  close(): Promise<void>;
+}> {
+  const transcript: string[] = [];
+  const server = createNetServer((socket: Socket) => {
+    socket.setEncoding('utf8');
+    socket.write('220 test.local ESMTP ready\r\n');
+    let inData = false;
+    let buffer = '';
+    socket.on('data', (chunk: string) => {
+      buffer += chunk;
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const raw of lines) {
+        const line = raw.replace(/\r$/, '');
+        if (inData) {
+          if (line === '.') {
+            inData = false;
+            socket.write('250 2.0.0 Ok: queued as <test-message-id>\r\n');
+          }
+          continue;
+        }
+        transcript.push(line);
+        const cmd = line.toUpperCase();
+        if (cmd.startsWith('EHLO')) {
+          socket.write('250-test.local\r\n250 AUTH LOGIN\r\n');
+        } else if (cmd === 'AUTH LOGIN') {
+          socket.write('334 VXNlcm5hbWU6\r\n');
+        } else if (line === Buffer.from('you@qq.com').toString('base64')) {
+          socket.write('334 UGFzc3dvcmQ6\r\n');
+        } else if (line === Buffer.from('authcode').toString('base64')) {
+          socket.write('235 2.7.0 Authentication successful\r\n');
+        } else if (cmd.startsWith('MAIL FROM')) {
+          socket.write('250 2.1.0 Ok\r\n');
+        } else if (cmd.startsWith('RCPT TO')) {
+          socket.write('250 2.1.5 Ok\r\n');
+        } else if (cmd === 'DATA') {
+          inData = true;
+          socket.write('354 End data with <CR><LF>.<CR><LF>\r\n');
+        } else if (cmd === 'QUIT') {
+          socket.write('221 2.0.0 Bye\r\n');
+          socket.end();
+        } else {
+          socket.write('250 Ok\r\n');
+        }
+      }
+    });
+  });
+  return new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      resolve({
+        port,
+        transcript,
+        close: async () => {
+          server.close();
+        },
+      });
+    });
+  });
+}
+
+test('office-daily: 发送邮件未配置凭据 → 诚实提示不发送', async () => {
+  const dir = tempDir();
+  try {
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir: join(dir, 'mail') });
+    const out = await skill.execute(
+      {
+        query: '发送邮件给 rcpt@example.com，主题：测试，正文：你好',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('mail:config'));
+    assert.ok(result.answer?.includes('不会发送'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 发送邮件缺收件人 → 诚实提示', async () => {
+  const dir = tempDir();
+  try {
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir: join(dir, 'mail') });
+    const out = await skill.execute(
+      {
+        query: '发送邮件，主题：测试，正文：你好',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('发送给谁'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 发送邮件（已配置凭据 + 假 SMTP 服务器）→ 真发成功', async () => {
+  const dir = tempDir();
+  const fake = await startFakeSmtpServer();
+  try {
+    const mailDir = join(dir, 'mail');
+    saveCredentials(
+      {
+        host: '127.0.0.1',
+        port: fake.port,
+        secure: false,
+        user: 'you@qq.com',
+        pass: 'authcode',
+        from: 'you@qq.com',
+      },
+      join(mailDir, 'mail-credentials.json'),
+    );
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir });
+    const out = await skill.execute(
+      {
+        query: '发送邮件给 rcpt@example.com，主题：测试主题，正文：你好，请查收。',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; from?: string; to?: string; subject?: string };
+    assert.ok(result.answer?.includes('邮件已发送'), result.answer);
+    assert.ok(result.answer?.includes('you@qq.com'));
+    assert.ok(result.answer?.includes('rcpt@example.com'));
+    assert.ok(result.answer?.includes('测试主题'));
+    assert.equal(result.from, 'you@qq.com');
+    assert.equal(result.to, 'rcpt@example.com');
+    assert.equal(result.subject, '测试主题');
+    assert.ok(fake.transcript.includes(`RCPT TO:<rcpt@example.com>`));
+    assert.ok(fake.transcript.includes('DATA'));
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 写邮件发给客户 → 仍走草稿而非发送', async () => {
+  const dir = tempDir();
+  try {
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir: join(dir, 'mail') });
+    const out = await skill.execute(
+      {
+        query: '写封邮件发给客户，说明下周交付',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('回复邮件草稿'), result.answer);
+    assert.ok(!result.answer?.includes('发送给谁'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 写草稿 → 把刚才那封发出去（两段式发送）', async () => {
+  const dir = tempDir();
+  const fake = await startFakeSmtpServer();
+  try {
+    const mailDir = join(dir, 'mail');
+    saveCredentials(
+      {
+        host: '127.0.0.1',
+        port: fake.port,
+        secure: false,
+        user: 'you@qq.com',
+        pass: 'authcode',
+        from: 'you@qq.com',
+      },
+      join(mailDir, 'mail-credentials.json'),
+    );
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir });
+    const draft = await skill.execute(
+      {
+        query: '写一封回复邮件给 rcpt@example.com，谢谢客户提供的资料',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const draftResult = draft.result as { answer?: string };
+    assert.ok(draftResult.answer?.includes('回复邮件草稿'));
+    const out = await skill.execute(
+      {
+        query: '把刚才那封邮件发出去',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; to?: string };
+    assert.ok(result.answer?.includes('邮件已发送'), result.answer);
+    assert.equal(result.to, 'rcpt@example.com');
+    assert.ok(fake.transcript.includes(`RCPT TO:<rcpt@example.com>`));
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
