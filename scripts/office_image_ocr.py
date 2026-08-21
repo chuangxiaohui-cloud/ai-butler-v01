@@ -8,6 +8,7 @@
 import csv
 import io
 import json
+import math
 import os
 import pathlib
 import re
@@ -320,6 +321,8 @@ def detect_merges(
                 r0, r1 = y_strong[0], y_strong[-1]
             else:
                 r0, r1 = r, r
+            if c1 == c0 and r1 == r0:
+                continue  # bbox 未真正跨多格（如文本底边越过网格线几像素），不是合并
             # 冲突校验：覆盖区内除锚点外必须为空，否则不强行合并
             conflict = False
             for rr in range(r0, r1 + 1):
@@ -369,6 +372,7 @@ def detect_merges(
     if rows > 1:
         max_filled = max(sum(1 for its in row if its) for row in cell_items)
         band = min(2, rows)
+        band_v = min(3, rows)  # E177：垂直组标签/角落合并可向上扩展到第 3 行
         # 阶段 A：整行居中标题
         for hr in range(band):
             row_filled = sum(1 for its in cell_items[hr] if its)
@@ -424,7 +428,7 @@ def detect_merges(
                                 covered.add((hr, cc))
                             continue
         # 阶段 B：垂直组标签 / 角落合并（L 形表头）
-        for hr in range(1, band):
+        for hr in range(1, band_v):
             for c in range(cols):
                 if not cell_items[hr][c]:
                     continue
@@ -519,6 +523,8 @@ def detect_merges(
                 else:
                     # 内部空区间：按距中点更近的分组锚点（如“华东”跨第 1、2 列）
                     left, right = start - 1, end + 1
+                    if not cell_items[hr][left] or not cell_items[hr][right]:
+                        continue
                     run_cx = 0.5 * (col_bounds[start - 1] + col_bounds[end])
                     l_bb = _bbox_of(cell_items[hr][left])
                     r_bb = _bbox_of(cell_items[hr][right])
@@ -568,10 +574,47 @@ def load_image(src: str):
     return np.asarray(img)
 
 
+
+def deskew_image(arr):
+    """E178：估计并纠正轻微倾斜（±5°）的表格图，返回 (纠正后数组, 角度)。
+    用 Hough 直线检测近水平网格线的中位角作为倾斜角，|角度| < 0.25° 视为无需纠正。
+    cv2 缺失时回退原图（表格模式退化为文本聚类路径，不抛错）。"""
+    try:
+        import cv2
+    except ImportError:
+        return arr, 0.0
+
+    import math
+
+    import numpy as np
+
+    gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY) if arr.ndim == 3 else arr
+    _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    min_len = max(60, int(0.3 * min(gray.shape[:2])))
+    segs = cv2.HoughLinesP(bw, 1, math.pi / 720, threshold=80, minLineLength=min_len, maxLineGap=8)
+    angles: list[float] = []
+    if segs is not None:
+        for x1, y1, x2, y2 in segs[:, 0]:
+            ang = math.degrees(math.atan2(y2 - y1, x2 - x1))
+            if abs(ang) < 45:
+                angles.append(ang)
+    if not angles:
+        return arr, 0.0
+    angle = float(np.median(angles))
+    if abs(angle) < 0.25:
+        return arr, 0.0
+    h, w = gray.shape[:2]
+    matrix = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
+    corrected = cv2.warpAffine(
+        arr, matrix, (w, h), flags=cv2.INTER_CUBIC,
+        borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255),
+    )
+    return corrected, angle
+
 def run_ocr(engine, src: str):
     """解码 + 识别，返回 (items, error)；失败时 error 非空。"""
     try:
-        arr = load_image(src)
+        arr = load_image(src) if isinstance(src, str) else src
         result = engine(arr)
         return extract_boxes(result), None
     except Exception as exc:
@@ -590,12 +633,14 @@ def main() -> int:
             engine, err = get_engine()
             if engine is None:
                 return fail(err or "OCR 引擎不可用")
-            items, run_err = run_ocr(engine, src)
+            arr_src = load_image(src)
+            corrected, _skew = deskew_image(arr_src)
+            items, run_err = run_ocr(engine, corrected)
             if run_err:
                 return fail(run_err)
             items = items or []
             # E174：优先网格线重建（行列结构精确），无网格回退文本聚类
-            grid_lines = detect_table_lines(load_image(src))
+            grid_lines = detect_table_lines(corrected)
             if grid_lines:
                 x_edges, y_edges = grid_lines
                 grid, rows, cols, cell_items, col_cx, row_anchors = reconstruct_grid(

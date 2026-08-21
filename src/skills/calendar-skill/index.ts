@@ -136,6 +136,116 @@ export function isCalendarExportQuery(query: string): boolean {
   return /导(?:出|下载).*(日历|日程)|保存.*(?:日历|日程)|(?:日历|日程).*(导出|保存|下载|\.?ics)/i.test(query);
 }
 
+/** E179：打开（必要时创建）本地日历库，返回 DatabaseSync（调用方负责 close） */
+export function openCalendarDb(dbPath?: string): DatabaseSync {
+  const resolved =
+    dbPath ?? process.env.CALENDAR_DB_PATH ?? join(process.cwd(), 'data', 'calendar.db');
+  mkdirSync(dirname(resolved), { recursive: true });
+  const database = new DatabaseSync(resolved);
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS calendar_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      time_expression TEXT NOT NULL,
+      start_at TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      repeat TEXT NOT NULL DEFAULT ''
+    );
+  `);
+  try {
+    database.exec("ALTER TABLE calendar_events ADD COLUMN start_at TEXT NOT NULL DEFAULT ''");
+  } catch {
+    // 列已存在则跳过
+  }
+  try {
+    database.exec("ALTER TABLE calendar_events ADD COLUMN repeat TEXT NOT NULL DEFAULT ''");
+  } catch {
+    // 列已存在则跳过
+  }
+  return database;
+}
+
+/** E179：本地日历 → ICS 文本（全部日程按创建时间升序）；空库 count=0 */
+export function buildCalendarIcs(
+  database: DatabaseSync,
+  now = new Date(),
+): { ics: string; count: number } {
+  const rows = database
+    .prepare(
+      'SELECT id, title, time_expression, start_at, created_at, repeat FROM calendar_events WHERE user_id = ? ORDER BY created_at ASC',
+    )
+    .all('default') as unknown as Array<{
+    id: number;
+    title: string;
+    time_expression: string;
+    start_at: string;
+    created_at: number;
+    repeat: string;
+  }>;
+  const nowIcs = toIcsDateTime(now.toISOString());
+  const events = rows.map((row) => {
+    const startIcs = toIcsDateTime(
+      row.start_at || new Date(row.created_at).toISOString(),
+    );
+    const rrule =
+      row.repeat === 'daily'
+        ? '\r\nRRULE:FREQ=DAILY'
+        : row.repeat === 'weekly'
+          ? '\r\nRRULE:FREQ=WEEKLY'
+          : '';
+    return [
+      'BEGIN:VEVENT',
+      `UID:event-${row.id}@ai-butler.local`,
+      `DTSTAMP:${nowIcs}`,
+      `DTSTART:${startIcs}`,
+      `SUMMARY:${escapeIcsText(row.title)}`,
+      rrule,
+      'END:VEVENT',
+    ]
+      .filter(Boolean)
+      .join('\r\n');
+  });
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//AI-Butler//LocalCalendar//CN',
+    'CALSCALE:GREGORIAN',
+    ...events,
+    'END:VCALENDAR',
+  ].join('\r\n');
+  return { ics, count: rows.length };
+}
+
+/** E179：解析 .ics 文本并写入本地日历（无有效时间/复杂重复跳过）；返回计数 */
+export function importIcsToDb(
+  database: DatabaseSync,
+  icsText: string,
+  now = Date.now(),
+): { imported: number; skipped: number; total: number } {
+  const parsed = parseIcs(icsText);
+  let imported = 0;
+  let skipped = 0;
+  const seen = new Set<string>();
+  for (const ev of parsed) {
+    if (ev.complexRepeat || !ev.startAtIso) {
+      skipped += 1;
+      continue;
+    }
+    const dedupKey = `${ev.summary}|${ev.startAtIso}|${ev.repeat}`;
+    if (seen.has(dedupKey)) continue;
+    seen.add(dedupKey);
+    database
+      .prepare(
+        `INSERT INTO calendar_events (user_id, title, time_expression, start_at, created_at, repeat)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run('default', ev.summary, `导入：${ev.dtstart}`, ev.startAtIso, now, ev.repeat);
+    imported += 1;
+  }
+  return { imported, skipped, total: parsed.length };
+}
+
 export function createCalendarSkill(
   opts?: { dbPath?: string; outDir?: string },
 ): ExecutableSkill & { close(): void } {
@@ -148,29 +258,7 @@ export function createCalendarSkill(
   let db: DatabaseSync | null = null;
   function ensureDb(): DatabaseSync {
     if (!db) {
-      mkdirSync(dirname(dbPath), { recursive: true });
-      db = new DatabaseSync(dbPath);
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS calendar_events (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id TEXT NOT NULL,
-          title TEXT NOT NULL,
-          time_expression TEXT NOT NULL,
-          start_at TEXT NOT NULL DEFAULT '',
-          created_at INTEGER NOT NULL,
-          repeat TEXT NOT NULL DEFAULT ''
-        );
-      `);
-      try {
-        db.exec("ALTER TABLE calendar_events ADD COLUMN start_at TEXT NOT NULL DEFAULT ''");
-      } catch {
-        // 列已存在则跳过
-      }
-      try {
-        db.exec("ALTER TABLE calendar_events ADD COLUMN repeat TEXT NOT NULL DEFAULT ''");
-      } catch {
-        // 列已存在则跳过
-      }
+      db = openCalendarDb(dbPath);
     }
     return db;
   }
@@ -212,33 +300,13 @@ export function createCalendarSkill(
             confidence: 0.4,
           };
         }
-        const parsed = parseIcs(icsText);
-        if (parsed.length === 0) {
+        const database = ensureDb();
+        const { imported, skipped, total } = importIcsToDb(database, icsText);
+        if (total === 0) {
           return {
             result: '未在文件中解析到可导入的日程，请确认这是标准 iCalendar（.ics）文件。',
             confidence: 0.4,
           };
-        }
-        const database = ensureDb();
-        const now = Date.now();
-        let imported = 0;
-        let skipped = 0;
-        const seen = new Set<string>();
-        for (const ev of parsed) {
-          if (ev.complexRepeat || !ev.startAtIso) {
-            skipped += 1;
-            continue;
-          }
-          const dedupKey = `${ev.summary}|${ev.startAtIso}|${ev.repeat}`;
-          if (seen.has(dedupKey)) continue;
-          seen.add(dedupKey);
-          database
-            .prepare(
-              `INSERT INTO calendar_events (user_id, title, time_expression, start_at, created_at, repeat)
-               VALUES (?, ?, ?, ?, ?, ?)`,
-            )
-            .run('default', ev.summary, `导入：${ev.dtstart}`, ev.startAtIso, now, ev.repeat);
-          imported += 1;
         }
         let answer = `已从 .ics 导入 ${imported} 条日程`;
         if (skipped > 0) {
@@ -320,67 +388,25 @@ export function createCalendarSkill(
         // E169：导出/保存/下载日历 → 生成 .ics 落盘（空日程诚实提示）
         if (isCalendarExportQuery(input.query)) {
           const database = ensureDb();
-          const rows = database
-            .prepare(
-              'SELECT id, title, time_expression, start_at, created_at, repeat FROM calendar_events WHERE user_id = ? ORDER BY created_at ASC',
-            )
-            .all('default') as unknown as Array<{
-            id: number;
-            title: string;
-            time_expression: string;
-            start_at: string;
-            created_at: number;
-            repeat: string;
-          }>;
-          if (rows.length === 0) {
+          const { ics, count } = buildCalendarIcs(database);
+          if (count === 0) {
             return {
               result: '暂无日程可导出，未生成 ICS 文件。',
               confidence: 0.7,
               followUpAction: '先告诉我需要安排的日程，例如“明天上午十点开会”。',
             };
           }
-          const nowIcs = toIcsDateTime(new Date().toISOString());
-          const events = rows.map((row) => {
-            const startIcs = toIcsDateTime(
-              row.start_at || new Date(row.created_at).toISOString(),
-            );
-            const rrule =
-              row.repeat === 'daily'
-                ? '\r\nRRULE:FREQ=DAILY'
-                : row.repeat === 'weekly'
-                  ? '\r\nRRULE:FREQ=WEEKLY'
-                  : '';
-            return [
-              'BEGIN:VEVENT',
-              `UID:event-${row.id}@ai-butler.local`,
-              `DTSTAMP:${nowIcs}`,
-              `DTSTART:${startIcs}`,
-              `SUMMARY:${escapeIcsText(row.title)}`,
-              rrule,
-              'END:VEVENT',
-            ]
-              .filter(Boolean)
-              .join('\r\n');
-          });
-          const ics = [
-            'BEGIN:VCALENDAR',
-            'VERSION:2.0',
-            'PRODID:-//AI-Butler//LocalCalendar//CN',
-            'CALSCALE:GREGORIAN',
-            ...events,
-            'END:VCALENDAR',
-          ].join('\r\n');
           mkdirSync(outDir, { recursive: true });
           const filePath = join(outDir, `日历-${Date.now()}.ics`);
           writeFileSync(filePath, `${ics}\r\n`, 'utf-8');
           return {
             result: {
-              answer: `已导出 ${rows.length} 条日程到 ICS 文件：${filePath}`,
+              answer: `已导出 ${count} 条日程到 ICS 文件：${filePath}`,
               path: filePath,
-              count: rows.length,
+              count,
             },
             confidence: 0.8,
-            followUpAction: '该 .ics 可导入 Outlook / 苹果日历 / 谷歌日历；需要调整日程或生成会议邀请邮件，随时说。',
+            followUpAction: '该 .ics 可导入 Outlook / 苹果日历 / 谷歌日历；需要调整日程或生成会议邀请邮件，随时说。'
           };
         }
         // E162：查询时展示提醒状态（提醒库不可用则仅展示日程）

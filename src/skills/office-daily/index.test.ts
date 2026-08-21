@@ -1748,6 +1748,134 @@ print(base64.b64encode(buf.getvalue()).decode())`,
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('office-daily: 图片表格识别还原 3 行垂直组标签（产品 A1:A3 + 地区 B1:C1）', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+img = Image.new('RGB', (420, 430), 'white')
+d = ImageDraw.Draw(img)
+for x in (30, 170, 310, 400):
+    d.line([(x, 30), (x, 390)], fill='black', width=2)
+for y in (30, 120, 210, 300, 390):
+    d.line([(30, y), (400, y)], fill='black', width=2)
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 32)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+d.text((250, 58), '地区', fill='black', font=font)
+d.text((200, 152), '华东', fill='black', font=font)
+d.text((330, 152), '华北', fill='black', font=font)
+d.text((52, 242), '产品', fill='black', font=font)
+d.text((200, 242), '上海', fill='black', font=font)
+d.text((330, 242), '杭州', fill='black', font=font)
+d.text((52, 332), '手机', fill='black', font=font)
+d.text((200, 332), '100', fill='black', font=font)
+d.text((330, 332), '200', fill='black', font=font)
+buf = io.BytesIO()
+img.save(buf, 'PNG')
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const png = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+        rawFiles: [fakeFile('table.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; path?: string };
+    assert.ok(existsSync(result.path as string));
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(result.path as string);
+    const ws = wb.getWorksheet(1);
+    assert.ok(ws, 'xlsx 读取成功');
+    assert.deepEqual([...ws.model.merges].sort(), ['A1:A3', 'B1:C1'].sort(), JSON.stringify(ws.model.merges));
+    assert.equal(ws.getCell('A1').value, '产品');
+    assert.ok(result.answer?.includes('已还原 2 处合并单元格'), result.answer);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 图片表格识别轻微倾斜图自动纠正（1.5° 旋转仍还原组合表头）', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+img = Image.new('RGB', (560, 330), 'white')
+d = ImageDraw.Draw(img)
+for x in (30, 155, 280, 405, 530):
+    d.line([(x, 30), (x, 300)], fill='black', width=2)
+for y in (30, 120, 210, 300):
+    d.line([(30, y), (530, y)], fill='black', width=2)
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 32)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+d.text((216, 56), '销售汇总', fill='black', font=font)
+d.text((72, 152), '华东', fill='black', font=font)
+d.text((328, 152), '华北', fill='black', font=font)
+d.text((53, 242), '上海', fill='black', font=font)
+d.text((178, 242), '杭州', fill='black', font=font)
+d.text((302, 242), '北京', fill='black', font=font)
+d.text((428, 242), '天津', fill='black', font=font)
+img = img.rotate(1.5, resample=Image.BICUBIC, expand=True, fillcolor='white')
+buf = io.BytesIO()
+img.save(buf, 'PNG')
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const png = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+        rawFiles: [fakeFile('table.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; path?: string };
+    assert.ok(existsSync(result.path as string));
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(result.path as string);
+    const ws = wb.getWorksheet(1);
+    assert.ok(ws, 'xlsx 读取成功');
+    assert.deepEqual([...ws.model.merges].sort(), ['A1:D1', 'A2:B2', 'C2:D2'].sort(), JSON.stringify(ws.model.merges));
+    assert.ok(result.answer?.includes('已还原 3 处合并单元格'), result.answer);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 function startFakeSmtpServer(): Promise<{
   port: number;
   transcript: string[];

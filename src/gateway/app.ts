@@ -28,6 +28,8 @@ import { runCommand } from './terminal.js';
 import { publishArtifactEvent, subscribeArtifactEvents } from './artifact-bus.js';
 import type { RawFileLike } from '../skills/deps.js';
 import { dataUrlToRawFile, type AttachmentPayload } from './attachments.js';
+import { loadCredentials, saveCredentials, validateCredentials } from '../mail/credentials.js';
+import { buildCalendarIcs, importIcsToDb, openCalendarDb } from '../skills/calendar-skill/index.js';
 
 export interface GatewayOptions {
   deps?: PipelineDeps;
@@ -36,6 +38,8 @@ export interface GatewayOptions {
   userContextStore?: UserContextStore;
   experienceManager?: ExperienceManager;
   securityConfigPath?: string;
+  mailCredentialsPath?: string;
+  calendarDbPath?: string;
   uiDistPath?: string;
 }
 
@@ -265,6 +269,90 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     };
     writeSecurityConfig(next, opts.securityConfigPath);
     res.json({ ok: true, security: next });
+  });
+
+  app.get('/api/mail/credentials', (_req, res) => {
+    const creds = loadCredentials(opts.mailCredentialsPath);
+    if (!creds) {
+      res.json({ configured: false });
+      return;
+    }
+    res.json({
+      configured: true,
+      host: creds.host,
+      port: creds.port,
+      secure: creds.secure,
+      user: creds.user,
+      from: creds.from,
+    });
+  });
+
+  app.post('/api/mail/credentials', (req, res) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const missing = validateCredentials(body);
+    if (missing.length > 0) {
+      res.status(400).json({ error: `SMTP 凭据缺少字段：${missing.join(', ')}` });
+      return;
+    }
+    try {
+      saveCredentials(
+        {
+          host: String(body.host).trim(),
+          port: Number(body.port),
+          secure: Boolean(body.secure),
+          user: String(body.user).trim(),
+          pass: String(body.pass),
+          from: String(body.from).trim(),
+        },
+        opts.mailCredentialsPath,
+      );
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: '保存 SMTP 凭据失败' });
+    }
+  });
+
+  app.get('/api/calendar/export', (_req, res) => {
+    let database: ReturnType<typeof openCalendarDb> | null = null;
+    try {
+      database = openCalendarDb(opts.calendarDbPath);
+      const { ics, count } = buildCalendarIcs(database);
+      if (count === 0) {
+        res.status(404).json({ error: '暂无日程可导出' });
+        return;
+      }
+      res
+        .type('text/calendar')
+        .setHeader('Content-Disposition', 'attachment; filename="ai-butler-calendar.ics"')
+        .send(`${ics}\r\n`);
+    } catch {
+      res.status(500).json({ error: '日历导出失败' });
+    } finally {
+      database?.close();
+    }
+  });
+
+  app.post('/api/calendar/import', (req, res) => {
+    const body = (req.body ?? {}) as { ics?: unknown };
+    const text = typeof body.ics === 'string' ? body.ics.trim() : '';
+    if (!text) {
+      res.status(400).json({ error: 'ics 内容不能为空' });
+      return;
+    }
+    let database: ReturnType<typeof openCalendarDb> | null = null;
+    try {
+      database = openCalendarDb(opts.calendarDbPath);
+      const { imported, skipped, total } = importIcsToDb(database, text);
+      if (total === 0) {
+        res.status(400).json({ error: '未解析到可导入的日程' });
+        return;
+      }
+      res.json({ ok: true, imported, skipped });
+    } catch {
+      res.status(500).json({ error: '日历导入失败' });
+    } finally {
+      database?.close();
+    }
   });
 
   app.post('/api/terminal/exec', async (req, res) => {

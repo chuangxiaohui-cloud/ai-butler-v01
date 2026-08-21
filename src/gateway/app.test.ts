@@ -464,6 +464,110 @@ test('gateway: 终端命令白名单拒绝未授权前缀', async () => {
   }
 });
 
+test('gateway: /api/mail/credentials 读写且不暴露密码', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-mail-'));
+  const file = join(dir, 'mail-credentials.json');
+  const app = createGatewayApp({ deps: testDeps(), mailCredentialsPath: file });
+  const server = createServer(app);
+  try {
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}`;
+
+    const emptyResp = await fetch(`${base}/api/mail/credentials`);
+    const empty = (await emptyResp.json()) as { configured?: boolean };
+    assert.equal(empty.configured, false);
+
+    const badResp = await fetch(`${base}/api/mail/credentials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: 'smtp.qq.com', port: 465, secure: true, user: 'a@qq.com' }),
+    });
+    assert.equal(badResp.status, 400);
+
+    const saveResp = await fetch(`${base}/api/mail/credentials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host: 'smtp.qq.com',
+        port: 465,
+        secure: true,
+        user: 'a@qq.com',
+        pass: 'secret-auth-code',
+        from: 'a@qq.com',
+      }),
+    });
+    assert.equal(((await saveResp.json()) as { ok?: boolean }).ok, true);
+
+    const getResp = await fetch(`${base}/api/mail/credentials`);
+    const got = (await getResp.json()) as Record<string, unknown>;
+    assert.equal(got.configured, true);
+    assert.equal(got.host, 'smtp.qq.com');
+    assert.equal(got.user, 'a@qq.com');
+    assert.equal(got.from, 'a@qq.com');
+    assert.ok(!('pass' in got), '不得暴露密码字段');
+  } finally {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('gateway: /api/calendar 导入 ICS 并导出', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-cal-'));
+  const dbPath = join(dir, 'calendar.db');
+  const app = createGatewayApp({ deps: testDeps(), calendarDbPath: dbPath });
+  const server = createServer(app);
+  try {
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}`;
+
+    const emptyResp = await fetch(`${base}/api/calendar/export`);
+    assert.equal(emptyResp.status, 404);
+
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      'UID:gw-test-1@example.com',
+      'DTSTAMP:20260822T000000Z',
+      'DTSTART:20260823T100000Z',
+      'SUMMARY:网关导入测试',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+    const importResp = await fetch(`${base}/api/calendar/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ics }),
+    });
+    const imported = (await importResp.json()) as {
+      ok?: boolean;
+      imported?: number;
+      skipped?: number;
+    };
+    assert.equal(imported.ok, true);
+    assert.equal(imported.imported, 1);
+    assert.equal(imported.skipped, 0);
+
+    const exportResp = await fetch(`${base}/api/calendar/export`);
+    assert.equal(exportResp.status, 200);
+    const text = await exportResp.text();
+    assert.ok(text.includes('BEGIN:VCALENDAR'));
+    assert.ok(text.includes('SUMMARY:网关导入测试'));
+
+    const emptyIcsResp = await fetch(`${base}/api/calendar/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ics: 'not-an-ics' }),
+    });
+    assert.equal(emptyIcsResp.status, 400);
+  } finally {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('gateway: /api/files 返回产物文件列表', async () => {
   const { server, base } = await startApp();
   try {

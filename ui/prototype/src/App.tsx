@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   BookOpen,
   Bot,
+  Calendar,
   ChevronDown,
   ChevronLeft,
   Code2,
@@ -15,6 +16,7 @@ import {
   HeartPulse,
   Image,
   Layers,
+  Mail,
   MessageSquare,
   PanelRight,
   Paperclip,
@@ -37,7 +39,7 @@ import {
 
 type UiMode = 'engineering' | 'knowledge' | 'life';
 type RightTab = 'files' | 'browser' | 'terminal';
-type SettingsKey = 'providers' | 'security' | 'routing' | 'skills' | 'memory' | 'usage';
+type SettingsKey = 'providers' | 'security' | 'routing' | 'skills' | 'memory' | 'usage' | 'mail' | 'calendar';
 
 interface Evidence {
   type: 'file' | 'terminal' | 'test' | 'search';
@@ -159,6 +161,8 @@ const TERMINAL_LINES = [
 const SETTINGS_MENU: Array<{ key: SettingsKey; label: string; icon: LucideIcon }> = [
   { key: 'providers', label: '服务商', icon: Plug },
   { key: 'security', label: '安全中心', icon: ShieldCheck },
+  { key: 'mail', label: '邮件', icon: Mail },
+  { key: 'calendar', label: '日历', icon: Calendar },
   { key: 'routing', label: '路由校准', icon: Route },
   { key: 'skills', label: '技能库', icon: Layers },
   { key: 'memory', label: '记忆管理', icon: Database },
@@ -168,6 +172,8 @@ const SETTINGS_MENU: Array<{ key: SettingsKey; label: string; icon: LucideIcon }
 const SETTINGS_FORMS: Record<SettingsKey, { title: string; desc: string }> = {
   providers: { title: '服务商管理', desc: '管理 API Key、模型列表、默认模型与连接状态。' },
   security: { title: '安全中心', desc: '配置三分支安全策略与 Shell/文件/外部调用权限。' },
+  mail: { title: '邮件配置', desc: '配置 SMTP 服务器与账号授权码，用于发送邮件。' },
+  calendar: { title: '日历', desc: '导入/导出 .ics 日历文件，与 Outlook / 苹果 / 谷歌日历互通。' },
   routing: { title: '路由校准', desc: '持续采集误判样本，标记后导出供路由规则优化。' },
   skills: { title: '技能库', desc: '管理子 Agent / Skill 的启用状态、参数与输出契约。' },
   memory: { title: '记忆管理', desc: '查看 L1 情景记忆与 L2 语义记忆，支持搜索、置顶、遗忘。' },
@@ -1061,6 +1067,8 @@ function SettingsPanel({
         {settingsKey === 'security' && (
           <SecuritySettings shellEnabled={shellEnabled} onShellChange={onShellChange} />
         )}
+        {settingsKey === 'mail' && <MailSettings />}
+        {settingsKey === 'calendar' && <CalendarSettings />}
         {settingsKey === 'routing' && <RoutingSettings />}
         {settingsKey === 'skills' && <SkillsSettings />}
         {settingsKey === 'memory' && <MemorySettings />}
@@ -1278,6 +1286,193 @@ function SecuritySettings({
         Shell 权限默认关闭；切换工程开发模式不会自动开启。白名单为空时允许任意命令，
         建议填写常用前缀以限制终端执行范围。
       </p>
+    </div>
+  );
+}
+
+function MailSettings() {
+  const [form, setForm] = useState({
+    host: '',
+    port: '465',
+    secure: true,
+    user: '',
+    pass: '',
+    from: '',
+  });
+  const [configured, setConfigured] = useState(false);
+  const [status, setStatus] = useState('');
+
+  const load = () => {
+    fetch(`${GATEWAY_URL}/api/mail/credentials`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then(
+        (
+          data: {
+            configured?: boolean;
+            host?: string;
+            port?: number;
+            secure?: boolean;
+            user?: string;
+            from?: string;
+          } | null,
+        ) => {
+          if (!data?.configured) return;
+          setConfigured(true);
+          setForm((prev) => ({
+            ...prev,
+            host: data.host ?? '',
+            port: String(data.port ?? 465),
+            secure: data.secure ?? true,
+            user: data.user ?? '',
+            from: data.from ?? '',
+          }));
+        },
+      )
+      .catch(() => setStatus('读取凭据失败'));
+  };
+  useEffect(load, []);
+
+  const set =
+    (key: keyof typeof form) =>
+    (value: string) =>
+      setForm((prev) => ({ ...prev, [key]: value }));
+
+  const save = async () => {
+    setStatus('');
+    const resp = await fetch(`${GATEWAY_URL}/api/mail/credentials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host: form.host.trim(),
+        port: Number(form.port),
+        secure: form.secure,
+        user: form.user.trim(),
+        pass: form.pass,
+        from: form.from.trim(),
+      }),
+    });
+    const data = (await resp.json().catch(() => null)) as
+      | { ok?: boolean; error?: string }
+      | null;
+    if (resp.ok && data?.ok) {
+      setConfigured(true);
+      setStatus('已保存 SMTP 凭据');
+    } else {
+      setStatus(data?.error ?? '保存失败');
+    }
+  };
+
+  return (
+    <div className="settings-form">
+      {configured && (
+        <p className="settings-note">
+          已配置：{form.user}（{form.host}:{form.port}）。授权码保存后不回显，修改时需重新填写。
+        </p>
+      )}
+      <div className="allowlist-row">
+        <span>SMTP 服务器</span>
+        <input value={form.host} onChange={(e) => set('host')(e.target.value)} placeholder="smtp.qq.com" />
+      </div>
+      <div className="allowlist-row">
+        <span>端口</span>
+        <input value={form.port} onChange={(e) => set('port')(e.target.value)} placeholder="465" />
+      </div>
+      <div className="allowlist-row">
+        <span>账号</span>
+        <input value={form.user} onChange={(e) => set('user')(e.target.value)} placeholder="you@qq.com" />
+      </div>
+      <div className="allowlist-row">
+        <span>授权码</span>
+        <input type="password" value={form.pass} onChange={(e) => set('pass')(e.target.value)} placeholder="保存后不回显" />
+      </div>
+      <div className="allowlist-row">
+        <span>发件人</span>
+        <input value={form.from} onChange={(e) => set('from')(e.target.value)} placeholder="you@qq.com" />
+      </div>
+      <div className="toggle-row">
+        <span>SSL/TLS 直连（465 端口通常开启）</span>
+        <button
+          className={`toggle ${form.secure ? 'on' : ''}`}
+          onClick={() => setForm((prev) => ({ ...prev, secure: !prev.secure }))}
+          aria-pressed={form.secure}
+        >
+          <i />
+        </button>
+      </div>
+      <button className="add-provider" onClick={save}>
+        保存凭据
+      </button>
+      {status && <p className="settings-note">{status}</p>}
+    </div>
+  );
+}
+
+function CalendarSettings() {
+  const [status, setStatus] = useState('');
+
+  const exportIcs = async () => {
+    setStatus('');
+    const resp = await fetch(`${GATEWAY_URL}/api/calendar/export`);
+    if (!resp.ok) {
+      setStatus('暂无日程可导出，先安排日程后再试。');
+      return;
+    }
+    const text = await resp.text();
+    const blob = new Blob([text], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ai-butler-calendar.ics';
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus('已导出 ai-butler-calendar.ics');
+  };
+
+  const importIcs = async (file: File | undefined) => {
+    if (!file) return;
+    setStatus('');
+    const text = await file.text();
+    const resp = await fetch(`${GATEWAY_URL}/api/calendar/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ics: text }),
+    });
+    const data = (await resp.json().catch(() => null)) as
+      | { ok?: boolean; imported?: number; skipped?: number; error?: string }
+      | null;
+    if (resp.ok && data?.ok) {
+      setStatus(
+        `已导入 ${data.imported ?? 0} 条日程${data.skipped ? `，跳过 ${data.skipped} 条` : ''}`,
+      );
+    } else {
+      setStatus(data?.error ?? '导入失败');
+    }
+  };
+
+  return (
+    <div className="settings-form">
+      <div className="allowlist-row">
+        <span>导出 .ics</span>
+        <button className="add-provider" onClick={exportIcs}>
+          导出日历
+        </button>
+      </div>
+      <div className="allowlist-row">
+        <span>导入 .ics</span>
+        <label className="add-provider">
+          选择文件
+          <input
+            type="file"
+            accept=".ics,text/calendar"
+            style={{ display: 'none' }}
+            onChange={(e) => importIcs(e.target.files?.[0])}
+          />
+        </label>
+      </div>
+      <p className="settings-note">
+        导出文件可导入 Outlook / 苹果日历 / 谷歌日历；导入会去重，并跳过无有效时间或每月/每年等复杂重复的日程。
+      </p>
+      {status && <p className="settings-note">{status}</p>}
     </div>
   );
 }
