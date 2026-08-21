@@ -1876,6 +1876,133 @@ print(base64.b64encode(buf.getvalue()).decode())`,
     rmSync(dir, { recursive: true, force: true });
   }
 });
+test('office-daily: 图片表格识别扫描件鲁棒性（彩色底/折痕/透字）', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const json = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, json, os
+from PIL import Image, ImageDraw, ImageFont
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 32)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+
+def base():
+    img = Image.new('RGB', (420, 430), 'white')
+    d = ImageDraw.Draw(img)
+    for x in (30, 170, 310, 400):
+        d.line([(x, 30), (x, 390)], fill='black', width=2)
+    for y in (30, 120, 210, 300, 390):
+        d.line([(30, y), (400, y)], fill='black', width=2)
+    d.text((250, 58), '地区', fill='black', font=font)
+    d.text((200, 152), '华东', fill='black', font=font)
+    d.text((330, 152), '华北', fill='black', font=font)
+    d.text((52, 242), '产品', fill='black', font=font)
+    d.text((200, 242), '上海', fill='black', font=font)
+    d.text((330, 242), '杭州', fill='black', font=font)
+    d.text((52, 332), '手机', fill='black', font=font)
+    d.text((200, 332), '100', fill='black', font=font)
+    d.text((330, 332), '200', fill='black', font=font)
+    return img
+
+def color(img):
+    im = img.convert('RGB'); d = ImageDraw.Draw(im, 'RGBA')
+    d.rectangle([30, 30, 400, 120], fill=(200, 220, 255, 90))
+    d.rectangle([30, 120, 400, 210], fill=(255, 235, 200, 80))
+    return im
+
+def crease(img):
+    im = img.convert('RGB'); d = ImageDraw.Draw(im, 'RGBA')
+    d.line([(220, 0), (220, im.height)], fill=(90, 90, 90, 130), width=3)
+    for off in range(1, 14):
+        a = int(38 * (1 - off / 14))
+        d.line([(220 - off, 0), (220 - off, im.height)], fill=(120, 120, 120, a), width=1)
+        d.line([(220 + off, 0), (220 + off, im.height)], fill=(120, 120, 120, a), width=1)
+    return im
+
+def bleed(img, amt):
+    im = img.convert('RGB'); d = ImageDraw.Draw(im)
+    bf = None
+    for bfp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+        if os.path.exists(bfp):
+            try:
+                bf = ImageFont.truetype(bfp, 22)
+                break
+            except Exception:
+                pass
+    if bf is None:
+        bf = ImageFont.load_default()
+    for t, (x, y) in [('上海', (40, 60)), ('北京', (250, 250)), ('100', (180, 90)), ('合计', (60, 200))]:
+        d.text((x, y), t, fill=(amt, amt, amt), font=bf)
+    return im
+
+def b64(im):
+    buf = io.BytesIO(); im.save(buf, 'PNG')
+    return base64.b64encode(buf.getvalue()).decode()
+
+out = {
+    'color': b64(color(base())),
+    'crease': b64(crease(base())),
+    'bleed160': b64(bleed(base(), 160)),
+    'bleed90': b64(bleed(base(), 90)),
+}
+print(json.dumps(out))`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const images = JSON.parse(json) as Record<string, string>;
+    const cases: Array<{ key: string; expectMerges: string[]; expectWarn: boolean }> = [
+      { key: 'color', expectMerges: ['A1:A3', 'B1:C1'], expectWarn: false },
+      { key: 'crease', expectMerges: ['A1:A3', 'B1:C1'], expectWarn: false },
+      { key: 'bleed160', expectMerges: ['A1:A3', 'B1:C1'], expectWarn: false },
+      { key: 'bleed90', expectMerges: ['B1:C1'], expectWarn: true },
+    ];
+    const skill = createOfficeDailySkill({ outDir: dir });
+    for (const c of cases) {
+      const png = Buffer.from(images[c.key], 'base64');
+      const out = await skill.execute(
+        {
+          query: '识别这张表格',
+          attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+          rawFiles: [fakeFile('table.png', 'image/png', png)],
+          memory: null,
+        },
+        { callVLM: async () => '' },
+      );
+      const result = out.result as {
+        answer?: string;
+        path?: string;
+        warnings?: Array<{ type?: string }>;
+      };
+      assert.ok(existsSync(result.path as string), `${c.key} xlsx 落盘`);
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.readFile(result.path as string);
+      const ws = wb.getWorksheet(1);
+      assert.ok(ws, `${c.key} xlsx 读取成功`);
+      const merges = [...ws.model.merges].sort();
+      assert.deepEqual(merges, [...c.expectMerges].sort(), `${c.key} merges: ${JSON.stringify(merges)}`);
+      const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+      if (c.expectWarn) {
+        assert.ok(warnings.some((w) => w.type === 'merged_conflict'), `${c.key} 应有 merged_conflict warning`);
+        assert.ok(result.answer?.includes('无法自动还原'), `${c.key} 答案应提示无法自动还原`);
+      } else {
+        assert.equal(warnings.length, 0, `${c.key} 不应有 warning`);
+        assert.ok(result.answer?.includes('已还原 2 处合并单元格'), `${c.key} 答案应包含已还原计数`);
+      }
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 function startFakeSmtpServer(): Promise<{
   port: number;
   transcript: string[];

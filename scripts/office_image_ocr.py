@@ -457,6 +457,25 @@ def detect_merges(
                 r_top = hr - 1
                 while r_top - 1 >= 0 and not cell_items[r_top - 1][c]:
                     r_top -= 1
+                # E181：垂直扩展被上方普通格截断（如透字残影占据角落/空槽）→ 诚实
+                # 提示，不产生截断的伪合并；上方格若已被整行标题/水平组头覆盖
+                # （covered）则视为合法设计（标题行下的垂直组标签），继续正常扩展。
+                if r_top > 0 and (r_top - 1, c) not in covered:
+                    warnings.append(
+                        {
+                            "type": "merged_conflict",
+                            "row": r_top - 1,
+                            "col": c,
+                            "detail": "第" + str(r_top) + "行第" + str(c + 1) + "列疑似跨"
+                            + str(hr - r_top + 2) + "行垂直合并，但上方同列有其它文本"
+                            + "（可能为透字/水印噪声），无法自动还原",
+                        }
+                    )
+                    # 本应属于垂直标签的槽位标为 covered，避免后续水平启发式把空槽
+                    # 误并入其它锚点（如“华东”跨到垂直标签列）。
+                    for rr in range(r_top, hr + 1):
+                        covered.add((rr, c))
+                    continue
                 c1 = c
                 while c1 + 1 < cols:
                     if any(cell_items[rr][c1 + 1] for rr in range(r_top, hr + 1)):
@@ -611,6 +630,26 @@ def deskew_image(arr):
     )
     return corrected, angle
 
+def suppress_faint_ink(arr, threshold: float = 85.0):
+    """E181：扫描件透字/水印抑制——保留相对局部背景对比度足够高的暗墨，
+    低对比度残影（透字、水印、折痕阴影）置白，避免残影文本污染合并判断。
+    返回与输入等尺寸的 RGB 数组；numpy/PIL 缺失时回退原图。"""
+    try:
+        import numpy as np
+        from PIL import Image, ImageFilter
+
+        img = Image.fromarray(arr)
+        gray = np.asarray(img.convert("L")).astype(np.float32)
+        blur = np.asarray(
+            img.convert("L").filter(ImageFilter.GaussianBlur(5))
+        ).astype(np.float32)
+        mask = (blur - gray) > threshold
+        out = np.where(mask, 0, 255).astype(np.uint8)
+        return np.stack([out] * 3, axis=-1)
+    except Exception:
+        return arr
+
+
 def run_ocr(engine, src: str):
     """解码 + 识别，返回 (items, error)；失败时 error 非空。"""
     try:
@@ -635,12 +674,13 @@ def main() -> int:
                 return fail(err or "OCR 引擎不可用")
             arr_src = load_image(src)
             corrected, _skew = deskew_image(arr_src)
-            items, run_err = run_ocr(engine, corrected)
+            cleaned = suppress_faint_ink(corrected)
+            items, run_err = run_ocr(engine, cleaned)
             if run_err:
                 return fail(run_err)
             items = items or []
             # E174：优先网格线重建（行列结构精确），无网格回退文本聚类
-            grid_lines = detect_table_lines(corrected)
+            grid_lines = detect_table_lines(cleaned)
             if grid_lines:
                 x_edges, y_edges = grid_lines
                 grid, rows, cols, cell_items, col_cx, row_anchors = reconstruct_grid(

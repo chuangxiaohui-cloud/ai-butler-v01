@@ -2152,11 +2152,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **证据**：新增 delivery-workflow 3 条、engineer 1 条、content-writer 2 条单测；最终单测 211/211 + 集成 17/17 全绿。
 - affects: §8.2,§12.2 | bench:na(new-param) 理由：工程工作流 Skill 落地，无 §5/§6 参数变更
 
-### 2026-08-14（deepseek-harness → TrajectoryLog E68）
-
-- **变更**：新增 `src/trajectory/trajectory-log.ts`，对齐 deepseek-harness 的 append-only 事件流设计，默认写 `data/trajectory.jsonl`；`pipeline.ts` 记录 `route/skill/search/synthesize/answer` 五类事件，路由澄清分支也会落盘；CLI `src/main.ts` 自动接入。
-- **证据**：新增 trajectory-log 单测 1 条 + pipeline 统一轨迹回归 1 条；最终单测 211/211 + 集成 17/17 全绿。
-- affects: §6.7,§8.2 | bench:na(new-param) 理由：轨迹日志落地，无 §5/§6 参数变更
+### 2026-08-14（deepseek-harness → TrajectoryLog E68）<br>- **变更**：新增 `src/trajectory/trajectory-log.ts`，对齐 deepseek-harness 的 append-only 事件流设计，默认写 `data/trajectory.jsonl`；`pipeline.ts` 记录 `route/skill/search/synthesize/answer` 五类事件，路由澄清分支也会落盘；CLI `src/main.ts` 自动接入。<br>- **证据**：新增 trajectory-log 单测 1 条 + pipeline 统一轨迹回归 1 条；最终单测 211/211 + 集成 17/17 全绿。<br>- affects: §6.7,§8.2 | bench:na(new-param) 理由：轨迹日志落地，无 §5/§6 参数变更
 
 ### 2026-08-14（deepseek-harness → plan-validation E69）<br>- **变更**：新增 `src/skills/plan-validation/`，借鉴 deepseek-harness 的“计划编译校验”思想：任务必须有验收标准/验证步骤/依赖/文件范围，文件超过 5 个提示拆细，缺关键字段判 `invalid`；支持自然语言经 LLM 解析，也支持直接 JSON 输入。<br>- **证据**：新增 plan-validation 单测 7 条；最终单测 211/211 + 集成 17/17 全绿。<br>- affects: §8.2,§12.2 | bench:na(new-param) 理由：计划校验 Skill 落地，无 §5/§6 参数变更
 
@@ -2559,6 +2555,8 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-22（扫描件倾斜纠正 deskew E178）<br>- **变更**：`scripts/office_image_ocr.py` 新增 `deskew_image`（HoughLinesP 近水平网格线中位角估计，|角度|≥0.25° 时 warpAffine 白边旋转纠正），`--table` 路径先纠偏再做 OCR 与网格线检测；cv2 缺失回退原图不抛错；噪声/模糊/混合/旋转 0.8°-1.5°（含 expand）变体下合并结构全部保持。**验证**：主项目 build；单测 534/534 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 1 条真跑（1.5° 旋转组合表头 → `A1:D1`+`A2:B2`+`C2:D2`，deskew 修复旋转场景）；doc-lint 通过；详见 `docs/plans/2026-08-22-table-robustness.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格扫描件倾斜纠正，无 §5/§6 参数变更。
 ### 2026-08-22（UI 设置面板集成邮件/日历 E179）<br>- **变更**：gateway 新增 `GET/POST /api/mail/credentials`（读取不回显授权码）与 `GET /api/calendar/export`（.ics 下载）/ `POST /api/calendar/import`（ICS 文本导入）；`calendar-skill` 抽出可复用 `openCalendarDb`/`buildCalendarIcs`/`importIcsToDb`（导入导出行为不变）；UI 原型设置区新增“邮件/日历”面板（SMTP 凭据表单、日历导出/导入按钮）。**验证**：主项目 build；单测 534/534 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 2 条 gateway 单测（邮件凭据读写且不暴露密码、日历导入 ICS 并导出）；UI 原型 `npm --prefix ui/prototype run build` 通过；doc-lint 通过；详见 `docs/plans/2026-08-22-ui-mail-calendar.md`；affects: §6,§13 | bench:na(new-param) 理由：UI 设置面板集成邮件凭据与日历导入导出，无 §5/§6 参数变更。
 ### 2026-08-22（UI 邮件发送入口 E180）<br>- **变更**：UI 原型“邮件”设置面板新增发信区块（收件人/主题/正文 + 发送按钮），发送走 `/api/ask` 同一问答管道——面板把表单拼成“发送邮件给 …，主题：…，正文：…”查询，由 office-daily 邮件模式承担缺项/未配置凭据的诚实拦截与 SMTP 发送，答案原样回显；不新增独立发信链路。**验证**：UI 原型 `npm --prefix ui/prototype run build` 通过；查询格式与既有 E170 单测（`发送邮件给 rcpt@example.com，主题：测试，正文：你好`）一致；主项目 build；单测 534/534 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-22-ui-mail-send.md`；affects: §6,§13 | bench:na(new-param) 理由：UI 邮件发送入口复用现有问答管道，无 §5/§6 参数变更。
+
+### 2026-08-22（扫描件透字抑制+虚假合并诚实提示 E181）<br>- **变更**：`scripts/office_image_ocr.py` 新增 `suppress_faint_ink`（局部对比度抑制：高斯模糊 5px 背景差 > 85 的浅墨/透字/水印置白，对干净扫描件为空操作），`--table` 路径在 deskew 之后、OCR 与网格线检测之前调用；`detect_merges` 阶段 B 垂直扩展新增截断守卫——上方同列有其它文本且未被 covered（正常标题行下的垂直组标签）时不再产出截断的伪合并，改追加 `merged_conflict` warning 如实提示“可能为透字/水印噪声，无法自动还原”，并把相关槽位标 covered 防止水平启发式误并。**验证**：主项目 build；单测 535/535 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 1 条真跑（彩色底/折痕/透字 160 保持 `A1:A3`+`B1:C1` 无 warning，透字 90 只剩 `B1:C1` + warning 且答案含“无法自动还原”）；既有 10 张回归图 merges 与 E177 一致；doc-lint 通过；详见 `docs/plans/2026-08-22-scan-robustness.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格扫描件鲁棒性（透字/折痕/彩色底），无 §5/§6 参数变更。
 
 ### v2.5（2026-08-12）
 
