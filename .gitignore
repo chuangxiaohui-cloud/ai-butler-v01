@@ -52,3 +52,6 @@ preview_*
 
 # Office 临时锁文件
 ~$*
+
+# Codex 会话临时调试文件（不提交）
+.codex-*
