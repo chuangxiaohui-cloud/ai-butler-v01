@@ -136,12 +136,12 @@ def _bbox_of(items: list[dict]) -> dict:
 
 
 def reconstruct_table(items: list[dict]):
-    """E168/E172：按坐标聚类重建网格 → (grid, rows, cols, cell_items)。
+    """E168/E172/E173：按坐标聚类重建网格 → (grid, rows, cols, cell_items, col_cx, row_anchors)。
 
-    cell_items[row][col] = [item, ...] 保留每个文本块的原始 bbox（TSR 原始数据，
-    下期合并单元格还原直接复用，避免重跑 OCR）。"""
+    cell_items[row][col] = [item, ...] 保留每个文本块的原始 bbox（TSR 原始数据）；
+    col_cx / row_anchors 用于 E173 合并单元格还原的槽位计算。"""
     if not items:
-        return [], 0, 0, []
+        return [], 0, 0, [], [], []
     # 列聚类：按 cx 排序，间隙大于阈值则开新列
     by_cx = sorted(items, key=lambda it: it["cx"])
     med_w = sorted(it["w"] for it in items)[len(items) // 2]
@@ -179,98 +179,158 @@ def reconstruct_table(items: list[dict]):
             ]
         )
         cell_items.append(row_cells)
-    return grid, len(rows), len(col_cx), cell_items
+    return grid, len(rows), len(col_cx), cell_items, col_cx, [r["anchor"] for r in rows]
 
 
-def detect_merge_warnings(cell_items: list[list[list[dict]]], items: list[dict]) -> list[dict]:
-    """E172：启发式疑似合并区域检测（本期仅如实提示，下期做合并还原）。"""
+
+def _slot_bounds(centers: list[float]) -> list[float]:
+    """相邻中心取中点 → 槽位边界（首尾边界由 bbox 自身决定）。"""
+    return [0.5 * (centers[i] + centers[i + 1]) for i in range(len(centers) - 1)]
+
+
+def _slot_overlaps(x0: float, x1: float, bounds: list[float]) -> list[tuple[float, float]]:
+    """返回每个槽位的 (重叠长度, 槽宽)，用于 E173 合并跨度判定。"""
+    n = len(bounds) + 1
+    out: list[tuple[float, float]] = []
+    for i in range(n):
+        b_lo = bounds[i - 1] if i > 0 else None
+        b_hi = bounds[i] if i < n - 1 else None
+        slot_x0 = b_lo if b_lo is not None else float("-inf")
+        slot_x1 = b_hi if b_hi is not None else float("inf")
+        over = min(x1, slot_x1) - max(x0, slot_x0)
+        out.append((max(over, 0.0), slot_x1 - slot_x0))
+    return out
+
+
+def detect_merges(
+    cell_items: list[list[list[dict]]],
+    col_cx: list[float],
+    row_anchors: list[float],
+) -> tuple[list[dict], list[dict]]:
+    """E173：几何法合并单元格还原 → (merges, warnings)。
+
+    merges: [{row, col, rowSpan, colSpan, text}]——bbox 正重叠覆盖多个列槽位（或强重叠
+    覆盖多个行槽位）且覆盖区内其它格为空时判定为合并；覆盖区有真实内容且重叠显著 →
+    进 warnings 如实提示（不强行合并）。"""
+    merges: list[dict] = []
     warnings: list[dict] = []
-    seen: set[tuple] = set()
-
-    def add(wtype: str, row: int, col: int, detail: str) -> None:
-        key = (wtype, row, col)
-        if key in seen:
-            return
-        seen.add(key)
-        warnings.append({"type": wtype, "row": row, "col": col, "detail": detail})
-
+    covered: set[tuple] = set()
     rows = len(cell_items)
     cols = len(cell_items[0]) if rows else 0
-    med_w = sorted(it["w"] for it in items)[len(items) // 2] if items else 0
-    med_h = sorted(it["h"] for it in items)[len(items) // 2] if items else 0
-    # 1) 同行不同列：文本 bbox 横向重叠 → 疑似跨列合并
+    if rows == 0 or cols == 0:
+        return merges, warnings
+    col_bounds = _slot_bounds(col_cx)
+    row_bounds = _slot_bounds(row_anchors)
+
     for r, row in enumerate(cell_items):
-        placed = [(c, its) for c, its in enumerate(row) if its]
-        for i in range(len(placed)):
-            c1, its1 = placed[i]
-            for c2, its2 in placed[i + 1 :]:
-                for a in its1:
-                    for b in its2:
-                        over = min(a["x"] + a["w"], b["x"] + b["w"]) - max(a["x"], b["x"])
-                        if over > 0.3 * min(a["w"], b["w"]):
-                            add(
-                                "merged_col",
-                                r,
-                                min(c1, c2),
-                                "第" + str(r + 1) + "行第" + str(min(c1, c2) + 1) + "列疑似跨列合并"
-                                + "（第" + str(c1 + 1) + "列与第" + str(c2 + 1) + "列文本 bbox 横向重叠）",
-                            )
-                            break
-                    else:
+        for c, its in enumerate(row):
+            if not its or (r, c) in covered:
+                continue
+            bb = _bbox_of(its)
+            x_ov = _slot_overlaps(bb["x"], bb["x"] + bb["w"], col_bounds)
+            y_ov = _slot_overlaps(bb["y"], bb["y"] + bb["h"], row_bounds)
+            x_pos = [i for i, (ov, _sw) in enumerate(x_ov) if ov > 0]
+            y_strong = [i for i, (ov, sw) in enumerate(y_ov) if ov > 0.3 * min(bb["h"], sw)]
+            y_pos = [i for i, (ov, _sw) in enumerate(y_ov) if ov > 0]
+            x_strong = [i for i, (ov, sw) in enumerate(x_ov) if ov > 0.3 * min(bb["w"], sw)]
+            if len(x_pos) <= 1 and len(y_pos) <= 1:
+                continue
+            c0, c1 = x_pos[0], x_pos[-1]
+            if len(y_strong) > 1:
+                r0, r1 = y_strong[0], y_strong[-1]
+            else:
+                r0, r1 = r, r
+            # 冲突校验：覆盖区内除锚点外必须为空，否则不强行合并
+            conflict = False
+            for rr in range(r0, r1 + 1):
+                for cc in range(c0, c1 + 1):
+                    if (rr, cc) == (r, c):
                         continue
-                    break
-    # 2) 同列不同行：文本 bbox 纵向重叠 → 疑似跨行合并
-    for c in range(cols):
-        placed = [(r, cell_items[r][c]) for r in range(rows) if cell_items[r][c]]
-        for i in range(len(placed)):
-            r1, its1 = placed[i]
-            for r2, its2 in placed[i + 1 :]:
-                for a in its1:
-                    for b in its2:
-                        over = min(a["y"] + a["h"], b["y"] + b["h"]) - max(a["y"], b["y"])
-                        if over > 0.3 * min(a["h"], b["h"]):
-                            add(
-                                "merged_row",
-                                min(r1, r2),
-                                c,
-                                "第" + str(min(r1, r2) + 1) + "行第" + str(c + 1) + "列疑似跨行合并"
-                                + "（第" + str(r1 + 1) + "行与第" + str(r2 + 1) + "行文本 bbox 纵向重叠）",
-                            )
-                            break
+                    if cell_items[rr][cc]:
+                        conflict = True
+            if conflict:
+                if len(x_strong) > 1 or len(y_strong) > 1:
+                    warnings.append(
+                        {
+                            "type": "merged_conflict",
+                            "row": r0,
+                            "col": c0,
+                            "detail": "第" + str(r0 + 1) + "行第" + str(c0 + 1) + "列疑似跨"
+                            + str(c1 - c0 + 1) + "列/跨" + str(r1 - r0 + 1) + "行合并，"
+                            + "但覆盖区内有其它文本，无法自动还原",
+                        }
+                    )
+                continue
+            text = " ".join(it["text"] for it in sorted(its, key=lambda i: i["cy"])).strip()
+            merges.append(
+                {
+                    "row": r0,
+                    "col": c0,
+                    "rowSpan": r1 - r0 + 1,
+                    "colSpan": c1 - c0 + 1,
+                    "text": text,
+                }
+            )
+            for rr in range(r0, r1 + 1):
+                for cc in range(c0, c1 + 1):
+                    covered.add((rr, cc))
+    # E173：顶部行（第 0 行）空区间启发式——两级表头分组（如“华东/华北”各跨 2 列）。
+    # 条件：第 0 行窄于数据行、且空区间下方确有内容；内部区间并入距中点更近的锚点，
+    # 边缘区间并入唯一侧锚点（下方无内容的表尾空格仍跳过，避免误并）。
+    if rows > 1:
+        row0_filled = sum(1 for its in cell_items[0] if its)
+        max_filled = max(sum(1 for its in row if its) for row in cell_items)
+        if row0_filled < max_filled:
+            c = 0
+            while c < cols:
+                if cell_items[0][c]:
+                    c += 1
+                    continue
+                start = c
+                while c < cols and not cell_items[0][c]:
+                    c += 1
+                end = c - 1
+                if any((0, cc) in covered for cc in range(start, end + 1)):
+                    continue
+                below_filled = any(
+                    cell_items[rr][cc]
+                    for rr in range(1, rows)
+                    for cc in range(start, end + 1)
+                )
+                if not below_filled:
+                    continue
+                if start == 0:
+                    # 左边缘空区间：下方有数据时并入右侧锚点（表头延伸到左表边）
+                    anchor_c, c0, c1 = end + 1, start, end + 1
+                elif end == cols - 1:
+                    # 右边缘空区间：下方有数据时并入左侧锚点（组头延伸到表尾，如“华北”跨末两列）
+                    anchor_c, c0, c1 = start - 1, start - 1, end
+                else:
+                    # 内部空区间：按距中点更近的分组锚点（如“华东”跨第 1、2 列）
+                    left, right = start - 1, end + 1
+                    run_cx = 0.5 * (col_bounds[start - 1] + col_bounds[end])
+                    l_bb = _bbox_of(cell_items[0][left])
+                    r_bb = _bbox_of(cell_items[0][right])
+                    l_cx = l_bb["x"] + l_bb["w"] / 2
+                    r_cx = r_bb["x"] + r_bb["w"] / 2
+                    if abs(l_cx - run_cx) <= abs(r_cx - run_cx):
+                        anchor_c, c0, c1 = left, left, end
                     else:
-                        continue
-                    break
-    # 3) 格宽显著大于中位 → 疑似跨列（如长表头）
-    if med_w > 0:
-        for r, row in enumerate(cell_items):
-            for c, its in enumerate(row):
-                if not its:
+                        anchor_c, c0, c1 = right, start, right
+                if (0, anchor_c) in covered:
                     continue
-                bb = _bbox_of(its)
-                if bb["w"] > max(med_w * 1.8, 80):
-                    add(
-                        "merged_col",
-                        r,
-                        c,
-                        "第" + str(r + 1) + "行第" + str(c + 1) + "列格宽 " + str(int(bb["w"]))
-                        + "px 明显大于中位列宽，疑似跨列合并",
-                    )
-    # 4) 格高显著大于中位 → 疑似跨行
-    if med_h > 0:
-        for r, row in enumerate(cell_items):
-            for c, its in enumerate(row):
-                if not its:
-                    continue
-                bb = _bbox_of(its)
-                if bb["h"] > max(med_h * 2.2, 40):
-                    add(
-                        "merged_row",
-                        r,
-                        c,
-                        "第" + str(r + 1) + "行第" + str(c + 1) + "列格高 " + str(int(bb["h"]))
-                        + "px 明显大于中位行高，疑似跨行合并",
-                    )
-    return warnings
+                text = " ".join(
+                    it["text"] for it in sorted(cell_items[0][anchor_c], key=lambda i: i["cy"])
+                ).strip()
+                merges.append(
+                    {"row": 0, "col": c0, "rowSpan": 1, "colSpan": c1 - c0 + 1, "text": text}
+                )
+                for cc in range(c0, c1 + 1):
+                    covered.add((0, cc))
+    # E173：按行/列排序，保证 TSR 输出与 xlsx 合并顺序稳定（先左后右、先上后下）
+    merges.sort(key=lambda m: (m["row"], m["col"]))
+    return merges, warnings
+
 
 
 
@@ -323,7 +383,28 @@ def main() -> int:
             items, run_err = run_ocr(engine, src)
             if run_err:
                 return fail(run_err)
-            grid, rows, cols, cell_items = reconstruct_table(items or [])
+            grid, rows, cols, cell_items, col_cx, row_anchors = reconstruct_table(items or [])
+            merges, warnings = detect_merges(cell_items, col_cx, row_anchors)
+            # E173：合并区文本重排到锚点格（grid/cells 同步；spans 保留原始 bbox 与 score）
+            for m in merges:
+                mrow, mcol = m["row"], m["col"]
+                anchor_items: list[dict] = []
+                for rr in range(mrow, mrow + m["rowSpan"]):
+                    for cc in range(mcol, mcol + m["colSpan"]):
+                        if (rr, cc) != (mrow, mcol):
+                            anchor_items.extend(cell_items[rr][cc])
+                            cell_items[rr][cc] = []
+                cell_items[mrow][mcol].extend(anchor_items)
+                cell_items[mrow][mcol] = sorted(
+                    cell_items[mrow][mcol], key=lambda i: i["cy"]
+                )
+            grid = [
+                [
+                    " ".join(it["text"] for it in sorted(cells, key=lambda i: i["cy"])).strip()
+                    for cells in row
+                ]
+                for row in cell_items
+            ]
             buf = io.StringIO()
             writer = csv.writer(buf)
             writer.writerows(grid)
@@ -331,7 +412,7 @@ def main() -> int:
             if out_csv:
                 with open(out_csv, "w", encoding="utf-8", newline="") as fh:
                     fh.write(csv_text)
-            # E172：TSR 原始数据——cells/spans 保留行列归属与 bbox，下期合并还原直接复用
+            # E172：TSR 原始数据——cells/spans 保留行列归属与 bbox；merges 为还原结果
             cells = [
                 {
                     "row": r,
@@ -357,7 +438,6 @@ def main() -> int:
                 for c, its in enumerate(row)
                 for it in its
             ]
-            warnings = detect_merge_warnings(cell_items, items or [])
             print(
                 json.dumps(
                     {
@@ -368,6 +448,7 @@ def main() -> int:
                         "grid": grid,
                         "cells": cells,
                         "spans": spans,
+                        "merges": merges,
                         "warnings": warnings,
                     },
                     ensure_ascii=False,

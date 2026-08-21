@@ -416,20 +416,43 @@ export function accentFromQuery(query: string): string | undefined {
   return undefined;
 }
 
-/** E172：疑似合并区域 warning（TSR 启发式检测结果，Agent 如实告知用户）。 */
+/** E172：疑似合并区域 warning，TSR 输出格式；Agent 侧如实告知用户。 */
 export interface TableMergeWarning {
-  type: 'merged_col' | 'merged_row';
+  type: 'merged_col' | 'merged_row' | 'merged_conflict';
   row: number;
   col: number;
-  detail: string;
+  detail?: string;
+}
+
+/** E173：TSR 已还原的合并单元格（row/col 为 0 基，rowSpan/colSpan ≥ 1）。 */
+export interface TableMerge {
+  row: number;
+  col: number;
+  rowSpan: number;
+  colSpan: number;
+  text: string;
 }
 
 /** E172：把 TSR warnings 转成答案提示文案；无警告返回空串。 */
 export function tableWarningsNote(warnings: TableMergeWarning[]): string {
   if (warnings.length === 0) return '';
   const first = warnings[0];
-  const kind = first.type === 'merged_col' ? '跨列合并' : '跨行合并';
-  return `；提示：检测到 ${warnings.length} 处疑似合并单元格（如第${first.row + 1}行第${first.col + 1}列${kind}），已按普通文本逐格填充，请在 Excel 中核对后手动合并`;
+  const kind =
+    first.type === 'merged_conflict'
+      ? '覆盖区有内容'
+      : first.type === 'merged_col'
+        ? '跨列合并'
+        : '跨行合并';
+  const where = first.detail ?? `第${first.row + 1}行第${first.col + 1}列${kind}`;
+  return `；提示：检测到 ${warnings.length} 处疑似合并单元格无法自动还原（如${where}），已按普通文本逐格填充，请在 Excel 中核对后手动合并`;
+}
+
+/** E173：把 TSR merges 转成答案文案；无合并返回空串。 */
+export function tableMergesNote(merges: TableMerge[]): string {
+  if (merges.length === 0) return '';
+  const cols = merges.filter((m) => m.colSpan > 1).length;
+  const rows = merges.filter((m) => m.rowSpan > 1).length;
+  return `；已还原 ${merges.length} 处合并单元格（跨列 ${cols} 处、跨行 ${rows} 处）`;
 }
 
 export function createOfficeDailySkill(opts?: {
@@ -1342,7 +1365,7 @@ ${timeLabel}
         }
       }
       if (mode === 'table_ocr') {
-        // E168/E172：图片表格结构识别 → .xlsx（exceljs）；TSR 保留 bbox/span，疑似合并如实提示
+        // E168/E172/E173：图片表格结构识别 → .xlsx（exceljs）；TSR 输出含 bbox/span/merges，无法还原的疑似合并区如实提示
         const file = findImageFile(input);
         if (!file) {
           return {
@@ -1366,6 +1389,7 @@ ${timeLabel}
             cols?: number;
             grid?: string[][];
             warnings?: TableMergeWarning[];
+            merges?: TableMerge[];
             error?: string;
           };
           if (!result.ok) {
@@ -1379,6 +1403,11 @@ ${timeLabel}
           const workbook = new ExcelJS.Workbook();
           const sheet = workbook.addWorksheet('表格识别');
           for (const rowCells of grid) sheet.addRow(rowCells);
+          // E173：先写行再合并（mergeCells 会把覆盖区内容归并到锚点格），行列按 1 基换算
+          const merges = Array.isArray(result.merges) ? result.merges : [];
+          for (const m of merges) {
+            sheet.mergeCells(m.row + 1, m.col + 1, m.row + m.rowSpan, m.col + m.colSpan);
+          }
           await workbook.xlsx.writeFile(xlsxPath);
           const csvText = (result.csv ?? '').trim();
           const preview = csvText.slice(0, 120) + (csvText.length > 120 ? '…' : '');
@@ -1387,17 +1416,20 @@ ${timeLabel}
             result: {
               answer:
                 '已识别表格（' + (result.rows ?? 0) + ' 行 × ' + (result.cols ?? 0) + ' 列）：' +
-                preview + '；XLSX 已保存：' + xlsxPath + tableWarningsNote(warnings),
+                preview + '；XLSX 已保存：' + xlsxPath + tableMergesNote(merges) + tableWarningsNote(warnings),
               path: xlsxPath,
               csv: csvText,
               rows: result.rows ?? 0,
               cols: result.cols ?? 0,
               warnings,
+              merges,
             },
             confidence: 0.8,
             followUpAction: warnings.length
-              ? '识别结果含疑似合并区域，可告诉我需要合并的具体位置；下期将支持合并单元格自动还原。'
-              : '需要把表格继续转成 Word/PPT 或整理数据，随时说。',
+              ? '识别到无法自动还原的疑似合并区域，请在 Excel 中核对后手动合并'
+              : merges.length
+                ? '已还原合并单元格，需要调整合并范围或样式随时说'
+                : '需要把表格继续转成 Word/PPT 或调整格式，随时说',
           };
         } catch (err) {
           return {

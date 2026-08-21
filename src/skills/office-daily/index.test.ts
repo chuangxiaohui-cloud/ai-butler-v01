@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import { ReminderStore } from '../../reminder/reminder-store.js';
 import { saveCredentials } from '../../mail/credentials.js';
 import ExcelJS from 'exceljs';
-import { accentFromQuery, createOfficeDailySkill, tableWarningsNote } from './index.js';
+import { accentFromQuery, createOfficeDailySkill, tableMergesNote, tableWarningsNote } from './index.js';
 
 const RUNTIME_PYTHON =
   process.env.OFFICE_PYTHON ??
@@ -1137,6 +1137,22 @@ test('office-daily: 疑似合并 warning 文案如实提示', () => {
   assert.ok(note.includes('第1行第2列'), note);
   assert.ok(note.includes('跨列合并'), note);
   assert.ok(note.includes('手动合并'), note);
+  const conflict = tableWarningsNote([
+    { type: 'merged_conflict', row: 2, col: 0, detail: '第3行第1列疑似跨2列合并，覆盖区有其他文字无法自动还原' },
+  ]);
+  assert.ok(conflict.includes('无法自动还原'), conflict);
+  assert.ok(conflict.includes('第3行第1列'), conflict);
+});
+
+test('office-daily: 合并单元格还原文案', () => {
+  assert.equal(tableMergesNote([]), '');
+  const note = tableMergesNote([
+    { row: 0, col: 0, rowSpan: 1, colSpan: 2, text: '华东' },
+    { row: 0, col: 2, rowSpan: 1, colSpan: 2, text: '华北' },
+  ]);
+  assert.ok(note.includes('已还原 2 处合并单元格'), note);
+  assert.ok(note.includes('跨列 2 处'), note);
+  assert.ok(note.includes('跨行 0 处'), note);
 });
 
 test('office-daily: 表格识别引擎不可用时诚实提示', async () => {
@@ -1232,6 +1248,135 @@ print(base64.b64encode(buf.getvalue()).decode())`,
     assert.ok(ws, 'xlsx 工作表存在');
     assert.equal(ws.getCell('A1').value, 'A1');
     assert.equal(ws.getCell('B2').value, 'B2');
+    assert.equal(ws.model.merges.length, 0, JSON.stringify(ws.model.merges));
+    assert.ok(!(result.answer ?? '').includes('已还原'), result.answer);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+test('office-daily: 图片表格识别还原宽表头合并（A1:B1）', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+img = Image.new('RGB', (440, 300), 'white')
+d = ImageDraw.Draw(img)
+for x in (30, 220, 410):
+    d.line([(x, 30), (x, 280)], fill='black', width=2)
+for y in (30, 110, 200, 280):
+    d.line([(30, y), (410, y)], fill='black', width=2)
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf', r'C:\\Windows\\Fonts\\arialbd.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 32)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+d.text((40, 50), '月度销量汇总', fill='black', font=font)
+d.text((40, 130), '1月', fill='black', font=font)
+d.text((240, 130), '2月', fill='black', font=font)
+d.text((40, 220), '100', fill='black', font=font)
+d.text((240, 220), '200', fill='black', font=font)
+buf = io.BytesIO()
+img.save(buf, 'PNG')
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const png = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+        rawFiles: [fakeFile('table.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; path?: string };
+    assert.ok(existsSync(result.path as string));
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(result.path as string);
+    const ws = wb.getWorksheet(1);
+    assert.ok(ws, 'xlsx 读取到工作表');
+    assert.deepEqual(ws.model.merges, ['A1:B1'], JSON.stringify(ws.model.merges));
+    assert.equal(ws.getCell('A1').value, '月度销量汇总');
+    assert.ok(result.answer?.includes('已还原 1 处合并单元格'), result.answer);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 图片表格识别还原两级表头合并（2 处）', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+img = Image.new('RGB', (560, 320), 'white')
+d = ImageDraw.Draw(img)
+for x in (30, 155, 280, 405, 530):
+    d.line([(x, 30), (x, 300)], fill='black', width=2)
+for y in (30, 120, 210, 300):
+    d.line([(30, y), (530, y)], fill='black', width=2)
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 32)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+d.text((72, 56), '华东', fill='black', font=font)
+d.text((328, 57), '华北', fill='black', font=font)
+d.text((53, 152), '上海', fill='black', font=font)
+d.text((178, 152), '杭州', fill='black', font=font)
+d.text((302, 151), '北京', fill='black', font=font)
+d.text((428, 153), '天津', fill='black', font=font)
+d.text((53, 249), '10', fill='black', font=font)
+d.text((178, 249), '12', fill='black', font=font)
+d.text((304, 250), '8', fill='black', font=font)
+d.text((429, 250), '9', fill='black', font=font)
+buf = io.BytesIO()
+img.save(buf, 'PNG')
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const png = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+        rawFiles: [fakeFile('table.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; path?: string };
+    assert.ok(existsSync(result.path as string));
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(result.path as string);
+    const ws = wb.getWorksheet(1);
+    assert.ok(ws, 'xlsx 读取到工作表');
+    assert.deepEqual(ws.model.merges, ['A1:B1', 'C1:D1'], JSON.stringify(ws.model.merges));
+    assert.equal(ws.getCell('A1').value, '华东');
+    assert.equal(ws.getCell('C1').value, '华北');
+    assert.ok(result.answer?.includes('已还原 2 处合并单元格'), result.answer);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

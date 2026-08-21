@@ -2122,9 +2122,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **证据**：新增 emergency-reply 单测 4 条；最终单测 211/211 + 集成 17/17 全绿。
 - affects: §4.2,§6.1 | bench:na(new-param) 理由：紧急话术与路由关键词，无 §5/§6 参数变更
 
-### 2026-08-14（Markdown 链接归一化 E62）
-
-- **变更**：`prepareQuery` 先把 `[文字](链接)` 转成干净文本，避免 `[` `]` 语法污染搜索；已给 URL 的“这个项目”不再触发指代澄清。
+### 2026-08-14（Markdown 链接归一化 E62）<br>- **变更**：`prepareQuery` 先把 `[文字](链接)` 转成干净文本，避免 `[` `]` 语法污染搜索；已给 URL 的“这个项目”不再触发指代澄清。
 - **验证**：`[PaddleOCR 链接](...)` 类 query 正常回答项目用途；新增 s1_prepare 回归测试。
 - affects: §6.1 | bench:na(new-param) 理由：链接归一化修复，无 §5/§6 参数变更
 
@@ -2564,6 +2562,8 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 
 ### 2026-08-21（日历 .ics 导入 E171）<br>- **变更**：`calendar-skill` 新增 `.ics` 导入闭环（承接 E169 导出）——`parseIcs` 解析标准 iCalendar（展开 RFC 5545 折叠行、支持 `YYYYMMDDTHHMMSSZ` UTC/本地/全天日期、中文标题与转义反转义），导入分支支持附件 `.ics` 或查询显式文件路径，每天/每周 RRULE 映射 `repeat=daily/weekly`，每月/每年等复杂周期跳过并诚实计数，按标题+时间去重，写入 `calendar_events`，空/无 VEVENT 文件诚实提示，导入不自动批量登记提醒；意图层 `query` 特判“导入日历/日程/ics”命中 R004 不再偏到 web_search，`DOMAIN_RE schedule` 增加 `\.ics`。**验证**：主项目 build；单测 519/519 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 9 条单测（parseIcs 多事件/重复/全天/折叠行、附件导入真跑、路径导入、复杂周期跳过计数、空文件、无附件提示、路由 2）；doc-lint 通过；详见 `docs/plans/2026-08-21-calendar-ics-import.md`；affects: §6,§12.2,§13 | bench:na(new-param) 理由：生活助手日历新增 .ics 导入，无 §5/§6 参数变更。
 ### 2026-08-21（图片表格识别输出 .xlsx E172）<br>- **变更**：`scripts/office_image_ocr.py --table` 输出扩展 TSR 原始数据——JSON 新增 `grid/cells/spans/warnings`（cells/spans 保留每个 OCR 文本块的行列归属与原始 bbox/score，供下期合并单元格还原直接复用，避免重跑识别）；启发式检测疑似合并区域（同行跨列 bbox 横向重叠、同列跨行纵向重叠、格宽/格高显著大于中位）输出 warnings；`office-daily` table_ocr 改用 exceljs 生成真 .xlsx（新增依赖 exceljs，理由见 `docs/plans/2026-08-21-image-table-xlsx.md`），答案带“N 行 × M 列 + 预览 + XLSX 路径”，warnings 非空如实提示“N 处疑似合并单元格…已按普通文本逐格填充，请在 Excel 中核对后手动合并”；查询词扩展“转成 Excel / 生成表格文件 / xlsx”。**验证**：主项目 build；单测 521/521 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 1 条单测（疑似合并 warning 文案如实提示）+ 真跑 xlsx 读回 A1/B2 断言；doc-lint 通过；详见 `docs/plans/2026-08-21-image-table-xlsx.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格识别输出 xlsx，无 §5/§6 参数变更。
+
+### 2026-08-21（图片表格合并单元格还原 E173）<br>- **变更**：`scripts/office_image_ocr.py` 新增 `detect_merges`（替换 E172 的 detect_merge_warnings）——按列/行槽位（相邻列中心/行锚点取中点）计算每格 bbox 覆盖范围，跨度>1 且覆盖区内其它格为空 → 生成 merge `{row,col,rowSpan,colSpan,text}`；覆盖区有真实内容 → `merged_conflict` warning 如实提示不强行合并；两级表头（“华东/华北”各跨 2 列）由第 0 行空区间启发式补齐（内部区间并入距中点更近的锚点，边缘区间并入唯一侧锚点且下方确有内容，避免普通表尾空格误并），covered 集合防重复，merges 按 row/col 排序保证输出稳定，grid/cells 同步重排、spans 保留原始 bbox；`office-daily` table_ocr 对每个 merge 应用 `sheet.mergeCells`（先写行再合并）还原真实合并单元格，答案追加“已还原 N 处合并单元格（跨列 X 处、跨行 Y 处）”，无法还原的疑似区域继续如实提示。**验证**：主项目 build；单测 524/524 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 2 条单测（合并单元格还原文案、merged_conflict warning 文案）+ 2 条真跑（宽表头 A1:B1、两级表头 2 处合并，xlsx 读回 `worksheet.model.merges` 断言）+ 原 2×2 真跑补充无合并断言；doc-lint 通过；详见 `docs/plans/2026-08-21-image-table-merges.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格合并单元格还原，无 §5/§6 参数变更。
 
 ### v2.5（2026-08-12）
 
