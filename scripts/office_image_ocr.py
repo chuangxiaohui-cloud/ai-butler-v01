@@ -183,6 +183,81 @@ def reconstruct_table(items: list[dict]):
 
 
 
+def detect_table_lines(arr):
+    """E174：检测表格网格线 → ([x_edges...], [y_edges...])；无网格返回 None。
+
+    双条件检线：整行/列暗像素占比 > 0.3 且最大连续暗 run > 图像宽/高的 0.25
+    （避免密集文字行误判为网格线）；相邻候选线合并为一条（取中位）。"""
+    import numpy as np
+
+    if arr.ndim == 3:
+        gray = np.asarray(arr, dtype=np.float32).mean(axis=2)
+    else:
+        gray = np.asarray(arr, dtype=np.float32)
+    h, w = gray.shape
+    dark = gray < 160.0
+
+    def max_run(line) -> int:
+        best = cur = 0
+        for v in line:
+            if v:
+                cur += 1
+                best = max(best, cur)
+            else:
+                cur = 0
+        return best
+
+    def scan(mask2d, limit):
+        n = mask2d.shape[0]
+        out: list[int] = []
+        i = 0
+        while i < n:
+            if float(mask2d[i].sum()) / limit > 0.3 and max_run(mask2d[i]) > 0.25 * limit:
+                j = i
+                while (
+                    j < n
+                    and float(mask2d[j].sum()) / limit > 0.3
+                    and max_run(mask2d[j]) > 0.25 * limit
+                ):
+                    j += 1
+                out.append((i + j - 1) // 2)
+                i = j
+            else:
+                i += 1
+        return out
+
+    ys = scan(dark, w)
+    xs = scan(dark.T, h)
+    if len(ys) < 2 or len(xs) < 2:
+        return None
+    return xs, ys
+
+
+def reconstruct_grid(items, x_edges, y_edges):
+    """E174：按网格线重建 → (grid, rows, cols, cell_items, col_cx, row_anchors)。
+
+    文本按中心落入网格单元，行列结构由网格线直接确定；bbox 跨多格的文本块仍落
+    首个单元，由 detect_merges 槽位法依据原始 bbox 补判合并。"""
+    xs, ys = sorted(x_edges), sorted(y_edges)
+    col_cx = [0.5 * (xs[i] + xs[i + 1]) for i in range(len(xs) - 1)]
+    row_anchors = [0.5 * (ys[i] + ys[i + 1]) for i in range(len(ys) - 1)]
+    n_rows, n_cols = len(row_anchors), len(col_cx)
+    cell_items: list[list[list[dict]]] = [
+        [[] for _ in range(n_cols)] for _ in range(n_rows)
+    ]
+    for it in items:
+        ci = min(range(n_cols), key=lambda i: abs(col_cx[i] - it["cx"]))
+        ri = min(range(n_rows), key=lambda i: abs(row_anchors[i] - it["cy"]))
+        cell_items[ri][ci].append(it)
+    grid = [
+        [
+            " ".join(it["text"] for it in sorted(cells, key=lambda i: i["cy"])).strip()
+            for cells in row
+        ]
+        for row in cell_items
+    ]
+    return grid, n_rows, n_cols, cell_items, col_cx, row_anchors
+
 def _slot_bounds(centers: list[float]) -> list[float]:
     """相邻中心取中点 → 槽位边界（首尾边界由 bbox 自身决定）。"""
     return [0.5 * (centers[i] + centers[i + 1]) for i in range(len(centers) - 1)]
@@ -206,6 +281,7 @@ def detect_merges(
     cell_items: list[list[list[dict]]],
     col_cx: list[float],
     row_anchors: list[float],
+    grid_bounds: tuple[list[float], list[float]] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """E173：几何法合并单元格还原 → (merges, warnings)。
 
@@ -219,8 +295,11 @@ def detect_merges(
     cols = len(cell_items[0]) if rows else 0
     if rows == 0 or cols == 0:
         return merges, warnings
-    col_bounds = _slot_bounds(col_cx)
-    row_bounds = _slot_bounds(row_anchors)
+    if grid_bounds is not None:
+        col_bounds, row_bounds = grid_bounds
+    else:
+        col_bounds = _slot_bounds(col_cx)
+        row_bounds = _slot_bounds(row_anchors)
 
     for r, row in enumerate(cell_items):
         for c, its in enumerate(row):
@@ -383,8 +462,20 @@ def main() -> int:
             items, run_err = run_ocr(engine, src)
             if run_err:
                 return fail(run_err)
-            grid, rows, cols, cell_items, col_cx, row_anchors = reconstruct_table(items or [])
-            merges, warnings = detect_merges(cell_items, col_cx, row_anchors)
+            items = items or []
+            # E174：优先网格线重建（行列结构精确），无网格回退文本聚类
+            grid_lines = detect_table_lines(load_image(src))
+            if grid_lines:
+                x_edges, y_edges = grid_lines
+                grid, rows, cols, cell_items, col_cx, row_anchors = reconstruct_grid(
+                    items, x_edges, y_edges
+                )
+                merges, warnings = detect_merges(
+                    cell_items, col_cx, row_anchors, (x_edges[1:-1], y_edges[1:-1])
+                )
+            else:
+                grid, rows, cols, cell_items, col_cx, row_anchors = reconstruct_table(items)
+                merges, warnings = detect_merges(cell_items, col_cx, row_anchors)
             # E173：合并区文本重排到锚点格（grid/cells 同步；spans 保留原始 bbox 与 score）
             for m in merges:
                 mrow, mcol = m["row"], m["col"]

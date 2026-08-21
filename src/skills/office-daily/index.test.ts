@@ -1191,7 +1191,7 @@ test('office-daily: 图片表格识别真跑', { skip: !HAS_LOCAL_RAPIDOCR }, as
         '-c',
         `import base64, io, os
 from PIL import Image, ImageDraw, ImageFont
-img = Image.new('RGB', (400, 120), 'white')
+img = Image.new('RGB', (420, 140), 'white')
 d = ImageDraw.Draw(img)
 for x in (0, 200, 400):
     d.line([(x, 0), (x, 120)], fill='black', width=2)
@@ -1381,6 +1381,124 @@ print(base64.b64encode(buf.getvalue()).decode())`,
     rmSync(dir, { recursive: true, force: true });
   }
 });
+test('office-daily: 图片表格识别还原跨行合并（A1:A2）', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+img = Image.new('RGB', (300, 330), 'white')
+d = ImageDraw.Draw(img)
+for x in (30, 155, 280):
+    d.line([(x, 30), (x, 300)], fill='black', width=2)
+for y in (30, 120, 210, 300):
+    d.line([(30, y), (280, y)], fill='black', width=2)
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 28)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+d.text((60, 95), '部门', fill='black', font=font)
+d.text((180, 55), '一月', fill='black', font=font)
+d.text((180, 145), '二月', fill='black', font=font)
+d.text((60, 240), '合计', fill='black', font=font)
+d.text((180, 240), '300', fill='black', font=font)
+buf = io.BytesIO()
+img.save(buf, 'PNG')
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const png = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+        rawFiles: [fakeFile('table.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; path?: string };
+    assert.ok(existsSync(result.path as string));
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(result.path as string);
+    const ws = wb.getWorksheet(1);
+    assert.ok(ws, 'xlsx 读取到工作表');
+    assert.deepEqual(ws.model.merges, ['A1:A2'], JSON.stringify(ws.model.merges));
+    assert.equal(ws.getCell('A1').value, '部门');
+    assert.ok(result.answer?.includes('已还原 1 处合并单元格'), result.answer);
+    assert.ok(result.answer?.includes('跨行 1 处'), result.answer);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 图片表格识别无网格表格回退文本聚类', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+img = Image.new('RGB', (300, 160), 'white')
+d = ImageDraw.Draw(img)
+font = None
+for fp in [r'C:\\Windows\\Fonts\\arialbd.ttf', r'C:\\Windows\\Fonts\\arial.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 32)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+d.text((30, 20), 'A1', fill='black', font=font)
+d.text((170, 20), 'B1', fill='black', font=font)
+d.text((30, 90), 'A2', fill='black', font=font)
+d.text((170, 90), 'B2', fill='black', font=font)
+buf = io.BytesIO()
+img.save(buf, 'PNG')
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const png = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+        rawFiles: [fakeFile('table.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; path?: string };
+    assert.ok(existsSync(result.path as string));
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(result.path as string);
+    const ws = wb.getWorksheet(1);
+    assert.ok(ws, 'xlsx 读取到工作表');
+    assert.equal(ws.model.merges.length, 0, JSON.stringify(ws.model.merges));
+    assert.equal(ws.getCell('A1').value, 'A1');
+    assert.equal(ws.getCell('B2').value, 'B2');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 function startFakeSmtpServer(): Promise<{
   port: number;
   transcript: string[];

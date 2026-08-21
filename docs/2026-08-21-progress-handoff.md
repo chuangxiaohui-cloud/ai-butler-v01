@@ -1,6 +1,6 @@
 # 进度交接 2026-08-21（v0.2b 续作）
 
-> 当前分支：`v0.2b`｜E173 已提交（HEAD=`710c1a2`）。上一份交接见 `docs/2026-08-20-progress-handoff.md`。
+> 当前分支：`v0.2b`｜E173 已提交（HEAD=`710c1a2`），E174 进行中。上一份交接见 `docs/2026-08-20-progress-handoff.md`。
 
 ## 今日已收口
 
@@ -38,10 +38,14 @@
    排序保证 xlsx 顺序稳定；`office-daily` table_ocr 对每个 merge 应用 `sheet.mergeCells`
    还原真实合并单元格，答案追加“已还原 N 处合并单元格（跨列 X 处、跨行 Y 处）”；附录 A 压缩
    E62 旧条目腾 1 行登记 E173。
+8. **表格网格线检测 + 跨行合并还原（E174）**：`scripts/office_image_ocr.py` 新增
+   `detect_table_lines`（暗像素占比 + 最大连续暗 run 双条件检线）与 `reconstruct_grid`
+   （网格驱动行列结构）；`--table` 优先网格路径，无网格（无边框）表格回退文本聚类；
+   跨行合并实图验证（“部门”跨两行 → xlsx A1:A2 合并、grid 3×2），既有 3 用例回归一致。
 
 ## 今日验证
 
-- 全量单测 524/524 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
+- 全量单测 526/526 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
 - `doc-lint` 0 FAIL 0 WARN（附录 A 行数预算 950/950 已到上限）。
 - 真跑验证：假 SMTP 服务器全命令序列 + TLS 直连（自签证书门控）真发成功；.ics 附件导入 →
   查询可见“每天重复”；CLI `发送邮件给…` 未配置凭据诚实提示不发送；CLI 真跑
@@ -51,10 +55,14 @@
   → 答案如实提示“1 处疑似合并单元格（跨列）”，xlsx 落盘。
   图片表格合并还原（E173）：宽表头“月度销量汇总”→ xlsx A1:B1 合并 + “已还原 1 处”；
   两级表头（华东/华北各跨 2 列）→ A1:B1 + C1:D1 共 2 处；2×2 网格 → 无合并无 warning。
+  表格网格线检测（E174）：跨行合并图（部门跨两行）→ xlsx A1:A2 合并 + “已还原 1 处…
+  跨行 1 处”；既有 2×2/宽表头/两级表头 3 用例 merges 输出与 E173 一致；无边框表格回退
+  文本聚类无伪合并。
 
 ## 今日收尾状态
 
 - 已提交：E173（HEAD=`710c1a2`）。
+- 待提交：E174（表格网格线检测 + 跨行合并还原）。
 - 今日修复：CLI 真跑 `.ics` 路径导入时 Stage 1 脱敏剥掉盘符导致路由与 skill 收到的
   query 丢失 `.ics` 信息；已改 `src/search/pipeline.ts` 的 routeQuery 与 skillInputQuery
   （对 calendar-skill 的 `X:\...\*.ics` 用 originalQuery），真跑验证通过。
@@ -62,14 +70,14 @@
   `docs/plans/2026-08-21-calendar-ics-export.md`（E169）、
   `docs/plans/2026-08-21-email-smtp-send.md`（E170）、
   `docs/plans/2026-08-21-calendar-ics-import.md`（E171）。
-  `docs/plans/2026-08-21-image-table-xlsx.md`（E172）、`docs/plans/2026-08-21-image-table-merges.md`（E173）。
+  `docs/plans/2026-08-21-image-table-xlsx.md`（E172）、`docs/plans/2026-08-21-image-table-merges.md`（E173）、`docs/plans/2026-08-21-table-gridlines-merge.md`（E174）。
 
 ## 明天继续（按优先级）
 
-1. 合并单元格还原下期迭代：跨行合并实图验证、真实边框线检测（当前为几何启发式，覆盖率有限）。
-2. UI 集成新能力（邮件发送/凭据配置、日历导入导出入口）。
-3. 附录 A 行数预算继续按需压缩旧条目（950/950 无余量）。
-
+1. 提交 E174 批次（`git add` + 单主题中文提交）。
+2. 合并单元格还原下期迭代：真实扫描件/手写表格噪点鲁棒性、L 形或跨行+跨列组合复杂合并区域。
+3. UI 集成新能力（邮件发送/凭据配置、日历导入导出入口）。
+4. 附录 A 行数预算继续按需压缩旧条目（950/950 无余量）。
 ## 常用命令
 
 ```bash

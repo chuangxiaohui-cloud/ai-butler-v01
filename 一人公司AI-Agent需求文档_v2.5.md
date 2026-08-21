@@ -2126,9 +2126,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **验证**：`[PaddleOCR 链接](...)` 类 query 正常回答项目用途；新增 s1_prepare 回归测试。
 - affects: §6.1 | bench:na(new-param) 理由：链接归一化修复，无 §5/§6 参数变更
 
-### 2026-08-14（“是什么 + 写个例子”路由修正 E63）
-
-- **变更**：`qa` 优先级提前，避免 `写个` 被 `create` 抢走；合成层新增“用户要求举例时必须给可运行示例”约束。
+### 2026-08-14（“是什么 + 写个例子”路由修正 E63）<br>- **变更**：`qa` 优先级提前，避免 `写个` 被 `create` 抢走；合成层新增“用户要求举例时必须给可运行示例”约束。
 - **验证**：函数指针问题已给出可运行 C 代码示例；新增 router-v2 与 Stage 5 回归测试。
 - affects: §2.2,§6.1,§6.7 | bench:na(new-param) 理由：qa 路由与示例约束，无 §5/§6 参数变更
 
@@ -2564,6 +2562,8 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-21（图片表格识别输出 .xlsx E172）<br>- **变更**：`scripts/office_image_ocr.py --table` 输出扩展 TSR 原始数据——JSON 新增 `grid/cells/spans/warnings`（cells/spans 保留每个 OCR 文本块的行列归属与原始 bbox/score，供下期合并单元格还原直接复用，避免重跑识别）；启发式检测疑似合并区域（同行跨列 bbox 横向重叠、同列跨行纵向重叠、格宽/格高显著大于中位）输出 warnings；`office-daily` table_ocr 改用 exceljs 生成真 .xlsx（新增依赖 exceljs，理由见 `docs/plans/2026-08-21-image-table-xlsx.md`），答案带“N 行 × M 列 + 预览 + XLSX 路径”，warnings 非空如实提示“N 处疑似合并单元格…已按普通文本逐格填充，请在 Excel 中核对后手动合并”；查询词扩展“转成 Excel / 生成表格文件 / xlsx”。**验证**：主项目 build；单测 521/521 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 1 条单测（疑似合并 warning 文案如实提示）+ 真跑 xlsx 读回 A1/B2 断言；doc-lint 通过；详见 `docs/plans/2026-08-21-image-table-xlsx.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格识别输出 xlsx，无 §5/§6 参数变更。
 
 ### 2026-08-21（图片表格合并单元格还原 E173）<br>- **变更**：`scripts/office_image_ocr.py` 新增 `detect_merges`（替换 E172 的 detect_merge_warnings）——按列/行槽位（相邻列中心/行锚点取中点）计算每格 bbox 覆盖范围，跨度>1 且覆盖区内其它格为空 → 生成 merge `{row,col,rowSpan,colSpan,text}`；覆盖区有真实内容 → `merged_conflict` warning 如实提示不强行合并；两级表头（“华东/华北”各跨 2 列）由第 0 行空区间启发式补齐（内部区间并入距中点更近的锚点，边缘区间并入唯一侧锚点且下方确有内容，避免普通表尾空格误并），covered 集合防重复，merges 按 row/col 排序保证输出稳定，grid/cells 同步重排、spans 保留原始 bbox；`office-daily` table_ocr 对每个 merge 应用 `sheet.mergeCells`（先写行再合并）还原真实合并单元格，答案追加“已还原 N 处合并单元格（跨列 X 处、跨行 Y 处）”，无法还原的疑似区域继续如实提示。**验证**：主项目 build；单测 524/524 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 2 条单测（合并单元格还原文案、merged_conflict warning 文案）+ 2 条真跑（宽表头 A1:B1、两级表头 2 处合并，xlsx 读回 `worksheet.model.merges` 断言）+ 原 2×2 真跑补充无合并断言；doc-lint 通过；详见 `docs/plans/2026-08-21-image-table-merges.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格合并单元格还原，无 §5/§6 参数变更。
+
+### 2026-08-21（表格网格线检测 + 跨行合并还原 E174）<br>- **变更**：`scripts/office_image_ocr.py` 新增 `detect_table_lines`（灰度图按行/列暗像素占比 >0.3 且最大连续暗 run > 图像宽/高 0.25 双条件检线，避免密集文字行误判，相邻线合并取中位）与 `reconstruct_grid`（文本按中心落入网格单元，行列结构由网格线直接确定，修复 E173 跨行合并文本被文本聚类拆成独立行导致的行列结构错误）；`--table` 优先网格路径（网格边界直接作为合并槽位边界），无网格（无边框）表格回退 E173 文本聚类路径；跨行合并实图验证：“部门”跨两行正确还原 `A1:A2`（rowSpan=2）、grid 3×2，不再误判“一月/二月”为跨行合并。**验证**：主项目 build；单测 526/526 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 2 条真跑（跨行合并 A1:A2、无网格表格回退文本聚类），既有 2×2/宽表头/两级表头 3 用例 merges/warnings 输出与 E173 完全一致（原 2×2 真跑图尺寸 400×120→420×140 让边框线落在图像内）；doc-lint 通过；详见 `docs/plans/2026-08-21-table-gridlines-merge.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格网格线检测与跨行合并还原，无 §5/§6 参数变更。
 
 ### v2.5（2026-08-12）
 
