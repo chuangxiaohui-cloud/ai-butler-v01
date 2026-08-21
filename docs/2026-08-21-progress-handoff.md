@@ -47,10 +47,17 @@
    整行居中标题启发式（单文本、居中、两侧下方有内容 → 合并整行，替换槽位法水平部分
    合并、保留跨行合并）；组合表头图 → `销售汇总` A1:D1 + `华东` A2:B2 + `华北` C2:D2
    共 3 处；附录 A 压缩 E64 旧条目腾 1 行登记 E175。
+10. **L 形/跨行+跨列组合复杂合并区域还原（E176）**：`detect_merges` 顶部表头相位
+    重构为三段——阶段 A 整行居中标题（E175 原逻辑）；阶段 B 垂直组标签/角落合并
+    （锚点上方同列空格且下方有数据 → 向上扩展到连续空格顶部、再向右扩展同行空格成
+    rowSpan×colSpan 矩形；纯数字锚点跳过；上方同列格若在同行水平组头向右延伸范围内
+    则拒绝）；阶段 C 组间空隙水平启发式（行级 covered 守卫改为逐空区间守卫）；真跑
+    2×2 角落 `项目` A1:B2、L 形 `产品` A1:A2 + `地区` B1:C1；附录 A 压缩 E70 旧条目
+    腾 1 行登记 E176。
 
 ## 今日验证
 
-- 全量单测 528/528 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
+- 全量单测 530/530 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
 - `doc-lint` 0 FAIL 0 WARN（附录 A 行数预算 950/950 已到上限）。
 - 真跑验证：假 SMTP 服务器全命令序列 + TLS 直连（自签证书门控）真发成功；.ics 附件导入 →
   查询可见“每天重复”；CLI `发送邮件给…` 未配置凭据诚实提示不发送；CLI 真跑
@@ -66,11 +73,15 @@
    组合复杂表头（E175）：组合表头图（`销售汇总` 跨 4 列 + `华东/华北` 各跨 2 列）→ xlsx
    A1:D1 + A2:B2 + C2:D2 共 3 处合并 + “已还原 3 处合并单元格”；缺值数据行 `[10,,8,9]`
    不误并；既有 5 用例 merges 输出与 E174 完全一致。
+   L 形/角落合并（E176）：2×2 角落图（`项目` 跨 A1:B2）→ xlsx A1:B2 合并 + “已还原
+   1 处”；L 形表头图（`产品` A1:A2 + `地区` B1:C1）→ 2 处合并 + “已还原 2 处”；
+   既有 6 用例（含 E175 组合表头）merges 输出与 E175 完全一致；两级表头“杭州/天津”
+   不再被垂直启发式误并。
 
 ## 今日收尾状态
 
 - 已提交：E174（HEAD=`ffcf6e8`）。
-- 待提交：E175 全部改动 + docs/plans 计划文档补提交（image-table-merges + table-gridlines-merge + table-header-combos）。
+- 待提交：E176 全部改动 + docs/plans 计划文档补提交（image-table-merges + table-gridlines-merge + table-header-combos + lshape-header-merges）。
 - 今日修复：CLI 真跑 `.ics` 路径导入时 Stage 1 脱敏剥掉盘符导致路由与 skill 收到的
   query 丢失 `.ics` 信息；已改 `src/search/pipeline.ts` 的 routeQuery 与 skillInputQuery
   （对 calendar-skill 的 `X:\...\*.ics` 用 originalQuery），真跑验证通过。
@@ -78,11 +89,11 @@
   `docs/plans/2026-08-21-calendar-ics-export.md`（E169）、
   `docs/plans/2026-08-21-email-smtp-send.md`（E170）、
   `docs/plans/2026-08-21-calendar-ics-import.md`（E171）。
-  `docs/plans/2026-08-21-image-table-xlsx.md`（E172）、`docs/plans/2026-08-21-image-table-merges.md`（E173）、`docs/plans/2026-08-21-table-gridlines-merge.md`（E174）、`docs/plans/2026-08-21-table-header-combos.md`（E175）。
+  `docs/plans/2026-08-21-image-table-xlsx.md`（E172）、`docs/plans/2026-08-21-image-table-merges.md`（E173）、`docs/plans/2026-08-21-table-gridlines-merge.md`（E174）、`docs/plans/2026-08-21-table-header-combos.md`（E175）、`docs/plans/2026-08-21-lshape-header-merges.md`（E176）。
 
 ## 明天继续（按优先级）
 
-1. 合并单元格还原下期迭代：L 形/跨行+跨列组合复杂合并区域、真实扫描件/手写表格噪点鲁棒性。
+1. 合并单元格还原下期迭代：3 行及以上垂直组标签（如 `产品` A1:A3）、真实扫描件/手写表格噪点鲁棒性。
 2. UI 集成新能力（邮件发送/凭据配置、日历导入导出入口）。
 3. 附录 A 行数预算继续按需压缩旧条目（950/950 无余量）。
 

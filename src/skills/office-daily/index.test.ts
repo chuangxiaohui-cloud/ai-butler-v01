@@ -1624,6 +1624,130 @@ print(base64.b64encode(buf.getvalue()).decode())`,
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('office-daily: 图片表格识别还原 2×2 角落合并（跨行+跨列 A1:B2）', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+img = Image.new('RGB', (420, 330), 'white')
+d = ImageDraw.Draw(img)
+for x in (30, 170, 310, 400):
+    d.line([(x, 30), (x, 300)], fill='black', width=2)
+for y in (30, 120, 210, 300):
+    d.line([(30, y), (400, y)], fill='black', width=2)
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 34)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+d.text((60, 130), '项目', fill='black', font=font)
+d.text((325, 60), '数量', fill='black', font=font)
+d.text((60, 240), '甲', fill='black', font=font)
+d.text((200, 240), '乙', fill='black', font=font)
+d.text((325, 240), '10', fill='black', font=font)
+buf = io.BytesIO()
+img.save(buf, 'PNG')
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const png = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+        rawFiles: [fakeFile('table.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; path?: string };
+    assert.ok(existsSync(result.path as string));
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(result.path as string);
+    const ws = wb.getWorksheet(1);
+    assert.ok(ws, 'xlsx 读取成功');
+    assert.deepEqual(ws.model.merges, ['A1:B2'], JSON.stringify(ws.model.merges));
+    assert.equal(ws.getCell('A1').value, '项目');
+    assert.ok(result.answer?.includes('已还原 1 处合并单元格'), result.answer);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 图片表格识别还原 L 形表头（产品 A1:A2 + 地区 B1:C1）', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+img = Image.new('RGB', (420, 330), 'white')
+d = ImageDraw.Draw(img)
+for x in (30, 170, 310, 400):
+    d.line([(x, 30), (x, 300)], fill='black', width=2)
+for y in (30, 120, 210, 300):
+    d.line([(30, y), (400, y)], fill='black', width=2)
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 32)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+d.text((52, 132), '产品', fill='black', font=font)
+d.text((250, 58), '地区', fill='black', font=font)
+d.text((200, 152), '华东', fill='black', font=font)
+d.text((330, 152), '华北', fill='black', font=font)
+d.text((52, 242), '手机', fill='black', font=font)
+d.text((200, 242), '100', fill='black', font=font)
+d.text((330, 242), '200', fill='black', font=font)
+buf = io.BytesIO()
+img.save(buf, 'PNG')
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const png = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+        rawFiles: [fakeFile('table.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; path?: string };
+    assert.ok(existsSync(result.path as string));
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(result.path as string);
+    const ws = wb.getWorksheet(1);
+    assert.ok(ws, 'xlsx 读取成功');
+    assert.deepEqual([...ws.model.merges].sort(), ['A1:A2', 'B1:C1'].sort(), JSON.stringify(ws.model.merges));
+    assert.equal(ws.getCell('A1').value, '产品');
+    assert.ok(result.answer?.includes('已还原 2 处合并单元格'), result.answer);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 function startFakeSmtpServer(): Promise<{
   port: number;
   transcript: string[];

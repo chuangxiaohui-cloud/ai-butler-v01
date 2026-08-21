@@ -10,6 +10,7 @@ import io
 import json
 import os
 import pathlib
+import re
 import sys
 import tempfile
 
@@ -357,14 +358,22 @@ def detect_merges(
     # 条件：该行窄于数据行、行内空区间呈组间空隙模式（空隙数 + 1 >= 填充数）、
     # 空区间下方确有内容；内部区间并入距中点更近的锚点，边缘区间并入唯一侧锚点
     # （下方无内容的表尾空格仍跳过，避免误并）。
+    # E175/E176：顶部表头行启发式——整行居中标题、垂直组标签/角落合并、组间空隙。
+    # 阶段 A：整行居中标题（单文本、居中、两侧下方有内容 → 合并整行，替换槽位法
+    #   水平部分合并、保留跨行合并）。
+    # 阶段 B：垂直组标签/角落合并（L 形表头）——锚点上方同列为空、下方同列有数据时，
+    #   向上扩展到连续空格顶部，再向右扩展同行空格（要求整列矩形全空且扩展列下方
+    #   有数据），得到 rowSpan × colSpan 矩形；纯数字锚点视为数据行跳过。
+    # 阶段 C：组间空隙水平启发式（空隙数 + 1 >= 填充数、空区间下方有数据；逐空区间
+    #   跳过 covered，避免与角落合并冲突）。
     if rows > 1:
         max_filled = max(sum(1 for its in row if its) for row in cell_items)
-        for hr in range(min(2, rows)):
+        band = min(2, rows)
+        # 阶段 A：整行居中标题
+        for hr in range(band):
             row_filled = sum(1 for its in cell_items[hr] if its)
             if row_filled >= max_filled:
                 continue
-            # 整行居中标题：文本中心接近行中心、两侧下方均有内容 → 合并整行，
-            # 替换该行槽位法产生的水平部分合并（保留跨行合并）。
             if row_filled == 1 and cols > 1:
                 only_c = next(c for c in range(cols) if cell_items[hr][c])
                 vert_merge = any(
@@ -414,10 +423,71 @@ def detect_merges(
                             for cc in range(cols):
                                 covered.add((hr, cc))
                             continue
-            # 组间空隙模式需要该行未被既有合并占用，避免与整行/跨行合并冲突。
-            if any((hr, cc) in covered for cc in range(cols)):
+        # 阶段 B：垂直组标签 / 角落合并（L 形表头）
+        for hr in range(1, band):
+            for c in range(cols):
+                if not cell_items[hr][c]:
+                    continue
+                if (hr, c) in covered or (hr - 1, c) in covered:
+                    continue
+                # 上方同列格若在同行水平组头向右延伸的覆盖范围内（其左侧同行有锚点），
+                # 该格归水平组头所有，垂直组标签不成立（如两级表头“华东 A1:B1”下的“杭州”）。
+                l = c - 1
+                while l >= 0 and not cell_items[hr - 1][l]:
+                    l -= 1
+                if l >= 0:
+                    continue
+                if cell_items[hr - 1][c]:
+                    continue
+                    continue
+                if hr + 1 >= rows:
+                    continue
+                if not any(cell_items[rr][c] for rr in range(hr + 1, rows)):
+                    continue
+                text = " ".join(
+                    it["text"]
+                    for it in sorted(cell_items[hr][c], key=lambda i: i["cy"])
+                ).strip()
+                if re.search(r"^[0-9][0-9.,%()\-+]*\s*$", text):
+                    continue
+                r_top = hr - 1
+                while r_top - 1 >= 0 and not cell_items[r_top - 1][c]:
+                    r_top -= 1
+                c1 = c
+                while c1 + 1 < cols:
+                    if any(cell_items[rr][c1 + 1] for rr in range(r_top, hr + 1)):
+                        break
+                    if any((rr, c1 + 1) in covered for rr in range(r_top, hr + 1)):
+                        break
+                    if not any(cell_items[rr][c1 + 1] for rr in range(hr + 1, rows)):
+                        break
+                    c1 += 1
+                conflict = False
+                for rr in range(r_top, hr + 1):
+                    for cc in range(c, c1 + 1):
+                        if (rr, cc) == (hr, c):
+                            continue
+                        if (rr, cc) in covered or cell_items[rr][cc]:
+                            conflict = True
+                if conflict:
+                    continue
+                merges.append(
+                    {
+                        "row": r_top,
+                        "col": c,
+                        "rowSpan": hr - r_top + 1,
+                        "colSpan": c1 - c + 1,
+                        "text": text,
+                    }
+                )
+                for rr in range(r_top, hr + 1):
+                    for cc in range(c, c1 + 1):
+                        covered.add((rr, cc))
+        # 阶段 C：组间空隙水平启发式
+        for hr in range(band):
+            row_filled = sum(1 for its in cell_items[hr] if its)
+            if row_filled >= max_filled:
                 continue
-            # 组间空隙模式：空隙数 + 1 >= 填充数，否则可能是缺值数据行，跳过
             empty_runs: list[tuple[int, int]] = []
             c = 0
             while c < cols:
