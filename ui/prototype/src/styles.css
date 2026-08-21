@@ -1902,6 +1902,24 @@ button {
   font: inherit;
 }
 
+.allowlist-row textarea {
+  flex: 1;
+  min-width: 180px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-3);
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}
+
+.settings-sep {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 6px 0 2px;
+}
+
 @media (max-width: 768px) {
   .shell-v2 {
     grid-template-columns: 0 1fr;

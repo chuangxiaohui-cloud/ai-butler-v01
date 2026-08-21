@@ -2158,11 +2158,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **证据**：新增 trajectory-log 单测 1 条 + pipeline 统一轨迹回归 1 条；最终单测 211/211 + 集成 17/17 全绿。
 - affects: §6.7,§8.2 | bench:na(new-param) 理由：轨迹日志落地，无 §5/§6 参数变更
 
-### 2026-08-14（deepseek-harness → plan-validation E69）
-
-- **变更**：新增 `src/skills/plan-validation/`，借鉴 deepseek-harness 的“计划编译校验”思想：任务必须有验收标准/验证步骤/依赖/文件范围，文件超过 5 个提示拆细，缺关键字段判 `invalid`；支持自然语言经 LLM 解析，也支持直接 JSON 输入。
-- **证据**：新增 plan-validation 单测 7 条；最终单测 211/211 + 集成 17/17 全绿。
-- affects: §8.2,§12.2 | bench:na(new-param) 理由：计划校验 Skill 落地，无 §5/§6 参数变更
+### 2026-08-14（deepseek-harness → plan-validation E69）<br>- **变更**：新增 `src/skills/plan-validation/`，借鉴 deepseek-harness 的“计划编译校验”思想：任务必须有验收标准/验证步骤/依赖/文件范围，文件超过 5 个提示拆细，缺关键字段判 `invalid`；支持自然语言经 LLM 解析，也支持直接 JSON 输入。<br>- **证据**：新增 plan-validation 单测 7 条；最终单测 211/211 + 集成 17/17 全绿。<br>- affects: §8.2,§12.2 | bench:na(new-param) 理由：计划校验 Skill 落地，无 §5/§6 参数变更
 
 ### 2026-08-14（版本查询泛化复测 E70）<br>- **变更**：真实 CLI 复测 OpenWorker/Tauri/Electron/Arduino 四个开源项目的“最新版本号”查询，验证版本查询路由、改写与官方源识别的泛化性。<br>- **结果**：OpenWorker `v0.1.7`（confidence 0.996）；Tauri `v2.11.5`（confidence 1）；Electron `v43.3.0`（confidence 1）；Arduino IDE `2.3.10`（confidence 1）。Arduino 答案正确但 gate 曾触发 `low_confidence`，根因与修复见 E71。<br>- **case 库**：`npm run route:cases` 显示 pipeline case 累计 135 条，含本次 4 条新增；校准样本 3/10。<br>- affects: §6.5,§6.6 | bench:B-20260814-01
 
@@ -2562,6 +2558,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-22（表格垂直组标签 3 行+ 支持 E177）<br>- **变更**：`scripts/office_image_ocr.py` `detect_merges` 阶段 B 垂直/角落合并的扫描行数由 `band = min(2, rows)` 独立为 `band_v = min(3, rows)`，3 行 L 形表头（如“产品”跨 A1:A3 + “地区”B1:C1）可完整还原；阶段 C 内部空隙分支与槽位法分别加守卫（角落合并占住邻居时空锚点不再崩、文本底边越线 2px 不再产生 pseudo-merge）。**验证**：主项目 build；单测 534/534 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 1 条真跑（3 行 L 形 → `A1:A3`+`B1:C1`，xlsx 读回 `model.merges` 断言），既有 10 张回归图 merges 输出与 E176 一致；doc-lint 通过；详见 `docs/plans/2026-08-22-table-robustness.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格垂直组标签扩展，无 §5/§6 参数变更。
 ### 2026-08-22（扫描件倾斜纠正 deskew E178）<br>- **变更**：`scripts/office_image_ocr.py` 新增 `deskew_image`（HoughLinesP 近水平网格线中位角估计，|角度|≥0.25° 时 warpAffine 白边旋转纠正），`--table` 路径先纠偏再做 OCR 与网格线检测；cv2 缺失回退原图不抛错；噪声/模糊/混合/旋转 0.8°-1.5°（含 expand）变体下合并结构全部保持。**验证**：主项目 build；单测 534/534 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 1 条真跑（1.5° 旋转组合表头 → `A1:D1`+`A2:B2`+`C2:D2`，deskew 修复旋转场景）；doc-lint 通过；详见 `docs/plans/2026-08-22-table-robustness.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格扫描件倾斜纠正，无 §5/§6 参数变更。
 ### 2026-08-22（UI 设置面板集成邮件/日历 E179）<br>- **变更**：gateway 新增 `GET/POST /api/mail/credentials`（读取不回显授权码）与 `GET /api/calendar/export`（.ics 下载）/ `POST /api/calendar/import`（ICS 文本导入）；`calendar-skill` 抽出可复用 `openCalendarDb`/`buildCalendarIcs`/`importIcsToDb`（导入导出行为不变）；UI 原型设置区新增“邮件/日历”面板（SMTP 凭据表单、日历导出/导入按钮）。**验证**：主项目 build；单测 534/534 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 2 条 gateway 单测（邮件凭据读写且不暴露密码、日历导入 ICS 并导出）；UI 原型 `npm --prefix ui/prototype run build` 通过；doc-lint 通过；详见 `docs/plans/2026-08-22-ui-mail-calendar.md`；affects: §6,§13 | bench:na(new-param) 理由：UI 设置面板集成邮件凭据与日历导入导出，无 §5/§6 参数变更。
+### 2026-08-22（UI 邮件发送入口 E180）<br>- **变更**：UI 原型“邮件”设置面板新增发信区块（收件人/主题/正文 + 发送按钮），发送走 `/api/ask` 同一问答管道——面板把表单拼成“发送邮件给 …，主题：…，正文：…”查询，由 office-daily 邮件模式承担缺项/未配置凭据的诚实拦截与 SMTP 发送，答案原样回显；不新增独立发信链路。**验证**：UI 原型 `npm --prefix ui/prototype run build` 通过；查询格式与既有 E170 单测（`发送邮件给 rcpt@example.com，主题：测试，正文：你好`）一致；主项目 build；单测 534/534 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-22-ui-mail-send.md`；affects: §6,§13 | bench:na(new-param) 理由：UI 邮件发送入口复用现有问答管道，无 §5/§6 参数变更。
 
 ### v2.5（2026-08-12）
 

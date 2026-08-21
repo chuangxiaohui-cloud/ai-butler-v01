@@ -1301,6 +1301,9 @@ function MailSettings() {
   });
   const [configured, setConfigured] = useState(false);
   const [status, setStatus] = useState('');
+  const [mail, setMail] = useState({ to: '', subject: '', body: '' });
+  const [sending, setSending] = useState(false);
+  const [sendStatus, setSendStatus] = useState('');
 
   const load = () => {
     fetch(`${GATEWAY_URL}/api/mail/credentials`)
@@ -1362,6 +1365,41 @@ function MailSettings() {
     }
   };
 
+  const setMailField =
+    (key: keyof typeof mail) =>
+    (value: string) =>
+      setMail((prev) => ({ ...prev, [key]: value }));
+
+  const sendMail = async () => {
+    if (!mail.to.trim() || !mail.subject.trim() || !mail.body.trim()) {
+      setSendStatus('请填写收件人、主题和正文。');
+      return;
+    }
+    setSending(true);
+    setSendStatus('');
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `发送邮件给 ${mail.to.trim()}，主题：${mail.subject.trim()}，正文：${mail.body.trim()}`,
+        }),
+      });
+      const data = (await resp.json().catch(() => null)) as
+        | { answer?: string; error?: string }
+        | null;
+      if (resp.ok && data?.answer) {
+        setSendStatus(data.answer);
+      } else {
+        setSendStatus(data?.error ?? '发送失败，请稍后重试。');
+      }
+    } catch {
+      setSendStatus('无法连接 Gateway，请确认服务已启动。');
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="settings-form">
       {configured && (
@@ -1403,6 +1441,31 @@ function MailSettings() {
         保存凭据
       </button>
       {status && <p className="settings-note">{status}</p>}
+      <hr className="settings-sep" />
+      <p className="settings-note">
+        发送邮件（收件人/主题/正文必填；走 Agent 同一问答管道，未配置凭据时会被诚实拦截）。
+      </p>
+      <div className="allowlist-row">
+        <span>收件人</span>
+        <input value={mail.to} onChange={(e) => setMailField('to')(e.target.value)} placeholder="rcpt@example.com" />
+      </div>
+      <div className="allowlist-row">
+        <span>主题</span>
+        <input value={mail.subject} onChange={(e) => setMailField('subject')(e.target.value)} placeholder="邮件主题" />
+      </div>
+      <div className="allowlist-row">
+        <span>正文</span>
+        <textarea
+          value={mail.body}
+          onChange={(e) => setMailField('body')(e.target.value)}
+          placeholder="邮件正文…"
+          rows={4}
+        />
+      </div>
+      <button className="add-provider" onClick={sendMail} disabled={sending}>
+        {sending ? '发送中…' : '发送邮件'}
+      </button>
+      {sendStatus && <p className="settings-note">{sendStatus}</p>}
     </div>
   );
 }
