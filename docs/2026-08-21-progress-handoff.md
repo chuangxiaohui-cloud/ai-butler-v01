@@ -1,6 +1,6 @@
 # 进度交接 2026-08-21（v0.2b 续作）
 
-> 当前分支：`v0.2b`｜待提交：E170、E171（E160-E169 与 ADR-0002 已提交，HEAD=`061c618`）。上一份交接见 `docs/2026-08-20-progress-handoff.md`。
+> 当前分支：`v0.2b`｜E170、E171 已提交（HEAD=`b0a21b4`）。上一份交接见 `docs/2026-08-20-progress-handoff.md`。
 
 ## 今日已收口
 
@@ -36,8 +36,7 @@
 
 ## 今日收尾状态
 
-- 当前待提交：E170、E171（E168/E169 与 ADR-0002 已提交）。沙箱对 `.git` 只读且审批后端故障，
-  未能提交；文件均已验证，可直接 `git add && git commit`。
+- 已提交：E170、E171（HEAD=`b0a21b4`，含 CLI `.ics` 路径导入修复）。
 - 今日修复：CLI 真跑 `.ics` 路径导入时 Stage 1 脱敏剥掉盘符导致路由与 skill 收到的
   query 丢失 `.ics` 信息；已改 `src/search/pipeline.ts` 的 routeQuery 与 skillInputQuery
   （对 calendar-skill 的 `X:\...\*.ics` 用 originalQuery），真跑验证通过。

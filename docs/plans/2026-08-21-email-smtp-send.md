@@ -59,5 +59,5 @@
 - 验证：`npm run build`、`npm run test:all`、`npm exec tsx scripts/doc-lint.ts`（0 FAIL 0 WARN）全绿。
 - 测试：单测 509/509 + 1 条 fitz 门控跳过 + 集成 17/17；新增 14 条（SMTP 全命令序列/TLS 门控/
   认证失败/凭据读写/未配置/缺收件人/真发成功/两段式发送/路由）。
-- 提交：待提交 · 推送：待 push:hosts
+- 提交：`b0a21b4`（E170/E171 批次）· 推送：待 push:hosts
 - 遗留事项：.ics 导入（E169 只有导出）、UI 集成新能力、表格识别复杂表头/合并单元格。
