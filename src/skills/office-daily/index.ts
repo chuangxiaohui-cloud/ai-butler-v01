@@ -22,6 +22,7 @@ import { parseTimeExpression, parseRepeatQuery } from '../../agent/time-expressi
 import { ReminderStore } from '../../reminder/reminder-store.js';
 import { loadCredentials } from '../../mail/credentials.js';
 import { sendMail } from '../../mail/smtp.js';
+import ExcelJS from 'exceljs';
 
 type OfficeMode =
   | 'table'
@@ -166,7 +167,7 @@ function modeFrom(query: string): OfficeMode {
   if (/PDF.*(加密|加锁|设密码|加密码)|(加密|加锁|设密码|加密码).*PDF/.test(query)) return 'encrypt_pdf';
   if (/PDF.*(压缩|减小|优化|体积)|(压缩|减小|体积).*PDF/.test(query)) return 'pdf_compress';
   if (/识别.*(文字|图片)|提取.*(文字|文本)|图片.*(文字|识别)|扫描.*文字|OCR/i.test(query)) return 'image_ocr';
-  if (/识别.*表格|提取.*表格|表格.*(识别|提取|转\s*CSV)|图片.*表格/i.test(query)) return 'table_ocr';
+  if (/识别.*表格|提取.*表格|表格.*(识别|提取|转\s*(CSV|Excel|xlsx)|生成\s*(Excel|xlsx|表格文件))|图片.*表格|转成\s*(Excel|xlsx)|生成\s*表格文件/i.test(query)) return 'table_ocr';
   if (/转成\s*(png|jpe?g|webp|bmp)|图片.*(转|换).*格式|格式.*(转|换).*图片/i.test(query)) return 'image_convert';
   if (/转成PDF|转.*PDF|导出PDF|PDF导出/.test(query)) return 'to_pdf';
   if (/PDF.*(转|换)成Word|转成Word|转Word/.test(query)) return 'pdf_to_word';
@@ -413,6 +414,22 @@ export function accentFromQuery(query: string): string | undefined {
     if (query.includes(name)) return color;
   }
   return undefined;
+}
+
+/** E172：疑似合并区域 warning（TSR 启发式检测结果，Agent 如实告知用户）。 */
+export interface TableMergeWarning {
+  type: 'merged_col' | 'merged_row';
+  row: number;
+  col: number;
+  detail: string;
+}
+
+/** E172：把 TSR warnings 转成答案提示文案；无警告返回空串。 */
+export function tableWarningsNote(warnings: TableMergeWarning[]): string {
+  if (warnings.length === 0) return '';
+  const first = warnings[0];
+  const kind = first.type === 'merged_col' ? '跨列合并' : '跨行合并';
+  return `；提示：检测到 ${warnings.length} 处疑似合并单元格（如第${first.row + 1}行第${first.col + 1}列${kind}），已按普通文本逐格填充，请在 Excel 中核对后手动合并`;
 }
 
 export function createOfficeDailySkill(opts?: {
@@ -1325,7 +1342,7 @@ ${timeLabel}
         }
       }
       if (mode === 'table_ocr') {
-        // E168：图片表格结构识别 → CSV（复用 OCR 引擎坐标框）
+        // E168/E172：图片表格结构识别 → .xlsx（exceljs）；TSR 保留 bbox/span，疑似合并如实提示
         const file = findImageFile(input);
         if (!file) {
           return {
@@ -1334,19 +1351,21 @@ ${timeLabel}
           };
         }
         try {
+          mkdirSync(outDir, { recursive: true });
           const buffer = Buffer.from(await file.arrayBuffer());
           const base = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '_') || 'file';
           const ext = (file.name.match(/\.[a-zA-Z0-9]+$/) ?? [''])[0];
           const tmpInput = join(outDir, 'tmp-table-' + Date.now() + '-' + base + ext);
-          const csvOutput = join(outDir, '表格识别-' + Date.now() + '.csv');
           writeFileSync(tmpInput, buffer);
-          const stdout = await runPython([IMAGE_OCR_SCRIPT, '--table', tmpInput, csvOutput]);
+          const stdout = await runPython([IMAGE_OCR_SCRIPT, '--table', tmpInput]);
           rmSync(tmpInput, { force: true });
           const result = JSON.parse(stdout.trim()) as {
             ok?: boolean;
             csv?: string;
             rows?: number;
             cols?: number;
+            grid?: string[][];
+            warnings?: TableMergeWarning[];
             error?: string;
           };
           if (!result.ok) {
@@ -1355,18 +1374,30 @@ ${timeLabel}
               confidence: 0.2,
             };
           }
+          const grid = Array.isArray(result.grid) ? result.grid : [];
+          const xlsxPath = join(outDir, '表格识别-' + Date.now() + '.xlsx');
+          const workbook = new ExcelJS.Workbook();
+          const sheet = workbook.addWorksheet('表格识别');
+          for (const rowCells of grid) sheet.addRow(rowCells);
+          await workbook.xlsx.writeFile(xlsxPath);
           const csvText = (result.csv ?? '').trim();
           const preview = csvText.slice(0, 120) + (csvText.length > 120 ? '…' : '');
+          const warnings = Array.isArray(result.warnings) ? result.warnings : [];
           return {
             result: {
-              answer: `已识别表格（${result.rows ?? 0} 行 × ${result.cols ?? 0} 列）：${preview}；CSV 已保存：${csvOutput}`,
-              path: csvOutput,
+              answer:
+                '已识别表格（' + (result.rows ?? 0) + ' 行 × ' + (result.cols ?? 0) + ' 列）：' +
+                preview + '；XLSX 已保存：' + xlsxPath + tableWarningsNote(warnings),
+              path: xlsxPath,
               csv: csvText,
               rows: result.rows ?? 0,
               cols: result.cols ?? 0,
+              warnings,
             },
             confidence: 0.8,
-            followUpAction: '需要把表格转成 Excel/Word 或继续整理，随时说。',
+            followUpAction: warnings.length
+              ? '识别结果含疑似合并区域，可告诉我需要合并的具体位置；下期将支持合并单元格自动还原。'
+              : '需要把表格继续转成 Word/PPT 或整理数据，随时说。',
           };
         } catch (err) {
           return {

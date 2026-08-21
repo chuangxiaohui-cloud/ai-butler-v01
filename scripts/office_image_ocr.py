@@ -90,6 +90,7 @@ def extract_boxes(result) -> list[dict]:
                         "h": y1 - y0,
                         "cx": (x0 + x1) / 2,
                         "cy": (y0 + y1) / 2,
+                        "score": None,
                     }
                 )
         return items
@@ -101,6 +102,7 @@ def extract_boxes(result) -> list[dict]:
             box, text = row[0], row[1]
             if not text:
                 continue
+            score = row[2] if len(row) > 2 else None
             xs = [p[0] for p in box]
             ys = [p[1] for p in box]
             x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
@@ -113,15 +115,33 @@ def extract_boxes(result) -> list[dict]:
                     "h": y1 - y0,
                     "cx": (x0 + x1) / 2,
                     "cy": (y0 + y1) / 2,
+                    "score": score,
                 }
             )
     return items
 
 
+def _bbox_of(items: list[dict]) -> dict:
+    """合并多个文本块为并集 bbox（供 cells/spans 输出）。"""
+    xs = [it["x"] for it in items]
+    ys = [it["y"] for it in items]
+    x1s = [it["x"] + it["w"] for it in items]
+    y1s = [it["y"] + it["h"] for it in items]
+    return {
+        "x": min(xs),
+        "y": min(ys),
+        "w": max(x1s) - min(xs),
+        "h": max(y1s) - min(ys),
+    }
+
+
 def reconstruct_table(items: list[dict]):
-    """E168：按坐标聚类重建网格 → (grid, rows, cols)。"""
+    """E168/E172：按坐标聚类重建网格 → (grid, rows, cols, cell_items)。
+
+    cell_items[row][col] = [item, ...] 保留每个文本块的原始 bbox（TSR 原始数据，
+    下期合并单元格还原直接复用，避免重跑 OCR）。"""
     if not items:
-        return [], 0, 0
+        return [], 0, 0, []
     # 列聚类：按 cx 排序，间隙大于阈值则开新列
     by_cx = sorted(items, key=lambda it: it["cx"])
     med_w = sorted(it["w"] for it in items)[len(items) // 2]
@@ -143,16 +163,115 @@ def reconstruct_table(items: list[dict]):
             rows.append({"anchor": it["cy"], "items": [it]})
         else:
             rows[-1]["items"].append(it)
-    # 网格：每行按列中心就近归位，同格多文本按 y 序拼接
+    # 网格：每行按列中心就近归位，同格多文本按 y 序拼接；同时保留 cell→items 归属
     col_cx = [c["cx"] for c in cols]
-    grid = []
+    grid: list[list[str]] = []
+    cell_items: list[list[list[dict]]] = []
     for r in rows:
-        cells = [""] * len(col_cx)
+        row_cells: list[list[dict]] = [[] for _ in col_cx]
         for it in sorted(r["items"], key=lambda i: i["cy"]):
             ci = min(range(len(col_cx)), key=lambda i: abs(col_cx[i] - it["cx"]))
-            cells[ci] = (cells[ci] + " " + it["text"]).strip()
-        grid.append(cells)
-    return grid, len(rows), len(col_cx)
+            row_cells[ci].append(it)
+        grid.append(
+            [
+                " ".join(it["text"] for it in sorted(cells, key=lambda i: i["cy"])).strip()
+                for cells in row_cells
+            ]
+        )
+        cell_items.append(row_cells)
+    return grid, len(rows), len(col_cx), cell_items
+
+
+def detect_merge_warnings(cell_items: list[list[list[dict]]], items: list[dict]) -> list[dict]:
+    """E172：启发式疑似合并区域检测（本期仅如实提示，下期做合并还原）。"""
+    warnings: list[dict] = []
+    seen: set[tuple] = set()
+
+    def add(wtype: str, row: int, col: int, detail: str) -> None:
+        key = (wtype, row, col)
+        if key in seen:
+            return
+        seen.add(key)
+        warnings.append({"type": wtype, "row": row, "col": col, "detail": detail})
+
+    rows = len(cell_items)
+    cols = len(cell_items[0]) if rows else 0
+    med_w = sorted(it["w"] for it in items)[len(items) // 2] if items else 0
+    med_h = sorted(it["h"] for it in items)[len(items) // 2] if items else 0
+    # 1) 同行不同列：文本 bbox 横向重叠 → 疑似跨列合并
+    for r, row in enumerate(cell_items):
+        placed = [(c, its) for c, its in enumerate(row) if its]
+        for i in range(len(placed)):
+            c1, its1 = placed[i]
+            for c2, its2 in placed[i + 1 :]:
+                for a in its1:
+                    for b in its2:
+                        over = min(a["x"] + a["w"], b["x"] + b["w"]) - max(a["x"], b["x"])
+                        if over > 0.3 * min(a["w"], b["w"]):
+                            add(
+                                "merged_col",
+                                r,
+                                min(c1, c2),
+                                "第" + str(r + 1) + "行第" + str(min(c1, c2) + 1) + "列疑似跨列合并"
+                                + "（第" + str(c1 + 1) + "列与第" + str(c2 + 1) + "列文本 bbox 横向重叠）",
+                            )
+                            break
+                    else:
+                        continue
+                    break
+    # 2) 同列不同行：文本 bbox 纵向重叠 → 疑似跨行合并
+    for c in range(cols):
+        placed = [(r, cell_items[r][c]) for r in range(rows) if cell_items[r][c]]
+        for i in range(len(placed)):
+            r1, its1 = placed[i]
+            for r2, its2 in placed[i + 1 :]:
+                for a in its1:
+                    for b in its2:
+                        over = min(a["y"] + a["h"], b["y"] + b["h"]) - max(a["y"], b["y"])
+                        if over > 0.3 * min(a["h"], b["h"]):
+                            add(
+                                "merged_row",
+                                min(r1, r2),
+                                c,
+                                "第" + str(min(r1, r2) + 1) + "行第" + str(c + 1) + "列疑似跨行合并"
+                                + "（第" + str(r1 + 1) + "行与第" + str(r2 + 1) + "行文本 bbox 纵向重叠）",
+                            )
+                            break
+                    else:
+                        continue
+                    break
+    # 3) 格宽显著大于中位 → 疑似跨列（如长表头）
+    if med_w > 0:
+        for r, row in enumerate(cell_items):
+            for c, its in enumerate(row):
+                if not its:
+                    continue
+                bb = _bbox_of(its)
+                if bb["w"] > max(med_w * 1.8, 80):
+                    add(
+                        "merged_col",
+                        r,
+                        c,
+                        "第" + str(r + 1) + "行第" + str(c + 1) + "列格宽 " + str(int(bb["w"]))
+                        + "px 明显大于中位列宽，疑似跨列合并",
+                    )
+    # 4) 格高显著大于中位 → 疑似跨行
+    if med_h > 0:
+        for r, row in enumerate(cell_items):
+            for c, its in enumerate(row):
+                if not its:
+                    continue
+                bb = _bbox_of(its)
+                if bb["h"] > max(med_h * 2.2, 40):
+                    add(
+                        "merged_row",
+                        r,
+                        c,
+                        "第" + str(r + 1) + "行第" + str(c + 1) + "列格高 " + str(int(bb["h"]))
+                        + "px 明显大于中位行高，疑似跨行合并",
+                    )
+    return warnings
+
 
 
 def load_image(src: str):
@@ -204,7 +323,7 @@ def main() -> int:
             items, run_err = run_ocr(engine, src)
             if run_err:
                 return fail(run_err)
-            grid, rows, cols = reconstruct_table(items or [])
+            grid, rows, cols, cell_items = reconstruct_table(items or [])
             buf = io.StringIO()
             writer = csv.writer(buf)
             writer.writerows(grid)
@@ -212,9 +331,45 @@ def main() -> int:
             if out_csv:
                 with open(out_csv, "w", encoding="utf-8", newline="") as fh:
                     fh.write(csv_text)
+            # E172：TSR 原始数据——cells/spans 保留行列归属与 bbox，下期合并还原直接复用
+            cells = [
+                {
+                    "row": r,
+                    "col": c,
+                    "text": " ".join(
+                        it["text"] for it in sorted(its, key=lambda i: i["cy"])
+                    ).strip(),
+                    "bbox": _bbox_of(its),
+                }
+                for r, row in enumerate(cell_items)
+                for c, its in enumerate(row)
+                if its
+            ]
+            spans = [
+                {
+                    "row": r,
+                    "col": c,
+                    "text": it["text"],
+                    "bbox": {"x": it["x"], "y": it["y"], "w": it["w"], "h": it["h"]},
+                    "score": it.get("score"),
+                }
+                for r, row in enumerate(cell_items)
+                for c, its in enumerate(row)
+                for it in its
+            ]
+            warnings = detect_merge_warnings(cell_items, items or [])
             print(
                 json.dumps(
-                    {"ok": True, "csv": csv_text, "rows": rows, "cols": cols},
+                    {
+                        "ok": True,
+                        "csv": csv_text,
+                        "rows": rows,
+                        "cols": cols,
+                        "grid": grid,
+                        "cells": cells,
+                        "spans": spans,
+                        "warnings": warnings,
+                    },
                     ensure_ascii=False,
                 )
             )

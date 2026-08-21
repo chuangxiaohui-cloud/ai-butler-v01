@@ -24,19 +24,29 @@
    daily/weekly，MONTHLY 等复杂周期跳过并诚实计数，按标题+时间去重写入 `calendar_events`；
    空文件/无 VEVENT/无附件诚实提示，导入不自动批量登记提醒；意图层“导入日历/日程/ics”特判
    命中 R004，`DOMAIN_RE schedule` 增加 `\.ics`。
+6. **图片表格识别输出 .xlsx（E172）**：`scripts/office_image_ocr.py --table` 输出扩展 TSR
+   原始数据——JSON 新增 `grid/cells/spans/warnings`（cells/spans 保留每个 OCR 文本块的
+   行列归属与原始 bbox/score，下期合并单元格还原直接复用）；启发式检测疑似合并区域
+   （同行跨列/同列跨行 bbox 重叠、格宽/格高显著大于中位）输出 warnings；`office-daily`
+   table_ocr 改用 exceljs 生成真 .xlsx（新增依赖 exceljs），答案带“N 行 × M 列 + 预览 +
+   XLSX 路径”，warnings 非空如实提示“N 处疑似合并单元格…请核对后手动合并”；查询词
+   扩展“转成 Excel / 生成表格文件 / xlsx”；附录 A 压缩 E61 旧条目腾 1 行登记 E172。
 
 ## 今日验证
 
-- 全量单测 520/520 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
+- 全量单测 521/521 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
 - `doc-lint` 0 FAIL 0 WARN（附录 A 行数预算 950/950 已到上限）。
 - 真跑验证：假 SMTP 服务器全命令序列 + TLS 直连（自签证书门控）真发成功；.ics 附件导入 →
   查询可见“每天重复”；CLI `发送邮件给…` 未配置凭据诚实提示不发送；CLI 真跑
   `导入 M:\...\events.ics`（临时 DB）返回“已从 .ics 导入 3 条日程，跳过 1 条”，
   随后 `查一下我的日程` 可见导入日程（含每天/每周重复）。
+  图片表格识别（E172）：2×2 网格 → xlsx 读回 A1/B1/A2/B2；宽表头“月度销量汇总”
+  → 答案如实提示“1 处疑似合并单元格（跨列）”，xlsx 落盘。
 
 ## 今日收尾状态
 
 - 已提交：E170、E171（HEAD=`b0a21b4`，含 CLI `.ics` 路径导入修复）。
+- 待提交：E172（图片表格识别输出 .xlsx）。
 - 今日修复：CLI 真跑 `.ics` 路径导入时 Stage 1 脱敏剥掉盘符导致路由与 skill 收到的
   query 丢失 `.ics` 信息；已改 `src/search/pipeline.ts` 的 routeQuery 与 skillInputQuery
   （对 calendar-skill 的 `X:\...\*.ics` 用 originalQuery），真跑验证通过。
@@ -44,13 +54,14 @@
   `docs/plans/2026-08-21-calendar-ics-export.md`（E169）、
   `docs/plans/2026-08-21-email-smtp-send.md`（E170）、
   `docs/plans/2026-08-21-calendar-ics-import.md`（E171）。
+  `docs/plans/2026-08-21-image-table-xlsx.md`（E172）。
 
 ## 明天继续（按优先级）
 
-1. 提交 E170/E171 批次（`git add` + 单主题中文提交）。
-2. UI 集成新能力（邮件发送/凭据配置、日历导入导出入口）。
-3. 表格识别增强（复杂表头/合并单元格）。
-4. 附录 A 行数预算扩容或压缩旧条目（950/950 已无余量）。
+1. 提交 E172 批次（`git add` + 单主题中文提交）。
+2. 合并单元格还原 + 复杂表头处理（复用 TSR spans/bbox 数据，届时对齐验收标准）。
+3. UI 集成新能力（邮件发送/凭据配置、日历导入导出入口）。
+4. 附录 A 行数预算继续按需压缩旧条目（950/950 无余量）。
 
 ## 常用命令
 

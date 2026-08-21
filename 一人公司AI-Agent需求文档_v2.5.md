@@ -2118,9 +2118,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 - **依据**：实际非空行附录 A 440 / 总 662，按原预算无法继续登记后续变更；本次扩容后预留登记空间。
 - affects: §0,附录A | bench:na(new-param) 理由：行数预算扩容，无 §5/§6 参数变更
 
-### 2026-08-14（紧急回复场景化 E61）
-
-- **变更**：新增 `src/search/emergency-reply.ts`，蛇咬/狗猫咬伤/火灾/地震/溺水/触电/大出血/呼吸困难/心梗/中毒/人身危险/通用兜底全部改为场景化秘书话术：结论先行、分步可执行、有温度，并保留强制报警提示与“以专业救援/医生判断为准”；紧急路由关键词补全（蛇咬/中毒/昏迷/心梗/跟踪/遇袭等）。
+### 2026-08-14（紧急回复场景化 E61）<br>- **变更**：新增 `src/search/emergency-reply.ts`，蛇咬/狗猫咬伤/火灾/地震/溺水/触电/大出血/呼吸困难/心梗/中毒/人身危险/通用兜底全部改为场景化秘书话术：结论先行、分步可执行、有温度，并保留强制报警提示与“以专业救援/医生判断为准”；紧急路由关键词补全（蛇咬/中毒/昏迷/心梗/跟踪/遇袭等）。
 - **证据**：新增 emergency-reply 单测 4 条；最终单测 211/211 + 集成 17/17 全绿。
 - affects: §4.2,§6.1 | bench:na(new-param) 理由：紧急话术与路由关键词，无 §5/§6 参数变更
 
@@ -2565,6 +2563,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-21（邮件 SMTP 发送 E170）<br>- **变更**：新增 `src/mail/` 适配层（ADR-0002 阶段 1）——`smtp.ts` 用 node:net/node:tls 实现最小 SMTP 客户端（EHLO / AUTH LOGIN / MAIL FROM / RCPT TO / DATA，支持 465 TLS 直连与 587 STARTTLS，正文 base64 UTF-8），`credentials.ts` 读写 `data/mail/mail-credentials.json`（git 忽略，密码不打印）；`npm run mail:config` 命令行配置凭据；`office-daily` 邮件模式新增显式“发送/发出去/发给”SMTP 发送流程（收件人/主题/正文缺项诚实提示，未配置凭据提示先跑 mail:config 且不会发送），写草稿同步落盘 `latest-draft.json` 支持“把刚才那封发出去”两段式发送；意图层 `office_daily` 关键词增加“发邮件/发送邮件”，邮件发送不再偏到 im_dispatch（发消息/发微信仍走 send）。**验证**：主项目 build；单测 509/509 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 14 条单测（假 SMTP 服务器全命令序列、TLS 直连自签证书门控、认证失败不含密码、凭据读写、未配置/缺收件人/真发成功/两段式发送、路由）；doc-lint 通过；详见 `docs/plans/2026-08-21-email-smtp-send.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手新增邮件 SMTP 发送，无 §5/§6 参数变更。
 
 ### 2026-08-21（日历 .ics 导入 E171）<br>- **变更**：`calendar-skill` 新增 `.ics` 导入闭环（承接 E169 导出）——`parseIcs` 解析标准 iCalendar（展开 RFC 5545 折叠行、支持 `YYYYMMDDTHHMMSSZ` UTC/本地/全天日期、中文标题与转义反转义），导入分支支持附件 `.ics` 或查询显式文件路径，每天/每周 RRULE 映射 `repeat=daily/weekly`，每月/每年等复杂周期跳过并诚实计数，按标题+时间去重，写入 `calendar_events`，空/无 VEVENT 文件诚实提示，导入不自动批量登记提醒；意图层 `query` 特判“导入日历/日程/ics”命中 R004 不再偏到 web_search，`DOMAIN_RE schedule` 增加 `\.ics`。**验证**：主项目 build；单测 519/519 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 9 条单测（parseIcs 多事件/重复/全天/折叠行、附件导入真跑、路径导入、复杂周期跳过计数、空文件、无附件提示、路由 2）；doc-lint 通过；详见 `docs/plans/2026-08-21-calendar-ics-import.md`；affects: §6,§12.2,§13 | bench:na(new-param) 理由：生活助手日历新增 .ics 导入，无 §5/§6 参数变更。
+### 2026-08-21（图片表格识别输出 .xlsx E172）<br>- **变更**：`scripts/office_image_ocr.py --table` 输出扩展 TSR 原始数据——JSON 新增 `grid/cells/spans/warnings`（cells/spans 保留每个 OCR 文本块的行列归属与原始 bbox/score，供下期合并单元格还原直接复用，避免重跑识别）；启发式检测疑似合并区域（同行跨列 bbox 横向重叠、同列跨行纵向重叠、格宽/格高显著大于中位）输出 warnings；`office-daily` table_ocr 改用 exceljs 生成真 .xlsx（新增依赖 exceljs，理由见 `docs/plans/2026-08-21-image-table-xlsx.md`），答案带“N 行 × M 列 + 预览 + XLSX 路径”，warnings 非空如实提示“N 处疑似合并单元格…已按普通文本逐格填充，请在 Excel 中核对后手动合并”；查询词扩展“转成 Excel / 生成表格文件 / xlsx”。**验证**：主项目 build；单测 521/521 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 1 条单测（疑似合并 warning 文案如实提示）+ 真跑 xlsx 读回 A1/B2 断言；doc-lint 通过；详见 `docs/plans/2026-08-21-image-table-xlsx.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格识别输出 xlsx，无 §5/§6 参数变更。
 
 ### v2.5（2026-08-12）
 

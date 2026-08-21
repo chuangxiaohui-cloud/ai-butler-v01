@@ -8,7 +8,8 @@ import { test } from 'node:test';
 
 import { ReminderStore } from '../../reminder/reminder-store.js';
 import { saveCredentials } from '../../mail/credentials.js';
-import { accentFromQuery, createOfficeDailySkill } from './index.js';
+import ExcelJS from 'exceljs';
+import { accentFromQuery, createOfficeDailySkill, tableWarningsNote } from './index.js';
 
 const RUNTIME_PYTHON =
   process.env.OFFICE_PYTHON ??
@@ -1126,6 +1127,18 @@ test('office-daily: 批量 OCR 单张损坏返回其余结果', { skip: !HAS_LOC
     rmSync(dir, { recursive: true, force: true });
   }
 });
+test('office-daily: 疑似合并 warning 文案如实提示', () => {
+  assert.equal(tableWarningsNote([]), '');
+  const note = tableWarningsNote([
+    { type: 'merged_col', row: 0, col: 1, detail: '第1行第2列疑似跨列合并' },
+    { type: 'merged_row', row: 1, col: 0, detail: '第2行第1列疑似跨行合并' },
+  ]);
+  assert.ok(note.includes('2 处疑似合并单元格'), note);
+  assert.ok(note.includes('第1行第2列'), note);
+  assert.ok(note.includes('跨列合并'), note);
+  assert.ok(note.includes('手动合并'), note);
+});
+
 test('office-daily: 表格识别引擎不可用时诚实提示', async () => {
   const dir = tempDir();
   const oldOcr = process.env.PDF_OCR;
@@ -1212,6 +1225,13 @@ print(base64.b64encode(buf.getvalue()).decode())`,
     assert.ok((result.csv ?? '').includes('A1'), result.csv);
     assert.ok((result.csv ?? '').includes('B2'), result.csv);
     assert.ok(existsSync(result.path as string));
+    assert.ok(result.answer?.includes('XLSX 已保存'));
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(result.path as string);
+    const ws = wb.getWorksheet(1);
+    assert.ok(ws, 'xlsx 工作表存在');
+    assert.equal(ws.getCell('A1').value, 'A1');
+    assert.equal(ws.getCell('B2').value, 'B2');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
