@@ -447,7 +447,14 @@ def detect_merges(
                 if hr + 1 >= rows:
                     continue
                 if not any(cell_items[rr][c] for rr in range(hr + 1, rows)):
-                    continue
+                    # E183：角落（第 1 列）垂直标签可延伸到表身底部——下方同列无数据、
+                    # 但下方其它列有数据时仍视为表头行标签（如整行标题下的“产品”）。
+                    if c != 0 or not any(
+                        cell_items[rr][cc]
+                        for rr in range(hr + 1, rows)
+                        for cc in range(cols)
+                    ):
+                        continue
                 text = " ".join(
                     it["text"]
                     for it in sorted(cell_items[hr][c], key=lambda i: i["cy"])
@@ -455,7 +462,14 @@ def detect_merges(
                 if re.search(r"^[0-9][0-9.,%()\-+]*\s*$", text):
                     continue
                 r_top = hr - 1
-                while r_top - 1 >= 0 and not cell_items[r_top - 1][c]:
+                # E183：向上扩展遇到被其它合并覆盖的格子（如整行标题/水平组头）也停止——
+                # 覆盖格在 cell_items 里可能为空（标题文字落在其它列），不停止会穿过
+                # 标题行把标题并入垂直标签或触发伪冲突。
+                while (
+                    r_top - 1 >= 0
+                    and not cell_items[r_top - 1][c]
+                    and (r_top - 1, c) not in covered
+                ):
                     r_top -= 1
                 # E181：垂直扩展被上方普通格截断（如透字残影占据角落/空槽）→ 诚实
                 # 提示，不产生截断的伪合并；上方格若已被整行标题/水平组头覆盖
@@ -485,6 +499,9 @@ def detect_merges(
                     if not any(cell_items[rr][c1 + 1] for rr in range(hr + 1, rows)):
                         break
                     c1 += 1
+                # E183：扩展后仍为单格（上下左右均被内容包围）不是合并，直接跳过。
+                if hr - r_top + 1 <= 1 and c1 - c + 1 <= 1:
+                    continue
                 conflict = False
                 for rr in range(r_top, hr + 1):
                     for cc in range(c, c1 + 1):
@@ -544,11 +561,12 @@ def detect_merges(
                     left, right = start - 1, end + 1
                     if not cell_items[hr][left] or not cell_items[hr][right]:
                         continue
-                    run_cx = 0.5 * (col_bounds[start - 1] + col_bounds[end])
-                    l_bb = _bbox_of(cell_items[hr][left])
-                    r_bb = _bbox_of(cell_items[hr][right])
-                    l_cx = l_bb["x"] + l_bb["w"] / 2
-                    r_cx = r_bb["x"] + r_bb["w"] / 2
+                    # E183：内部空区间归属用槽位中心（col_cx）而非文本中心——
+                    # 文本中心受 OCR 框宽度/字形影响，会把对称空区间误分给相邻锚点；
+                    # 槽位中心对称时平局归左侧锚点。
+                    run_cx = 0.5 * (col_cx[start - 1] + col_cx[end])
+                    l_cx = col_cx[left]
+                    r_cx = col_cx[right]
                     if abs(l_cx - run_cx) <= abs(r_cx - run_cx):
                         anchor_c, c0, c1 = left, left, end
                     else:

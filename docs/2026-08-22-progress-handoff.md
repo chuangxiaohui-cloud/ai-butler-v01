@@ -31,6 +31,11 @@
    如实提示“可能为透字/水印噪声，无法自动还原”，并把相关槽位标 covered 防止水平启发
    式误并。透字墨色过重超出抑制范围时靠守卫诚实降级，不产出错结构。
 
+7. **复杂表头合并还原（E183）**：`detect_merges` 三处修复——角落列垂直标签可延伸到
+   表身底部（整行标题下“产品 A2:A3”）；`r_top` 扩展遇到 covered 格停止（标题行不再被
+   并入或冲突跳过）；相位 C 内部空区间归属改用槽位中心（对称空区间不再因 OCR 偏移误分）；
+   1×1 退化候选跳过。验收 3 场景全过：A1:A3+B1:D1、A1:D1+A2:A3、A1:A3+B1:E1+B2:C2+D2:E2。
+
 ## 今日验证
 
 - 全量单测 535/535 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
@@ -46,18 +51,18 @@
   答案含“无法自动还原”。既有 10 张回归图 merges 与 E177 一致，零回归。
 - E182：`extractPageScript` 新增 2 条单测——citations 透传断言（mock 页）、fake-DOM
   去噪断言（nav/footer/广告剔除、块级换行保留、外部链接去重、同页锚点与 pdf 分流）。
+- E183：新增 1 条真跑 3 变体（跨行+跨列混合角落/整行标题+垂直标签/3 层表头），
+  xlsx 读回 `model.merges` + 锚点格 + 答案计数断言；既有 10 张回归图与 E181 一致。
 - 已知边界：部分噪声/模糊图 OCR 文本有误读（如“上海”→“奥”），但合并判断不受影响；
   透字墨色过重（灰度 <90）超出局部对比度阈值时靠相位守卫诚实提示，不产出伪合并。
 
 ## 今日收尾状态
 
-- 已提交：E177/E178/E179（HEAD=`6d93525`）、E180（HEAD=`81c3060`）、E181（HEAD=`1f67a8b`）、
-  housekeeping（HEAD=`4c410f0`）。
-- 待提交：E182 全部改动（`src/browser/session.ts`、`src/skills/browser-session/index.ts`、
-  `scripts/browser-session.ts`、`src/browser/session.test.ts`、附录 A E182、
-  `docs/plans/2026-08-22-page-clean-extract.md`、`docs/borrowed-designs.md`、本交接更新）。
-  建议提交信息：`E182：网页正文去噪提取+引用编号`。
-- 提交前请勿包含根目录 `.codex-*.cjs`（已 gitignore）、`data/` 临时文件。
+- 已提交：E177/E178/E179、E180、E181、housekeeping、E182（HEAD=`98583c3`）。
+- 待提交：E183 全部改动（`scripts/office_image_ocr.py`、`src/skills/office-daily/index.test.ts`、
+  附录 A E183、`docs/plans/2026-08-22-merge-complex-headers.md`、`src/skills/README.md`、本交接更新）。
+  建议提交信息：`E183：复杂表头合并还原`。
+- 提交前请勿包含根目录 `.codex-*.cjs`（已 gitignore）、`data/` 临时文件与合成样本（已清理）。
 
 ## 明天继续（按优先级）
 

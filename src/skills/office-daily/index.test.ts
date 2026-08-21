@@ -2003,6 +2003,92 @@ print(json.dumps(out))`,
     rmSync(dir, { recursive: true, force: true });
   }
 });
+test('office-daily: 图片表格识别复杂表头（跨行+跨列混合角落/整行标题+垂直标签/3层表头）', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const json = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, json, os
+from PIL import Image, ImageDraw, ImageFont
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 30)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+
+def tab(xs, ys, cells, title=None):
+    img = Image.new('RGB', (xs[-1] + 30, ys[-1] + 30), 'white')
+    d = ImageDraw.Draw(img)
+    for x in xs:
+        d.line([(x, ys[0]), (x, ys[-1])], fill=(0, 0, 0), width=2)
+    for y in ys:
+        d.line([(xs[0], y), (xs[-1], y)], fill=(0, 0, 0), width=2)
+    if title:
+        d.text((0.5 * (xs[0] + xs[-1]) - 60, ys[0] + 26), title, fill=(0, 0, 0), font=font)
+    for (r, c), t in cells.items():
+        d.text((xs[c] + 14, ys[r] + 26), t, fill=(0, 0, 0), font=font)
+    return img
+
+def b64(im):
+    buf = io.BytesIO(); im.save(buf, 'PNG')
+    return base64.b64encode(buf.getvalue()).decode()
+
+X4 = (30, 140, 250, 360, 450)
+Y4 = (30, 120, 210, 300, 390)
+X5 = (30, 124, 218, 312, 406, 500)
+Y5 = (30, 120, 210, 300, 390, 480)
+out = {
+    'sa': b64(tab(X4, Y4, {(0, 1): '销售', (1, 1): '华东', (1, 2): '华北', (1, 3): '海外', (2, 0): '产品', (2, 1): '100', (2, 2): '200', (2, 3): '300', (3, 0): '手机', (3, 1): '150', (3, 2): '250', (3, 3): '350'})),
+    'sb1': b64(tab(X4, Y4, {(1, 1): '华东', (1, 2): '华北', (1, 3): '海外', (2, 0): '产品', (2, 1): '150', (2, 2): '250', (2, 3): '350', (3, 1): '180', (3, 2): '280', (3, 3): '380'}, title='季度销售汇总')),
+    'sb3': b64(tab(X5, Y5, {(0, 1): '地区', (1, 1): '华东', (1, 3): '华北', (2, 0): '产品', (2, 1): '上海', (2, 2): '杭州', (2, 3): '北京', (2, 4): '天津', (3, 0): '手机', (3, 1): '100', (3, 2): '200', (3, 3): '300', (3, 4): '400', (4, 0): '平板', (4, 1): '110', (4, 2): '210', (4, 3): '310', (4, 4): '410'})),
+}
+print(json.dumps(out))`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const images = JSON.parse(json) as Record<string, string>;
+    const cases: Array<{ key: string; expectMerges: string[]; expectCount: number; anchor: [string, string] }> = [
+      { key: 'sa', expectMerges: ['A1:A3', 'B1:D1'], expectCount: 2, anchor: ['A1', '产品'] },
+      { key: 'sb1', expectMerges: ['A1:D1', 'A2:A3'], expectCount: 2, anchor: ['A1', '季度销售汇总'] },
+      { key: 'sb3', expectMerges: ['A1:A3', 'B1:E1', 'B2:C2', 'D2:E2'], expectCount: 4, anchor: ['A1', '产品'] },
+    ];
+    const skill = createOfficeDailySkill({ outDir: dir });
+    for (const c of cases) {
+      const png = Buffer.from(images[c.key], 'base64');
+      const out = await skill.execute(
+        {
+          query: '识别这张表格',
+          attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+          rawFiles: [fakeFile('table.png', 'image/png', png)],
+          memory: null,
+        },
+        { callVLM: async () => '' },
+      );
+      const result = out.result as { answer?: string; path?: string; warnings?: Array<{ type?: string }> };
+      assert.ok(existsSync(result.path as string), `${c.key} xlsx 落盘`);
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.readFile(result.path as string);
+      const ws = wb.getWorksheet(1);
+      assert.ok(ws, `${c.key} xlsx 读取成功`);
+      const merges = [...ws.model.merges].sort();
+      assert.deepEqual(merges, [...c.expectMerges].sort(), `${c.key} merges: ${JSON.stringify(merges)}`);
+      assert.equal(ws.getCell(c.anchor[0]).value, c.anchor[1], `${c.key} 锚点格`);
+      const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+      assert.equal(warnings.length, 0, `${c.key} 不应有 warning`);
+      assert.ok(result.answer?.includes(`已还原 ${c.expectCount} 处合并单元格`), `${c.key} 答案计数`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 function startFakeSmtpServer(): Promise<{
   port: number;
   transcript: string[];
