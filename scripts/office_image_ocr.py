@@ -353,27 +353,89 @@ def detect_merges(
             for rr in range(r0, r1 + 1):
                 for cc in range(c0, c1 + 1):
                     covered.add((rr, cc))
-    # E173：顶部行（第 0 行）空区间启发式——两级表头分组（如“华东/华北”各跨 2 列）。
-    # 条件：第 0 行窄于数据行、且空区间下方确有内容；内部区间并入距中点更近的锚点，
-    # 边缘区间并入唯一侧锚点（下方无内容的表尾空格仍跳过，避免误并）。
+    # E175：顶部表头行启发式——两级分组（“华东/华北”各跨 2 列）与整行居中标题。
+    # 条件：该行窄于数据行、行内空区间呈组间空隙模式（空隙数 + 1 >= 填充数）、
+    # 空区间下方确有内容；内部区间并入距中点更近的锚点，边缘区间并入唯一侧锚点
+    # （下方无内容的表尾空格仍跳过，避免误并）。
     if rows > 1:
-        row0_filled = sum(1 for its in cell_items[0] if its)
         max_filled = max(sum(1 for its in row if its) for row in cell_items)
-        if row0_filled < max_filled:
+        for hr in range(min(2, rows)):
+            row_filled = sum(1 for its in cell_items[hr] if its)
+            if row_filled >= max_filled:
+                continue
+            # 整行居中标题：文本中心接近行中心、两侧下方均有内容 → 合并整行，
+            # 替换该行槽位法产生的水平部分合并（保留跨行合并）。
+            if row_filled == 1 and cols > 1:
+                only_c = next(c for c in range(cols) if cell_items[hr][c])
+                vert_merge = any(
+                    m["rowSpan"] > 1
+                    and m["row"] <= hr < m["row"] + m["rowSpan"]
+                    and m["col"] <= only_c < m["col"] + m["colSpan"]
+                    for m in merges
+                )
+                if not vert_merge:
+                    bb = _bbox_of(cell_items[hr][only_c])
+                    cx = bb["x"] + bb["w"] / 2
+                    row_cx = 0.5 * (col_bounds[0] + col_bounds[-1])
+                    row_w = col_bounds[-1] - col_bounds[0]
+                    if abs(cx - row_cx) < 0.15 * row_w:
+                        left_ok = any(
+                            cell_items[rr][cc]
+                            for rr in range(hr + 1, rows)
+                            for cc in range(0, only_c)
+                        )
+                        right_ok = any(
+                            cell_items[rr][cc]
+                            for rr in range(hr + 1, rows)
+                            for cc in range(only_c + 1, cols)
+                        )
+                        if left_ok and right_ok:
+                            merges = [
+                                m
+                                for m in merges
+                                if not (
+                                    m["row"] <= hr < m["row"] + m["rowSpan"]
+                                    and m["rowSpan"] == 1
+                                )
+                            ]
+                            for cc in range(cols):
+                                covered.discard((hr, cc))
+                            for m in merges:
+                                if m["row"] <= hr < m["row"] + m["rowSpan"]:
+                                    for cc in range(m["col"], m["col"] + m["colSpan"]):
+                                        covered.add((hr, cc))
+                            text = " ".join(
+                                it["text"]
+                                for it in sorted(cell_items[hr][only_c], key=lambda i: i["cy"])
+                            ).strip()
+                            merges.append(
+                                {"row": hr, "col": 0, "rowSpan": 1, "colSpan": cols, "text": text}
+                            )
+                            for cc in range(cols):
+                                covered.add((hr, cc))
+                            continue
+            # 组间空隙模式需要该行未被既有合并占用，避免与整行/跨行合并冲突。
+            if any((hr, cc) in covered for cc in range(cols)):
+                continue
+            # 组间空隙模式：空隙数 + 1 >= 填充数，否则可能是缺值数据行，跳过
+            empty_runs: list[tuple[int, int]] = []
             c = 0
             while c < cols:
-                if cell_items[0][c]:
+                if cell_items[hr][c]:
                     c += 1
                     continue
                 start = c
-                while c < cols and not cell_items[0][c]:
+                while c < cols and not cell_items[hr][c]:
                     c += 1
-                end = c - 1
-                if any((0, cc) in covered for cc in range(start, end + 1)):
+                empty_runs.append((start, c - 1))
+            if len(empty_runs) + 1 < row_filled:
+                continue
+            for start, end in empty_runs:
+                if any((hr, cc) in covered for cc in range(start, end + 1)):
                     continue
                 below_filled = any(
                     cell_items[rr][cc]
-                    for rr in range(1, rows)
+                    for rr in range(hr + 1, rows)
                     for cc in range(start, end + 1)
                 )
                 if not below_filled:
@@ -388,25 +450,24 @@ def detect_merges(
                     # 内部空区间：按距中点更近的分组锚点（如“华东”跨第 1、2 列）
                     left, right = start - 1, end + 1
                     run_cx = 0.5 * (col_bounds[start - 1] + col_bounds[end])
-                    l_bb = _bbox_of(cell_items[0][left])
-                    r_bb = _bbox_of(cell_items[0][right])
+                    l_bb = _bbox_of(cell_items[hr][left])
+                    r_bb = _bbox_of(cell_items[hr][right])
                     l_cx = l_bb["x"] + l_bb["w"] / 2
                     r_cx = r_bb["x"] + r_bb["w"] / 2
                     if abs(l_cx - run_cx) <= abs(r_cx - run_cx):
                         anchor_c, c0, c1 = left, left, end
                     else:
                         anchor_c, c0, c1 = right, start, right
-                if (0, anchor_c) in covered:
+                if (hr, anchor_c) in covered:
                     continue
                 text = " ".join(
-                    it["text"] for it in sorted(cell_items[0][anchor_c], key=lambda i: i["cy"])
+                    it["text"] for it in sorted(cell_items[hr][anchor_c], key=lambda i: i["cy"])
                 ).strip()
                 merges.append(
-                    {"row": 0, "col": c0, "rowSpan": 1, "colSpan": c1 - c0 + 1, "text": text}
+                    {"row": hr, "col": c0, "rowSpan": 1, "colSpan": c1 - c0 + 1, "text": text}
                 )
                 for cc in range(c0, c1 + 1):
-                    covered.add((0, cc))
-    # E173：按行/列排序，保证 TSR 输出与 xlsx 合并顺序稳定（先左后右、先上后下）
+                    covered.add((hr, cc))
     merges.sort(key=lambda m: (m["row"], m["col"]))
     return merges, warnings
 

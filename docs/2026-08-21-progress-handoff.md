@@ -42,10 +42,15 @@
    `detect_table_lines`（暗像素占比 + 最大连续暗 run 双条件检线）与 `reconstruct_grid`
    （网格驱动行列结构）；`--table` 优先网格路径，无网格（无边框）表格回退文本聚类；
    跨行合并实图验证（“部门”跨两行 → xlsx A1:A2 合并、grid 3×2），既有 3 用例回归一致。
+9. **组合复杂表头还原（E175）**：`detect_merges` 表头行范围扩到前 2 行；组间空隙护栏
+   `len(empty_runs) + 1 >= row_filled`（缺值数据行 `[10,,8,9]` 3 文本 1 空隙不误并）；
+   整行居中标题启发式（单文本、居中、两侧下方有内容 → 合并整行，替换槽位法水平部分
+   合并、保留跨行合并）；组合表头图 → `销售汇总` A1:D1 + `华东` A2:B2 + `华北` C2:D2
+   共 3 处；附录 A 压缩 E64 旧条目腾 1 行登记 E175。
 
 ## 今日验证
 
-- 全量单测 526/526 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
+- 全量单测 528/528 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿。
 - `doc-lint` 0 FAIL 0 WARN（附录 A 行数预算 950/950 已到上限）。
 - 真跑验证：假 SMTP 服务器全命令序列 + TLS 直连（自签证书门控）真发成功；.ics 附件导入 →
   查询可见“每天重复”；CLI `发送邮件给…` 未配置凭据诚实提示不发送；CLI 真跑
@@ -58,11 +63,14 @@
   表格网格线检测（E174）：跨行合并图（部门跨两行）→ xlsx A1:A2 合并 + “已还原 1 处…
   跨行 1 处”；既有 2×2/宽表头/两级表头 3 用例 merges 输出与 E173 一致；无边框表格回退
   文本聚类无伪合并。
+   组合复杂表头（E175）：组合表头图（`销售汇总` 跨 4 列 + `华东/华北` 各跨 2 列）→ xlsx
+   A1:D1 + A2:B2 + C2:D2 共 3 处合并 + “已还原 3 处合并单元格”；缺值数据行 `[10,,8,9]`
+   不误并；既有 5 用例 merges 输出与 E174 完全一致。
 
 ## 今日收尾状态
 
 - 已提交：E174（HEAD=`ffcf6e8`）。
-- 待提交：docs/plans 计划文档补提交（image-table-merges + table-gridlines-merge）。
+- 待提交：E175 全部改动 + docs/plans 计划文档补提交（image-table-merges + table-gridlines-merge + table-header-combos）。
 - 今日修复：CLI 真跑 `.ics` 路径导入时 Stage 1 脱敏剥掉盘符导致路由与 skill 收到的
   query 丢失 `.ics` 信息；已改 `src/search/pipeline.ts` 的 routeQuery 与 skillInputQuery
   （对 calendar-skill 的 `X:\...\*.ics` 用 originalQuery），真跑验证通过。
@@ -70,11 +78,11 @@
   `docs/plans/2026-08-21-calendar-ics-export.md`（E169）、
   `docs/plans/2026-08-21-email-smtp-send.md`（E170）、
   `docs/plans/2026-08-21-calendar-ics-import.md`（E171）。
-  `docs/plans/2026-08-21-image-table-xlsx.md`（E172）、`docs/plans/2026-08-21-image-table-merges.md`（E173）、`docs/plans/2026-08-21-table-gridlines-merge.md`（E174）。
+  `docs/plans/2026-08-21-image-table-xlsx.md`（E172）、`docs/plans/2026-08-21-image-table-merges.md`（E173）、`docs/plans/2026-08-21-table-gridlines-merge.md`（E174）、`docs/plans/2026-08-21-table-header-combos.md`（E175）。
 
 ## 明天继续（按优先级）
 
-1. 合并单元格还原下期迭代：真实扫描件/手写表格噪点鲁棒性、L 形或跨行+跨列组合复杂合并区域。
+1. 合并单元格还原下期迭代：L 形/跨行+跨列组合复杂合并区域、真实扫描件/手写表格噪点鲁棒性。
 2. UI 集成新能力（邮件发送/凭据配置、日历导入导出入口）。
 3. 附录 A 行数预算继续按需压缩旧条目（950/950 无余量）。
 
