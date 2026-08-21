@@ -15,6 +15,7 @@ const fakePage = {
     pdfLinks: [
       { url: 'https://datasheet.szlcsc.com/stm32f103c8t6.pdf', text: '数据手册' },
     ],
+    links: [{ url: 'https://example.com/stm32', text: '规格' }],
   }),
   close: async () => undefined,
 };
@@ -73,6 +74,7 @@ test('browser-session: 带会话抓取页面并返回会话域', async () => {
   const result = await manager.fetchPage('https://item.szlcsc.com/515651.html');
   assert.equal(result.title, 'STM32F103C8T6 数据手册');
   assert.equal(result.text, '72MHz LQFP48 数据手册正文');
+  assert.deepEqual(result.citations, [{ url: 'https://example.com/stm32', text: '规格' }]);
   assert.deepEqual(result.sessionDomains, ['szlcsc.com', 'xcc.com']);
   assert.equal(newPageCalls, 1);
   await manager.close();
@@ -197,4 +199,57 @@ test('browser-session: searchWeb 解析搜索结果', async () => {
   assert.equal(items[0].url, 'https://example.com/pwm');
   await manager.close();
   rmSync(dir, { recursive: true, force: true });
+});
+
+test('browser-session: extractPageScript 去噪提取 + 引用编号', async () => {
+  const { extractPageScript } = await import('./session.js');
+  const textNode = (value: string) => ({ nodeType: 3, textContent: value });
+  const el = (tag: string, attrs: Record<string, string> = {}, children: unknown[] = []) => ({
+    nodeType: 1,
+    tagName: tag.toUpperCase(),
+    childNodes: children,
+    textContent: children.map((c) => (c as { textContent?: string | null }).textContent ?? '').join(''),
+    getAttribute: (name: string) => attrs[name] ?? null,
+    hasAttribute: (name: string) => name in attrs,
+  });
+  const main = el('main', {}, [
+    el('h1', {}, [textNode('STM32F103 数据手册')]),
+    el('p', {}, [textNode('主频 72MHz，LQFP48 封装。')]),
+    el('div', { class: 'ad-banner' }, [textNode('广告 促销')]),
+    el('p', {}, [textNode('结论：适合低功耗产品。')]),
+  ]);
+  const anchors = [
+    el('a', { href: 'https://example.com/spec' }, [textNode('规格书')]),
+    el('a', { href: 'https://example.com/spec' }, [textNode('规格书(重复)')]),
+    el('a', { href: 'https://example.com/ds.pdf' }, [textNode('PDF 数据手册')]),
+    el('a', { href: '#section1' }, [textNode('页内锚点')]),
+  ];
+  const doc = {
+    body: el('body', {}, [
+      el('nav', {}, [textNode('导航栏 首页 关于')]),
+      main,
+      el('footer', {}, [textNode('版权所有 2026')]),
+    ]),
+    location: { href: 'https://example.com/datasheet' },
+    querySelector: (sel: string) => {
+      if (sel === 'main') return main;
+      if (sel === 'article' || sel === '[role="main"]') return null;
+      return null;
+    },
+    querySelectorAll: (sel: string) => (sel === 'a[href]' ? anchors : []),
+  };
+  const prev = (globalThis as { document?: unknown }).document;
+  (globalThis as { document?: unknown }).document = doc;
+  try {
+    const out = extractPageScript();
+    assert.ok(out.text.includes('主频 72MHz'), out.text);
+    assert.ok(out.text.includes('STM32F103 数据手册\n主频'), '块级换行保留: ' + JSON.stringify(out.text));
+    assert.ok(!out.text.includes('导航栏'), 'nav 应剔除');
+    assert.ok(!out.text.includes('广告'), '广告应剔除');
+    assert.ok(!out.text.includes('版权所有'), 'footer 应剔除');
+    assert.deepEqual(out.links, [{ url: 'https://example.com/spec', text: '规格书' }], '外部链接去重编号');
+    assert.deepEqual(out.pdfLinks, [{ url: 'https://example.com/ds.pdf', text: 'PDF 数据手册' }], 'pdf 链接保留');
+  } finally {
+    (globalThis as { document?: unknown }).document = prev;
+  }
 });

@@ -73,6 +73,15 @@
   `http://127.0.0.1:5173/`。
 - 状态：E106 已落地，需求文档附录 A 登记。
 
+### 2.8 crawl4ai → 网页正文去噪提取 + 引用编号
+
+- 来源：<https://github.com/unclecode/crawl4ai>（LLM 友好爬虫，50k+ stars）
+- 文件：`src/browser/session.ts`（`extractPageScript`）/ `src/skills/browser-session/index.ts`
+- 内容：借鉴 crawl4ai 的 clean 提取 + 引用编号思想——正文优先 `main/article` 容器、
+  剔除 nav/footer/广告等噪音并保留块级换行；外部链接去重编号成 `citations` 供答案溯源。
+- 接入：不引入 Python/Playwright 重依赖，在既有 CDP 会话的 `fetchPage` 内实现；
+  browser-session skill 与 `browser:fetch` CLI 输出引用列表。
+- 状态：E182 已落地，需求文档附录 A 登记。
 ## 3. 待借入（按优先级）
 
 | 设计 | 来源 | 价值 | 前置条件 |

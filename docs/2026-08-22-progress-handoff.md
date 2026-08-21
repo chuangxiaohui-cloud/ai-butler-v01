@@ -44,16 +44,20 @@
 - office-daily 新增 1 条真跑（合成 4 变体）：彩色底/折痕/透字 160 → `A1:A3`+`B1:C1`
   无 warning“已还原 2 处”；透字 90 → 只剩 `B1:C1` + 1 条 `merged_conflict` warning、
   答案含“无法自动还原”。既有 10 张回归图 merges 与 E177 一致，零回归。
+- E182：`extractPageScript` 新增 2 条单测——citations 透传断言（mock 页）、fake-DOM
+  去噪断言（nav/footer/广告剔除、块级换行保留、外部链接去重、同页锚点与 pdf 分流）。
 - 已知边界：部分噪声/模糊图 OCR 文本有误读（如“上海”→“奥”），但合并判断不受影响；
   透字墨色过重（灰度 <90）超出局部对比度阈值时靠相位守卫诚实提示，不产出伪合并。
 
 ## 今日收尾状态
 
-- 已提交：E177/E178/E179（HEAD=`6d93525`）、E180（HEAD=`81c3060`）。
-- 待提交：E181 全部改动（`scripts/office_image_ocr.py`、`src/skills/office-daily/index.test.ts`、
-  附录 A E181、`docs/plans/2026-08-22-scan-robustness.md`、`src/skills/README.md`、本交接更新）。
-  建议提交信息：`E181：扫描件透字抑制+虚假合并诚实提示`。
-- 提交前请勿包含根目录 `.codex-*.cjs`、`data/` 临时文件（已清理 `data/.tmp-*`）。
+- 已提交：E177/E178/E179（HEAD=`6d93525`）、E180（HEAD=`81c3060`）、E181（HEAD=`1f67a8b`）、
+  housekeeping（HEAD=`4c410f0`）。
+- 待提交：E182 全部改动（`src/browser/session.ts`、`src/skills/browser-session/index.ts`、
+  `scripts/browser-session.ts`、`src/browser/session.test.ts`、附录 A E182、
+  `docs/plans/2026-08-22-page-clean-extract.md`、`docs/borrowed-designs.md`、本交接更新）。
+  建议提交信息：`E182：网页正文去噪提取+引用编号`。
+- 提交前请勿包含根目录 `.codex-*.cjs`（已 gitignore）、`data/` 临时文件。
 
 ## 明天继续（按优先级）
 

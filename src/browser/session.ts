@@ -31,6 +31,7 @@ export interface FetchPageResult {
   text: string;
   sessionDomains: string[];
   pdfLinks?: Array<{ url: string; text: string }>;
+  citations?: Array<{ url: string; text: string }>;
 }
 
 const DEFAULT_USER_DATA_DIR = resolve(process.cwd(), 'data', 'browser-session');
@@ -56,43 +57,108 @@ function resolveExecutable(executablePath?: string): string {
   return found;
 }
 
+/** 页面正文提取（E182，借鉴 crawl4ai 的 clean 提取设计）：块级去噪 + 链接去重编号；
+ *  函数体自包含（不引用模块作用域），可直接传给 page.evaluate 也可单测调用。
+ *  去噪：优先 main/article/[role=main]，跳过 nav/header/footer/aside/script/style/
+ *  form/button 等噪音与广告类 class/id，块级标签间保留换行，正文截断 2 万字符。
+ *  链接：http(s) 去重；.pdf 进 pdfLinks（E125 行为不变），其余进 links（上限 20）。 */
+export function extractPageScript(): {
+  text: string;
+  pdfLinks: Array<{ url: string; text: string }>;
+  links: Array<{ url: string; text: string }>;
+} {
+  const doc = (globalThis as { document?: unknown }).document as
+    | {
+        querySelector(selector: string): unknown | null;
+        querySelectorAll(selector: string): ArrayLike<unknown>;
+        body: unknown | null;
+        location: { href: string };
+      }
+    | undefined;
+  if (!doc || !doc.body) return { text: '', pdfLinks: [], links: [] };
+  const rootNode =
+    doc.querySelector('main') ??
+    doc.querySelector('article') ??
+    doc.querySelector('[role="main"]') ??
+    doc.body;
+  type NodeLike = {
+    nodeType: number;
+    tagName?: string;
+    textContent?: string | null;
+    childNodes?: ArrayLike<NodeLike>;
+    getAttribute?(name: string): string | null;
+    hasAttribute?(name: string): boolean;
+  };
+  const root = rootNode as NodeLike;
+  const SKIP = new Set([
+    'script', 'style', 'noscript', 'svg', 'canvas', 'iframe', 'form', 'button',
+    'input', 'select', 'textarea', 'nav', 'header', 'footer', 'aside',
+  ]);
+  const BLOCK = new Set([
+    'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'pre', 'blockquote', 'td',
+    'th', 'dt', 'dd', 'figcaption', 'caption', 'summary', 'div', 'section',
+    'article', 'ul', 'ol', 'table', 'tr',
+  ]);
+  const isAdish = (el: NodeLike): boolean => {
+    const cls = ((el.getAttribute?.('class') ?? '') as string).toLowerCase();
+    const id = ((el.getAttribute?.('id') ?? '') as string).toLowerCase();
+    return /advert|banner|sidebar|breadcrumb|pagination|copyright|social|share|menu|navbar|recommend|related-/.test(`${cls} ${id}`);
+  };
+  const chunks: string[] = [];
+  const walk = (node: NodeLike): void => {
+    const kids = node.childNodes;
+    if (!kids) return;
+    for (let i = 0; i < kids.length; i += 1) {
+      const child = kids[i] as NodeLike;
+      if (child.nodeType === 3) {
+        const t = (child.textContent ?? '').replace(/\s+/g, ' ').trim();
+        if (t) chunks.push(t);
+      } else if (child.nodeType === 1) {
+        const tag = (child.tagName ?? '').toLowerCase();
+        if (SKIP.has(tag)) continue;
+        if (child.hasAttribute?.('hidden') || child.getAttribute?.('aria-hidden') === 'true') continue;
+        if (isAdish(child)) continue;
+        const before = chunks.length;
+        walk(child);
+        if (BLOCK.has(tag) && chunks.length > before) chunks.push('\n');
+      }
+    }
+  };
+  walk(root);
+  const text = chunks
+    .join(' ')
+    .replace(/ ?\n ?/g, '\n')
+    .replace(/\n{2,}/g, '\n')
+    .trim()
+    .slice(0, 20_000);
+  const links: Array<{ url: string; text: string }> = [];
+  const pdfLinks: Array<{ url: string; text: string }> = [];
+  const seen = new Set<string>();
+  const anchors = doc.querySelectorAll('a[href]');
+  for (let i = 0; i < anchors.length; i += 1) {
+    const anchor = anchors[i] as NodeLike & { href?: string };
+    const raw = anchor.getAttribute?.('href') ?? anchor.href ?? '';
+    try {
+      const url = new URL(raw, doc.location.href).href;
+      if (!/^https?:/i.test(url)) continue;
+      if (url.split('#')[0] === doc.location.href.split('#')[0]) continue; // 同页锚点不进引用
+      if (seen.has(url)) continue;
+      seen.add(url);
+      const anchorText = ((anchor.textContent ?? '').replace(/\s+/g, ' ').trim() || '').slice(0, 120);
+      if (/\.pdf(\?|#|$)/i.test(url)) pdfLinks.push({ url, text: anchorText });
+      else if (links.length < 20) links.push({ url, text: anchorText });
+      if (pdfLinks.length >= 20 && links.length >= 20) break;
+    } catch {
+      // 非法 URL 跳过
+    }
+  }
+  return { text, pdfLinks, links };
+}
+
 function extractPageData(
   page: Page,
-): Promise<{ text: string; pdfLinks: Array<{ url: string; text: string }> }> {
-  const extract = () => {
-    const doc = (globalThis as { document?: unknown }).document as
-      | {
-          querySelector(selector: string): { textContent: string | null } | null;
-          body: { textContent: string | null } | null;
-          location: { href: string };
-          querySelectorAll(selector: string): ArrayLike<unknown>;
-        }
-      | undefined;
-    if (!doc) return { text: '', pdfLinks: [] };
-    const main = doc.querySelector('main')?.textContent ?? doc.body?.textContent ?? '';
-    const text = main.replace(/\s+/g, ' ').trim().slice(0, 20_000);
-    const pdfLinks: Array<{ url: string; text: string }> = [];
-    const anchors = doc.querySelectorAll('a[href]');
-    for (let i = 0; i < anchors.length; i += 1) {
-      const anchor = anchors[i] as {
-        href?: string;
-        getAttribute?(name: string): string | null;
-        textContent?: string | null;
-      };
-      const raw = anchor.href ?? anchor.getAttribute?.('href') ?? '';
-      try {
-        const url = new URL(raw, doc.location.href).href;
-        if (/\.pdf(\?|#|$)/i.test(url)) {
-          pdfLinks.push({ url, text: (anchor.textContent ?? '').trim().slice(0, 120) });
-        }
-      } catch {
-        // 非法 URL 跳过
-      }
-      if (pdfLinks.length >= 20) break;
-    }
-    return { text, pdfLinks };
-  };
-  return page.evaluate(extract);
+): Promise<{ text: string; pdfLinks: Array<{ url: string; text: string }>; links: Array<{ url: string; text: string }> }> {
+  return page.evaluate(extractPageScript);
 }
 
 export class BrowserSessionManager {
@@ -216,6 +282,7 @@ export class BrowserSessionManager {
         text: data.text,
         sessionDomains,
         pdfLinks: data.pdfLinks,
+        citations: data.links,
       };
     } finally {
       await page.close().catch(() => undefined);

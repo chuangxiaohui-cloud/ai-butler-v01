@@ -8,6 +8,20 @@
 import { browserSession, type BrowserSessionManager } from '../../browser/session.js';
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 
+/** E182：正文 + 引用编号拼接（引用最多 10 条，便于答案溯源）。 */
+function buildPageAnswer(page: {
+  text: string;
+  citations?: Array<{ url: string; text: string }>;
+}): string {
+  const body = page.text.slice(0, 2000);
+  const cites = (page.citations ?? []).slice(0, 10);
+  if (cites.length === 0) return body;
+  const citeBlock = cites
+    .map((c, i) => `[${i + 1}] ${c.url}${c.text ? `（${c.text}）` : ''}`)
+    .join('；');
+  return `${body}\n\n引用：${citeBlock}`;
+}
+
 export function createBrowserSessionSkill(
   manager: BrowserSessionManager = browserSession,
 ): ExecutableSkill {
@@ -22,7 +36,7 @@ export function createBrowserSessionSkill(
         const page = await manager.fetchPage(url);
         return {
           result: {
-            answer: page.text.slice(0, 2000),
+            answer: buildPageAnswer(page),
             url: page.url,
             title: page.title,
             sessionDomains: page.sessionDomains,

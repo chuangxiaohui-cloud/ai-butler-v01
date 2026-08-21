@@ -39,6 +39,7 @@ async function main(): Promise<void> {
       textLength: page.text.length,
       preview: page.text.slice(0, 500),
       sessionDomains: page.sessionDomains,
+      citations: page.citations ?? [],
     }, null, 2));
     return;
   }
