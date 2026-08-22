@@ -1070,6 +1070,100 @@ def correct_dict_cell(text: str, ocr_dict: dict, ratio_threshold: float = 0.78) 
     return text
 
 
+def _code_col_indices(code_ranges, x_edges):
+    """E205：代码列索引——code_ranges（x 区间）与网格列边界相交的列。"""
+    cols: set = set()
+    for c in range(len(x_edges) - 1):
+        x0, x1 = x_edges[c], x_edges[c + 1]
+        if any(crx0 < x1 and x0 < crx1 for crx0, crx1 in code_ranges):
+            cols.add(c)
+    return cols
+
+
+def _grid_fill_empty_cells(
+    engine,
+    corrected,
+    cell_items,
+    x_edges,
+    y_edges,
+    code_ranges,
+    merges,
+    ocr_dict=None,
+):
+    """E205：网格补位——「编号锚定数据行」内空的非代码列单元，按网格线裁剪该单元
+    区域重 OCR（原尺寸优先、2x 预处理兜底），高置信短文本（score≥0.95、≤4 字符）才补入。
+
+    解决整格漏检：OCRtest.png FR407 单位「套」在 cleaned/灰度/2x 全图三通道均未检出，
+    裁剪该格后原尺寸 OCR 即可检出（score 0.979）。只补编号锚定行 + 排除合并覆盖单元，
+    与 E200 补框同语义，避免把透字/水印残影当数据。"""
+    if len(x_edges) < 2 or len(y_edges) < 2:
+        return 0
+    from PIL import Image
+    import numpy as np
+
+    code_cols = _code_col_indices(code_ranges, x_edges)
+    if not code_cols:
+        return 0
+    # 仅补「短值列」：列内已检出文本全部 ≤4 字符（数量/单位类），避免向长文本列
+    # 补入不可靠片段，也控制裁剪重 OCR 的开销（长文本列空单元直接跳过）。
+    col_short: list[bool] = []
+    for c in range(len(x_edges) - 1):
+        texts = [
+            it["text"].strip()
+            for r in range(len(y_edges) - 1)
+            for it in cell_items[r][c]
+            if (it.get("text") or "").strip()
+        ]
+        col_short.append(bool(texts) and all(len(t) <= 4 for t in texts))
+    covered: set = set()
+    for m in merges:
+        for rr in range(m["row"], m["row"] + m["rowSpan"]):
+            for cc in range(m["col"], m["col"] + m["colSpan"]):
+                covered.add((rr, cc))
+    filled = 0
+    for r in range(len(y_edges) - 1):
+        row_cells = cell_items[r]
+        if not any(row_cells[c] for c in code_cols if c < len(row_cells)):
+            continue
+        for c in range(len(x_edges) - 1):
+            if (
+                c in code_cols
+                or c >= len(row_cells)
+                or row_cells[c]
+                or (r, c) in covered
+                or not col_short[c]
+            ):
+                continue
+            x0, x1 = int(x_edges[c]), int(x_edges[c + 1])
+            y0, y1 = int(y_edges[r]), int(y_edges[r + 1])
+            if x1 - x0 < 6 or y1 - y0 < 8:
+                continue
+            crop = corrected[y0:y1, x0:x1]
+            items, err = run_ocr(
+                engine, np.asarray(Image.fromarray(crop).convert("RGB"))
+            )
+            if not items:
+                items, _ = run_ocr(engine, preprocess_ocr_input(crop))
+            if not items:
+                continue
+            best = max(items, key=lambda it: float(it.get("score") or 0))
+            text = (best.get("text") or "").strip()
+            score = float(best.get("score") or 0)
+            if not text or len(text) > 4 or score < 0.95:
+                continue
+            if ocr_dict:
+                text = correct_dict_cell(text, ocr_dict)
+            best = dict(best)
+            best["text"] = text
+            best["x"] += x0
+            best["y"] += y0
+            best["cx"] += x0
+            best["cy"] += y0
+            row_cells[c].append(best)
+            filled += 1
+    return filled
+
+
 def selftest_main() -> int:
     """E200/E201 纯函数自检：不依赖 OCR 引擎，供 TS 单测调用。"""
     flat = {}
@@ -1175,6 +1269,14 @@ def process_table_array(engine, arr, ocr_dict=None):
         cell_items[mrow][mcol] = sorted(
             cell_items[mrow][mcol], key=lambda i: i["cy"]
         )
+    # E205：网格补位——空单元按网格线裁剪重 OCR（仅网格线路径、编号锚定行）
+    grid_filled = (
+        _grid_fill_empty_cells(
+            engine, corrected, cell_items, x_edges, y_edges, code_ranges, merges, ocr_dict
+        )
+        if grid_lines
+        else 0
+    )
     grid = [
         [
             " ".join(it["text"] for it in sorted(cells, key=lambda i: i["cy"])).strip()
@@ -1232,6 +1334,15 @@ def process_table_array(engine, arr, ocr_dict=None):
                 "row": -1,
                 "col": -1,
                 "detail": f"已按词典纠正 {dict_corrected} 处识别结果",
+            }
+        ]
+    if grid_filled:
+        warnings = list(warnings) + [
+            {
+                "type": "grid_filled",
+                "row": -1,
+                "col": -1,
+                "detail": f"已按网格补位 {grid_filled} 处整格漏检",
             }
         ]
     return {
