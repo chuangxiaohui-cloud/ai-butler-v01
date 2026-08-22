@@ -51,6 +51,8 @@
 - 探活（2026-08-22 `npm run search:smoke`，用户手动执行）：Bocha 10/10 快速失败（failRate 100%、
   timeout5sRate 0%、58-285ms HTTP 错误）、AnySearch 10/10 ok、双返回率 0%——Bocha 可用性故障
   坐实，[P-02] 重开决策成立。
-- 提交：核心 `0a0d5df` 已提交；探活结果登记待 housekeeping 提交。
-- 遗留事项：Bocha 余额/Key 排查与恢复（探活已确认故障）；owner 签认 [P-04] 晋升 1750ms 并同步
+- 恢复复核（同日充值后）：Bocha 10/10 ok（126-336ms）、AnySearch 10/10 ok、双返回率 100%、
+  failRate 0%——可用性恢复；[P-02] 触发条件解除，维持 provisional 推进定稿评估。
+- 提交：核心 `0a0d5df` + 探活登记 `dffa89c` 已提交；恢复复核登记待 housekeeping 提交。
+- 遗留事项：连续 n≥30 健康冷调用样本采集以完成 [P-02] 定稿评估；owner 签认 [P-04] 晋升 1750ms 并同步
   `LLM_CLASSIFY_TIMEOUT_MS`；双返回率数据的 smoke/bench/test 来源拆分待后续加 source 标记。
