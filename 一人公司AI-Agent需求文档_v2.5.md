@@ -1613,29 +1613,8 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 
 ### A.0 迁移落地顺序（6 阶段修正版）
 
-> 基于老张审阅修正：阶段 0 拆 0a/0b + §0.2 术语映射表前移 + git tag + baseline；阶段 3 §5 补全触发条件；阶段 4 追加迁移台账填充。
-
-| 阶段 | 名称 | 任务 | 退出条件 |
-|------|------|------|---------|
-| 0a | 规则文本 | §0 宪法 + §5 PARAM 注册表 + §0.2 术语变更映射表 + 附录 C baseline | lint 跑 v2.5 骨架 0 FAIL |
-| 0b | 脚本实现 | doc-lint.ts（--migration + baseline 模式 + fallback section parsing） | lint 跑 v2.4 baseline 成功输出 |
-| 0.6 | git tag | `git tag v2.4`（diff 基准锚点） | tag 存在且可 `git diff v2.4..HEAD` |
-| 0.7 | baseline | 跑 v2.4 baseline → 存量债务清单写入附录 C | 附录 C 含 C.0 节 |
-| 1 | 瘦身 | 搬附录（正文先瘦身）：E→A→B→D→C | 正文非空行 ≤ 1800 |
-| 2 | 权威迁移 | 正文迁移：§6 搜索规格 etc.，查 §0.2 术语映射表一次写对 | §6 内容迁移完毕 |
-| 3 | 新章补全 | §5 补全（触发条件：每引入一个量化预算/阈值立即在 §5 追加 P-NN）+ 新增章节填实 | PARAM 填充率 ≥ 80% |
-| 4 | 归位收尾 | ① 附录 A 迁移台账填充（每搬完一章登记 旧编号→新编号\|日期\|悬空引用归零） ② 章节交叉引用修正 ③ 旧编号 tombstone | 迁移台账旧→新全登记 |
-| 5 | 校验退出 | 删 `--migration`，跑全量 lint | §0.7 退出四条全满足 |
-
-**补丁落位表**（3 条修正 + 2 条微调）：
-
-| 修正项 | 原位置 | 落位 | 状态 |
-|--------|--------|------|------|
-| 风险1：baseline 语义 | 阶段0"跑v2.4记录baseline" | 0.6 git tag + 0.7 baseline（空diff→全WARN） | ✅ 已落地 |
-| 风险2：术语映射表前移 | 阶段2 §6.2 写时才建 | 0a §0.2 术语变更映射表（阶段0末尾） | ✅ 已落地 |
-| 遗漏：迁移台账填充 | 阶段4 缺显式任务 | 阶段4 ① 附录A迁移台账填充 | ✅ 已落地 |
-| 微调1：阶段0拆0a/0b | 阶段0 单一任务块 | 0a(规则文本) + 0b(脚本实现) | ✅ 已落地 |
-| 微调2：§5补全触发条件 | 阶段3 无触发规则 | 阶段3"每引入一个量化预算/阈值立即追加P-NN" | ✅ 已落地 |
+> 迁移已完成（2026-08-12 全量 lint 生效）。6 阶段执行顺序/退出条件与 3 条修正 + 2 条微调
+> 补丁落位已随 v2.5 落地并在 A.1 台账登记，此处不再展开；后续内容变更不受该历史计划约束。
 
 ### A.1 迁移台账
 
@@ -2567,8 +2546,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-22（Tavily 触发冒烟 + 配额监控 E195）<br>- **变更**：Tavily 已接入并启用（§6.2.1 条件并联 + E72 官方域兜底），但 `search:smoke` 只覆盖 Bocha+AnySearch；本轮新增 `npm run tavily:smoke`（key 配置检查 + `shouldTriggerTavily` 触发判定样例 + `runSearchStage` 真实链路冒烟 + 月度配额报告 [P-64]），`src/search/quota.ts` 新增只读 `readMonthlyQuota()` 快照并把 `TAVILY_MONTHLY_LIMIT` 常量单源化（删除 s3_search/search-loop 本地硬编码）；`tavily.ts` 将 HTTP 432（Tavily 计划用量超限）映射为明确 error + `notice`（复用 E192 告警透出模式，CLI/gateway 可见）。<br>- **证据**：bench:B-20260822-07 真实调用——key 有效（58 字符）、触发判定 5 例正确 + 严肃禁区熔断 1 例、真实链路 HTTP 432（远端计划额度耗尽，本地已用 634/1000），冒烟脚本与配额报告链路可用；quota 单测 6/6（readMonthlyQuota 缺失/当月/跨月/损坏）+ tavily 3/3（含 432 notice）；build + test:all 全绿、doc-lint 0 FAIL 0 WARN。<br>- **状态**：冒烟/监控工具落地；[P-64]=1000 本地计数与远端 432 矛盾，owner 已决策：等下月重置（已核实 Tavily 用量耗尽）；9 月重置后跑 `npm run tavily:smoke` 复核并评估 [P-64] 口径复算。<br>- affects: §6.2.1 | bench:B-20260822-07 | E192/E72 交叉引用
 ### 2026-08-22（provisional 复验数据包 E196）<br>- **变更**：只读评估全部 provisional 参数复验门——[P-16]/[P-17]（E8/E10 引擎级人工分校准 n=93：0.6 正例保留 67/75、负例拦截 5-6/18）PASS 候选、样本时效待 owner 确认；[P-80]/[P-81]（route:calibrate 742 决策/26 反馈，suggested 0.45/0.75 与现值一致，reject n=7<15）校准一致待 owner；[P-63]（E5 政策稳定 9 天）待 owner 转定稿；[P-105]~[P-107]（bench:B-20260816-04 n=5）与 [P-82]~[P-94]（迁移确认类）样本不足维持 provisional；[P-01] 语义与 [P-17] 重叠（代码无独立落地）待 owner 决策；[P-06]/[P-15] 实测超预算（Stage5>8s 30.9%、总>12s 27.3%，trajectory 8-14~8-22 窗口）需 owner 三选一（上调预算/优化二次取证/代码强制）；[P-13] 深度报告未落地无实测维持。<br>- **证据**：bench:B-20260822-08（trajectory 只读统计 + route:calibrate 重跑 + bench:B-20260816-04 复核），详见 docs/plans/2026-08-22-provisional-review.md。<br>- **状态**：数据包已产出，晋升待 owner 签认（复验门⑤）；本条目不改变任何参数值/状态。<br>- affects: §5 | bench:B-20260822-08 | E8/E10/E37/E194/E5 交叉引用
 ### 2026-08-22（provisional 晋升批 E197）<br>- **变更**：owner 签认 E196 数据包并逐项决策——①[P-16]/[P-17] 综合分丢弃/低置信标注阈值转 定稿（E8/E10 引擎级人工分校准 n=93：0.6 正例保留 67/75、负例拦截 5-6/18；owner 确认 E80/E81/E94 后融合调整改善性、无误丢弃体感）；②[P-80]/[P-81] 路由置信阈值转 定稿（route:calibrate 742 决策无偏移、校准与现值一致；后续 reject≥15 且建议偏移时重开）；③[P-63] Bocha 日配额不设硬限政策转 定稿（E5 稳定 9 天 + 余额预警已落地 + 无事故）；④[P-01] 置信门控阈值 tombstone 并入 [P-17]（代码无独立落地、语义重叠，§0.2 示例同步改引 [P-82]）；⑤[P-06] Stage 5 秘书合成预算 8s→12s、[P-15] 搜索管道总预算 12s→14s 转 定稿（owner 选上调预算方案；实测 [P-06]12s 下 Stage5 段超时 13.7%、[P-15]14s 下总耗时超 19.7%，无强制降级、走现有各 Stage 超时兜底，二次取证频率增长后再评估剥离为可选路径）；⑥约束卡线连带 [P-13] 深度报告增量预算 15s→13s（P-15+P-13=27≤P-14 成立），[P-13] 保持 provisional 待深度报告实现后复测；⑦[P-82]~[P-94]/[P-105]~[P-107] 维持 provisional，等 4 周标红时再处理。<br>- **证据**：bench:B-20260822-08（trajectory 实测 + route:calibrate）+ bench:B-20260813-02（E8/E10 校准）+ bench:B-20260822-06（E194 差分）。<br>- **状态**：9 项参数状态/值更新完成（P-01 已废弃并入[P-17]、P-06/P-15/P-16/P-17/P-63/P-80/P-81 定稿、P-13 值连带调整）；无代码值变更（fusion.ts 0.4/0.6、params.ts 0.75/0.45、quota.ts 已符合）。<br>- affects: §5 | bench:B-20260822-08 | E196/E8/E10/E194/E5 交叉引用
+### 2026-08-22（表格识别页脚/页码过滤 E199）<br>- **变更**：E186 遗留「页脚/页码落在表格网格内当正文追加」用真实样本 `OCRtest.png` 复现（`第1页，共1页` 归入末行第 7 列）后修复——`scripts/office_image_ocr.py` 新增 `_filter_page_footer`（图片底部 10% 且命中强模式「第X页，共Y页」双条件才剔除，无模式页脚如实保留防误伤贴底表格数据），网格归属前过滤页码、removed 转 `page_footer` warning；`stitch_table_pages` 合并后续页 page_footer warning 跨页透出；`office-daily` `TableMergeWarning` 加 `page_footer` 类型与「已自动排除，不计入表格内容」文案。<br>- **证据**：OCRtest.png 真实样本修复（csv 末行页码排除、54×7 结构不变、warning 含 page_footer）；合成页脚样本真跑（csv 无「第1页」、warning 含 page_footer）；E185/E186 跨页回归通过；office-daily 全量 59/59 + 1 条环境门控跳过；build 通过。<br>- **状态**：修复完成；纯数字页码/公司名等无模式页脚暂不处理（等真实样本反馈再扩展）。<br>- affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格识别页脚页码过滤，无 §5/§6 参数变更
 
 
+
+### 2026-08-22（表格 OCR 识别率提升·编号模式纠正+三通道融合 E200）<br>- **变更**：方向 2 实测后落地——`scripts/office_image_ocr.py` 新增 E200 编号列识别率提升：①标准预处理 `preprocess_ocr_input`（灰度→自动对比度→2x LANCZOS→锐化，实测编号列 7px 小字 0%→90%）；②三通道文本融合 `_fuse_text_by_position`/`_fill_missing_cells`（结构用透字抑制通道 `cleaned` 防假框污染合并判断，非代码列文本用灰度通道按位置替换/补框——仅补「所在行已有编号框」的数据行，无编号列的表格整体不补框回归 E181 语义，补框 bbox 按网格行边界裁剪防伪 `merged_conflict`，代码列用 2x 预处理通道）；③编号模式纠正 `correct_code_cell`（代码形单元格内数字相邻的混淆字符按 `{S/B→8, O→0, l→1}` 纠正）；`--selftest` 纯函数自检 13 用例。`office-daily` `TableMergeWarning` 加 `code_corrected` 类型与文案，`followUpAction` 仅对合并/分页类 warning 提示人工核对。<br>- **证据**：bench:B-20260822-09（OCRtest.png × XLS 真跑：编号 0%→100%、数量 100%、单位 96%，名称/型号经词典后 100%/96%，中文列不劣化）；E181 彩色底/折痕/透字 160/90 四变体 merges+warning 零回归；office-daily 61 用例 60 通过 1 环境门控跳过；全量单测 589/590 + 集成 17/17；doc-lint 0 FAIL 0 WARN。<br>- **状态**：完成并纳入回归（`--selftest` 进单测）；剩余残差：登加型歧义（叠加/分开）、FR405 型号 2.54-9P 乱码、FR407 单位「套」漏检，等方向 1（PaddleOCR）解决。<br>- affects: §6,§13 | bench:B-20260822-09
+
+### 2026-08-22（表格 OCR 识别率提升·词典纠正 E201）<br>- **变更**：方向 2 落地——`scripts/office_image_ocr.py` 新增 E201 词典纠正：`load_ocr_dict`（`{分类:{规范值:[OCR变体]}}` → 变体→规范值展开）默认读 `data/ocr-dict.json`（git 忽略的运行时词典），`correct_dict_cell` 精确命中直接替换、长文本（≥4 字符）按相似度阈值 0.78 模糊替换、短文本不模糊替换防误伤；`--table` 支持 `--dict <path>`；`office-daily` `TableMergeWarning` 加 `dict_corrected` 类型与文案。示例词典 `scripts/ocr-dict.example.json`。<br>- **证据**：bench:B-20260822-09（OCRtest.png 名称 45/49→49/49、型号 33/45→43/45，14 处纠正）；`--selftest` 覆盖精确/模糊/短文本守卫生；全量单测 589/590 + 集成 17/17；doc-lint 0 FAIL 0 WARN。<br>- **状态**：完成；词典由 BOM 主数据/历史 OCR 变体维护，登记附录 A 时已建 data/ocr-dict.json 示例（git 忽略）。<br>- affects: §6,§13 | bench:B-20260822-09
 
 ### v2.5（2026-08-12）
 

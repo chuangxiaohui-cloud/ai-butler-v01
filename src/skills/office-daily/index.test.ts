@@ -1158,6 +1158,35 @@ test('office-daily: 疑似合并 warning 文案如实提示', () => {
   ]);
   assert.ok(conflict.includes('无法自动还原'), conflict);
   assert.ok(conflict.includes('第3行第1列'), conflict);
+  // E200/E201：编号/词典纠正、页脚排除 warning 单独成句，转述 detail 计数
+  const codeNote = tableWarningsNote([
+    { type: 'code_corrected', row: -1, col: -1, detail: '已按编号模式纠正 4 处识别结果' },
+  ]);
+  assert.ok(codeNote.includes('已按编号模式纠正 4 处识别结果'), codeNote);
+  assert.ok(codeNote.includes('以纠正后内容为准'), codeNote);
+  const dictNote = tableWarningsNote([
+    { type: 'dict_corrected', row: -1, col: -1, detail: '已按词典纠正 14 处识别结果' },
+  ]);
+  assert.ok(dictNote.includes('已按词典纠正 14 处识别结果'), dictNote);
+  assert.ok(dictNote.includes('以纠正后内容为准'), dictNote);
+  const footerNote = tableWarningsNote([
+    { type: 'page_footer', row: -1, col: -1, detail: '已排除页脚页码：第1页，共1页' },
+  ]);
+  assert.ok(footerNote.includes('已排除页脚页码'), footerNote);
+  assert.ok(footerNote.includes('不计入表格内容'), footerNote);
+});
+
+// E200/E201：纯函数自检（编号模式纠正 + 词典纠正 + 预处理），不依赖 OCR 引擎
+test('office-daily: 表格 OCR 后处理 selftest 全绿', { skip: !HAS_LOCAL_RAPIDOCR }, () => {
+  const out = execFileSync(
+    RUNTIME_PYTHON,
+    [join(process.cwd(), 'scripts', 'office_image_ocr.py'), '--selftest'],
+    { encoding: 'utf8' },
+  ).trim();
+  const parsed = JSON.parse(out) as { ok: boolean; total: number; failed: string[] };
+  assert.equal(parsed.ok, true, `selftest 失败: ${JSON.stringify(parsed)}`);
+  assert.ok(parsed.total >= 13, `selftest 用例数 ${parsed.total} < 13`);
+  assert.deepEqual(parsed.failed, []);
 });
 
 test('office-daily: 合并单元格还原文案', () => {
@@ -2596,3 +2625,59 @@ test('office-daily: 写草稿 → 把刚才那封发出去（两段式发送）'
   }
 });
 
+test('office-daily: 表格识别页脚页码排除（E199）', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const b64 = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 26)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+X = (40, 200, 360, 520)
+Y = (40, 160, 280, 400, 460)
+img = Image.new('RGB', (560, 470), 'white')
+d = ImageDraw.Draw(img)
+for x in X:
+    d.line([(x, Y[0]), (x, Y[-1])], fill=(0, 0, 0), width=2)
+for y in Y:
+    d.line([(X[0], y), (X[-1], y)], fill=(0, 0, 0), width=2)
+cells = {(0, 0): '产品', (0, 1): '销量', (0, 2): '库存', (1, 0): '手机', (1, 1): '100', (1, 2): '200', (2, 0): '平板', (2, 1): '110', (2, 2): '210', (3, 1): '第1页，共1页'}
+for (r, c), t in cells.items():
+    d.text((X[c] + 15, Y[r] + 30), t, fill=(0, 0, 0), font=font)
+buf = io.BytesIO()
+img.save(buf, 'PNG')
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const png = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'scan.png' }],
+        rawFiles: [fakeFile('scan.png', 'image/png', png)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const res = out.result as { answer?: string; warnings?: Array<{ type?: string; detail?: string }>; csv?: string };
+    assert.ok(res.answer?.includes('已识别表格'), res.answer);
+    assert.ok(!(res.csv ?? '').includes('第1页'), res.csv);
+    assert.ok(res.warnings?.some((w) => w.type === 'page_footer'), JSON.stringify(res.warnings));
+    assert.ok(res.answer?.includes('页脚页码'), res.answer);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -418,7 +418,7 @@ export function accentFromQuery(query: string): string | undefined {
 
 /** E172/E186：疑似合并区域 / 分页对齐 warning，TSR 输出格式；Agent 侧如实告知用户。 */
 export interface TableMergeWarning {
-  type: 'merged_col' | 'merged_row' | 'merged_conflict' | 'page_header_mismatch' | 'page_col_mismatch';
+  type: 'merged_col' | 'merged_row' | 'merged_conflict' | 'page_header_mismatch' | 'page_col_mismatch' | 'page_footer' | 'code_corrected' | 'dict_corrected';
   row: number;
   col: number;
   detail?: string;
@@ -437,6 +437,13 @@ export interface TableMerge {
 export function tableWarningsNote(warnings: TableMergeWarning[]): string {
   if (warnings.length === 0) return '';
   const first = warnings[0];
+  if (first.type === 'code_corrected' || first.type === 'dict_corrected') {
+    // 单条 warning 的 detail 已含计数（如「已按编号模式纠正 4 处识别结果」），直接转述
+    return `；提示：${first.detail ?? '已自动纠正部分识别结果'}，请以纠正后内容为准`;
+  }
+  if (first.type === 'page_footer') {
+    return `；提示：${first.detail ?? '检测到页脚页码并已自动排除'}，不计入表格内容`;
+  }
   if (first.type === 'page_header_mismatch' || first.type === 'page_col_mismatch') {
     const kind = first.type === 'page_header_mismatch' ? '分页表头不一致' : '分页列数不一致';
     return `；提示：检测到 ${warnings.length} 处分页对齐问题（如${first.detail ?? kind}），已按普通文本逐格填充，请在 Excel 中核对后手动调整`;
@@ -1436,7 +1443,9 @@ ${timeLabel}
               merges,
             },
             confidence: 0.8,
-            followUpAction: warnings.length
+            followUpAction: warnings.some((w) =>
+              w.type.startsWith('merged') || w.type === 'page_header_mismatch' || w.type === 'page_col_mismatch'
+            )
               ? '识别到无法自动还原的疑似合并区域，请在 Excel 中核对后手动合并'
               : merges.length
                 ? '已还原合并单元格，需要调整合并范围或样式随时说'

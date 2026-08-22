@@ -77,6 +77,7 @@
 | `scripts/browser-*.ts` | 浏览器会话与抓取 | ✅ |
 | `scripts/pdf-text.ts` / `ocr_benchmark.py` | PDF 文本层与 OCR 基准 | ✅ |
 | `scripts/office_xlsx_read.py` / `office_xls_read.py` / `office_doc_*.py` / `office_docx_*.py` / `office_pptx_create.py` / `office_pdf_merge.py` / `office_pdf_encrypt.py` / `office_pdf_compress.py` / `office_image_convert.py` / `compress_image.py` | 办公日常文件处理 | ✅ |
+| `scripts/office_image_ocr.py` | 图片/PDF 表格 OCR（E168-E201：TSR 结构、跨页拼接、页脚过滤、三通道文本融合、编号模式纠正、词典纠正；`--selftest`/`--dict`/`--table`/`--batch`） | ✅ |
 | scripts/datasheet.ts | 官方 datasheet 下载与校验 | ✅ |
 | scripts/tavily-smoke.ts | Tavily 触发冒烟 + 配额监控（E195） | ✅ |
 | `scripts/migrate-to-memorycore.ts` | 历史记忆迁移 | ✅ |

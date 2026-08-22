@@ -6,6 +6,7 @@
 """
 
 import csv
+import difflib
 import io
 import json
 import math
@@ -792,9 +793,319 @@ def run_ocr(engine, src: str):
 
 TABLE_PDF_DPI = 200  # E185：多页 PDF 渲染 DPI
 
+_PAGE_FOOTER_RE = re.compile(r"第\s*\d+\s*页[，,、\s]*共\s*\d+\s*页")
 
-def process_table_array(engine, arr):
-    """E168..E185：单张图像 → 表格结构 dict。
+
+def _filter_page_footer(items, img_height, bottom_ratio=0.9):
+    """E199：剔除页脚页码——图片底部 + 强模式「第X页，共Y页」同时满足才剔除。
+
+    页脚/页码落在表格网格内时会被 OCR 当作正文追加（E186 遗留，真实样本 OCRtest.png
+    复现：`第1页，共1页` 被归入末行第 7 列）。只处理带强模式的页码，无模式页脚
+    （公司名/地址等）如实保留为正文，避免误伤贴底表格数据。
+    返回 (kept, removed)。"""
+    kept, removed = [], []
+    for it in items:
+        bottom = it["y"] + it["h"]
+        if bottom > img_height * bottom_ratio and _PAGE_FOOTER_RE.search(it["text"]):
+            removed.append(it)
+        else:
+            kept.append(it)
+    return kept, removed
+
+
+
+# ---------- E200/E201：表格 OCR 识别率后处理 ----------
+# 代码形单元格：字母+数字+短横线混合（如 XTE-VAIS-FR118 / SN2024-001）
+_CODE_CELL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{3,}$")
+_CODE_HEADER_RE = re.compile(
+    r"编号|编码|料号|物料编码|零件编号|物料编号|Item|Code|NO\.|No\.", re.IGNORECASE
+)
+# 小字字形混淆集（E200 实测 8↔S/B；O↔0、l↔1 为常见形近；仅数字相邻槽位生效）
+_CODE_DIGIT_CONFUSION = {
+    "S": "8", "s": "8", "B": "8", "b": "8",
+    "O": "0", "o": "0", "l": "1",
+}
+_BOOST_SCALE = 2  # E200：预处理通道放大倍数（2x 整数放大，实测编号列 0%→84%）
+
+
+def preprocess_ocr_input(arr, scale: int = _BOOST_SCALE):
+    """E200：表格 OCR 标准预处理——灰度 → 自动对比度 → scale× LANCZOS 放大 → 锐化。
+
+    实测（OCRtest.png，RapidOCR）：编号列 7px 小字准确率 0% → 84%；中文列放大后略降，
+    故由 `_fuse_items` 按列择优（代码列取本通道，其余列取灰度通道）。"""
+    from PIL import Image, ImageFilter, ImageOps
+    import numpy as np
+
+    img = Image.fromarray(arr).convert("L")
+    img = ImageOps.autocontrast(img)
+    img = img.resize((img.width * scale, img.height * scale), Image.LANCZOS)
+    img = img.filter(ImageFilter.UnsharpMask(radius=2, percent=120, threshold=2))
+    return np.asarray(img.convert("RGB"))
+
+
+def _normalize_scale(items, scale: float):
+    """E200：把放大通道的 bbox 坐标按 scale 归一化回原图坐标系。"""
+    out = []
+    for it in items or []:
+        it = dict(it)
+        for key in ("x", "y", "w", "h", "cx", "cy"):
+            if key in it:
+                it[key] = it[key] / scale
+        out.append(it)
+    return out
+
+
+def _cluster_columns(items):
+    """E200：按文本块 cx 聚类列中心（与 reconstruct_table 同规则，提取复用）。"""
+    if not items:
+        return []
+    by_cx = sorted(items, key=lambda it: it["cx"])
+    med_w = sorted(it["w"] for it in items)[len(items) // 2]
+    col_gap = max(med_w * 1.2, 24.0)
+    cols: list[dict] = []
+    for it in by_cx:
+        if not cols or it["cx"] - cols[-1]["cx"] > col_gap:
+            cols.append({"cx": it["cx"]})
+        else:
+            c = cols[-1]
+            c["cx"] = (c["cx"] + it["cx"]) / 2
+    return cols
+
+
+def _code_column_ranges(items, boost_items):
+    """E200：识别代码列 x 区间——列内 ≥60% 单元格为代码形，或表头命中编号/编码关键词。
+
+    用灰度文本通道 + 2x 预处理通道共同判定（预处理通道的代码文本更准）。"""
+    if not items:
+        return []
+    all_items = list(items) + list(boost_items)
+    cols = _cluster_columns(all_items)
+    if not cols:
+        return []
+    widths = sorted(it["w"] for it in all_items if it.get("w"))
+    half = max(widths[len(widths) // 2] if widths else 40.0, 40.0)
+    centers = [c["cx"] for c in cols]
+    ranges = []
+    for i, center in enumerate(centers):
+        x0 = (centers[i - 1] + center) / 2 if i > 0 else center - half
+        x1 = (center + centers[i + 1]) / 2 if i + 1 < len(centers) else center + half
+        col_items = [it for it in all_items if x0 <= it["cx"] < x1]
+        texts = [it["text"].strip() for it in col_items if it["text"].strip()]
+        if not texts:
+            continue
+        top = sorted(col_items, key=lambda it: it["cy"])[:2]
+        if any(_CODE_HEADER_RE.search(it["text"]) for it in top):
+            ranges.append((x0, x1))
+            continue
+        hit = sum(1 for t in texts if _CODE_CELL_RE.match(t))
+        if hit / len(texts) >= 0.6:
+            ranges.append((x0, x1))
+    return ranges
+
+
+def _in_code_col(it, code_ranges):
+    return any(x0 <= it["cx"] < x1 for x0, x1 in code_ranges)
+
+
+def _fuse_items(base_items, boost_items, code_ranges):
+    """E200：双通道融合——代码列取预处理通道（小字增益），其余列取原图通道。
+
+    预处理通道未检出的代码行保留原图文本（前缀可能带字形混淆，交给模式纠正收尾）。"""
+    boost = [it for it in boost_items if _in_code_col(it, code_ranges)]
+
+    def covered_by_boost(it):
+        return any(abs(b["cy"] - it["cy"]) < 12 for b in boost)
+
+    base = [
+        it
+        for it in base_items
+        if not _in_code_col(it, code_ranges) or not covered_by_boost(it)
+    ]
+    return base + boost
+
+
+def _fuse_text_by_position(base_items, gray_items, code_ranges):
+    """E200：非代码列文本通道融合——用灰度通道（保留 AA 小字）同位置文本替换
+    cleaned 通道的文本，保留 cleaned 的 bbox/结构。灰度通道独有的文本块
+    （如 E181 抑制掉的透字/水印残影）不引入，避免污染合并判断。"""
+    gray = [it for it in gray_items if not _in_code_col(it, code_ranges)]
+    out = []
+    for it in base_items:
+        if _in_code_col(it, code_ranges):
+            out.append(it)
+            continue
+        best, best_d = None, None
+        for g in gray:
+            d_cy = abs(g["cy"] - it["cy"])
+            if d_cy < 9 and abs(g["cx"] - it["cx"]) < 30:
+                if best is None or d_cy < best_d:
+                    best, best_d = g, d_cy
+        if best is not None:
+            it = dict(it)
+            it["text"] = best["text"]
+            it["score"] = best.get("score", it.get("score"))
+        out.append(it)
+    return out
+
+
+def _fill_missing_cells(base_items, gray_items, code_ranges, y_edges=None):
+    """E200：灰度通道补框——仅限检测到编号列的表格（数据行以编号框为锚）。
+
+    cleaned 通道二值化会把小字格整格漏检（OCRtest.png 名称/型号列缺 ~20 格），
+    灰度通道可检出但会引入 E181 已抑制的透字/水印假框；故只补「所在行已有编号框」
+    的灰度为有数据行，透字图（无编号列）整体不补框，回归 E181 语义。
+    补入的 bbox 按 y_edges 行边界裁剪，防止跨行 bbox 被 detect_merges 阶段 C
+    误判为跨行合并嫌疑（OCRtest.png 实测：7px 小字框高 22px 越过行界 → 3 条伪
+    merged_conflict）。"""
+    if not code_ranges:
+        return base_items
+    code_rows = [
+        it["cy"]
+        for it in base_items
+        if _in_code_col(it, code_ranges) and it["text"].strip()
+    ]
+    bands = (
+        [(y_edges[i], y_edges[i + 1]) for i in range(len(y_edges) - 1)]
+        if len(y_edges) >= 2
+        else []
+    )
+
+    def clip(g):
+        if not bands:
+            return g
+        g = dict(g)
+        best, best_d = None, None
+        for b0, b1 in bands:
+            d = abs(0.5 * (b0 + b1) - g["cy"])
+            if best is None or d < best_d:
+                best, best_d = (b0, b1), d
+        b0, b1 = best
+        y0 = max(g["y"], b0)
+        y1 = min(g["y"] + g["h"], b1)
+        if y1 - y0 >= 4:  # 裁剪后仍足够高才保留
+            g["y"], g["h"] = y0, y1 - y0
+            g["cy"] = g["y"] + g["h"] / 2
+        return g
+
+    out = list(base_items)
+    for g in gray_items:
+        if _in_code_col(g, code_ranges):
+            continue
+        if not any(abs(c - g["cy"]) < 9 for c in code_rows):
+            continue
+        if any(
+            abs(b["cy"] - g["cy"]) < 9 and abs(b["cx"] - g["cx"]) < 30
+            for b in base_items
+        ):
+            continue
+        out.append(clip(g))
+    return out
+
+
+def _near_digit(text: str, i: int) -> bool:
+    return (i > 0 and text[i - 1].isdigit()) or (
+        i + 1 < len(text) and text[i + 1].isdigit()
+    )
+
+
+def correct_code_cell(text: str) -> str:
+    """E200：编号列模式纠正——代码形单元格内，把与数字相邻的混淆字符按字形映射纠正。
+
+    前缀字母段（如 XTE）不纠正，避免误伤；数字槽的 S/B/O/l 换回 8/0/1。
+    实测剩余编号错误（FR11S/FR407-1S/FR40S 等 8↔S）全部落在本规则内。"""
+    t = (text or "").strip()
+    if not _CODE_CELL_RE.match(t) or not re.search(r"[0-9]", t):
+        return text
+    out = list(t)
+    for i, ch in enumerate(out):
+        if ch in _CODE_DIGIT_CONFUSION and _near_digit(t, i):
+            out[i] = _CODE_DIGIT_CONFUSION[ch]
+    corrected = "".join(out)
+    return corrected if corrected != t else text
+
+
+def load_ocr_dict(path: str) -> dict:
+    """E201：加载词典 {分类: {规范值: [OCR 变体, ...]}} → 展开为 {变体: 规范值}；缺失/损坏返回 {}。"""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except Exception:
+        return {}
+    out: dict = {}
+    for _category, entries in data.items():
+        if not isinstance(entries, dict):
+            continue
+        for canonical, variants in entries.items():
+            for v in variants if isinstance(variants, list) else [variants]:
+                if isinstance(v, str) and str(v) != str(canonical):
+                    out[v] = str(canonical)
+    return out
+
+
+def _default_ocr_dict():
+    """E201：默认词典路径 data/ocr-dict.json（git 忽略的运行时词典，存在才启用）。"""
+    root = pathlib.Path(__file__).resolve().parent.parent
+    p = root / "data" / "ocr-dict.json"
+    return load_ocr_dict(str(p)) if p.exists() else {}
+
+
+def correct_dict_cell(text: str, ocr_dict: dict, ratio_threshold: float = 0.78) -> str:
+    """E201：词典纠正——精确命中变体直接替换；长文本（≥4 字符）按相似度阈值模糊替换。
+
+    短文本不做模糊替换，避免「块/个/条」等单字单位被误改。"""
+    t = (text or "").strip()
+    if not t or not ocr_dict:
+        return text
+    if t in ocr_dict:
+        return ocr_dict[t]
+    if len(t) < 4:
+        return text
+    best, best_ratio = None, 0.0
+    for variant, canonical in ocr_dict.items():
+        r = difflib.SequenceMatcher(None, t, variant).ratio()
+        if r > best_ratio:
+            best, best_ratio = variant, r
+    if best is not None and best_ratio >= ratio_threshold and ocr_dict[best] != t:
+        return ocr_dict[best]
+    return text
+
+
+def selftest_main() -> int:
+    """E200/E201 纯函数自检：不依赖 OCR 引擎，供 TS 单测调用。"""
+    flat = {}
+    for _cat, entries in {
+        "型号": {
+            "固态硬盘-MSATA接口": ["固态硬盘-WSATA楼口", "固态硬盘-WBATA楼口"],
+            "64G,宜鼎SSD": ["64G,宣外SSD"],
+            "G070VW01 V.0": ["GO70VT01 V. 0", "GO70VT01 V.0"],
+        }
+    }.items():
+        for canonical, variants in entries.items():
+            for v in variants:
+                flat[v] = canonical
+    cases = [
+        ("FR11S→FR118", correct_code_cell("XTE-VAIS-FR11S"), "XTE-VAIS-FR118"),
+        ("FR407-1S→FR407-18", correct_code_cell("XTE-VAIS-FR407-1S"), "XTE-VAIS-FR407-18"),
+        ("FR40S→FR408", correct_code_cell("XTE-VAIS-FR40S"), "XTE-VAIS-FR408"),
+        ("已正确编号不动", correct_code_cell("XTE-VAIS-FR101"), "XTE-VAIS-FR101"),
+        ("前缀字母段不纠", correct_code_cell("XTB-VAIS-FR101"), "XTB-VAIS-FR101"),
+        ("数字槽B→8", correct_code_cell("XTE-VAIS-FR1B0"), "XTE-VAIS-FR180"),
+        ("非代码形不动", correct_code_cell("64G,宜鼎SSD"), "64G,宜鼎SSD"),
+        ("短代码不动", correct_code_cell("3*100白色"), "3*100白色"),
+        ("中文不动", correct_code_cell("加密狗"), "加密狗"),
+        ("词典精确命中", correct_dict_cell("固态硬盘-WSATA楼口", flat), "固态硬盘-MSATA接口"),
+        ("词典模糊替换", correct_dict_cell("GO70VT01 V.0", flat), "G070VW01 V.0"),
+        ("短文本不模糊替换", correct_dict_cell("块", flat), "块"),
+        ("无关文本不动", correct_dict_cell("工控机主板", flat), "工控机主板"),
+    ]
+    failed = [name for name, got, want in cases if got != want]
+    print(json.dumps({"ok": not failed, "total": len(cases), "failed": failed}, ensure_ascii=False))
+    return 0 if not failed else 1
+
+
+def process_table_array(engine, arr, ocr_dict=None):
+
+    """E168..E200：单张图像 → 表格结构 dict。
 
     含 deskew/透字抑制/OCR/网格重建/detect_merges/合并重排/cells/spans；
     cell_items 保留每格原始 bbox（TSR 数据），供 E185 跨页拼接复用。"""
@@ -804,8 +1115,42 @@ def process_table_array(engine, arr):
     if run_err:
         raise RuntimeError(run_err)
     items = items or []
-    # E174：优先网格线重建（行列结构精确），无网格回退文本聚类
+    # E199：页脚页码过滤（底部边缘 + 强模式），防页码落格当正文追加
+    items, footer_removed = _filter_page_footer(items, cleaned.shape[0])
+    # E174：网格线检测提前——E200 补框需按行边界裁剪 bbox（防跨行 bbox 被
+    # detect_merges 阶段 C 误判为跨行合并嫌疑），结果复用给 reconstruct_grid。
     grid_lines = detect_table_lines(cleaned)
+    y_edges = grid_lines[1] if grid_lines else []
+    # E200：三通道文本融合——结构用 cleaned（透字抑制，防假框污染合并判断）；
+    # 非代码列文本用灰度通道（保留 AA 小字，E181 实测透字抑制二值化会抹掉 7px 字边缘），
+    # 代码列用 2x 放大预处理通道（7px 小字增益）。两通道都取 deskew 后的灰度图 corrected。
+    code_ranges: list = []
+    if os.environ.get("OCR_TEXT_FUSION", "1") != "0":
+        gray_items, gray_err = run_ocr(engine, corrected)
+        if gray_err:
+            gray_items = []
+        boost_items, boost_err = run_ocr(engine, preprocess_ocr_input(corrected))
+        if not boost_err:
+            boost_items = _normalize_scale(boost_items or [], _BOOST_SCALE)
+            code_ranges = _code_column_ranges(gray_items or items, boost_items)
+            if gray_items:
+                items = _fuse_text_by_position(items, gray_items, code_ranges)
+                items = _fill_missing_cells(items, gray_items, code_ranges, y_edges)
+            items = _fuse_items(items, boost_items, code_ranges)
+    # E200/E201：条目级后处理（网格/单元格构建前，保持 grid/cells/spans 一致）
+    code_corrected = dict_corrected = 0
+    for it in items:
+        if _in_code_col(it, code_ranges):
+            new_text = correct_code_cell(it["text"])
+            if new_text != it["text"]:
+                it["text"] = new_text
+                code_corrected += 1
+        if ocr_dict:
+            new_text = correct_dict_cell(it["text"], ocr_dict)
+            if new_text != it["text"]:
+                it["text"] = new_text
+                dict_corrected += 1
+    # E174：优先网格线重建（行列结构精确），无网格回退文本聚类
     if grid_lines:
         x_edges, y_edges = grid_lines
         grid, rows, cols, cell_items, col_cx, row_anchors = reconstruct_grid(
@@ -862,6 +1207,33 @@ def process_table_array(engine, arr):
         for c, its in enumerate(row)
         for it in its
     ]
+    if footer_removed:
+        warnings = list(warnings) + [
+            {
+                "type": "page_footer",
+                "row": -1,
+                "col": -1,
+                "detail": "已排除页脚页码：" + "、".join(it["text"] for it in footer_removed),
+            }
+        ]
+    if code_corrected:
+        warnings = list(warnings) + [
+            {
+                "type": "code_corrected",
+                "row": -1,
+                "col": -1,
+                "detail": f"已按编号模式纠正 {code_corrected} 处识别结果",
+            }
+        ]
+    if dict_corrected:
+        warnings = list(warnings) + [
+            {
+                "type": "dict_corrected",
+                "row": -1,
+                "col": -1,
+                "detail": f"已按词典纠正 {dict_corrected} 处识别结果",
+            }
+        ]
     return {
         "grid": grid,
         "rows": rows,
@@ -990,6 +1362,10 @@ def stitch_table_pages(page_dicts: list[dict]) -> dict:
                     "detail": f"第 {idx} 页列数 {page['cols']} 与首页 {cols} 不一致，已按首页列数补齐/截断",
                 }
             )
+        # E199：后续页的页脚页码告警并入总 warning（页脚已在单页识别时过滤，这里只透出）
+        for w in page["warnings"]:
+            if w["type"] == "page_footer":
+                warnings.append(dict(w))
         # 正文行按首页列数对齐（补齐/截断），并入总表
         for row in body:
             grid.append((list(row) + [""] * cols)[:cols])
@@ -1041,12 +1417,23 @@ def stitch_table_pages(page_dicts: list[dict]) -> dict:
 
 def main() -> int:
     args = sys.argv[1:]
+    if args and args[0] == "--selftest":
+        # E200/E201：纯函数自检（不依赖 OCR 引擎），供 TS 单测调用
+        return selftest_main()
     table_mode = len(args) >= 1 and args[0] == "--table"
     batch = len(args) >= 1 and args[0] == "--batch"
     if table_mode:
         if len(args) < 2:
-            return fail("usage: office_image_ocr.py --table <input-image> [out-csv]")
-        src, out_csv = args[1], (args[2] if len(args) > 2 else None)
+            return fail("usage: office_image_ocr.py --table <input-image> [out-csv] [--dict <dict.json>]")
+        rest = args[1:]
+        dict_path = None
+        if "--dict" in rest:
+            i = rest.index("--dict")
+            if i + 1 < len(rest):
+                dict_path = rest[i + 1]
+            rest = rest[:i]
+        src, out_csv = rest[0], (rest[1] if len(rest) > 1 else None)
+        ocr_dict = load_ocr_dict(dict_path) if dict_path else _default_ocr_dict()
         try:
             engine, err = get_engine()
             if engine is None:
@@ -1056,14 +1443,14 @@ def main() -> int:
                 # E185：多页 PDF 扫描件——逐页识别后跨页拼接（复用 TSR bbox/span，不重跑整图识别）
                 try:
                     page_dicts = [
-                        process_table_array(engine, arr)
+                        process_table_array(engine, arr, ocr_dict=ocr_dict)
                         for arr in render_pdf_pages(src)
                     ]
                 except ImportError:
                     return fail("PDF 表格识别需要 PyMuPDF（fitz），当前环境未安装；请运行 `python -m pip install pymupdf` 后重试")
                 page = stitch_table_pages(page_dicts)
             else:
-                page = process_table_array(engine, load_image(src))
+                page = process_table_array(engine, load_image(src), ocr_dict=ocr_dict)
             grid, rows, cols = page["grid"], page["rows"], page["cols"]
             merges, warnings = page["merges"], page["warnings"]
             cells, spans = page["cells"], page["spans"]

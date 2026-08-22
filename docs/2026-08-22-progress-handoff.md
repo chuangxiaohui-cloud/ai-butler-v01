@@ -176,7 +176,8 @@
 
 ## 今日收尾状态
 
-已提交：E177-E197（HEAD=`b79a5f8`）；E198 文档目录同步待提交（AGENTS.md smoke 命令 + code-directory.md/§13 补 quota/tavily-trigger/balance/session-context/tavily-smoke 登记）；并行改动（SEV-1.1~1.4：`sandbox.ts`/`memorycore-store.ts`/`terminal.ts` 及测试）不在本批次。
+已提交：E177-E198（HEAD=`3d47c16`）；本批次待提交：E199 页脚页码过滤 + E200 编号模式纠正/三通道融合 + E201 词典纠正（方向 2 全部完成，见 `docs/plans/2026-08-22-ocr-accuracy.md` 结果与 bench:B-20260822-09）；并行改动（SEV-1.1~1.4：`sandbox.ts`/`memorycore-store.ts`/`terminal.ts` 及测试）不在本批次。
+- E200/E201 要点：三通道文本融合（结构用透字抑制通道、非代码列文本用灰度通道按位置替换/补框、代码列用 2x 预处理通道）+ `correct_code_cell` 编号纠正 + `correct_dict_cell` 词典纠正；OCRtest.png 编号 0%→100%、数量 100%、单位 96%、名称/型号词典后 100%/96%；E181 四变体零回归；`--selftest` 进单测。
 - 提交前请勿包含根目录 `.codex-*.cjs`（已 gitignore）、`data/` 临时文件与合成样本（已清理）。
 
 ## 明天继续（按优先级）
@@ -186,12 +187,13 @@
    保持 provisional 待深度报告实现后复测；[P-82]-[P-94]/[P-105]-[P-107] 维持 provisional，等 4 周标红再处理。
    **P-06/P-15 后续观察基线（E197 决策后）**：trajectory 8-14 起 low_confidence 二次取证触发率 31.6%（176/557），
    是超预算主因——若该频率继续增长，按 owner 决策评估「二次取证剥离为可选路径」时以此为基准。
-2. E186 遗留：极端全噪声表头仍走诚实告警；页脚/页码落在表格网格内当正文追加，留待真实样本复核。
-3. 附录 A 行数预算 947/950（E196 占 1 行后），后续新增条目必须压缩旧 details 块腾行。
-4. 斜杠命令层（备忘，勿忘）：`/compact`（手动触发当前会话压缩）+ `/context`（查看会话状态：轮次/逐字窗口/摘要/token 粗估）
+2. E186 遗留已收口：页脚/页码落格已修复（E199，真实样本 OCRtest.png 复现+验证，54×7 结构不变）；剩余——极端全噪声表头仍走诚实告警；纯数字页码/公司名等无模式页脚暂不处理，等真实样本反馈再扩展。
+3. 附录 A 行数预算 934/950（本批次压缩 A.0 迁移段腾 16 行 + 登记 E200/E201），后续新增条目继续按 retention 压缩旧段腾行。
+4. 方向 1（PaddleOCR）待 owner 决策后推进：`data/exp-paddle.py` 已备好，沙箱 ACL 拒绝读 `~/.paddlex`、提权被审核误拒（模型名匹配规则），需修审核规则或 owner 本机跑脚本；方向 3（超分）等方向 1+2 结果再评估。
+5. 斜杠命令层（备忘，勿忘）：`/compact`（手动触发当前会话压缩）+ `/context`（查看会话状态：轮次/逐字窗口/摘要/token 粗估）
    ——E193 上下文压缩的手动入口，参考 AI-Butler 增补方案 §12.7（MiMo-Code `/compact`，SessionCompaction + COMPACTABLE_TOOL_NAMES）
    与 `src/interaction/memory-hub.ts`（规则版滚动摘要 + 实体槽位/指代消解，零 LLM 成本兜底）；owner 已确认按计划在合适时机实现，不由本批次推进。
-5. Tavily（备忘，勿忘）：**已接入并启用**，不是后续里程碑——`src/search/providers/tavily.ts`（v0.2a WP0，
+6. Tavily（备忘，勿忘）：**已接入并启用**，不是后续里程碑——`src/search/providers/tavily.ts`（v0.2a WP0，
    §6.2.1）+ `tavily-trigger.ts` 条件并联（news/英文技术/低置信提示，医疗政务禁区熔断）；pipeline → s3_search
    `useTavily` 并行执行，另承担 E72 官方域兜底（`search-loop.ts` include_domains）；`main.ts`/`gateway/server.ts`
    均为 `tavily.enabled=true`，`.env` 的 `TAVILY_API_KEY` 已配置（勿忘，成本预期管理用）。月度配额
