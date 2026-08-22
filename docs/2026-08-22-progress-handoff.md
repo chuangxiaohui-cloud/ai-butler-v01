@@ -71,11 +71,70 @@
     （classify n=70、timeout 0%、准确率 80%、p95=1406ms → 推荐 [P-04]=1750ms，等 owner 签认）；
     E2 全库无 Bocha 真实 5s 超时（max=1055ms、timeout5sRate=2.5%；AnySearch=8.0%，复验门未触发），
     但双返回率 31.7%<70% 触发对冲③ → [P-02] 重开决策；2026-08-22 探活：充值前 Bocha 10/10 快速失败（failRate 100%、超时 0%）、双返回率 0/10；充值后同日复核 Bocha 10/10 ok、双返回率 10/10——可用性恢复，[P-02] 触发条件解除。
+12. **[P-04] 定稿晋升 1750ms（E188）**：owner 签认 E1 复验门数据包（A 方案按 1750ms 晋升），
+    §5 注册表 [P-04] 由 2000ms provisional@2026-08-12 转 1750ms 定稿；代码默认超时同步
+    `LLM_CLASSIFY_TIMEOUT_MS`（`src/search/llm-registry.ts` light 档 2000→1750、
+    `scripts/classify-smoke.ts` 默认显示 1750、`scripts/finalize-gates.ts` E1 建议值上限 2000→1750）；
+    附录 A 登记 E188（bench:B-20260822-01）；晋升验证 1750ms 下 10 条冷调用 0/10 超时、
+    准确率 8/10、max=1026ms（叠加 n=70：p95=1406ms / max=1542ms 缓冲充足），provisional 治理债务消除。
+13. **[P-02] 定稿（E189）**：owner 签认 E2 复验门数据包——充值后健康窗口
+    （2026-08-22T09:02Z 起）连续 60 条搜索指标：Bocha n=60 超时率 0.0%（p95=362ms /
+    max=411ms）、AnySearch n=50 超时率 0.0%（p95=1683ms / max=2049ms）、双返回率 50/60=83.3%
+    （≥70%），复验门 PASS + 对冲③ NOT triggered；[P-02] Stage 3 搜索执行预算 5s 转 定稿，
+    附录 A 登记 E189（bench:B-20260822-02），无代码值变更。
+14. **[P-03] 定稿（E190）**：与 [P-02] 共用 E2 复验门证据——AnySearch@5s 超时率全窗口 7.7%
+    （≤30%）、充值后健康窗口 0.0%（n=50，p95=1683ms / max=2049ms）；[P-03] AnySearch 超时 5s
+    转 定稿，约束 P-03<=P-02 保持，无代码值变更。
+15. **[P-12] 定稿（E191）**：附录 C v0.2a 全量验收证据（`bench/v02a-report.md`：30/31 相关性
+    ≥2、0 硬答、96.8% ≥80%，score=0 仅 E07）；[P-12] v0.2a 31 条通过率阈值 80% 转 定稿，
+16. **Bocha 余额预警落地（E192）**：实现 §D.3「资源包健康检查」代码侧——
+    `src/search/balance.ts`（GET `/v1/fund/remaining` 主备双 host、3s 超时静默失败、内存 + `data/bocha-balance.json`
+    持久缓存 30 分钟、[P-75] 折算剩余次数）；Bocha 搜索 HTTP 4xx 自动探测余额透出 notice，
+    `SearchStageResult`/`SearchLoopResult`/`AnswerResult` 逐层聚合，CLI stderr / gateway 启动日志 /
+    `GET /api/bocha/balance` 三处可见；新增 `npm run balance:smoke` 随时查看余额/次数；
+    [P-67] 落地为剩余次数 ≤10 告警线（无资源包总量接口），耗尽强告警提示购买（防 [P-76] 按量 10 倍成本）；
+    UI 原型新增「资源包」设置面板（余额/剩余次数/刷新）与聊天区可关闭预警横幅（兑现 §D.3「弹窗提示购买」）。
+    计划见 `docs/plans/2026-08-22-bocha-balance-warning.md`，证据见 `bench/B-20260822-04-bocha-balance.md`。
+17. **§8.3 会话上下文压缩落地（E193）**：新增 `src/memory/session-context.ts`——按 conversationId
+    持久化 `data/session-context/<id>.json`（读改写串行化、compact 防重入、每轮唯一 id 增量合并防并发丢更新）；
+    逐字窗口 [P-29]=5 轮完整保留，窗口外轮次由轻模型压缩为「实体+决策+未决事项」摘要滚动合并；新增
+    [P-109]=6000 token 硬约束双触发（窗口超预算最早轮次也移入压缩）；pipeline 在 `opts.conversationId` 显式传入时
+    启用会话上下文——摘要 + 窗口轮次并入 memoryNotes/recentMemory，回答后 append 轮次并异步压缩；UI 主聊天
+    发送稳定 conversationId；远期会话仍走 L1-L3 蒸馏，不动记忆分层。
+    计划见 `docs/plans/2026-08-22-context-compaction.md`，证据见 `bench/B-20260822-05-context-compaction.md`。
+18. **度量型问答并入 qa 提取词（E194）**：路由参数校准（阈值建议 0.45/0.75 与 P-80/P-81 一致、
+    无规则候选）暴露规则侧缺口——`X 是多少/多少钱/什么价位/多大/几位` 不在 `QA_RE`，判定
+    `unknown` 走 R012 confirm，「开发板多少钱」因含「开发」被 create 抢走 option_clarify；
+    本轮 `intent-feature.ts` 拆分 GENERIC_QA_RE / METRIC_QA_RE 合成 QA_RE，analyze 守卫
+    「通用疑问词优先 qa + 度量词仅在无业务评估词（值不值/成本/收益）时让给 qa」，业务评估与
+    安全审查路由不回退；9 条目标 query 全部 `qa + direct + web_search`，样本库 37/37 度量
+    记录直答，全量 742 条决策差分无新增回退。
+    计划见 `docs/plans/2026-08-22-route-metric-qa.md`，证据见 `bench/B-20260822-06-route-metric-qa.md`。
 
 ## 今日验证
 
 - 全量单测 540/541 通过 + 1 条 fitz 特性门控用例按环境跳过、集成 17/17 全绿、doc-lint 0 FAIL 0 WARN（附录 A 949/950）（E186/E187 收尾复核）。
-- `doc-lint` 0 FAIL 0 WARN（附录 A 行数预算 950/950 已到上限，压缩 E69/E70 旧条目腾行）。
+- E188（[P-04] 晋升）：`npm run classify:smoke -- --rounds=1`（`LLM_CLASSIFY_TIMEOUT_MS=1750`）
+  10 条基准 0/10 超时、准确率 8/10（80%，S02/L05 仍由规则③兜底）、min=514ms / median=771ms /
+  max=1026ms；doc-lint 0 FAIL 0 WARN（附录 A 950/950 到上限）；build + 单测 + 集成全绿。
+- E194（度量型问答）：`routeV2` 确定性对照（bench:B-20260822-06）9 条目标 query 全部
+  `qa + direct + web_search`（含「开发板多少钱」create 误抢修复）；样本库 37/37 度量型记录
+  直答、全量 742 条决策差分无新增回退；router-v2 新增 3 条用例（版本号直答/度量全集/业务
+  评估豁免），agent 单测 119/119；build + doc-lint 0 FAIL 0 WARN（附录 950/950，压缩 E191 腾行）。
+- E189（[P-02] 定稿）：`npm run search:smoke` 追加 2 轮（各 10/10 双引擎 ok）；充值后窗口
+  （2026-08-22T09:02Z 起）`recheck:gates`/`finalize:gates`：Bocha/AnySearch timeout5sRate 均
+  0.0%、双返回率 83.3%，复验门 PASS + 对冲③ NOT triggered；doc-lint 0 FAIL 0 WARN
+  （附录 A 948/950，压缩 E71 腾行）；build + 单测 + 集成全绿。
+- E192（Bocha 余额预警）：`npm run balance:smoke` 真跑 303ms 返回 ¥2.80 / 777 次（与充值实况一致）；
+  健康余额无告警不误报；新增 mock fetch 单测 8 + bocha provider 4 + s3 notices 聚合 1 + gateway 端点 1；
+  `search:smoke` 10/10 双引擎无回归；CLI 端到端答案正常（健康时不带 notice）；UI 原型生产构建通过、
+  gateway 托管产物含「资源包」面板与横幅（视觉截图因浏览器策略未做，以构建 + 产物字符串 + 端点单测为准）。
+- E190/E191（[P-03]/[P-12] 定稿）：E2 健康窗口证据复用（AnySearch 超时率 0%）、附录 C
+  v02a 报告核数（30/31 ≥2、0 硬答）；doc-lint 0 FAIL 0 WARN（附录 A 950/950，压缩 E72 腾行）；
+  build + 单测 + 集成全绿。
+- E193（§8.3 上下文压缩）：`session-context` 单测 14/14（估算/持久化往返/损坏文件/窗口/双触发/压缩合并/防重入/全链路/注入/配对）+ pipeline 2 条
+  （摘要注入路由上下文并 append、无 conversationId 不启用）；真实轻模型压缩冒烟（bench:B-20260822-05）2 轮合成对话 →
+  输出「实体/决策/未决」摘要；build + test:all 全绿、doc-lint 0 FAIL 0 WARN（附录 A 950/950 到上限）。
 - office-daily 新增 2 条真跑：3 行 L 形 → xlsx `A1:A3`+`B1:C1`“已还原 2 处”；1.5° 旋转
   组合表头 → deskew 后 `A1:D1`+`A2:B2`+`C2:D2`“已还原 3 处”。
 - gateway 新增 2 条单测：邮件凭据读写且不暴露密码（GET 无 `pass` 字段）、日历导入 ICS
@@ -106,14 +165,19 @@
 
 ## 今日收尾状态
 
-已提交：E177-E187（HEAD=`dffa89c`）；E187 恢复复核登记（4 文件）待 housekeeping 提交。
+已提交：E177-E187（HEAD=`24916b6`）；E188-E194 待提交（E188-E191 定稿 8 文件 + 两个 metrics JSONL；E192 余额预警：`balance.ts`/`balance.test.ts`/`bocha.ts`/`types.ts`/`s3_search.ts`/`search-loop.ts`/`pipeline.ts`/`main.ts`/`gateway`×3/`package.json`/`balance-smoke.ts`/UI 原型 `App.tsx`+`styles.css`/两个 docs/需求文档/bench 证据 + `search-metrics.jsonl` 追加冒烟行；E193 上下文压缩：`session-context.ts`/`session-context.test.ts`/`pipeline.ts`/`pipeline.test.ts`/UI `App.tsx`/需求文档 §5+§8.3+附录A/计划/交接/code-directory/bench 证据；E194 路由度量问答：`intent-feature.ts`/`router-v2.test.ts`/需求文档附录A/计划/交接/bench:B-20260822-06）。
 - 提交前请勿包含根目录 `.codex-*.cjs`（已 gitignore）、`data/` 临时文件与合成样本（已清理）。
 
 ## 明天继续（按优先级）
-1. E187 收尾：Bocha 充值后已恢复（双返回率 100%）——采集连续 n≥30 健康冷调用样本完成 [P-02] 定稿评估；
-   owner 签认后晋升 [P-04]→1750ms 并同步 `LLM_CLASSIFY_TIMEOUT_MS`。
+1. [P-16]/[P-17]（引擎级人工分校准：阈值 0.6 正例保留 67/75、负例拦截 5-6/18）与 [P-63]
+   （Bocha 日配额政策）待 owner 决策；[P-01]/[P-06]/[P-13]/[P-15]/[P-80]-[P-94]/[P-105]-[P-107]
+   按各自复验门推进。
 2. E186 遗留：极端全噪声表头仍走诚实告警；页脚/页码落在表格网格内当正文追加，留待真实样本复核。
-3. 附录 A 行数预算维持 949/950 余 1 行，后续新增条目按需再压缩旧 details 块。
+3. 附录 A 行数预算已到上限 950/950（E193 占 1 行，E192 占 1 行），后续新增条目必须压缩旧 details 块腾行。
+4. 斜杠命令层（备忘，勿忘）：`/compact`（手动触发当前会话压缩）+ `/context`（查看会话状态：轮次/逐字窗口/摘要/token 粗估）
+   ——E193 上下文压缩的手动入口，参考 AI-Butler 增补方案 §12.7（MiMo-Code `/compact`，SessionCompaction + COMPACTABLE_TOOL_NAMES）
+   与 `src/interaction/memory-hub.ts`（规则版滚动摘要 + 实体槽位/指代消解，零 LLM 成本兜底）；owner 已确认按计划在合适时机实现，不由本批次推进。
+
 
 ## 常用命令
 

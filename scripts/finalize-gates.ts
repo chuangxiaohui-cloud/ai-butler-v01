@@ -124,7 +124,7 @@ function main(): void {
     classify.length >= 30 &&
     timeoutRate <= 0.1 &&
     accuracy >= 0.8 &&
-    proposed <= 2000;
+    proposed <= 1750;
   console.log(
     `  E1 gate: ${e1Pass ? 'PASS, ready for finalization review' : 'NOT PASS, keep provisional'}`,
   );

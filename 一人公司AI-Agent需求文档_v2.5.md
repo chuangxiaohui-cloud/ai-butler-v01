@@ -516,9 +516,9 @@ Agent 尝试解决问题
 | ID | 名称 | 值 | type | 状态 | constraint |
 |----|------|-----|------|------|------------|
 | P-01 | 置信门控阈值 | 0.6 | numeric | provisional@2026-08-12 | |
-| P-02 | Stage 3 搜索执行预算 | 5s | numeric | provisional@2026-08-12 | P-03 <= P-02; P-35 <= P-02 |
-| P-03 | AnySearch 超时 | 5s | numeric | provisional@2026-08-12 | P-03 <= P-02 |
-| P-04 | Stage 2 意图分类预算 | 2000ms | numeric | provisional@2026-08-12 | |
+| P-02 | Stage 3 搜索执行预算 | 5s | numeric | 定稿 | P-03 <= P-02; P-35 <= P-02 |
+| P-03 | AnySearch 超时 | 5s | numeric | 定稿 | P-03 <= P-02 |
+| P-04 | Stage 2 意图分类预算 | 1750ms | numeric | 定稿 | |
 | P-05 | Stage 4 结果处理预算 | 1s | numeric | 定稿 | |
 | P-06 | Stage 5 秘书合成预算 | 8s | numeric | provisional@2026-08-12 | |
 | P-07 | v0.1 基准query验收 | 10条中≥8条相关性≥2分且无0分硬答 | conditional | 定稿 | |
@@ -526,7 +526,7 @@ Agent 尝试解决问题
 | P-09 | v1.0 全量验收标准 | TODO | placeholder | 草稿 | |
 | P-10 | v1.0 全量验收（替P-09） | TODO | placeholder | 草稿 | |
 | P-11 | 回灌动参阈值 | 10条 | numeric | 定稿 | |
-| P-12 | v0.2a 31条通过率阈值 | 80% | numeric | provisional@2026-08-12 | |
+| P-12 | v0.2a 31条通过率阈值 | 80% | numeric | 定稿 | |
 | P-13 | 深度报告增量预算（生成+证据组装，不含内部搜索调用） | 15s | numeric | provisional@2026-08-12 | P-15+P-13 <= P-14 |
 | P-14 | 用户感知总延迟(搜索+深报告) | 27s | numeric | 定稿 | |
 | P-15 | 搜索管道总预算 | 12s | numeric | provisional@2026-08-12 | P-15+P-13 <= P-14 |
@@ -612,6 +612,8 @@ Agent 尝试解决问题
 | P-105 | 模型路由默认档 | medium | conditional | provisional@2026-08-16 | |
 | P-106 | 模型路由轻档最低置信度 | 0.9 | numeric | provisional@2026-08-16 | |
 | P-107 | Provider fallback 链上限 | 3家 | numeric | provisional@2026-08-16 | |
+| P-108 | Token 用量降级阈值 | 90% | numeric | 定稿 | |
+| P-109 | 会话上下文token预算 | 6000 | numeric | 定稿 | |
 
 > **约束注解**（lint 可评估，语法为线性不等式）：
 > - `P-15+P-13 <= P-14`（分配之和 ≤ 约束）
@@ -1124,7 +1126,7 @@ memory-core 是**本地 HTTP sidecar 服务**（源码启动，非 Docker，非�
 | **远期会话上下文**（跨会话） | 通过 Chat Memory L1-L3 蒸馏保留 | 按蒸馏层级自动衰减（L0→L1→L2→L3） | 不在当前上下文窗口内，按需从记忆系统检索 |
 | **已解决的日常/情感话题** | 问题解决后退出活跃上下文 | 留 L2 做人格学习素材 | 不挤占技术讨论的上下文空间 |
 
-> **触发条件**：逐字窗口与 token 预算双触发——到了 [P-29] 轮或到了 token 预算上限，哪个先到就触发压缩。固定轮数不准：同样轮数的技术讨论可能才 2000 token，代码粘贴可能 20000 token——token 预算才是硬约束。
+> **触发条件**：逐字窗口与 token 预算双触发——到了 [P-29] 轮或到了 [P-109] token 预算上限，哪个先到就触发压缩。固定轮数不准：同样轮数的技术讨论可能才 2000 token，代码粘贴可能 20000 token——token 预算才是硬约束。
 
 #### 8.3.2 上下文冲突处理
 
@@ -2155,17 +2157,9 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 
 ### 2026-08-14（版本查询泛化复测 E70）<br>- **变更**：真实 CLI 复测 OpenWorker/Tauri/Electron/Arduino 四个开源项目的“最新版本号”查询，验证版本查询路由、改写与官方源识别的泛化性。<br>- **结果**：OpenWorker `v0.1.7`（confidence 0.996）；Tauri `v2.11.5`（confidence 1）；Electron `v43.3.0`（confidence 1）；Arduino IDE `2.3.10`（confidence 1）。Arduino 答案正确但 gate 曾触发 `low_confidence`，根因与修复见 E71。<br>- **case 库**：`npm run route:cases` 显示 pipeline case 累计 135 条，含本次 4 条新增；校准样本 3/10。<br>- affects: §6.5,§6.6 | bench:B-20260814-01
 
-### 2026-08-14（规则①版本查询噪声误门控修复 E71）
+### 2026-08-14（规则①版本查询噪声误门控修复 E71）<br>- **变更**：`rule1.ts` 识别版本类 query 后跳过单位值抽取（V/A/MHz 等），避免 GitHub Release 页面里的 `48 A`、`5.1 V` 等噪声被当成事实冲突并触发 `gated`；版本查询仍由官方源优先级与相关性排序把关。<br>- **验证**：`arduino最新版本号是多少` 复测 gate 由 `low_confidence` 变为 `none`，答案仍为 Arduino IDE `2.3.10`；新增 rule1 单测 1 条；单测 212/212 + 集成 17/17 全绿。<br>- affects: §6.5,§6.6 | bench:B-20260814-02
 
-- **变更**：`rule1.ts` 识别版本类 query 后跳过单位值抽取（V/A/MHz 等），避免 GitHub Release 页面里的 `48 A`、`5.1 V` 等噪声被当成事实冲突并触发 `gated`；版本查询仍由官方源优先级与相关性排序把关。
-- **验证**：`arduino最新版本号是多少` 复测 gate 由 `low_confidence` 变为 `none`，答案仍为 Arduino IDE `2.3.10`；新增 rule1 单测 1 条；单测 212/212 + 集成 17/17 全绿。
-- affects: §6.5,§6.6 | bench:B-20260814-02
-
-### 2026-08-14（官方源主动检索与权威度降权 E72）
-
-- **变更**：新增 `officialSourceHintForQuery`，把器件型号前缀映射到原厂域（STM32→st.com、ESP32→espressif.com、TPS→ti.com、IRF→infineon.com、LT→analog.com）；查询改写自动追加 `site:原厂域 datasheet` 与 `原厂域 官方 数据手册`；融合层让 `domainAuthority` 参与非官方来源评分（`0.9 + 0.1 × authority`），官方源仍保留 1.2 倍乘数；搜索循环检测到器件查询且结果无官方源时，用 Tavily `include_domains` 做官方域兜底搜索。
-- **验证**：`STM32F103C8T6 最大主频是多少` 复测证据变为 `community.st.com / www.st.com / estore.st.com`，答案 72MHz，confidence 0.888；新增 authority/rewrite/fusion/tavily/search-loop 单测，单测 217/217 + 集成 17/17 全绿。
-- affects: §6.1,§6.5,§6.7 | bench:B-20260814-03
+### 2026-08-14（官方源主动检索与权威度降权 E72）<br>- **变更**：新增 `officialSourceHintForQuery`，把器件型号前缀映射到原厂域（STM32→st.com、ESP32→espressif.com、TPS→ti.com、IRF→infineon.com、LT→analog.com）；查询改写自动追加 `site:原厂域 datasheet` 与 `原厂域 官方 数据手册`；融合层让 `domainAuthority` 参与非官方来源评分（`0.9 + 0.1 × authority`），官方源仍保留 1.2 倍乘数；搜索循环检测到器件查询且结果无官方源时，用 Tavily `include_domains` 做官方域兜底搜索。<br>- **验证**：`STM32F103C8T6 最大主频是多少` 复测证据变为 `community.st.com / www.st.com / estore.st.com`，答案 72MHz，confidence 0.888；新增 authority/rewrite/fusion/tavily/search-loop 单测，单测 217/217 + 集成 17/17 全绿。<br>- affects: §6.1,§6.5,§6.7 | bench:B-20260814-03
 
 ### 2026-08-14（国内资料站兜底 E73）
 
@@ -2563,6 +2557,13 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 
 ### 2026-08-22（跨页拼接鲁棒性 E186）<br>- **变更**：`scripts/office_image_ocr.py` 表头去重新增 **span 级结构证据**——`_row_similar` 在文本匹配（≥70%）之外，非空格列位置模式相同且至少一个非空格格文本一致时也判同（OCR 噪声/透字粘连导致表头文本变化但列结构不变的重复表头仍可去重；文本锚点守卫防稀疏正文行误判）；`detect_table_lines` 新增 `_merge_near_edges`（相距 ≤5px 的网格线候选边合并为一条，修复 200dpi 渲染页细线被透字抑制打成碎片产生的幻影空行/列）；阶段 C 空区间合并补整行空格守卫（`start==0` 且 `end==cols-1` 跳过，防 `anchor_c` 越界崩溃）。`office-daily` `TableMergeWarning` 类型补 `page_header_mismatch`/`page_col_mismatch`，`tableWarningsNote` 分页对齐告警单独成句。**验证**：主项目 build；新增 1 条真跑 2 变体——A）第 2 页表头噪声（2024→2O24）+ 旋转 1.2° + 透字 → 结构证据去重，xlsx 6 行 × 5 列、merges 仅首页表头、零 warning、答案含“2 页拼接”；B）第 2 页无表头仅正文 → 诚实降级（整页追加 + 分页对齐告警，不崩溃）；DPI 150/200/250/300 复核维持 200；单图 t1/t3（E184）与 420×430 小图（E181）回归 merges 完全一致，零回归；单测 + 集成全量见交接文档；doc-lint 通过；详见 `docs/plans/2026-08-22-crosspage-stitch-robustness.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格识别跨页拼接表头去重加结构证据与网格线伪边合并，无 §5/§6 参数变更。
 ### 2026-08-22（E1/E2 复验门复核与口径修正 E187）<br>- **变更**：非参数变更；复核 E1/E2 复验门——`recheck-gates`/`finalize-gates` 原把“!ok 率”标为“超时率”且未覆盖对冲③，本轮输出拆分为 failRate / timeout5sRate / 双返回率，E2 判断区分复验门（超时率）与对冲③（双返回率<70% 触发重开）。<br>- **E1 证据**：classify n=70、timeout 0.0%、准确率 80.0%、p95=1406ms → 推荐 [P-04]=1750ms（≤2000ms），复验门 PASS，等 owner 签认晋升。<br>- **E2 证据**：全库 Bocha 无真实 5s 超时（max=1055ms）、timeout5sRate=2.5%、failRate=28.1%（快速 HTTP 错误，疑似配额/余额）；AnySearch timeout5sRate=8.0%、failRate=8.5%、p95=4374ms；双返回率 31.7%（<70%）→ 对冲③ 触发 [P-02] 重新决策（复验门未触发）；2026-08-22 冷调用探活（search:smoke 10 条）：Bocha 10/10 快速失败（failRate 100%、timeout5sRate 0%、58-285ms HTTP 错误）、AnySearch 10/10 ok、双返回率 0%——可用性故障坐实；充值后同日复核：Bocha 10/10 ok（126-336ms）、AnySearch 10/10 ok、双返回率 100%、failRate 0%——可用性恢复，[P-02] 触发条件解除。<br>- **状态**：[P-02]/[P-04] 维持 provisional；Bocha 充值后已恢复（双返回率 100%），[P-02] 维持 provisional 并推进定稿评估；owner 签认后晋升 [P-04] 并同步 `LLM_CLASSIFY_TIMEOUT_MS`。<br>- affects: §5,§6 | bench:na(new-param) 理由：复验门复核为既有数据评估与工具口径修正，无 §5/§6 参数变更，不新增基准
+### 2026-08-22（[P-04] 定稿晋升 1750ms E188）<br>- **变更**：owner 签认 E1 复验门数据包（classify n=70、超时率 0.0%、准确率 80.0%、p95=1406ms / max=1542ms），[P-04] Stage 2 意图分类预算由 2000ms provisional@2026-08-12 晋升为 1750ms 定稿；代码默认超时同步——`src/search/llm-registry.ts` light 档 2000→1750、`scripts/classify-smoke.ts` 默认显示 1750、`scripts/finalize-gates.ts` E1 建议值上限 2000→1750 对齐注册表；provisional 治理债务消除。<br>- **E1 证据**：2026-08-22 新增 1750ms 下 10 条冷调用（bench:B-20260822-01）：0/10 超时、准确率 8/10（80.0%，S02/L05 偏差仍由规则③兜底）、min=514ms / median=771ms / max=1026ms；叠加既有 n=70 样本（2000ms 下 0/70 超时、准确率 80.0%、p95=1406ms / max=1542ms）——1750ms 高于 max=1542ms 有足够缓冲，复验门 PASS。<br>- **预算交叉检查**：Stage 各预算为独立上限非可加约束（§5 约束注解），[P-04] 下调不击穿 [P-15]/[P-14] 约束；无关联参数需对冲。<br>- **状态**：[P-04] 定稿；[P-02] 维持 provisional 推进定稿评估（Bocha 恢复后待连续 n≥30 健康冷调用样本）。<br>- affects: §5,§6 | bench:B-20260822-01 | E1/E9/E187 交叉引用
+### 2026-08-22（[P-02] 定稿 E189）<br>- **变更**：owner 签认 E2 复验门数据包（充值后连续 n≥30 健康冷调用样本已满足），[P-02] Stage 3 搜索执行预算 5s 由 provisional@2026-08-12 转 定稿；E2 复验门与对冲③ 在充值后健康窗口均未触发。<br>- **E2 证据**：2026-08-22T09:02Z 起（Bocha 充值恢复后）连续 60 条搜索指标（bench:B-20260822-02）：Bocha n=60、fail=0、timeout5sRate=0.0%、p95=362ms / max=411ms；AnySearch n=50、fail=0、timeout5sRate=0.0%、p95=1683ms / max=2049ms；双返回率 50/60=83.3%（≥70%）——复验门 PASS、对冲③ NOT triggered，[P-02]=5s 保持成立。<br>- **预算交叉检查**：P-03/P-35 ≤ P-02 约束保持；Stage 各预算独立上限非可加约束，[P-02]=5s 不击穿 [P-15] 运行时总预算。<br>- **状态**：[P-02] 定稿；无关联参数需对冲。<br>- affects: §5,§6.7 | bench:B-20260822-02 | E2/E9/E187 交叉引用
+### 2026-08-22（[P-03] 定稿 E190）<br>- **变更**：owner 推进定稿；[P-03] AnySearch 超时 5s 由 provisional@2026-08-12 转 定稿，值不变；与 [P-02] 共用 E2 复验门证据（AnySearch@5s 超时率）。<br>- **E2 证据**：全窗口 AnySearch timeout5sRate=7.7%（≤30%）；充值后健康窗口（bench:B-20260822-02）AnySearch n=50、fail=0、timeout5sRate=0.0%、p95=1683ms / max=2049ms——P-03=5s 保持成立。<br>- **预算交叉检查**：P-03 <= P-02 约束保持（5s = 5s）；无关联参数需对冲。<br>- **状态**：[P-03] 定稿。<br>- affects: §5,§6.7 | bench:B-20260822-02 | E2/E189 交叉引用
+### 2026-08-22（[P-12] 定稿 E191）<br>- **变更**：owner 推进定稿；[P-12] v0.2a 31 条通过率阈值 80% 由 provisional@2026-08-12 转 定稿，值不变；v0.2a 全量验收已按该阈值判定通过。<br>- **证据**：附录 C `bench/v02a-report.md` 31 条全量：30/31 相关性 ≥2（96.8%）、0 硬答、score=0 仅 E07（搜索结果仅摘要无有效信息）；附录 C 无相反证据。<br>- **状态**：[P-12] 定稿。<br>- affects: §5 | bench:B-20260822-03 | 附录 C bench/v02a-report.md
+### 2026-08-22（Bocha 余额预警落地 E192）<br>- **变更**：实现 §D.3「资源包健康检查」代码侧——新增 `src/search/balance.ts`（GET `/v1/fund/remaining` 主备双 host，3s 超时静默失败；内存 + `data/bocha-balance.json` 持久缓存 30 分钟冷却；[P-75] 折算剩余次数）；Bocha 搜索 HTTP 4xx（401/402/403/429）时自动探测余额并透出 notice；`SearchStageResult`/`SearchLoopResult`/`AnswerResult` 逐层聚合 `notices`，CLI stderr、gateway 启动日志与 `GET /api/bocha/balance` 三处可见；[P-67] 余量告警阈值（10%）在无资源包总量接口下落地为固定告警线「剩余次数 ≤ 10」，耗尽（剩余次数 ≤ 0）强告警提示购买（防 [P-76] 按量 10 倍成本）；新增 `npm run balance:smoke` 随时查看余额/次数；UI 原型新增「资源包」设置面板（余额/剩余次数/刷新）与聊天区可关闭预警横幅（消息内透出 notice，兑现 §D.3「弹窗提示购买」）。<br>- **证据**：bench:B-20260822-04 真跑余额探测 310ms 返回 remaining=2.80 元、约 777 次（与充值实况一致），健康余额无告警；mock fetch 单测 12/12（解析/双 host 回退/冷却/持久缓存/告警文案/4xx notice）+ s3 notices 聚合 1 条 + gateway 端点 1 条；UI 原型生产构建通过（tsc + vite build 8.1s）且 gateway 托管产物含资源包面板/横幅；build + 单测 + 集成全绿、doc-lint 0 FAIL 0 WARN。<br>- **状态**：代码 + UI 落地完成，无 §5 参数值变更（[P-67]/[P-75] 复用，语义在 E192 登记）。<br>- affects: §6.2（§D.3 落地） | bench:B-20260822-04 | E187 交叉引用
+### 2026-08-22（§8.3 会话上下文压缩落地 E193）<br>- **变更**：实现 §8.3「工作记忆与上下文压缩」代码侧——新增 `src/memory/session-context.ts`（SessionContextStore 按 conversationId 持久化 `data/session-context/<id>.json`，读改写串行化、compact 防重入、每轮唯一 id 增量合并防并发丢更新）；逐字窗口 [P-29]=5 轮完整保留，窗口外轮次由轻模型（createLightClient，max_tokens=300，8s 超时静默失败）压缩为「实体+决策+未决事项」摘要并滚动合并；新增 [P-109]=6000 token 硬约束双触发（窗口超预算时最早轮次也移入压缩）；pipeline 在 opts.conversationId 显式传入时启用：开头 load 会话摘要 + 窗口轮次并入 memoryNotes/recentMemory，回答后 append 用户/助手轮次并异步 compactIfNeeded；UI 主聊天发送稳定 conversationId；远期会话仍走 L1-L3 蒸馏，不动记忆分层。<br>- **证据**：bench:B-20260822-05 真实轻模型压缩冒烟（2 轮合成对话 → 轻模型输出「实体/决策/未决」摘要）；单测 14/14（估算/持久化往返/损坏文件/窗口/双触发/压缩合并/防重入/全链路/注入/配对）+ pipeline 2 条（摘要注入路由上下文并 append、无 conversationId 不启用）；build + test:all 全绿、doc-lint 0 FAIL 0 WARN（附录 950/950）。<br>- **状态**：代码 + UI + 文档落地完成；[P-109] 定稿（E193 登记）；同时补登既有 P-108=90% Token 用量降级阈值（E113 语义，值未变，E193 收口登记）。<br>- affects: §5,§8.3 | bench:B-20260822-05 | E187/E192 交叉引用
+### 2026-08-22（度量型问答并入 qa 提取词 E194）<br>- **变更**：路由参数校准（`route:calibrate` 阈值建议 0.45/0.75 与 P-80/P-81 一致，无规则候选）发现度量型问句缺口——`X 是多少/多少钱/什么价位/多大/几位` 不在 `QA_RE`，`extractIntentFeatureRuleBased` 判 `unknown` 走 R012 confirm，「开发板多少钱」甚至因含「开发」被 create 抢走 option_clarify；本轮 `intent-feature.ts` 拆分 GENERIC_QA_RE 与 METRIC_QA_RE（是多少/多少钱/什么价位/价位多少/价格多少/价格是多少/什么价格/多大/几位/有多少/剩多少）合成 QA_RE，analyze 守卫按「通用疑问词优先 qa + 度量词仅在无业务评估词（值不值/成本/收益）时让给 qa」收敛，业务评估与安全审查路由不回退。<br>- **证据**：bench:B-20260822-06 确定性对照——9 条目标度量 query 全部 `qa + direct + web_search`（含 create 误抢修复）；样本库 37/37 度量型记录直答；全量 742 条决策差分无新增回退；router-v2 单测 72/72（新增 3 条用例）；build + test:all 全绿。<br>- **状态**：代码 + 测试 + 证据落地完成，无 §5 参数值变更（P-80/P-81 校准结论一致，保持 provisional@2026-08-13）。<br>- affects: §6.1 | bench:B-20260822-06 | E57/E70-E72 交叉引用
 
 
 

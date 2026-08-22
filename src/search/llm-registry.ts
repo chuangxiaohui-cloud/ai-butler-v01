@@ -102,7 +102,7 @@ function resolveTimeoutMs(
           ? env.LLM_SYNTHESIZE_TIMEOUT_MS
           : env.VLM_TIMEOUT_MS;
   const value = Number(raw ?? '');
-  return Number.isFinite(value) && value > 0 ? value : role === 'light' ? 2000 : 30000;
+  return Number.isFinite(value) && value > 0 ? value : role === 'light' ? 1750 : 30000;
 }
 
 function buildProviderProfile(def: ProviderDef, env: Record<string, string | undefined>): ProviderProfile | null {

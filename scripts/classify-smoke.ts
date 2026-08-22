@@ -6,7 +6,7 @@
  *   npx tsx classify-smoke.ts
  *
  * 环境:
- *   LLM_CLASSIFY_TIMEOUT_MS  单次超时，默认 2000ms（遵循 [P-04]；网络波动可临时调大）
+ *   LLM_CLASSIFY_TIMEOUT_MS  单次超时，默认 1750ms（遵循 [P-04] 定稿；网络波动可临时调大）
  */
 import { appendFileSync, mkdirSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
@@ -37,7 +37,7 @@ async function main(): Promise<void> {
   const llm = createLightClient();
   const rounds = Number(process.argv.find((a) => a.startsWith('--rounds='))?.split('=')[1] ?? '1');
   console.log(`WP3 冒烟：${queries.length} 条基准 query，轻模型=${process.env.LLM_LIGHT_MODEL ?? 'deepseek-chat'}`);
-  console.log(`超时=${process.env.LLM_CLASSIFY_TIMEOUT_MS ?? '2000'}ms，rounds=${rounds}\n`);
+  console.log(`超时=${process.env.LLM_CLASSIFY_TIMEOUT_MS ?? '1750'}ms，rounds=${rounds}\n`);
 
   let correct = 0;
   const rows: string[] = [];

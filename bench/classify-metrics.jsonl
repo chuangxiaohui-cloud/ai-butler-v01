@@ -68,3 +68,13 @@
 {"ts":"2026-08-13T02:33:39.652Z","id":"S02","query":"高血压 用药注意事项 禁忌","expected":"factual","intent":"experience","source":"llm","timedOut":false,"latencyMs":1022}
 {"ts":"2026-08-13T02:33:40.430Z","id":"L05","query":"个人所得税 专项附加扣除 怎么申报","expected":"factual","intent":"how_to","source":"llm","timedOut":false,"latencyMs":777}
 {"ts":"2026-08-13T02:33:41.212Z","id":"E16","query":"ESP32 I2C 通信失败 无应答","expected":"troubleshooting","intent":"troubleshooting","source":"llm","timedOut":false,"latencyMs":780}
+{"ts":"2026-08-22T09:21:29.983Z","id":"E01","query":"STM32F103C8T6 最大主频是多少","expected":"factual","intent":"factual","source":"llm","timedOut":false,"latencyMs":844}
+{"ts":"2026-08-22T09:21:30.756Z","id":"E02","query":"TPS5430 输入电压范围","expected":"factual","intent":"factual","source":"llm","timedOut":false,"latencyMs":771}
+{"ts":"2026-08-22T09:21:31.470Z","id":"E04","query":"STM32F103 ADC 多通道采集 踩坑 经验","expected":"experience","intent":"experience","source":"llm","timedOut":false,"latencyMs":713}
+{"ts":"2026-08-22T09:21:32.496Z","id":"E06","query":"MOSFET 栅极驱动电阻 选型 注意事项","expected":"experience","intent":"experience","source":"llm","timedOut":false,"latencyMs":1026}
+{"ts":"2026-08-22T09:21:33.187Z","id":"E08","query":"KiCad 和 Altium Designer 对比 优缺点","expected":"comparison","intent":"comparison","source":"llm","timedOut":false,"latencyMs":690}
+{"ts":"2026-08-22T09:21:33.914Z","id":"E11","query":"Keil MDK JTAG 配置 步骤","expected":"how_to","intent":"how_to","source":"llm","timedOut":false,"latencyMs":727}
+{"ts":"2026-08-22T09:21:34.632Z","id":"E14","query":"STM32 HAL_UART_Transmit 阻塞 卡死","expected":"troubleshooting","intent":"troubleshooting","source":"llm","timedOut":false,"latencyMs":718}
+{"ts":"2026-08-22T09:21:35.654Z","id":"S02","query":"高血压 用药注意事项 禁忌","expected":"factual","intent":"experience","source":"llm","timedOut":false,"latencyMs":1022}
+{"ts":"2026-08-22T09:21:36.169Z","id":"L05","query":"个人所得税 专项附加扣除 怎么申报","expected":"factual","intent":"how_to","source":"llm","timedOut":false,"latencyMs":514}
+{"ts":"2026-08-22T09:21:37.001Z","id":"E16","query":"ESP32 I2C 通信失败 无应答","expected":"troubleshooting","intent":"troubleshooting","source":"llm","timedOut":false,"latencyMs":832}
