@@ -34,6 +34,9 @@ npm run bench:devil-v25            # 当前主要回归基准（122 条魔鬼训
 npm run baseline:devil-v25         # 导出新基线 CSV + 摘要
 npm run compare:devil-v25          # 新老基线对比
 npm run datasheet -- "<商品页URL>" <型号>   # 下载并校验官方 datasheet
+npm run search:smoke              # 10 条基准 query 双引擎冒烟（WP4 验收）
+npm run classify:smoke            # Stage 2 意图分类冒烟（[P-04] 复验）
+npm run tavily:smoke              # Tavily 触发冒烟 + 月度配额监控（E195）
 
 npm run route:cases                # 查看路由 case
 npm run route:feedback             # 提交 accept/reject 反馈

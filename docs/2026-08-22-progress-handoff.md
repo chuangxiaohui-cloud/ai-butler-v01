@@ -176,7 +176,7 @@
 
 ## 今日收尾状态
 
-已提交：E177-E196（HEAD=`3ca2c4e`）；并行改动（SEV-1.1~1.4：`sandbox.ts`/`memorycore-store.ts`/`terminal.ts` 及测试）不在本批次。
+已提交：E177-E197（HEAD=`b79a5f8`）；E198 文档目录同步待提交（AGENTS.md smoke 命令 + code-directory.md/§13 补 quota/tavily-trigger/balance/session-context/tavily-smoke 登记）；并行改动（SEV-1.1~1.4：`sandbox.ts`/`memorycore-store.ts`/`terminal.ts` 及测试）不在本批次。
 - 提交前请勿包含根目录 `.codex-*.cjs`（已 gitignore）、`data/` 临时文件与合成样本（已清理）。
 
 ## 明天继续（按优先级）

@@ -28,7 +28,9 @@
 | `src/search/providers/` | `types.ts`、`bocha.ts`、`anysearch.ts`、`tavily.ts` | 搜索适配器，统一 `SearchProvider` | ✅ |
 | `src/search/` | `fusion.ts`、`rule1.ts`、`rule3.ts`、`authority.ts` | 融合、事实一致性、安全阀、权威度 | ✅ |
 | `src/search/` | `llm.ts`、`llm-client.ts`、`llm-registry.ts`、`model-router.ts` | LLM 客户端、Provider Registry、模型分档 | ✅ |
-| `src/search/` | `balance.ts` | Bocha 余额探测/缓存/告警（§D.3，E192） | ✅ |
+| src/search/ | alance.ts | Bocha 余额探测/缓存/告警（§D.3，E192） | ✅ |
+| src/search/ | quota.ts | 搜索配额计数与月度快照（[P-63]/[P-64]/[P-65]，E195） | ✅ |
+| src/search/ | 	avily-trigger.ts | Tavily 条件并联触发判定（§6.2.1，E72/E195） | ✅ |
 | `src/agent/` | `router-v2.ts`、`routing-table.ts`、`intent-feature.ts`、`extract.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` | 三层意图路由、rewrite/记住指令、时间表达解析 | ✅ |
 | `src/agent/` | `mode-mapper.ts`、`multimodal-preprocessor.ts`、`executors.ts` | 模式映射、多模态信号、执行器状态 | ✅ |
 | `src/agent/` | `route-case-store.ts`、`route-case-audit.ts`、`confidence-calibration.ts` | 路由 case 采集、审核、校准闭环 | ✅ |
@@ -75,7 +77,8 @@
 | `scripts/browser-*.ts` | 浏览器会话与抓取 | ✅ |
 | `scripts/pdf-text.ts` / `ocr_benchmark.py` | PDF 文本层与 OCR 基准 | ✅ |
 | `scripts/office_xlsx_read.py` / `office_xls_read.py` / `office_doc_*.py` / `office_docx_*.py` / `office_pptx_create.py` / `office_pdf_merge.py` / `office_pdf_encrypt.py` / `office_pdf_compress.py` / `office_image_convert.py` / `compress_image.py` | 办公日常文件处理 | ✅ |
-| `scripts/datasheet.ts` | 官方 datasheet 下载与校验 | ✅ |
+| scripts/datasheet.ts | 官方 datasheet 下载与校验 | ✅ |
+| scripts/tavily-smoke.ts | Tavily 触发冒烟 + 配额监控（E195） | ✅ |
 | `scripts/migrate-to-memorycore.ts` | 历史记忆迁移 | ✅ |
 | `scripts/distill-worker.ts` | L1 蒸馏 worker | ✅ |
 | `scripts/push-to-hosts.ts` | Gitee/GitHub 双端同步 | ✅ |

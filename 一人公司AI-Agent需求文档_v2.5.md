@@ -1578,14 +1578,19 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | `src/agent/mode-mapper.ts` | 五主镜片 → UI 三模式/子模式映射 |
 | `src/search/providers/bocha.ts` | Bocha 引擎适配 |
 | `src/search/providers/anysearch.ts` | AnySearch 引擎适配 |
-| `src/search/providers/tavily.ts` | Tavily 引擎适配（含 [P-35] 超时保护） |
+| src/search/providers/tavily.ts | Tavily 引擎适配（含 [P-35] 超时保护） |
+| src/search/balance.ts | Bocha 余额探测/缓存/告警（§D.3，E192） |
+| src/search/quota.ts | 搜索配额计数与月度快照（[P-63]/[P-64]/[P-65]，E195） |
+| src/search/tavily-trigger.ts | Tavily 条件并联触发判定（§6.2.1，E72/E195） |
 | `src/search/fusion.ts` | Stage 4 四过滤器 + 加权评分 |
 | `src/search/authority.ts` | 来源权威注入（域名权威度表 + 原厂域名映射） |
 | `src/memory/store.ts` | MemoryStore 接口 + SqliteDirectStore/MemoryCoreStore |
 | `src/memory/experience.ts` | ExperienceManager（embedding 检索 + 置信度演化） |
-| `src/memory/user-context-store.ts` | 用户画像/长期事实/会话摘要 SQLite 存储 |
+| src/memory/user-context-store.ts | 用户画像/长期事实/会话摘要 SQLite 存储 |
+| src/memory/session-context.ts | 会话上下文持久化与逐字窗口压缩（§8.3，E193） |
 | `scripts/bench-provider-router.ts` | Provider Registry / 模型分档本地 bench |
-| `scripts/export-model-catalog.ts` | 导出 Provider Registry 模型目录给 UI |
+| scripts/export-model-catalog.ts | 导出 Provider Registry 模型目录给 UI |
+| scripts/tavily-smoke.ts | Tavily 触发冒烟 + 配额监控（E195） |
 | `src/config/model-catalog.ts` | 共享模型目录（UI / gateway 共用） |
 | `src/config/provider-order.ts` | Provider 默认顺序持久化（data/provider-order.json） |
 | `src/config/skills-config.ts` | Skill 启用/禁用持久化（data/skills-config.json） |
