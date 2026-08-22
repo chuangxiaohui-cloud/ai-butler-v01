@@ -6,6 +6,8 @@ import { SearchSourceStats } from './search/source-stats.js';
 import { UserContextStore } from './memory/user-context-store.js';
 import { RouteCaseStore } from './agent/route-case-store.js';
 import { createHeavyClient, createVisionClient } from './search/llm.js';
+import { SessionContextStore } from './memory/session-context.js';
+import { handleSlashCommand } from './slash/slash-commands.js';
 import { parseDocumentFile } from './search/document-parser.js';
 import type { SkillDeps } from './skills/deps.js';
 import { TrajectoryLog } from './trajectory/trajectory-log.js';
@@ -30,6 +32,9 @@ const sourceStats = new SearchSourceStats();
 const userContextStore = new UserContextStore();
 const routeCaseStore = new RouteCaseStore();
 const trajectoryLog = new TrajectoryLog();
+const sessionContext = new SessionContextStore();
+// CLI 会话 ID：让 CLI 问答也进入 E193 上下文管理，/context 与 /compact 才能看到轮次。
+const CLI_CONVERSATION_ID = 'cli';
 const skillDeps: SkillDeps = {
   callVLM: async (input, opts) => createVisionClient()(input, opts),
   complete: {
@@ -55,7 +60,13 @@ async function warnBochaBalance(): Promise<void> {
 
 
 warnBochaBalance()
-  .then(() => pipeline(arg, {
+  .then(() => handleSlashCommand(arg, CLI_CONVERSATION_ID, { sessionContext }))
+  .then((slashResult) => {
+    if (slashResult) {
+      console.log(JSON.stringify(slashResult, null, 2));
+      return null;
+    }
+    return pipeline(arg, {
   tavily: { enabled: true },
   experienceManager,
   skillLifecycle,
@@ -67,8 +78,11 @@ warnBochaBalance()
   browserSession,
 }, {
   userId: 'cli-user',
-}))
+  conversationId: CLI_CONVERSATION_ID,
+});
+})
   .then((result) => {
+    if (!result) return;
     console.log(JSON.stringify(result, null, 2));
   })
   .catch((err) => {

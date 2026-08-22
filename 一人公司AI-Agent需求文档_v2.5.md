@@ -1128,6 +1128,8 @@ memory-core 是**本地 HTTP sidecar 服务**（源码启动，非 Docker，非�
 
 > **触发条件**：逐字窗口与 token 预算双触发——到了 [P-29] 轮或到了 [P-109] token 预算上限，哪个先到就触发压缩。固定轮数不准：同样轮数的技术讨论可能才 2000 token，代码粘贴可能 20000 token——token 预算才是硬约束。
 
+> **手动入口**：`/compact` 手动压缩窗口外轮次、`/context` 查看当前会话状态（轮次/逐字窗口/摘要/token 粗估），CLI 与桌面端聊天均可用（E204）。
+
 #### 8.3.2 上下文冲突处理
 
 | 冲突类型 | 处理规则 | 示例 |
@@ -2568,6 +2570,8 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-23（OCR 五项增量方向决策收口 E202）<br>- **变更**：表格 OCR 识别率提升五项增量方向收口——方向 1（换 PP-OCRv6）owner 已批准，`data/exp-paddle.py` 对比实验脚本已备好，但实测被两处环境阻塞：沙箱 ACL 拒绝读 `C:\Users\zhxh\.paddlex` 模型缓存，提权又被审核服务误拒（审核器报「支持 deepseek-v4-pro/flash 却收到 gpt-5.6-luna」，属审核规则模型名配置 bug、非安全策略拒绝），待修复后重试；方向 2（模式/词典后纠正）由 E200/E201 落地；方向 3（超分辨率）暂缓，等方向 1+2 结果再评估；方向 4（源头提分辨率：截图转 PDF / 高 DPI 导出）登记 §12.6 为长期建议、不阻塞迭代；方向 5 排除项（WinRT OCR/列裁剪/二值化/直方图均衡）实测无效归档，不再重复验证。<br>- **状态**：方向 2/4/5 完成；方向 1 待审核规则修复后实测；方向 3 待方向 1 结果。<br>- affects: §12,附录A | bench:na(new-param) 理由：OCR 增量方向决策登记与长期建议，无 §5/§6 参数变更
 
 ### 2026-08-23（方向 1 实测归档 + E201 词典扩展 E203）<br>- **变更**：方向 1（换 PP-OCRv6）本机实测结论归档——`data/exp-paddle.py` 修复三处阻塞后真跑（① xlrd 残缺 → 真值预提取 `data/exp-paddle-gt.json` 兜底；② oneDNN 指令不兼容 → `PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT=False`，同 E97；③ PP-OCRv6 rec 框为 `[l,t,r,b]` → 通用解析）：目标残差 3 处（糖胶枪/FR405 乱码/FR407 单位套）全部未修复，且新引入 `LBD补光灯`/`宣鼎SSD`/`GO70VW01`/`LVD8线`/`外亮模具` 5 处新错，单图约 240s（比 RapidOCR 慢约 100 倍）——不达标归档，默认引擎维持 RapidOCR，`PDF_OCR_ENGINE=paddle` 保留为可选慢速通道；方向 2 扩展 E201 词典处理残差：型号补 `白色(糖胶枪)`、FR405 两通道乱码读数 `2.54-F房排线(一头26P牛角插失,另外一头杜邦2.0)` 等映射规范值、尾片段 `%2.01` 清洗，备件名称 `LBD补光灯→LED补光灯`/`外亮模具→外壳模具`/`LVD8线→LVDS线`，`data/ocr-dict.json` 与 `scripts/ocr-dict.example.json` 同步。<br>- **证据**：bench:B-20260823-01（OCRtest.png × XLS 50 行同口径真跑：编号 50/50、名称 49/49、型号 43/45→44/45（FR405 修复）、数量 50/50、单位 26/27；`--selftest` 覆盖新变体；剩余残差 2 处诚实登记——登加型歧义（合并行叠加型/分开型需上下文消歧）、FR407 单位「套」整格漏检（词典无法补缺失文本，需网格补位/源头提分辨率））。<br>- **状态**：方向 1 归档（PP-OCRv6 中文语义残差修复与开销均不达标，方向 3 维持暂缓依据补全）；E201 词典扩展完成并纳入回归；剩余残差 2 处登记已知限制。<br>- affects: §6,§13 | bench:B-20260823-01 | E200/E201 交叉引用
+
+### 2026-08-23（斜杠命令层 /compact + /context E204）<br>- **变更**：E193 会话上下文压缩补手动入口——新增 `src/slash/slash-commands.ts`：`parseSlashCommand` 整行匹配 `/compact`/`/context`（防正文以 `/` 开头的正常问题误判），`/context` 输出会话状态（累计轮次/逐字窗口 [P-29]/待压缩轮次/摘要字符/token 粗估 [P-109]/是否需要压缩），`/compact` 手动触发窗口外轮次压缩（复用 E193 `compact`，输出压缩前后对比）；输出与 `answer()` 稳定契约同形（`{ answer, confidence, evidence[], gate_triggered }`）；gateway `/api/ask` 命中斜杠命令不进入问答管线；CLI `main.ts` 新增 cli 会话（普通问答也写入 E193 会话上下文，`/context` 才看得到轮次）。<br>- **证据**：slash 单测 9 条 + gateway 集成 2 条（`/context` 状态、`/compact` 窗口外压缩后保留 5 轮逐字窗口）；CLI 真实冒烟：问答 1 轮后 `/context` 显示 2 轮/无待压缩、`/compact` 如实提示无需压缩；全量单测 589/590 + 集成 17/17；doc-lint 0 FAIL 0 WARN。<br>- **状态**：完成并纳入回归；CLI 会话默认 conversationId=cli（文件级共享 `data/session-context/cli.json`）。<br>- affects: §8.3 | bench:na(new-param) 理由：斜杠命令手动入口，无 §5/§6 参数变更
 
 ### v2.5（2026-08-12）
 

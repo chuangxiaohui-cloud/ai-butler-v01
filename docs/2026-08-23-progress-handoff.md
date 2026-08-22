@@ -1,6 +1,8 @@
 # 进度交接 2026-08-23（v0.2b 续作）
 
-> 当前分支：`v0.2b`｜E199-E201 已提交（`ba41dbb`），E202 已提交（`8857b47`），本批次 E203（方向 1 实测归档 + E201 词典扩展）待提交。上一份交接见 `docs/2026-08-22-progress-handoff.md`。
+> 当前分支：`v0.2b`｜E199-E201 已提交（`ba41dbb`）、E202（`8857b47`）、E203（`7cb6f3c`）、
+> SEV-1.1~1.4 安全批（`24399d6`）已提交；本批次 E204（斜杠命令层）待提交。上一份交接见
+> `docs/2026-08-22-progress-handoff.md`。
 
 ## 今日已收口
 
@@ -25,14 +27,20 @@
    保留为可选慢速通道。E201 词典扩展处理残差：型号补 `白色(糖胶枪)`、FR405 两通道乱码读数
    映射规范值、尾片段 `%2.01` 清洗，备件名称 `LBD补光灯→LED补光灯`/`外亮模具→外壳模具`/
    `LVD8线→LVDS线`。bench:B-20260823-01 真跑：型号 43/45→**44/45**（FR405 修复），其余列持平。
+6. **斜杠命令层（E204）**：新增 `src/slash/slash-commands.ts`——`/context` 输出会话状态
+   （轮次/逐字窗口 [P-29]/待压缩/摘要/token 粗估 [P-109]），`/compact` 手动压缩窗口外轮次
+   （复用 E193 `compact`，输出前后对比）；输出与 `answer()` 契约同形。gateway `/api/ask`
+   命中斜杠不进入问答管线；CLI `main.ts` 普通问答补 `conversationId='cli'`，CLI 会话进入
+   E193 上下文管理。slash 单测 9 条 + gateway 集成 2 条；CLI 真实冒烟通过。
 
 ## 待提交（本批次）
 
 - 需求文档 §12.6 + 附录 A E202 + 计划文档决策表 + 本交接文档（同一主题：OCR 方向决策收口）。
 - 需求文档附录 A E203 + 计划文档 E203 结果段 + 本交接文档 + `bench/B-20260823-01-table-ocr-direction1-dict.md`
   + `scripts/ocr-dict.example.json`（同一主题：方向 1 实测归档 + E201 词典扩展）。
-- 并行改动（SEV-1.1~1.4：`sandbox.ts`/`memorycore-store.ts`/`terminal.ts` 及测试）+ `bench/search-metrics.jsonl`
-  与根目录临时文件**不在本批次**，勿混入提交。
+- 本批次：需求文档附录 A E204 + §8.3 手动入口 + `src/slash/slash-commands.ts`（+测试）+
+  `src/gateway/app.ts`/`app.test.ts` + `src/main.ts` + 计划/交接/目录文档（同一主题：斜杠命令层）。
+- `bench/search-metrics.jsonl` 与根目录临时文件**不在任何批次**，勿混入提交。
 
 ## 明日继续（按优先级）
 
@@ -40,20 +48,17 @@
    ② FR407 单位「套」整格漏检（两通道均未检出，词典无法补缺失文本，需网格补位或源头提分辨率）。
    方向 1（PaddleOCR）已实测归档，方向 3（超分）维持暂缓——「换模型即提升」假设被证伪，
    残差集中在上下文消歧与整格漏检，词典/网格优先。
-2. **斜杠命令层（备忘，勿忘）**：`/compact`（手动触发当前会话压缩）+ `/context`（会话状态：
-   轮次/逐字窗口/摘要/token 粗估）——E193 上下文压缩的手动入口，参考 AI-Butler 增补方案
-   §12.7（MiMo-Code `/compact`，SessionCompaction + COMPACTABLE_TOOL_NAMES）与
-   `src/interaction/memory-hub.ts`（规则版滚动摘要 + 实体槽位/指代消解，零 LLM 成本兜底）；
-   owner 已确认按计划在合适时机实现。
-3. **Tavily（备忘，勿忘）**：已接入并启用（`src/search/providers/tavily.ts` + `tavily-trigger.ts`
+2. **Tavily（备忘，勿忘）**：已接入并启用（`src/search/providers/tavily.ts` + `tavily-trigger.ts`
    条件并联，`.env` 的 `TAVILY_API_KEY` 已配置）。月度配额 [P-64]=1000 落盘
    `data/tavily-monthly.json`；owner 已决策等下月重置，9 月重置后跑 `npm run tavily:smoke` 复核，
    并评估 [P-64] 口径复算（本地计数 vs 远端 credits）。
-4. **附录 A 行数预算**：新增 E203 后行数见 doc-lint 输出，继续按 retention 压缩旧段腾行。
+3. **附录 A 行数预算**：新增 E203/E204 后行数见 doc-lint 输出，继续按 retention 压缩旧段腾行。
 
 ## 常用命令
 
 ```bash
+npm run dev -- "/context"            # 斜杠命令：查看会话上下文状态
+npm run dev -- "/compact"            # 斜杠命令：手动压缩窗口外轮次
 python scripts/office_image_ocr.py --selftest
 python scripts/office_image_ocr.py --table <图片> <out.csv>
 python M:\202608111\data\exp-paddle.py        # 方向 1 实测（需读 ~/.paddlex）

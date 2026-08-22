@@ -53,6 +53,7 @@ CLI (src/main.ts)  UI (ui/prototype)  桌面壳 (desktop)
 | `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理、rewrite/记住指令、时间表达 | `router-v2.ts`、`routing-table.ts`、`mode-mapper.ts`、`route-case-store.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` |
 | `src/skills/` | Skill 注册、生命周期、预置 Skill | `registry.ts`、`lifecycle.ts`、`deps.ts`、`skills/*` |
 | `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏 | `store.ts`、`memorycore-store.ts`、`experience.ts`、`distill.ts` |
+| `src/slash/` | 斜杠命令层（/compact 手动压缩、/context 会话状态，§8.3 E204） | `slash-commands.ts` |
 | `src/reminder/` | 主动提醒存储 | `reminder-store.ts` |
 | `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API | `app.ts`、`server.ts`、`attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts` |
 | `src/browser/` | 浏览器会话、CDP 持久化、页面抓取 | `session.ts` |

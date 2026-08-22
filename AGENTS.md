@@ -79,6 +79,7 @@ npm exec tsx scripts/doc-lint.ts   # 需求文档全量验收（唯一验收口�
 | `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理 |
 | `src/skills/` | Skill 注册、生命周期与预置 Skill |
 | `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏 |
+| `src/slash/` | 斜杠命令层（/compact、/context，E193 手动入口） |
 | `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API |
 | `src/browser/` | 浏览器会话、CDP 持久化、页面抓取 |
 | `src/config/` | PARAM、Provider Registry、模型目录、安全/用量/Skill 配置 |

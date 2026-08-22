@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import { RouteCaseStore } from '../agent/route-case-store.js';
 import { routeV2 } from '../agent/router-v2.js';
 import { ExperienceManager } from '../memory/experience.js';
+import { SessionContextStore } from '../memory/session-context.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { writeSecurityConfig } from '../config/security-config.js';
 import { subscribeArtifactEvents } from './artifact-bus.js';
@@ -181,6 +182,70 @@ test('gateway: 空 query 返回 400 且不带原始错误', async () => {
     assert.equal(body.error, 'query 不能为空');
   } finally {
     server.close();
+  }
+});
+
+test('gateway: /api/ask 斜杠命令 /context 返回会话状态', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gw-slash-'));
+  const store = new SessionContextStore({ dir });
+  const app = createGatewayApp({
+    deps: testDeps(),
+    defaultUserId: 'test-user',
+    sessionContext: store,
+  });
+  const server = createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as AddressInfo).port;
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    await store.append('c1', 'user', '第一轮');
+    await store.append('c1', 'assistant', '回答一');
+    const resp = await fetch(`${base}/api/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: '/context', conversationId: 'c1' }),
+    });
+    const body = (await resp.json()) as { answer?: string; slash?: string; gate_triggered?: string };
+    assert.equal(resp.status, 200);
+    assert.equal(body.slash, 'context');
+    assert.ok(body.answer?.includes('2'), body.answer);
+    assert.equal(body.gate_triggered, 'none');
+  } finally {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('gateway: /api/ask 斜杠命令 /compact 压缩窗口外轮次', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gw-slash-'));
+  const store = new SessionContextStore({ dir });
+  const app = createGatewayApp({
+    deps: testDeps(),
+    defaultUserId: 'test-user',
+    sessionContext: store,
+  });
+  const server = createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as AddressInfo).port;
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    for (let i = 0; i < 8; i++) {
+      await store.append('c1', i % 2 === 0 ? 'user' : 'assistant', `第 ${i + 1} 轮`);
+    }
+    const resp = await fetch(`${base}/api/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: '/compact', conversationId: 'c1' }),
+    });
+    const body = (await resp.json()) as { answer?: string; slash?: string };
+    assert.equal(resp.status, 200);
+    assert.equal(body.slash, 'compact');
+    assert.ok(body.answer?.includes('已手动压缩'), body.answer);
+    const ctx = await store.load('c1');
+    assert.equal(ctx?.turns.length, 5, '窗口内 5 轮保留原文');
+  } finally {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
   }
 });
 

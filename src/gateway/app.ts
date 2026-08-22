@@ -23,6 +23,8 @@ import { readUsageBudget, writeUsageBudget } from '../config/usage-budget.js';
 import { readSecurityConfig, writeSecurityConfig } from '../config/security-config.js';
 import { ExperienceManager } from '../memory/experience.js';
 import { UserContextStore } from '../memory/user-context-store.js';
+import { SessionContextStore } from '../memory/session-context.js';
+import { handleSlashCommand } from '../slash/slash-commands.js';
 import { aggregateUsage, readUsage } from '../usage/usage-store.js';
 import { listProjectFiles } from './files.js';
 import { runCommand } from './terminal.js';
@@ -35,6 +37,7 @@ import { buildCalendarIcs, importIcsToDb, openCalendarDb } from '../skills/calen
 export interface GatewayOptions {
   deps?: PipelineDeps;
   defaultUserId?: string;
+  sessionContext?: SessionContextStore;
   routeCaseStore?: RouteCaseStore;
   userContextStore?: UserContextStore;
   experienceManager?: ExperienceManager;
@@ -57,6 +60,8 @@ interface AskBody {
 export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
   const app = express();
   const routeCaseStore = opts.routeCaseStore ?? new RouteCaseStore();
+  // 斜杠命令（E204）与 pipeline 的 E193 会话上下文同持久化（data/session-context/<id>.json）
+  const sessionContext = opts.sessionContext ?? new SessionContextStore();
   app.use(express.json({ limit: '25mb' }));
 
   // SEV-1.4：网关鉴权 + /api/ask 速率限制
@@ -563,6 +568,16 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       typeof body.userId === 'string' ? body.userId : (opts.defaultUserId ?? 'ui-user');
     const conversationId =
       typeof body.conversationId === 'string' ? body.conversationId : undefined;
+    // 斜杠命令层（E204）：/context 与 /compact 不进入问答管线
+    const slashResult = await handleSlashCommand(query, conversationId, {
+      sessionContext,
+      llm: opts.deps?.llm,
+    });
+    if (slashResult) {
+      publishArtifactEvent('progress', { stage: 'slash', at: Date.now() });
+      res.json(slashResult);
+      return;
+    }
     const files: RawFileLike[] = [];
     const rawAttachments = Array.isArray(body.attachments) ? body.attachments : [];
     for (const item of rawAttachments) {
