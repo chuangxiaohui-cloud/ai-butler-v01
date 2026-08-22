@@ -17,7 +17,7 @@
 
 ### 0.2 权威归属（单家规则）
 
-1. **数值单家**：所有量化预算（延迟/成本/RAM/配额/阈值/权重）的总额与跨子系统分配，登记在 §5 的 PARAM 注册表，格式 `P-NN 名称=值 [状态]`（例：`P-01 置信门控阈值=0.6 [provisional@2026-08-12]`）。其余章节一律以 `[P-NN]` 引用，禁止裸数值；子系统章节只做内部拆解，并标注"本表之和 ≤ [§5.x] 分配值"。
+1. **数值单家**：所有量化预算（延迟/成本/RAM/配额/阈值/权重）的总额与跨子系统分配，登记在 §5 的 PARAM 注册表，格式 `P-NN 名称=值 [状态]`（例：`P-82 候选路由歧义差阈值=0.15 [provisional@2026-08-13]`）。其余章节一律以 `[P-NN]` 引用，禁止裸数值；子系统章节只做内部拆解，并标注"本表之和 ≤ [§5.x] 分配值"。
 2. **安全单家**：安全规则与语义全归 §10，他章至多一行 `→ §10.x`；§10 内的量化限制同样登记为 §5 `[P-NN]` 后引用。
 3. **搜索单家**：搜索管道规格全归 §6。§13 只写代码路径+一行职责，不抄公式/数值/签名（签名住在代码 TSDoc，无副本即无漂移）。§4.2 与 §6 以唯一接口契约为边界：`answer(query) → { answer, confidence, evidence[], gate_triggered }`；§4.2 定义四字段的用户可见行为，§6 定义四字段如何算出。接口契约的"出现" = 锚点串精确文本匹配（忽略首尾空白）；"见 §6.3"、自然语言描述、代码围栏内的注释均不计入；该锚点串在 §4.2 与 §6 合计恰好 1 次。
 4. **Datasheet 单家**：本地权威源解析全归 §7；§6 以接口引用"本地权威源"，不内嵌解析规则。
@@ -515,23 +515,23 @@ Agent 尝试解决问题
 
 | ID | 名称 | 值 | type | 状态 | constraint |
 |----|------|-----|------|------|------------|
-| P-01 | 置信门控阈值 | 0.6 | numeric | provisional@2026-08-12 | |
+| P-01 | 置信门控阈值 | ~~0.6~~ | numeric | 已废弃（并入[P-17]） | |
 | P-02 | Stage 3 搜索执行预算 | 5s | numeric | 定稿 | P-03 <= P-02; P-35 <= P-02 |
 | P-03 | AnySearch 超时 | 5s | numeric | 定稿 | P-03 <= P-02 |
 | P-04 | Stage 2 意图分类预算 | 1750ms | numeric | 定稿 | |
 | P-05 | Stage 4 结果处理预算 | 1s | numeric | 定稿 | |
-| P-06 | Stage 5 秘书合成预算 | 8s | numeric | provisional@2026-08-12 | |
+| P-06 | Stage 5 秘书合成预算 | 12s | numeric | 定稿 | |
 | P-07 | v0.1 基准query验收 | 10条中≥8条相关性≥2分且无0分硬答 | conditional | 定稿 | |
 | P-08 | v0.2b L2记忆蒸馏验收 | TODO | placeholder | 草稿 | |
 | P-09 | v1.0 全量验收标准 | TODO | placeholder | 草稿 | |
 | P-10 | v1.0 全量验收（替P-09） | TODO | placeholder | 草稿 | |
 | P-11 | 回灌动参阈值 | 10条 | numeric | 定稿 | |
 | P-12 | v0.2a 31条通过率阈值 | 80% | numeric | 定稿 | |
-| P-13 | 深度报告增量预算（生成+证据组装，不含内部搜索调用） | 15s | numeric | provisional@2026-08-12 | P-15+P-13 <= P-14 |
+| P-13 | 深度报告增量预算（生成+证据组装，不含内部搜索调用） | 13s | numeric | provisional@2026-08-12 | P-15+P-13 <= P-14 |
 | P-14 | 用户感知总延迟(搜索+深报告) | 27s | numeric | 定稿 | |
-| P-15 | 搜索管道总预算 | 12s | numeric | provisional@2026-08-12 | P-15+P-13 <= P-14 |
-| P-16 | 综合分丢弃阈值 | 0.4 | numeric | provisional@2026-08-12 | |
-| P-17 | 低置信标注阈值 | 0.6 | numeric | provisional@2026-08-12 | P-17 >= P-16 |
+| P-15 | 搜索管道总预算 | 14s | numeric | 定稿 | P-15+P-13 <= P-14 |
+| P-16 | 综合分丢弃阈值 | 0.4 | numeric | 定稿 | |
+| P-17 | 低置信标注阈值 | 0.6 | numeric | 定稿 | P-17 >= P-16 |
 | P-18 | 官方源乘数 | 1.2 | numeric | 定稿 | |
 | P-19 | 用户👎降权步长 | 0.1 | numeric | 定稿 | |
 | P-20 | Stage 1 预处理预算 | 300ms | numeric | 定稿 | |
@@ -577,7 +577,7 @@ Agent 尝试解决问题
 | P-60 | 最低硬件RAM | 512MB | numeric | 定稿 | |
 | P-61 | factual缓存TTL | 7天 | numeric | 定稿 | |
 | P-62 | experience缓存TTL | 30天 | numeric | 定稿 | |
-| P-63 | Bocha日配额 | 不设硬限（余额自管理） | conditional | provisional@2026-08-13 | |
+| P-63 | Bocha日配额 | 不设硬限（余额自管理） | conditional | 定稿 | |
 | P-64 | Tavily月配额 | 1000次/月 | numeric | 定稿 | |
 | P-65 | AnySearch日配额 | 1000次/天 | numeric | 定稿 | |
 | P-66 | 月度软告警阈值 | 80% | numeric | 定稿 | |
@@ -594,8 +594,8 @@ Agent 尝试解决问题
 | P-77 | Tavily超额单价 | 0.058元/次 | numeric | 定稿 | |
 | P-78 | 单任务降级弹提示阈值 | 2次 | numeric | 定稿 | |
 | P-79 | Skill👎降权触发阈值 | 3次 | numeric | 定稿 | |
-| P-80 | 路由高置信阈值 | 0.75 | numeric | provisional@2026-08-13 | |
-| P-81 | 路由低置信阈值 | 0.45 | numeric | provisional@2026-08-13 | P-81 <= P-80 |
+| P-80 | 路由高置信阈值 | 0.75 | numeric | 定稿 | |
+| P-81 | 路由低置信阈值 | 0.45 | numeric | 定稿 | P-81 <= P-80 |
 | P-82 | 候选路由歧义差阈值 | 0.15 | numeric | provisional@2026-08-13 | |
 | P-83 | 路由特征提取 LLM 超时 | 1500ms | numeric | provisional@2026-08-13 | |
 | P-84 | 路由 fallback 置信度折扣 | 0.9 | numeric | provisional@2026-08-13 | |
@@ -2561,6 +2561,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-22（度量型问答并入 qa 提取词 E194）<br>- **变更**：路由参数校准（`route:calibrate` 阈值建议 0.45/0.75 与 P-80/P-81 一致，无规则候选）发现度量型问句缺口——`X 是多少/多少钱/什么价位/多大/几位` 不在 `QA_RE`，`extractIntentFeatureRuleBased` 判 `unknown` 走 R012 confirm，「开发板多少钱」甚至因含「开发」被 create 抢走 option_clarify；本轮 `intent-feature.ts` 拆分 GENERIC_QA_RE 与 METRIC_QA_RE（是多少/多少钱/什么价位/价位多少/价格多少/价格是多少/什么价格/多大/几位/有多少/剩多少）合成 QA_RE，analyze 守卫按「通用疑问词优先 qa + 度量词仅在无业务评估词（值不值/成本/收益）时让给 qa」收敛，业务评估与安全审查路由不回退。<br>- **证据**：bench:B-20260822-06 确定性对照——9 条目标度量 query 全部 `qa + direct + web_search`（含 create 误抢修复）；样本库 37/37 度量型记录直答；全量 742 条决策差分无新增回退；router-v2 单测 72/72（新增 3 条用例）；build + test:all 全绿。<br>- **状态**：代码 + 测试 + 证据落地完成，无 §5 参数值变更（P-80/P-81 校准结论一致，保持 provisional@2026-08-13）。<br>- affects: §6.1 | bench:B-20260822-06 | E57/E70-E72 交叉引用
 ### 2026-08-22（Tavily 触发冒烟 + 配额监控 E195）<br>- **变更**：Tavily 已接入并启用（§6.2.1 条件并联 + E72 官方域兜底），但 `search:smoke` 只覆盖 Bocha+AnySearch；本轮新增 `npm run tavily:smoke`（key 配置检查 + `shouldTriggerTavily` 触发判定样例 + `runSearchStage` 真实链路冒烟 + 月度配额报告 [P-64]），`src/search/quota.ts` 新增只读 `readMonthlyQuota()` 快照并把 `TAVILY_MONTHLY_LIMIT` 常量单源化（删除 s3_search/search-loop 本地硬编码）；`tavily.ts` 将 HTTP 432（Tavily 计划用量超限）映射为明确 error + `notice`（复用 E192 告警透出模式，CLI/gateway 可见）。<br>- **证据**：bench:B-20260822-07 真实调用——key 有效（58 字符）、触发判定 5 例正确 + 严肃禁区熔断 1 例、真实链路 HTTP 432（远端计划额度耗尽，本地已用 634/1000），冒烟脚本与配额报告链路可用；quota 单测 6/6（readMonthlyQuota 缺失/当月/跨月/损坏）+ tavily 3/3（含 432 notice）；build + test:all 全绿、doc-lint 0 FAIL 0 WARN。<br>- **状态**：冒烟/监控工具落地；[P-64]=1000 本地计数与远端 432 矛盾，owner 已决策：等下月重置（已核实 Tavily 用量耗尽）；9 月重置后跑 `npm run tavily:smoke` 复核并评估 [P-64] 口径复算。<br>- affects: §6.2.1 | bench:B-20260822-07 | E192/E72 交叉引用
 ### 2026-08-22（provisional 复验数据包 E196）<br>- **变更**：只读评估全部 provisional 参数复验门——[P-16]/[P-17]（E8/E10 引擎级人工分校准 n=93：0.6 正例保留 67/75、负例拦截 5-6/18）PASS 候选、样本时效待 owner 确认；[P-80]/[P-81]（route:calibrate 742 决策/26 反馈，suggested 0.45/0.75 与现值一致，reject n=7<15）校准一致待 owner；[P-63]（E5 政策稳定 9 天）待 owner 转定稿；[P-105]~[P-107]（bench:B-20260816-04 n=5）与 [P-82]~[P-94]（迁移确认类）样本不足维持 provisional；[P-01] 语义与 [P-17] 重叠（代码无独立落地）待 owner 决策；[P-06]/[P-15] 实测超预算（Stage5>8s 30.9%、总>12s 27.3%，trajectory 8-14~8-22 窗口）需 owner 三选一（上调预算/优化二次取证/代码强制）；[P-13] 深度报告未落地无实测维持。<br>- **证据**：bench:B-20260822-08（trajectory 只读统计 + route:calibrate 重跑 + bench:B-20260816-04 复核），详见 docs/plans/2026-08-22-provisional-review.md。<br>- **状态**：数据包已产出，晋升待 owner 签认（复验门⑤）；本条目不改变任何参数值/状态。<br>- affects: §5 | bench:B-20260822-08 | E8/E10/E37/E194/E5 交叉引用
+### 2026-08-22（provisional 晋升批 E197）<br>- **变更**：owner 签认 E196 数据包并逐项决策——①[P-16]/[P-17] 综合分丢弃/低置信标注阈值转 定稿（E8/E10 引擎级人工分校准 n=93：0.6 正例保留 67/75、负例拦截 5-6/18；owner 确认 E80/E81/E94 后融合调整改善性、无误丢弃体感）；②[P-80]/[P-81] 路由置信阈值转 定稿（route:calibrate 742 决策无偏移、校准与现值一致；后续 reject≥15 且建议偏移时重开）；③[P-63] Bocha 日配额不设硬限政策转 定稿（E5 稳定 9 天 + 余额预警已落地 + 无事故）；④[P-01] 置信门控阈值 tombstone 并入 [P-17]（代码无独立落地、语义重叠，§0.2 示例同步改引 [P-82]）；⑤[P-06] Stage 5 秘书合成预算 8s→12s、[P-15] 搜索管道总预算 12s→14s 转 定稿（owner 选上调预算方案；实测 [P-06]12s 下 Stage5 段超时 13.7%、[P-15]14s 下总耗时超 19.7%，无强制降级、走现有各 Stage 超时兜底，二次取证频率增长后再评估剥离为可选路径）；⑥约束卡线连带 [P-13] 深度报告增量预算 15s→13s（P-15+P-13=27≤P-14 成立），[P-13] 保持 provisional 待深度报告实现后复测；⑦[P-82]~[P-94]/[P-105]~[P-107] 维持 provisional，等 4 周标红时再处理。<br>- **证据**：bench:B-20260822-08（trajectory 实测 + route:calibrate）+ bench:B-20260813-02（E8/E10 校准）+ bench:B-20260822-06（E194 差分）。<br>- **状态**：9 项参数状态/值更新完成（P-01 已废弃并入[P-17]、P-06/P-15/P-16/P-17/P-63/P-80/P-81 定稿、P-13 值连带调整）；无代码值变更（fusion.ts 0.4/0.6、params.ts 0.75/0.45、quota.ts 已符合）。<br>- affects: §5 | bench:B-20260822-08 | E196/E8/E10/E194/E5 交叉引用
 
 
 
