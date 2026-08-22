@@ -1693,8 +1693,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 
 <details><summary>测量与定稿门（E2）</summary>
 
-测量：每条请求写 bench/search-metrics.jsonl，字段含 bocha_ms / anysearch_ms / timeout / degraded / cacheEngines。
-复验门：WP11 冷调用 n≥30 次后，AnySearch@5s 超时率 >30% 或 Bocha 超时率 >10% → 重开决策（届时才有资格谈 P-02 provisional 或引擎优先级）；未触发则维持现状并推进定稿评估。
+测量：每条请求写 bench/search-metrics.jsonl，字段含 bocha_ms / anysearch_ms / timeout / degraded / cacheEngines。复验门：WP11 冷调用 n≥30 次后，AnySearch@5s 超时率 >30% 或 Bocha 超时率 >10% → 重开决策（届时才有资格谈 P-02 provisional 或引擎优先级）；未触发则维持现状并推进定稿评估。
 E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 
 </details>
@@ -2562,6 +2561,8 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-22（左上角垂直标签+斜跨/嵌套多层表头 E184）<br>- **变更**：`scripts/office_image_ocr.py` `detect_merges` 新增相位 B0——第 1 行锚点的垂直组标签向下扩展（左上角标签，如“产品 A1:A3”）：锚点在行 0、直接下方同列为空时扩展到同列连续空格底部，四道守卫防误并（同列下方有内容、扩展区行存在非数字子标签、锚点文本不在表内其它格重复出现（透字残影）、锚点列右侧有内容）；相位 C 统计空隙模式时排除被垂直合并覆盖的列（左上角标签不再破坏行 0 组头检测），并对“锚点全为非数字且空隙全为单格”的嵌套多层表头行放行逐空隙并入最近锚点（如“上半年 | 空 | 下半年 | 空 | 上半年 | 下半年”）。**验证**：主项目 build；单测 538/538 通过 + 1 条 fitz 门控用例按环境跳过 + 集成 17/17 全绿；新增 1 条真跑 3 变体（左上角标签 A1:A2+B1:C1+D1:E1、斜跨阶梯 A1:A3+B1:C1+D1:E1、嵌套 4 层 A1:A3+B1:E1+F1:G1+B2:C2+D2:E2，xlsx 读回 `model.merges` 断言）；既有 10 张回归图 + E181/E183 用例 merges 输出不变；doc-lint 通过；详见 `docs/plans/2026-08-22-real-scan-header-closeout.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格左上角垂直标签与嵌套多层表头还原增强，无 §5/§6 参数变更。
 
 ### 2026-08-22（跨页大表拼接 E185）<br>- **变更**：`scripts/office_image_ocr.py` `--table` 新增多页 PDF 输入（fitz dpi=200 逐页渲染），新增 `process_table_array` 单页管道与 `stitch_table_pages` 跨页拼接——逐后续页求与首页的最长公共表头前缀（非空格文本匹配率 ≥70%），重复表头自动去重、正文行顺序追加，merges/cells/spans 按全局行号重排（复用逐页 TSR bbox/span，不重跑整图识别）；列数不一致按首页列数补齐/截断并告警 `page_col_mismatch`，表头无法匹配时整页追加并告警 `page_header_mismatch`（诚实降级不丢数据）；输出 JSON 新增 `pages`/`page_stitched`/`page_headers`。`office-daily` `table_ocr` 文件查找放宽为图片或 PDF，答案文案多页时前缀“N 页拼接”。`suppress_faint_ink` 模糊半径按图像尺寸自适应（min 边 ≤1000px 保持 5px，大图按 min/100 放大），修复 200dpi 渲染页细网格线被打成碎片导致的伪列。**验证**：主项目 build；新增 1 条真跑（合成 2 页表 PDF → xlsx 6 行 × 5 列、merges 仅首页表头 `A1:A2`+`B1:C1`+`D1:E1`、锚点格与第 2 页正文落位断言、答案含“2 页拼接”与“已还原 3 处”）；既有 t1/t3（E184）与 420×430 小图（E181）单图回归 merges 完全一致，零回归；单测 + 集成全量见交接文档；doc-lint 通过；详见 `docs/plans/2026-08-22-multipage-table-stitch.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格识别新增多页 PDF 跨页拼接（重复表头去重、分页切片对齐），复用逐页 TSR bbox/span，无 §5/§6 参数变更。
+
+### 2026-08-22（跨页拼接鲁棒性 E186）<br>- **变更**：`scripts/office_image_ocr.py` 表头去重新增 **span 级结构证据**——`_row_similar` 在文本匹配（≥70%）之外，非空格列位置模式相同且至少一个非空格格文本一致时也判同（OCR 噪声/透字粘连导致表头文本变化但列结构不变的重复表头仍可去重；文本锚点守卫防稀疏正文行误判）；`detect_table_lines` 新增 `_merge_near_edges`（相距 ≤5px 的网格线候选边合并为一条，修复 200dpi 渲染页细线被透字抑制打成碎片产生的幻影空行/列）；阶段 C 空区间合并补整行空格守卫（`start==0` 且 `end==cols-1` 跳过，防 `anchor_c` 越界崩溃）。`office-daily` `TableMergeWarning` 类型补 `page_header_mismatch`/`page_col_mismatch`，`tableWarningsNote` 分页对齐告警单独成句。**验证**：主项目 build；新增 1 条真跑 2 变体——A）第 2 页表头噪声（2024→2O24）+ 旋转 1.2° + 透字 → 结构证据去重，xlsx 6 行 × 5 列、merges 仅首页表头、零 warning、答案含“2 页拼接”；B）第 2 页无表头仅正文 → 诚实降级（整页追加 + 分页对齐告警，不崩溃）；DPI 150/200/250/300 复核维持 200；单图 t1/t3（E184）与 420×430 小图（E181）回归 merges 完全一致，零回归；单测 + 集成全量见交接文档；doc-lint 通过；详见 `docs/plans/2026-08-22-crosspage-stitch-robustness.md`；affects: §6,§13 | bench:na(new-param) 理由：生活助手图片表格识别跨页拼接表头去重加结构证据与网格线伪边合并，无 §5/§6 参数变更。
 
 
 

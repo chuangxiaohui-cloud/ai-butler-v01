@@ -2267,6 +2267,119 @@ print(base64.b64encode(buf.getvalue()).decode())`,
   }
 });
 
+test('office-daily: 图片表格识别跨页 PDF 拼接鲁棒性（噪声表头+旋转+透字，E186）', { skip: !HAS_LOCAL_RAPIDOCR || !HAS_PATH_FITZ }, async () => {
+  const dir = tempDir();
+  try {
+    // 合成 2 页表 PDF：A）第 2 页表头文本带噪声（2024→2O24，列结构不变）+ 旋转 1.2° + 头部透字残影；
+    // B）第 2 页无表头仅正文（应诚实降级：整页追加 + page_header_mismatch 告警，不崩溃）。
+    const b64 = execFileSync(
+      'python',
+      [
+        '-c',
+        `import base64, io, json, os
+from PIL import Image, ImageDraw, ImageFont
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 26)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+
+def tab(xs, ys, cells):
+    img = Image.new('RGB', (xs[-1] + 40, ys[-1] + 40), 'white')
+    d = ImageDraw.Draw(img)
+    for x in xs:
+        d.line([(x, ys[0]), (x, ys[-1])], fill=(0, 0, 0), width=2)
+    for y in ys:
+        d.line([(xs[0], y), (xs[-1], y)], fill=(0, 0, 0), width=2)
+    for (r, c), t in cells.items():
+        d.text((xs[c] + 18, ys[r] + 32), t, fill=(0, 0, 0), font=font)
+    return img
+
+def noisy(pg):
+    pg = pg.rotate(1.2, expand=True, fillcolor=(255, 255, 255))
+    d = ImageDraw.Draw(pg, 'RGBA')
+    for t, (x, y) in [('上海', (60, 30)), ('北京', (250, 55))]:
+        d.text((x, y), t, fill=(120, 120, 120, 160), font=ImageFont.truetype(font.path if hasattr(font, 'path') else r'C:\\Windows\\Fonts\\msyh.ttc', 18))
+    return pg
+
+X5 = (40, 190, 340, 490, 640, 790)
+Y4 = (40, 150, 260, 370, 480)
+Y3 = (40, 150, 260)
+header = {(0, 0): '产品', (0, 1): '2024', (0, 3): '2025', (1, 1): '上半年', (1, 2): '下半年', (1, 3): '上半年', (1, 4): '下半年'}
+header_noise = {(0, 0): '产品', (0, 1): '2O24', (0, 3): '2025', (1, 1): '上半年', (1, 2): '下半年', (1, 3): '上半年', (1, 4): '下半年'}
+p1 = tab(X5, Y4, {**header, (2, 0): '手机', (2, 1): '100', (2, 2): '200', (2, 3): '300', (2, 4): '400', (3, 0): '平板', (3, 1): '110', (3, 2): '210', (3, 3): '310', (3, 4): '410'})
+pa = tab(X5, Y4, {**header_noise, (2, 0): '笔记本', (2, 1): '120', (2, 2): '220', (2, 3): '320', (2, 4): '420', (3, 0): '台式', (3, 1): '130', (3, 2): '230', (3, 3): '330', (3, 4): '430'})
+pa = noisy(pa)
+pb = tab(X5, Y3, {(0, 0): '笔记本', (0, 1): '120', (0, 2): '220', (0, 3): '320', (0, 4): '420', (1, 0): '台式', (1, 1): '130', (1, 2): '230', (1, 3): '330', (1, 4): '430'})
+out = {}
+for key, pg in [('noisy', pa), ('noheader', pb)]:
+    buf = io.BytesIO()
+    p1.save(buf, 'PDF', save_all=True, append_images=[pg])
+    out[key] = base64.b64encode(buf.getvalue()).decode()
+print(json.dumps(out))`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const pdfs = JSON.parse(b64) as Record<string, string>;
+    const skill = createOfficeDailySkill({ outDir: dir });
+
+    // 变体 A：噪声表头 + 旋转 + 透字 → 结构证据仍去重表头
+    const pdfA = Buffer.from(pdfs.noisy, 'base64');
+    const outA = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'document', mimeType: 'application/pdf', sizeBytes: pdfA.length, fileName: 'scan.pdf' }],
+        rawFiles: [fakeFile('scan.pdf', 'application/pdf', pdfA)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const resA = outA.result as { answer?: string; path?: string; warnings?: Array<{ type?: string }> };
+    assert.ok(existsSync(resA.path as string), 'A xlsx 落盘');
+    assert.ok(resA.answer?.includes('2 页拼接'), resA.answer);
+    assert.ok(resA.answer?.includes('6 行 × 5 列'), resA.answer);
+    assert.ok(resA.answer?.includes('已还原 3 处合并单元格'), resA.answer);
+    const wbA = new ExcelJS.Workbook();
+    await wbA.xlsx.readFile(resA.path as string);
+    const wsA = wbA.getWorksheet(1);
+    assert.ok(wsA, 'A xlsx 读取成功');
+    assert.deepEqual([...wsA.model.merges].sort(), ['A1:A2', 'B1:C1', 'D1:E1'].sort(), JSON.stringify(wsA.model.merges));
+    assert.equal(wsA.getCell('A1').value, '产品', 'A 锚点格');
+    assert.equal(wsA.getCell('A5').value, '笔记本', 'A 第 2 页正文首行');
+    const warningsA = Array.isArray(resA.warnings) ? resA.warnings : [];
+    assert.equal(warningsA.length, 0, `A 不应有 warning: ${JSON.stringify(warningsA)}`);
+
+    // 变体 B：第 2 页无表头 → 诚实降级（整页追加 + page_header_mismatch 告警，不崩溃不丢数据）
+    const pdfB = Buffer.from(pdfs.noheader, 'base64');
+    const outB = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'document', mimeType: 'application/pdf', sizeBytes: pdfB.length, fileName: 'scan2.pdf' }],
+        rawFiles: [fakeFile('scan2.pdf', 'application/pdf', pdfB)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const resB = outB.result as { answer?: string; path?: string; warnings?: Array<{ type?: string }> };
+    assert.ok(existsSync(resB.path as string), 'B xlsx 落盘');
+    assert.ok(resB.answer?.includes('分页对齐问题'), resB.answer);
+    const wbB = new ExcelJS.Workbook();
+    await wbB.xlsx.readFile(resB.path as string);
+    const wsB = wbB.getWorksheet(1);
+    assert.ok(wsB, 'B xlsx 读取成功');
+    assert.equal(wsB.getCell('A5').value, '笔记本', 'B 第 2 页正文首行保留');
+    const warningsB = Array.isArray(resB.warnings) ? resB.warnings : [];
+    assert.ok(warningsB.some((w) => w.type === 'page_header_mismatch'), `B 应有 page_header_mismatch: ${JSON.stringify(warningsB)}`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 function startFakeSmtpServer(): Promise<{
   port: number;
   transcript: string[];

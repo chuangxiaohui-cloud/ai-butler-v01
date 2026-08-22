@@ -416,9 +416,9 @@ export function accentFromQuery(query: string): string | undefined {
   return undefined;
 }
 
-/** E172：疑似合并区域 warning，TSR 输出格式；Agent 侧如实告知用户。 */
+/** E172/E186：疑似合并区域 / 分页对齐 warning，TSR 输出格式；Agent 侧如实告知用户。 */
 export interface TableMergeWarning {
-  type: 'merged_col' | 'merged_row' | 'merged_conflict';
+  type: 'merged_col' | 'merged_row' | 'merged_conflict' | 'page_header_mismatch' | 'page_col_mismatch';
   row: number;
   col: number;
   detail?: string;
@@ -433,10 +433,14 @@ export interface TableMerge {
   text: string;
 }
 
-/** E172：把 TSR warnings 转成答案提示文案；无警告返回空串。 */
+/** E172/E186：把 TSR warnings 转成答案提示文案；无警告返回空串。分页对齐告警单独成句。 */
 export function tableWarningsNote(warnings: TableMergeWarning[]): string {
   if (warnings.length === 0) return '';
   const first = warnings[0];
+  if (first.type === 'page_header_mismatch' || first.type === 'page_col_mismatch') {
+    const kind = first.type === 'page_header_mismatch' ? '分页表头不一致' : '分页列数不一致';
+    return `；提示：检测到 ${warnings.length} 处分页对齐问题（如${first.detail ?? kind}），已按普通文本逐格填充，请在 Excel 中核对后手动调整`;
+  }
   const kind =
     first.type === 'merged_conflict'
       ? '覆盖区有内容'

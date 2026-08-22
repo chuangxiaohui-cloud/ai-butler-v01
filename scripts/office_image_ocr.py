@@ -185,6 +185,22 @@ def reconstruct_table(items: list[dict]):
 
 
 
+def _merge_near_edges(edges: list[int]) -> list[float]:
+    """E186：合并相距 ≤5px 的网格线候选边（同一条线被打碎的两段）。"""
+    if not edges:
+        return []
+    merged: list[float] = []
+    cluster = [edges[0]]
+    for e in edges[1:]:
+        if e - cluster[-1] <= 5:
+            cluster.append(e)
+        else:
+            merged.append(sum(cluster) / len(cluster))
+            cluster = [e]
+    merged.append(sum(cluster) / len(cluster))
+    return merged
+
+
 def detect_table_lines(arr):
     """E174：检测表格网格线 → ([x_edges...], [y_edges...])；无网格返回 None。
 
@@ -232,7 +248,9 @@ def detect_table_lines(arr):
     xs = scan(dark.T, h)
     if len(ys) < 2 or len(xs) < 2:
         return None
-    return xs, ys
+    # E186：200dpi 渲染页细线被透字抑制打成碎片时，同一条线会裂成相距几像素的两条伪边
+    #（如 1362/1365），产生幻影空行/列；相邻边 ≤5px 视为同一条线合并（真实表列宽 ≥15px）。
+    return _merge_near_edges(xs), _merge_near_edges(ys)
 
 
 def reconstruct_grid(items, x_edges, y_edges):
@@ -639,6 +657,8 @@ def detect_merges(
                 if not below_filled:
                     continue
                 if start == 0:
+                    if end == cols - 1:
+                        continue  # E186：整行空格（矮表/分隔空行）无可并锚点，跳过防越界
                     # 左边缘空区间：下方有数据时并入右侧锚点（表头延伸到左表边）
                     anchor_c, c0, c1 = end + 1, start, end + 1
                 elif end == cols - 1:
@@ -880,11 +900,15 @@ def render_pdf_pages(src: str):
 
 
 def _row_similar(a: list, b: list) -> bool:
-    """E185：两行表头文本相似度——非空格文本匹配率 ≥ 70% 视为同表头。"""
+    """E185/E186：两行表头相似度——文本匹配率 ≥70%，或 span 级结构证据。
+
+    结构证据：非空格列位置模式相同（哪些列有内容，源自 TSR span 的行列归属）且至少一个
+    非空格格文本一致——OCR 噪声/透字粘连导致表头文本变化但列结构不变的重复表头仍可识别；
+    要求至少一个文本锚点，避免稀疏正文行（如“小计|空|空|空|空”）误判为表头。"""
+    norm_a = [(x or "").strip() for x in a]
+    norm_b = [(x or "").strip() for x in b]
     n = eq = 0
-    for x, y in zip(a, b):
-        x = (x or "").strip()
-        y = (y or "").strip()
+    for x, y in zip(norm_a, norm_b):
         if not x and not y:
             continue
         n += 1
@@ -892,7 +916,11 @@ def _row_similar(a: list, b: list) -> bool:
             eq += 1
     if n == 0:
         return True
-    return eq / n >= 0.7
+    if eq / n >= 0.7:
+        return True
+    pat_a = [bool(x) for x in norm_a]
+    pat_b = [bool(x) for x in norm_b]
+    return pat_a == pat_b and eq >= 1
 
 
 def _common_header_rows(grid_a: list, grid_b: list) -> int:
