@@ -66,6 +66,7 @@ function isCacheHit(m: SearchRequestMetric): boolean {
 interface EngineStats {
   n: number;
   fail: number;
+  timeout5s: number;
   latencies: number[];
 }
 
@@ -77,7 +78,7 @@ function engineStats(
   const msKey = kind === 'bocha' ? 'bocha_ms' : 'anysearch_ms';
   const okKey = kind === 'bocha' ? 'bocha_ok' : 'anysearch_ok';
   const otherOkKey = kind === 'bocha' ? 'anysearch_ok' : 'bocha_ok';
-  const stats: EngineStats = { n: 0, fail: 0, latencies: [] };
+  const stats: EngineStats = { n: 0, fail: 0, timeout5s: 0, latencies: [] };
   for (const m of recent) {
     if (isCacheHit(m)) continue;
     const inferredSkip =
@@ -92,6 +93,8 @@ function engineStats(
     stats.n += 1;
     if (m[msKey] !== null) stats.latencies.push(m[msKey]);
     if (!m[okKey]) stats.fail += 1;
+    // 保守归因：请求级 timeout 标志且该引擎未 ok → 计入真实 5s 超时占比（上限口径）
+    if (m.timeout && !m[okKey]) stats.timeout5s += 1;
   }
   return stats;
 }
@@ -136,20 +139,35 @@ function main(): void {
   const bochaRate = bocha.n > 0 ? bocha.fail / bocha.n : 0;
   const anyRate = anysearch.n > 0 ? anysearch.fail / anysearch.n : 0;
 
+  const bochaTimeoutRate = bocha.n > 0 ? bocha.timeout5s / bocha.n : 0;
+  const anyTimeoutRate = anysearch.n > 0 ? anysearch.timeout5s / anysearch.n : 0;
+  const nonCache = recentSearch.filter((m) => !isCacheHit(m));
+  const bothOk = nonCache.filter((m) => m.bocha_ok && m.anysearch_ok).length;
+  const bothRate = nonCache.length > 0 ? bothOk / nonCache.length : 0;
+
   console.log(`\nE2 finalization (P-02): window>=${from}`);
   console.log(
-    `  bocha: n=${bocha.n} fail=${bocha.fail} timeoutRate=${(bochaRate * 100).toFixed(1)}% p95=${bochaP95}ms max=${bochaMax}ms`,
+    `  bocha: n=${bocha.n} fail=${bocha.fail} failRate=${(bochaRate * 100).toFixed(1)}% timeout5sRate=${(bochaTimeoutRate * 100).toFixed(1)}% p95=${bochaP95}ms max=${bochaMax}ms`,
   );
   console.log(
-    `  anysearch: n=${anysearch.n} fail=${anysearch.fail} timeoutRate=${(anyRate * 100).toFixed(1)}% p95=${anyP95}ms max=${anyMax}ms`,
+    `  anysearch: n=${anysearch.n} fail=${anysearch.fail} failRate=${(anyRate * 100).toFixed(1)}% timeout5sRate=${(anyTimeoutRate * 100).toFixed(1)}% p95=${anyP95}ms max=${anyMax}ms`,
   );
-  const e2Pass =
+  console.log(
+    `  双返回率（非缓存请求）: ${bothOk}/${nonCache.length} = ${(bothRate * 100).toFixed(1)}%`,
+  );
+  const e2GateTimeoutPass =
     bocha.n >= 30 &&
     anysearch.n >= 30 &&
-    bochaRate <= 0.1 &&
-    anyRate <= 0.3 &&
+    bochaTimeoutRate <= 0.1 &&
+    anyTimeoutRate <= 0.3 &&
     anyP95 <= 5000;
-  console.log(`  E2 gate: ${e2Pass ? 'PASS, P-02=5s ready for finalization review' : 'NOT PASS, keep provisional'}`);
+  const e2ReopenByBoth = bothRate < 0.7;
+  console.log(
+    `  E2 复验门（5s 超时率）: ${e2GateTimeoutPass ? 'PASS（真实超时率未超阈值）' : 'NOT PASS, keep provisional'}`,
+  );
+  console.log(
+    `  E2 对冲③（双返回率<70%）: ${e2ReopenByBoth ? `TRIGGERED（${(bothRate * 100).toFixed(1)}% < 70%），重开 [P-02] 决策` : 'NOT triggered'}`,
+  );
 }
 
 main();
