@@ -1,7 +1,7 @@
 # 进度交接 2026-08-23（v0.2b 续作）
 
 > 当前分支：`v0.2b`｜E199-E205 + SEV-1.1~1.4 安全批已提交（E199-E201 `ba41dbb`、E202 `8857b47`、
-> E203 `7cb6f3c`、SEV `24399d6`、E204 `4b7e34e`）；本批次 E205（表格 OCR 网格补位）待提交。
+> E203 `7cb6f3c`、SEV `24399d6`、E204 `4b7e34e`、E205 `a05e9fc`）。
 > 上一份交接见 `docs/2026-08-22-progress-handoff.md`。
 
 ## 今日已收口
@@ -41,13 +41,7 @@
 
 ## 待提交（本批次）
 
-- 需求文档 §12.6 + 附录 A E202 + 计划文档决策表 + 本交接文档（同一主题：OCR 方向决策收口）。
-- 需求文档附录 A E203 + 计划文档 E203 结果段 + 本交接文档 + `bench/B-20260823-01-table-ocr-direction1-dict.md`
-  + `scripts/ocr-dict.example.json`（同一主题：方向 1 实测归档 + E201 词典扩展）。
-- 本批次：需求文档附录 A E204 + §8.3 手动入口 + `src/slash/slash-commands.ts`（+测试）+
-  `src/gateway/app.ts`/`app.test.ts` + `src/main.ts` + 计划/交接/目录文档（同一主题：斜杠命令层）。
-- 本批次：需求文档附录 A E205 + `scripts/office_image_ocr.py` 网格补位 + `scripts/table_ocr_bench.py`
-  + `bench/B-20260823-02-table-ocr-grid-fill.md` + 计划/交接文档（同一主题：OCR 残差收口）。
+本批次已全部提交（E202 `8857b47`、E203 `7cb6f3c`、E204 `4b7e34e`、E205 `a05e9fc`）。
 - `bench/search-metrics.jsonl` 与根目录临时文件**不在任何批次**，勿混入提交。
 
 ## 明日继续（按优先级）
