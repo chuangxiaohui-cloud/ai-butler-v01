@@ -1,7 +1,7 @@
 # 进度交接 2026-08-23（v0.2b 续作）
 
-> 当前分支：`v0.2b`｜E199-E205 + SEV-1.1~1.4 安全批已提交（E199-E201 `ba41dbb`、E202 `8857b47`、
-> E203 `7cb6f3c`、SEV `24399d6`、E204 `4b7e34e`、E205 `a05e9fc`）。
+> 当前分支：`v0.2b`｜E199-E206 + SEV-1.1~1.4 安全批已提交（E199-E201 `ba41dbb`、E202 `8857b47`、
+> E203 `7cb6f3c`、SEV `24399d6`、E204 `4b7e34e`、E205 `a05e9fc`、E206 `<pending>`）。
 > 上一份交接见 `docs/2026-08-22-progress-handoff.md`。
 
 ## 今日已收口
@@ -38,10 +38,18 @@
    新增 `grid_filled` warning。真值对比脚本 `scripts/table_ocr_bench.py`（编号对齐 + 续行合并）。
    bench:B-20260823-02：FR407 单位「套」补入（score 0.979）、FR407-01~-20 未误补；
    登加型确认已被 E201 词典解决；全表 +15s。
+8. **v0.2b L2 记忆蒸馏验收收口（E206）**：[P-08] 由 草稿/TODO 转 conditional 定稿，验收口径
+   对齐 §4.4 v0.2b 切片（v0.1 数据零丢失自动迁移 + 回归测试）：蒸馏链路以 E6
+   bench:B-20260813-01 为证据（137→191，无提取 7 ≈5.1%，失败不阻塞主对话）；
+   MemoryCoreStore 同接口同 schema 切换回归通过（记忆相关单测 26/26）；
+   `migrate:memorycore` 零丢失校验就绪（dry-run 读源 903 条 L0/2 会话）。
+   L2 embedding/向量检索「后置」诚实登记，不在验收内。bench:B-20260823-03。
 
 ## 待提交（本批次）
 
 本批次已全部提交（E202 `8857b47`、E203 `7cb6f3c`、E204 `4b7e34e`、E205 `a05e9fc`）。
+- 本批次：需求文档 §5 [P-08] + 附录 A E206 + `bench/B-20260823-03-l2-distill-acceptance.md`
+  + `docs/plans/2026-08-23-l2-distill-acceptance.md` + 本交接文档（同一主题：v0.2b 记忆蒸馏验收收口）。
 - `bench/search-metrics.jsonl` 与根目录临时文件**不在任何批次**，勿混入提交。
 
 ## 明日继续（按优先级）
@@ -54,7 +62,8 @@
    条件并联，`.env` 的 `TAVILY_API_KEY` 已配置）。月度配额 [P-64]=1000 落盘
    `data/tavily-monthly.json`；owner 已决策等下月重置，9 月重置后跑 `npm run tavily:smoke` 复核，
    并评估 [P-64] 口径复算（本地计数 vs 远端 credits）。
-3. **附录 A 行数预算**：新增 E204/E205 后行数见 doc-lint 输出，继续按 retention 压缩旧段腾行。
+3. **附录 A 行数预算**：新增 E205/E206 后附录 939/950，继续按 retention 压缩旧段腾行；
+   v0.2b 里程碑验收已随 E206 正式收口，下一里程碑动作为 v1.0 切片（深度报告等）。
 
 ## 常用命令
 

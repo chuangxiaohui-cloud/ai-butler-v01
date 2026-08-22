@@ -522,7 +522,7 @@ Agent 尝试解决问题
 | P-05 | Stage 4 结果处理预算 | 1s | numeric | 定稿 | |
 | P-06 | Stage 5 秘书合成预算 | 12s | numeric | 定稿 | |
 | P-07 | v0.1 基准query验收 | 10条中≥8条相关性≥2分且无0分硬答 | conditional | 定稿 | |
-| P-08 | v0.2b L2记忆蒸馏验收 | TODO | placeholder | 草稿 | |
+| P-08 | v0.2b L2记忆蒸馏验收 | v0.1 数据零丢失自动迁移通过 + MemoryCoreStore 回归测试通过（§4.4，E206） | conditional | 定稿 | |
 | P-09 | v1.0 全量验收标准 | TODO | placeholder | 草稿 | |
 | P-10 | v1.0 全量验收（替P-09） | TODO | placeholder | 草稿 | |
 | P-11 | 回灌动参阈值 | 10条 | numeric | 定稿 | |
@@ -2574,6 +2574,8 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-23（斜杠命令层 /compact + /context E204）<br>- **变更**：E193 会话上下文压缩补手动入口——新增 `src/slash/slash-commands.ts`：`parseSlashCommand` 整行匹配 `/compact`/`/context`（防正文以 `/` 开头的正常问题误判），`/context` 输出会话状态（累计轮次/逐字窗口 [P-29]/待压缩轮次/摘要字符/token 粗估 [P-109]/是否需要压缩），`/compact` 手动触发窗口外轮次压缩（复用 E193 `compact`，输出压缩前后对比）；输出与 `answer()` 稳定契约同形（`{ answer, confidence, evidence[], gate_triggered }`）；gateway `/api/ask` 命中斜杠命令不进入问答管线；CLI `main.ts` 新增 cli 会话（普通问答也写入 E193 会话上下文，`/context` 才看得到轮次）。<br>- **证据**：slash 单测 9 条 + gateway 集成 2 条（`/context` 状态、`/compact` 窗口外压缩后保留 5 轮逐字窗口）；CLI 真实冒烟：问答 1 轮后 `/context` 显示 2 轮/无待压缩、`/compact` 如实提示无需压缩；全量单测 589/590 + 集成 17/17；doc-lint 0 FAIL 0 WARN。<br>- **状态**：完成并纳入回归；CLI 会话默认 conversationId=cli（文件级共享 `data/session-context/cli.json`）。<br>- affects: §8.3 | bench:na(new-param) 理由：斜杠命令手动入口，无 §5/§6 参数变更
 
 ### 2026-08-23（表格 OCR 网格补位 + 残差收口 E205）<br>- **变更**：`scripts/office_image_ocr.py` 新增 E205 网格补位 `_grid_fill_empty_cells`——按网格线（x_edges/y_edges）裁剪「编号锚定数据行」内空的非代码列单元区域重 OCR（原尺寸优先、2x 预处理兜底），score≥0.95 且 ≤4 字符才补入；仅补「短值列」（数量/单位类，列内已检出文本全部 ≤4 字符）并排除合并覆盖单元与代码列，防把透字/水印残影当数据（同 E200 补框语义）；新增 `grid_filled` warning 透出补位数量；新增可复用真值对比脚本 `scripts/table_ocr_bench.py`（编号对齐 + 空编号续行合并 + 精确/模糊≥0.85 判定）。<br>- **证据**：bench:B-20260823-02（OCRtest.png × XLS 50 行：FR407 单位「套」score 0.979 补入（单位列 46→47 对），FR407-01~-20 真值本就为空未误补；型号 48/48 确认「登加型」已被 E201 词典解决；FR133 合并行（`叠加型 分开型`/`1 1`/`条 条`）与编号全角括号为结构/字形口径差异、单元文本正确；全表开销 +15s）；`--selftest` 13/13；全量单测 600/601 + 集成 17/17；doc-lint 0 FAIL 0 WARN。<br>- **状态**：E200 系列残差收口——方向 1 实测归档、方向 3 维持暂缓、词典（E201）+ 网格补位（E205）完成；已知限制诚实登记：长文本列整格漏检仍无法补、FR133 合并行与编号括号为口径差异。<br>- affects: §6,§13 | bench:B-20260823-02 | E200/E201 交叉引用
+
+### 2026-08-23（v0.2b L2 记忆蒸馏验收收口 E206）<br>- **变更**：[P-08] 由 草稿/TODO 转 conditional 定稿，验收口径对齐 §4.4 v0.2b 切片（v0.1 数据零丢失自动迁移 + 回归测试）——① 蒸馏链路：项目侧 distill worker（E6 偏离，DeepSeek + 本项目中文 prompt）从 L0 提取写入 ExperienceManager，失败降级保留 L0 + 下次重试，不阻塞主对话（§8.1.4 三硬约束）；② MemoryCoreStore 同接口同 schema（§8.4）切换，身份三元组校验 + HTTP 读写，回归测试覆盖；③ `migrate:memorycore` 迁移含零丢失校验（先备份、逐条写入、按 session 召回校验源条数=召回条数）。范围诚实登记：L2 embedding/向量检索为「后置」（docs/design/memory-system.md），不在 v0.2b 验收内，v1.0 再评估。<br>- **证据**：bench:B-20260823-03（E6 蒸馏链路 bench:B-20260813-01：全量 137 条 → 提取 191 条，成功 130 条，无提取 7 条 ≈5.1%；记忆相关单测 26/26；`migrate:memorycore --dry-run` 读源 903 条 L0 / 2 会话；doc-lint 0 FAIL 0 WARN）。<br>- **状态**：[P-08] 定稿；v0.2b 里程碑验收正式收口，治理缺口消除。<br>- affects: §5,§4.4 | bench:B-20260823-03 | E6 交叉引用
 
 ### v2.5（2026-08-12）
 
