@@ -53,5 +53,5 @@
 - 验证：`npm run build` 通过；记忆相关单测（memorycore-store/distill/experience/session-context/memorycore-cleaner）26/26；
   `npm run migrate:memorycore -- --dry-run` 读源 903 条 L0（2 会话）；doc-lint 0 FAIL 0 WARN。
 - 测试：记忆相关单测 26/26（本批）+ 全量见 test:all。
-- 提交：`<hash>` · 推送：待 owner 推送
+- 提交：`fe5f067` · 推送：待 owner 推送
 - 遗留事项：[P-13] 深度报告增量预算仍待深度报告实现后复测（与本次无关）；L2 embedding 后置 v1.0（已在 E206 诚实登记）。
