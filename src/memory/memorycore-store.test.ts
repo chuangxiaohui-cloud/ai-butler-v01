@@ -3,6 +3,8 @@ import { test } from 'node:test';
 
 import { MemoryCoreStore } from './memorycore-store.js';
 
+const IDENTITY = { teamId: 't-test', agentId: 'a-test', userId: 'u-test' };
+
 function fakeFetch(calls: Array<{ path: string; body: unknown }>, response: unknown) {
   return async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const path = typeof input === 'string' ? input : (input as URL).toString();
@@ -23,7 +25,7 @@ test('memorycore-store: put 调用 /v3/conversation/add 并返回 id', async () 
     total_count: 2,
   }) as typeof fetch;
   try {
-    const store = new MemoryCoreStore('http://127.0.0.1:8420');
+    const store = new MemoryCoreStore(IDENTITY, 'http://127.0.0.1:8420');
     const id = await store.put({
       session_id: 's1',
       query: 'q',
@@ -34,10 +36,20 @@ test('memorycore-store: put 调用 /v3/conversation/add 并返回 id', async () 
     });
     assert.equal(id, 'msg-abc');
     assert.equal(calls[0].path, 'http://127.0.0.1:8420/v3/conversation/add');
-    const body = calls[0].body as { messages: Array<{ role: string; content: string }>; session_id: string };
+    const body = calls[0].body as {
+      messages: Array<{ role: string; content: string }>;
+      session_id: string;
+      team_id: string;
+      agent_id: string;
+      user_id: string;
+    };
     assert.equal(body.session_id, 's1');
     assert.equal(body.messages[0].content, 'q');
     assert.equal(body.messages[1].content, 'a');
+    // SEV-1.1: 请求体必须带上调用方提供的三元组
+    assert.equal(body.team_id, 't-test');
+    assert.equal(body.agent_id, 'a-test');
+    assert.equal(body.user_id, 'u-test');
   } finally {
     globalThis.fetch = original;
   }
@@ -55,11 +67,13 @@ test('memorycore-store: recall 将 user/assistant 消息对映射回 MemoryRecor
     total: 2,
   }) as typeof fetch;
   try {
-    const store = new MemoryCoreStore('http://127.0.0.1:8420');
+    const store = new MemoryCoreStore(IDENTITY, 'http://127.0.0.1:8420');
     const records = await store.recall('s1', 5);
     assert.equal(records.length, 1);
     assert.equal(records[0].query, 'q1');
     assert.equal(records[0].answer, 'a1');
+    // SEV-1.1: 不再伪造 confidence = 1，未评分应回填为 0
+    assert.equal(records[0].confidence, 0);
     assert.equal((calls[0].body as { session_id: string }).session_id, 's1');
   } finally {
     globalThis.fetch = original;
@@ -71,10 +85,18 @@ test('memorycore-store: forget 调用删除接口', async () => {
   const original = globalThis.fetch;
   globalThis.fetch = fakeFetch(calls, { deleted_count: 1 }) as typeof fetch;
   try {
-    const store = new MemoryCoreStore('http://127.0.0.1:8420');
+    const store = new MemoryCoreStore(IDENTITY, 'http://127.0.0.1:8420');
     await store.forget('s1');
     assert.ok(calls[0].path.endsWith('/v3/conversation/delete'));
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test('memorycore-store: 缺少 identity 三元组必须抛出', () => {
+  assert.throws(() => new MemoryCoreStore(null), /缺少身份三元组/);
+  assert.throws(
+    () => new MemoryCoreStore({ teamId: 't', agentId: '', userId: 'u' }),
+    /任一字段为空/,
+  );
 });
