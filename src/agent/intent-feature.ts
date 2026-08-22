@@ -78,10 +78,17 @@ export interface IntentFeature {
 
 const ANALYZE_RE =
   /分析|评估|审查|检查|巡检|审阅|值不值|成本|收益|颜色|配色|色号|色彩|主色|取色/;
-const QA_RE =
+// E194：业务评估词命中时保留 analyze（“这个方案成本多少，值不值”仍走选项式消歧），
+// 不被问句优先守卫让给 qa。
+const ANALYZE_EVAL_RE = /值不值|成本|收益/;
+const GENERIC_QA_RE =
   /是什么|什么是|为什么|怎么|如何|怎样|怎么样|怎么办|哪些|哪种|哪几个|哪个|哪一种|推荐|选型|能不能|还能用吗|能用吗|可以用吗|是否|好不好|要不要|该不该|适合|需要注意|注意什么|需要什么|有什么|做什么|干嘛|干啥|解释|说明|回答|含义|是谁|叫什么|是啥|用途|作用|选什么|选一个|选哪|怎么选|怎么挑/;
+// E194：度量型问句并入 qa，避免“版本号是多少/主频是多少”落 unknown 走 R012 confirm，
+// 也避免“开发板多少钱”因含“开发”被 create 抢走。
+const METRIC_QA_RE =
+  /是多少|多少钱|什么价位|价位多少|价格多少|价格是多少|什么价格|多大|几位|有多少|剩多少/;
+const QA_RE = new RegExp(`${GENERIC_QA_RE.source}|${METRIC_QA_RE.source}`);
 const COLOR_RE = /颜色|配色|色号|色彩|主色|取色/;
-
 const ACTION_RE: Array<[ActionType, RegExp]> = [
   [
     'illegal_request',
@@ -194,8 +201,15 @@ export function extractIntentFeatureRuleBased(
   let actionType: ActionType = 'unknown';
   for (const [type, re] of ACTION_RE) {
     if (!re.test(q)) continue;
-    if (type === 'analyze' && QA_RE.test(q) && !COLOR_RE.test(q)) {
-      // 问句优先 qa，避免“如何评估风险”被 analyze 抢走
+    if (
+      type === 'analyze' &&
+      !COLOR_RE.test(q) &&
+      (GENERIC_QA_RE.test(q) ||
+        (METRIC_QA_RE.test(q) && !ANALYZE_EVAL_RE.test(q)))
+    ) {
+      // 问句优先 qa，避免“如何评估风险”被 analyze 抢走；
+      // 度量型问句仅在无业务评估词（值不值/成本/收益）时让给 qa，
+      // “这个方案成本多少，值不值”仍走 analyze 的选项式消歧
       continue;
     }
     actionType = type;

@@ -146,16 +146,50 @@ test('router-v2: 常识问答 → secretary/web_search 不再兜底澄清', () =
   }
 });
 
-test('router-v2: openclaw 最新版本同目标候选合并，不再重复澄清', () => {
+test('router-v2: 度量型问句（版本号）→ qa 直答且候选去重', () => {
   const r = routeV2('openclaw最新版本号是多少');
-  assert.equal(r.features.actionType, 'unknown');
-  assert.notEqual(r.decision.type, 'option_clarify');
-  assert.notEqual(r.decision.type, 'must_clarify');
-  if (r.decision.type === 'direct' || r.decision.type === 'confirm') {
+  assert.equal(r.features.actionType, 'qa');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
     assert.equal(r.decision.selected.primaryLens, 'secretary');
     assert.equal(r.decision.selected.intent, 'web_search');
     assert.equal(r.decision.selected.searchNeed, true);
   }
+  const seen = new Set(r.candidates.map((c) => c.intent));
+  assert.equal(seen.size, r.candidates.length, '同目标候选合并后无重复');
+});
+
+test('router-v2: 度量型问句全集 → qa/web_search 直答', () => {
+  const queries = [
+    'STM32F103C8T6 最大主频是多少',
+    '这个开发板多少钱',
+    '这款示波器什么价位',
+    'STM32最小系统多大面积',
+    '这颗芯片有几位ADC',
+    'TPS5430的输入电压范围是多少',
+    '北京大学今年本科线是多少',
+    '七号电池电压是多少',
+  ];
+  for (const q of queries) {
+    const r = routeV2(q);
+    assert.equal(r.features.actionType, 'qa', q);
+    assert.equal(r.decision.type, 'direct', q);
+    if (r.decision.type === 'direct') {
+      assert.equal(r.decision.selected.intent, 'web_search', q);
+    }
+  }
+});
+
+test('router-v2: 度量型问句不抢业务评估路由（E194 豁免）', () => {
+  const r = routeV2('这个方案成本多少，值不值');
+  assert.equal(r.features.actionType, 'analyze');
+  assert.ok(r.features.ambiguityFlags.includes('missing_referent'));
+  assert.equal(r.decision.type, 'option_clarify');
+  const r2 = routeV2('帮我评估这个方案的收益');
+  assert.equal(r2.features.actionType, 'analyze');
+  const r3 = routeV2('如何评估风险');
+  assert.equal(r3.features.actionType, 'qa');
+  assert.equal(r3.decision.type, 'direct');
 });
 
 test('router-v2: 蛇咬 → emergency 紧急路由', () => {
