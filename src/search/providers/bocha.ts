@@ -1,9 +1,10 @@
 /**
- * Bocha 适配器（§6.2，[P-63] 配额 + [P-03] 超时）
+ * Bocha 适配器（§6.2，[P-63] 配额 + [P-03] 超时 + §D.3 余额告警）
  * 端点与解析与 v3 基准脚本一致：POST https://api.bochaai.com/v1/web-search
  */
 
 import { loadEnvFile } from '../../config/env.js';
+import { bochaBalanceWarning, queryBochaBalance } from '../balance.js';
 import type {
   ProviderId,
   SearchOptions,
@@ -60,12 +61,21 @@ export class BochaProvider implements SearchProvider {
         signal: controller.signal,
       });
       if (!resp.ok) {
+        const httpLatencyMs = Date.now() - start;
+        // HTTP 4xx（鉴权/欠费/限流）时探测一次余额并透出面向用户的告警；探测失败静默
+        let notice: string | undefined;
+        if (resp.status >= 400 && resp.status < 500) {
+          const balance = await queryBochaBalance();
+          const warning = balance ? bochaBalanceWarning(balance) : null;
+          if (warning) notice = warning;
+        }
         return {
           provider: this.id,
           ok: false,
           results: [],
-          latencyMs: Date.now() - start,
+          latencyMs: httpLatencyMs,
           error: `HTTP ${resp.status}`,
+          notice,
         };
       }
       const data = (await resp.json()) as {

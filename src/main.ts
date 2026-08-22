@@ -10,6 +10,7 @@ import { parseDocumentFile } from './search/document-parser.js';
 import type { SkillDeps } from './skills/deps.js';
 import { TrajectoryLog } from './trajectory/trajectory-log.js';
 import { browserSession } from './browser/session.js';
+import { bochaBalanceWarning, queryBochaBalance } from './search/balance.js';
 
 const arg = process.argv[2];
 
@@ -42,7 +43,19 @@ try {
   // 技能注册失败不阻塞 CLI
 }
 
-pipeline(arg, {
+async function warnBochaBalance(): Promise<void> {
+  try {
+    const balance = await queryBochaBalance();
+    const warning = balance ? bochaBalanceWarning(balance) : null;
+    if (warning) console.warn(`\n[预警] ${warning}\n`);
+  } catch {
+    // 余额探测失败不阻塞问答
+  }
+}
+
+
+warnBochaBalance()
+  .then(() => pipeline(arg, {
   tavily: { enabled: true },
   experienceManager,
   skillLifecycle,
@@ -54,7 +67,7 @@ pipeline(arg, {
   browserSession,
 }, {
   userId: 'cli-user',
-})
+}))
   .then((result) => {
     console.log(JSON.stringify(result, null, 2));
   })

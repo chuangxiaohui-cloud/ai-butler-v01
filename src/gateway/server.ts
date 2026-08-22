@@ -19,6 +19,7 @@ import { TrajectoryLog } from '../trajectory/trajectory-log.js';
 import { createGatewayApp } from './app.js';
 import { publishArtifactEvent } from './artifact-bus.js';
 import { ReminderStore } from '../reminder/reminder-store.js';
+import { bochaBalanceWarning, describeBochaBalance, queryBochaBalance } from '../search/balance.js';
 
 const HOST = process.env.GATEWAY_HOST ?? '127.0.0.1';
 const PORT = Number(process.env.GATEWAY_PORT ?? '8787');
@@ -80,6 +81,15 @@ reminderTimer.unref();
 server.listen(PORT, HOST, () => {
   console.log(`TurnLoop gateway: http://${HOST}:${PORT}`);
   console.log('POST /api/ask | GET /api/health | GET /api/model-providers');
+  // §D.3 启动时资源包健康检查：余额告警写入日志，不阻塞启动
+  queryBochaBalance()
+    .then((balance) => {
+      if (!balance) return;
+      const warning = bochaBalanceWarning(balance);
+      if (warning) console.warn(`[预警] ${warning}`);
+      else console.log(`[资源包] ${describeBochaBalance(balance)}`);
+    })
+    .catch(() => {});
 });
 
 function shutdown(): void {

@@ -175,6 +175,7 @@ export async function runSearchLoop(
   const seenQueries = new Set<string>(rewritten.queries);
   let results: SearchResultItem[] = [];
   const attempts: SearchStageResult['attempts'] = [];
+  const notices: string[] = [];
   const aiAnswers: string[] = [];
   const subQueries: string[] = [];
   let cacheHit = false;
@@ -192,6 +193,7 @@ export async function runSearchLoop(
     results.push(...stage.results);
     attempts.push(...stage.attempts);
     aiAnswers.push(...stage.aiAnswers);
+    notices.push(...(stage.notices ?? []));
     for (const attempt of stage.attempts) {
       opts.sourceStats?.record(attempt.provider, opts.intent, attempt.ok, attempt.latencyMs);
     }
@@ -222,6 +224,7 @@ export async function runSearchLoop(
       results.push(...stage.results);
       attempts.push(...stage.attempts);
       aiAnswers.push(...stage.aiAnswers);
+      notices.push(...(stage.notices ?? []));
       for (const attempt of stage.attempts) {
         opts.sourceStats?.record(attempt.provider, opts.intent, attempt.ok, attempt.latencyMs);
       }
@@ -410,6 +413,7 @@ export async function runSearchLoop(
     degraded,
     elapsedMs: Date.now() - start,
     aiAnswers,
+    notices,
     subQueries,
   };
 }

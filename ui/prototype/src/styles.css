@@ -1588,6 +1588,76 @@ button {
   line-height: 1.6;
 }
 
+.notice-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 16px 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  background: var(--amber-soft);
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.notice-banner button {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.message-notice {
+  margin: 0 0 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--amber);
+  border-radius: 7px;
+  background: var(--amber-soft);
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.balance-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+
+.balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 12px;
+}
+
+.balance-row strong {
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.balance-alert {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--amber);
+  border-radius: 7px;
+  background: var(--amber-soft);
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.balance-foot {
+  margin-top: 12px;
+  text-align: right;
+}
+
 .table-wrap {
   overflow: auto;
   border: 1px solid var(--line);

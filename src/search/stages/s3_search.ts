@@ -40,6 +40,7 @@ export interface SearchStageResult {
   degraded: boolean;
   elapsedMs: number;
   aiAnswers: string[];
+  notices: string[];
 }
 
 export interface SearchStageOptions {
@@ -119,6 +120,7 @@ export async function runSearchStage(
       degraded: false,
       elapsedMs: Date.now() - start,
       aiAnswers: [],
+      notices: [],
     };
   }
 
@@ -130,6 +132,7 @@ export async function runSearchStage(
   };
 
   const attempts: SearchAttempt[] = [];
+  const notices: string[] = [];
   let collected: SearchProviderResult[] = [];
   const aiAnswers: string[] = [];
   const allSettled = Promise.allSettled(
@@ -163,6 +166,7 @@ export async function runSearchStage(
         });
         if (result.ok) collected.push(result);
         if (result.ok && result.answer) aiAnswers.push(result.answer);
+        if (result.notice) notices.push(result.notice);
       } catch (err) {
         heartbeat.record(provider.id, false);
         attempts.push({
@@ -218,6 +222,7 @@ export async function runSearchStage(
     degraded,
     elapsedMs: Date.now() - start,
     aiAnswers,
+    notices,
   };
 }
 

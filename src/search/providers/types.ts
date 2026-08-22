@@ -19,6 +19,8 @@ export interface SearchProviderResult {
   latencyMs: number;
   error?: string;
   answer?: string;
+  /** 面向用户的非阻塞提示（如 Bocha 余额耗尽告警，§D.3） */
+  notice?: string;
 }
 
 export interface SearchOptions {

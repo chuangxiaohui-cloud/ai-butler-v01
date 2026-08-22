@@ -240,3 +240,25 @@ test('s3: tavily 月配额用尽则跳过', async () => {
   assert.equal(r.aiAnswers.length, 0);
   clearCacheForTests();
 });
+
+test('s3: 透出 provider notice（§D.3 余额告警）', async () => {
+  const notifying: SearchProvider = {
+    id: 'bocha',
+    async search() {
+      return {
+        provider: 'bocha',
+        ok: false,
+        results: [],
+        latencyMs: 1,
+        error: 'HTTP 402',
+        notice: 'Bocha 余额已耗尽，请购买体验包',
+      };
+    },
+  };
+  const r = await runSearchStage('q', {
+    intent: 'factual',
+    providers: [notifying, okAny],
+    quota: new FakeQuota(),
+  });
+  assert.deepEqual(r.notices, ['Bocha 余额已耗尽，请购买体验包']);
+});

@@ -20,6 +20,7 @@ import type {
 } from '../search/providers/types.js';
 import type { PipelineDeps } from '../search/pipeline.js';
 import { createGatewayApp } from './app.js';
+import { resetBochaBalanceCache } from '../search/balance.js';
 
 class FakeLLM implements LLMClient {
   async complete(messages: ChatMessage[]): Promise<string> {
@@ -626,6 +627,36 @@ test('gateway: 静态 UI 目录同源托管且不回退 API', async () => {
     assert.equal(health.status, 200);
     const body = (await health.json()) as { ok?: boolean };
     assert.equal(body.ok, true);
+  } finally {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('gateway: /api/bocha/balance 返回余额与告警（§D.3）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-bocha-balance-'));
+  const cacheFile = join(dir, 'bocha-balance.json');
+  writeFileSync(
+    cacheFile,
+    JSON.stringify({ remainingYuan: 2.8, remainingCalls: 777, fetchedAt: new Date().toISOString() }),
+    'utf-8',
+  );
+  process.env.BOCHA_BALANCE_CACHE = cacheFile;
+  resetBochaBalanceCache();
+  const { server, base } = await startApp();
+  try {
+    const resp = await fetch(`${base}/api/bocha/balance`);
+    assert.equal(resp.status, 200);
+    const body = (await resp.json()) as {
+      ok?: boolean;
+      remainingYuan?: number;
+      remainingCalls?: number;
+      notice?: string | null;
+    };
+    assert.equal(body.ok, true);
+    assert.equal(body.remainingYuan, 2.8);
+    assert.equal(body.remainingCalls, 777);
+    assert.equal(body.notice, null);
   } finally {
     server.close();
     rmSync(dir, { recursive: true, force: true });

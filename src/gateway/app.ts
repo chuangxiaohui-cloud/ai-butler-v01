@@ -16,6 +16,7 @@ import { defaultRegistry } from '../search/llm-registry.js';
 import { OpenAiCompatibleClient } from '../search/llm-client.js';
 import { parseModelId } from '../search/model-id.js';
 import { pipeline, type PipelineDeps } from '../search/pipeline.js';
+import { bochaBalanceWarning, queryBochaBalance } from '../search/balance.js';
 import { listSkillMetadata } from '../skills/registry.js';
 import { writeDisabledSkills } from '../config/skills-config.js';
 import { readUsageBudget, writeUsageBudget } from '../config/usage-budget.js';
@@ -58,8 +59,70 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
   const routeCaseStore = opts.routeCaseStore ?? new RouteCaseStore();
   app.use(express.json({ limit: '25mb' }));
 
+  // SEV-1.4：网关鉴权 + /api/ask 速率限制
+  const GATEWAY_AUTH_TOKEN = process.env.GATEWAY_AUTH_TOKEN ?? '';
+  if (!GATEWAY_AUTH_TOKEN) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[gateway] GATEWAY_AUTH_TOKEN 未设置：SSE / terminal / mail 端点将以 dev 模式开放。' +
+        '生产或局域网暴露前必须设置。',
+    );
+  }
+  const requireGatewayAuth: express.RequestHandler = (req, res, next) => {
+    if (!GATEWAY_AUTH_TOKEN) return next(); // dev 模式放行
+    const auth = req.headers['authorization'];
+    const xToken = req.headers['x-session-token'];
+    const candidate =
+      typeof auth === 'string' && auth.toLowerCase().startsWith('bearer ')
+        ? auth.slice(7).trim()
+        : typeof xToken === 'string'
+          ? xToken.trim()
+          : '';
+    // 恒定时间比较，避免时序侧信道
+    const a = Buffer.from(candidate);
+    const b = Buffer.from(GATEWAY_AUTH_TOKEN);
+    const equal = a.length === b.length && require('node:crypto').timingSafeEqual(a, b);
+    if (!equal) {
+      res.status(401).json({ error: '未授权：缺少或无效 token' });
+      return;
+    }
+    next();
+  };
+
+  // 简易令牌桶：按 IP 限速 /api/ask，避免单 IP 风暴拖垮管线
+  const RATE_LIMIT_PER_MIN = Math.max(1, Number(process.env.ASK_RATE_LIMIT_PER_MIN ?? '30'));
+  const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+  const rateLimitAsk: express.RequestHandler = (req, res, next) => {
+    const ip = req.ip ?? req.socket?.remoteAddress ?? 'unknown';
+    const now = Date.now();
+    const bucket = rateBuckets.get(ip);
+    if (!bucket || bucket.resetAt < now) {
+      rateBuckets.set(ip, { count: 1, resetAt: now + 60_000 });
+      next();
+      return;
+    }
+    if (bucket.count >= RATE_LIMIT_PER_MIN) {
+      res.status(429).json({ error: '请求过于频繁，请稍后再试', retryAfterSec: 60 });
+      return;
+    }
+    bucket.count++;
+    next();
+  };
+
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true, service: 'one-person-agent-gateway', contract: 'answer(query)' });
+  });
+
+  // §D.3 资源包健康检查：Bocha 余额只读查询（UI/运维可随时查看剩余次数）
+  app.get('/api/bocha/balance', async (_req, res) => {
+    const balance = await queryBochaBalance();
+    res.json({
+      ok: balance !== null,
+      remainingYuan: balance?.remainingYuan ?? null,
+      remainingCalls: balance?.remainingCalls ?? null,
+      fetchedAt: balance?.fetchedAt ?? null,
+      notice: balance ? bochaBalanceWarning(balance) : null,
+    });
   });
 
   app.get('/api/model-providers', (_req, res) => {
@@ -71,7 +134,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     res.json({ total: files.length, files });
   });
 
-  app.get('/api/events', (req, res) => {
+  app.get('/api/events', requireGatewayAuth, (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -271,7 +334,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     res.json({ ok: true, security: next });
   });
 
-  app.get('/api/mail/credentials', (_req, res) => {
+  app.get('/api/mail/credentials', requireGatewayAuth, (_req, res) => {
     const creds = loadCredentials(opts.mailCredentialsPath);
     if (!creds) {
       res.json({ configured: false });
@@ -287,7 +350,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     });
   });
 
-  app.post('/api/mail/credentials', (req, res) => {
+  app.post('/api/mail/credentials', requireGatewayAuth, (req, res) => {
     const body = (req.body ?? {}) as Record<string, unknown>;
     const missing = validateCredentials(body);
     if (missing.length > 0) {
@@ -355,7 +418,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     }
   });
 
-  app.post('/api/terminal/exec', async (req, res) => {
+  app.post('/api/terminal/exec', requireGatewayAuth, async (req, res) => {
     const body = (req.body ?? {}) as { command?: unknown };
     const command = typeof body.command === 'string' ? body.command.trim() : '';
     if (!command) {
@@ -487,7 +550,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       .send([header, ...rows].join('\n'));
   });
 
-  app.post('/api/ask', async (req, res) => {
+  app.post('/api/ask', rateLimitAsk, async (req, res) => {
     const body = (req.body ?? {}) as AskBody;
     const query = typeof body.query === 'string' ? body.query.trim() : '';
     if (!query) {
