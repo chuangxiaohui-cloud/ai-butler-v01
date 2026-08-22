@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 
 import type { ChatMessage, LLMClient } from './llm.js';
+import type { SessionContext, SessionContextStore } from '../memory/session-context.js';
 import type { QuotaStoreLike } from './quota.js';
 import type { MemoryRecord, MemoryStore } from '../memory/store.js';
 import type { SearchProvider, SearchProviderResult, SearchResultItem } from './providers/types.js';
@@ -26,8 +27,10 @@ process.env.MESSAGES_DB_PATH = join(tmpdir(), 'pipeline-messages-test.db');
 
 class FakeLLM implements LLMClient {
   lastUserContent = '';
+  recorded: Array<ChatMessage[]> = [];
 
   async complete(messages: ChatMessage[]): Promise<string> {
+    this.recorded.push(messages);
     const system = messages[0]?.content ?? '';
     if (system.includes('意图特征提取器')) {
       const content = system;
@@ -254,12 +257,45 @@ class FakeMemoryStore implements Pick<MemoryStore, 'put' | 'recall'> {
   }
 }
 
+class FakeSessionContextStore
+  implements Pick<SessionContextStore, 'load' | 'append' | 'compactIfNeeded'>
+{
+  summary: string | null;
+  appendCalls: Array<{ conversationId: string; role: 'user' | 'assistant'; text: string }> = [];
+
+  constructor(summary: string | null = null) {
+    this.summary = summary;
+  }
+
+  async load(conversationId: string): Promise<SessionContext | null> {
+    return this.summary
+      ? { conversationId, turns: [], summary: this.summary, updatedAt: new Date().toISOString() }
+      : null;
+  }
+
+  async append(conversationId: string, role: 'user' | 'assistant', text: string): Promise<void> {
+    this.appendCalls.push({ conversationId, role, text });
+  }
+
+  async compactIfNeeded(): Promise<SessionContext | null> {
+    return null;
+  }
+}
+
 const deps = {
   llm: new FakeLLM(),
   providers: [new FakeProvider()],
   quota: new FakeQuota(),
   memoryStore: new FakeMemoryStore(),
+  sessionContext: new FakeSessionContextStore(),
 };
+
+// SEV-1.2 后 SANDBOX_ALLOWED_DIRS 必须落在 workspaceRoot 内：写入类用例改用工作区内临时目录
+function sandboxTmpDir(prefix: string): string {
+  const base = join(process.cwd(), 'data', 'pipeline-test');
+  mkdirSync(base, { recursive: true });
+  return mkdtempSync(join(base, prefix));
+}
 
 function fakeFile(name: string, type: string, bytes: Uint8Array | string) {
   const u8 = typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes;
@@ -526,7 +562,7 @@ test('pipeline: 帮我写个 PID 算法 走 engineer 直接执行', async () => 
 });
 
 test('pipeline: project-writer 从上一轮记忆自动回溯写入', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'pipeline-writer-'));
+  const dir = sandboxTmpDir('pipeline-writer-');
   const oldEnv = process.env.SANDBOX_ALLOWED_DIRS;
   process.env.SANDBOX_ALLOWED_DIRS = dir;
   const memoryStore: Pick<MemoryStore, 'put' | 'recall'> = {
@@ -568,7 +604,7 @@ test('pipeline: project-writer 从上一轮记忆自动回溯写入', async () =
 });
 
 test('pipeline: 直接“写入 <路径>”走 project-writer', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'pipeline-write-path-'));
+  const dir = sandboxTmpDir('pipeline-write-path-');
   const oldSandbox = process.env.SANDBOX_ALLOWED_DIRS;
   const oldLog = process.env.OPERATIONS_LOG_PATH;
   process.env.SANDBOX_ALLOWED_DIRS = dir;
@@ -760,7 +796,7 @@ test('pipeline: 记住的事实注入后续老规矩提问', async () => {
 });
 
 test('pipeline: 撤销指令恢复最近写入备份', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'pipeline-rollback-'));
+  const dir = sandboxTmpDir('pipeline-rollback-');
   const oldLog = process.env.OPERATIONS_LOG_PATH;
   const oldSandbox = process.env.SANDBOX_ALLOWED_DIRS;
   process.env.OPERATIONS_LOG_PATH = join(dir, 'operations.jsonl');
@@ -811,7 +847,7 @@ test('pipeline: 撤销无记录时诚实说明', async () => {
 });
 
 test('pipeline: 撤销只作用于同一会话', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'pipeline-rollback-conv-'));
+  const dir = sandboxTmpDir('pipeline-rollback-conv-');
   const oldLog = process.env.OPERATIONS_LOG_PATH;
   const oldSandbox = process.env.SANDBOX_ALLOWED_DIRS;
   process.env.OPERATIONS_LOG_PATH = join(dir, 'operations.jsonl');
@@ -908,4 +944,29 @@ test('pipeline: 考勤表模板走 office-daily 且不搜索', async () => {
   assert.ok(r.answer.includes('考勤表模板'));
   assert.equal(r.mode, 'life');
   assert.equal(r.evidence.length, 0);
+});
+
+
+test('pipeline: 会话摘要注入路由上下文并 append 轮次', async () => {
+  const session = new FakeSessionContextStore('实体：STM32F103；决策：72MHz；未决：超频待确认。');
+  const llm = new FakeLLM();
+  await pipeline(
+    '继续讨论 STM32 选型',
+    { ...deps, llm, sessionContext: session },
+    { conversationId: 'conv-s1' },
+  );
+  assert.equal(session.appendCalls.length, 2);
+  assert.equal(session.appendCalls[0].role, 'user');
+  assert.equal(session.appendCalls[1].role, 'assistant');
+  assert.ok(session.appendCalls.every((c) => c.conversationId === 'conv-s1'));
+  const sawSummary = llm.recorded.some((msgs) =>
+    msgs.some((m) => m.content.includes('实体：STM32F103')),
+  );
+  assert.ok(sawSummary, '会话摘要应注入 LLM 上下文');
+});
+
+test('pipeline: 无 conversationId 不启用会话上下文', async () => {
+  const session = new FakeSessionContextStore('实体：X；决策：Y');
+  await pipeline('普通查询', { ...deps, sessionContext: session });
+  assert.equal(session.appendCalls.length, 0);
 });

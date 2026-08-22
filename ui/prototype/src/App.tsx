@@ -33,13 +33,14 @@ import {
   ThumbsDown,
   ThumbsUp,
   User,
+  Wallet,
   X,
   Zap,
 } from 'lucide-react';
 
 type UiMode = 'engineering' | 'knowledge' | 'life';
 type RightTab = 'files' | 'browser' | 'terminal';
-type SettingsKey = 'providers' | 'security' | 'routing' | 'skills' | 'memory' | 'usage' | 'mail' | 'calendar';
+type SettingsKey = 'providers' | 'security' | 'routing' | 'skills' | 'memory' | 'usage' | 'mail' | 'calendar' | 'balance';
 
 interface Evidence {
   type: 'file' | 'terminal' | 'test' | 'search';
@@ -69,6 +70,7 @@ interface Message {
   evidence?: Evidence[];
   videos?: VideoCard[];
   meta?: string;
+  notice?: string;
 }
 
 interface ModelOption {
@@ -105,6 +107,8 @@ const FALLBACK_MODELS: ModelOption[] = [
 ];
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL ?? 'http://127.0.0.1:8787';
+// 会话上下文（E193）：每次页面会话一个稳定 conversationId，供 gateway 端逐字窗口 + 压缩
+const CHAT_CONVERSATION_ID = `ui-1787395844719-xjbsv0ic`;
 
 const INITIAL_MESSAGES: Message[] = [
   {
@@ -163,6 +167,7 @@ const SETTINGS_MENU: Array<{ key: SettingsKey; label: string; icon: LucideIcon }
   { key: 'security', label: '安全中心', icon: ShieldCheck },
   { key: 'mail', label: '邮件', icon: Mail },
   { key: 'calendar', label: '日历', icon: Calendar },
+  { key: 'balance', label: '资源包', icon: Wallet },
   { key: 'routing', label: '路由校准', icon: Route },
   { key: 'skills', label: '技能库', icon: Layers },
   { key: 'memory', label: '记忆管理', icon: Database },
@@ -174,6 +179,7 @@ const SETTINGS_FORMS: Record<SettingsKey, { title: string; desc: string }> = {
   security: { title: '安全中心', desc: '配置三分支安全策略与 Shell/文件/外部调用权限。' },
   mail: { title: '邮件配置', desc: '配置 SMTP 服务器与账号授权码，用于发送邮件。' },
   calendar: { title: '日历', desc: '导入/导出 .ics 日历文件，与 Outlook / 苹果 / 谷歌日历互通。' },
+  balance: { title: '资源包', desc: '查看 Bocha 余额与剩余次数；余额不足时提前购买体验包（§D.3 健康检查）。' },
   routing: { title: '路由校准', desc: '持续采集误判样本，标记后导出供路由规则优化。' },
   skills: { title: '技能库', desc: '管理子 Agent / Skill 的启用状态、参数与输出契约。' },
   memory: { title: '记忆管理', desc: '查看 L1 情景记忆与 L2 语义记忆，支持搜索、置顶、遗忘。' },
@@ -228,6 +234,7 @@ function App() {
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsKey, setSettingsKey] = useState<SettingsKey>('providers');
+  const [bannerNotice, setBannerNotice] = useState<string | null>(null);
 
   const [shellEnabled, setShellEnabled] = useState(false);
   const [terminalLines, setTerminalLines] = useState<string[]>(TERMINAL_LINES);
@@ -344,6 +351,7 @@ function App() {
           query: text,
           modelId: model,
           mode,
+          conversationId: CHAT_CONVERSATION_ID,
           userId: 'ui-user',
           attachments: attachments.map((item) => ({
             name: item.name,
@@ -359,6 +367,7 @@ function App() {
         videos?: Array<{ title: string; url: string; platform: string }>;
         mode?: UiMode;
         submode?: string;
+        notice?: string;
       };
       if (!manualLocked && data.mode) {
         applyMode(data.mode, data.submode);
@@ -380,8 +389,10 @@ function App() {
           platform: v.platform,
         })),
         meta: `${MODES.find((m) => m.key === mode)?.label} · 后端`,
+        notice: data.notice,
       });
       loadFiles();
+      if (data.notice) setBannerNotice(data.notice);
     } catch {
       appendReply(ReplyDraft(mode, text));
       loadFiles();
@@ -528,6 +539,14 @@ function App() {
                 产物
               </button>
             </header>
+            {bannerNotice && (
+              <div className="notice-banner" role="alert">
+                <span>⚠️ {bannerNotice}</span>
+                <button onClick={() => setBannerNotice(null)} aria-label="关闭预警">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
             <div className="message-list">
               {messages.map((msg) => (
                 <MessageItem
@@ -700,6 +719,7 @@ function MessageItem({
       </div>
       <div className="message-body">
         {msg.meta && <div className="message-meta">{msg.meta}</div>}
+        {msg.notice && <div className="message-notice">⚠️ {msg.notice}</div>}
         {msg.images && msg.images.length > 0 && (
           <div className="message-images">
             {msg.images.map((src) => (
@@ -1068,6 +1088,7 @@ function SettingsPanel({
           <SecuritySettings shellEnabled={shellEnabled} onShellChange={onShellChange} />
         )}
         {settingsKey === 'mail' && <MailSettings />}
+        {settingsKey === 'balance' && <BalanceSettings />}
         {settingsKey === 'calendar' && <CalendarSettings />}
         {settingsKey === 'routing' && <RoutingSettings />}
         {settingsKey === 'skills' && <SkillsSettings />}
@@ -1075,6 +1096,96 @@ function SettingsPanel({
         {settingsKey === 'usage' && <UsageSettings />}
       </div>
     </section>
+  );
+}
+
+function BalanceSettings() {
+  const [balance, setBalance] = useState<{
+    ok: boolean;
+    remainingYuan: number | null;
+    remainingCalls: number | null;
+    fetchedAt: string | null;
+    notice: string | null;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/bocha/balance`);
+      const data = (await resp.json().catch(() => null)) as {
+        ok?: boolean;
+        remainingYuan?: number | null;
+        remainingCalls?: number | null;
+        fetchedAt?: string | null;
+        notice?: string | null;
+      } | null;
+      setBalance({
+        ok: data?.ok ?? false,
+        remainingYuan: data?.remainingYuan ?? null,
+        remainingCalls: data?.remainingCalls ?? null,
+        fetchedAt: data?.fetchedAt ?? null,
+        notice: data?.notice ?? (resp.ok ? null : '无法连接 Gateway，请确认服务已启动'),
+      });
+    } catch {
+      setBalance({ ok: false, remainingYuan: null, remainingCalls: null, fetchedAt: null, notice: '无法连接 Gateway，请确认服务已启动' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const exhausted = balance != null && balance.ok && (balance.remainingCalls ?? 0) <= 0;
+  const low = balance != null && balance.ok && !exhausted && (balance.remainingCalls ?? 0) <= 10;
+
+  return (
+    <div className="settings-form">
+      <div className="balance-card">
+        {loading ? (
+          <p className="settings-note">加载中…</p>
+        ) : !balance || !balance.ok ? (
+          <p className="settings-note">{balance?.notice ?? '余额查询失败（未配置 BOCHA_API_KEY 或网络异常）。'}</p>
+        ) : (
+          <>
+            <div className="balance-row">
+              <span>账户余额</span>
+              <strong>¥{balance.remainingYuan?.toFixed(2) ?? '--'}</strong>
+            </div>
+            <div className="balance-row">
+              <span>预计可用</span>
+              <strong>{balance.remainingCalls ?? '--'} 次</strong>
+            </div>
+            <div className="balance-row">
+              <span>查询时间</span>
+              <span className="settings-note">
+                {balance.fetchedAt ? new Date(balance.fetchedAt).toLocaleString() : '--'}
+              </span>
+            </div>
+            {exhausted && (
+              <p className="balance-alert">
+                ⚠️ Bocha 余额已耗尽，搜索将由 AnySearch/浏览器独立兜底；请购买体验包（防按量 10 倍成本）。
+              </p>
+            )}
+            {low && (
+              <p className="balance-alert">
+                ⚠️ 余额告警：仅剩约 {balance.remainingCalls} 次，请及时购买体验包。
+              </p>
+            )}
+            {balance.ok && !exhausted && !low && (
+              <p className="settings-note">✅ 余额健康，无需充值。剩余次数按 [P-75] 0.0036 元/次折算。</p>
+            )}
+            <div className="balance-foot">
+              <button className="add-provider" onClick={() => void load()}>
+                刷新
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 

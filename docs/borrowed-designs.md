@@ -82,6 +82,16 @@
 - 接入：不引入 Python/Playwright 重依赖，在既有 CDP 会话的 `fetchPage` 内实现；
   browser-session skill 与 `browser:fetch` CLI 输出引用列表。
 - 状态：E182 已落地，需求文档附录 A 登记。
+
+### 2.9 opensquilla → 工具结果压缩 + 上下文预算（§8.3 落地）
+
+- 文件：`src/memory/session-context.ts` / `src/search/pipeline.ts` / `ui/prototype/src/App.tsx`
+- 内容：借鉴 opensquilla 的 compact 摘要 + 上下文预算思想——同一会话内逐字窗口 [P-29]=5 轮完整保留，
+  窗口外轮次由轻模型压缩为「实体 + 决策 + 未决事项」结构化摘要滚动合并；[P-109]=6000 token 硬约束双触发
+  （窗口超预算最早轮次也移入压缩）；读改写串行化 + compact 防重入 + 每轮唯一 id 增量合并防并发丢更新。
+- 接入：pipeline 在 `opts.conversationId` 显式传入时启用（摘要 + 窗口轮次并入 memoryNotes/recentMemory，
+  回答后 append 轮次并异步压缩，失败静默不阻塞主回答）；UI 主聊天发送稳定 conversationId。
+- 状态：E193 已落地，需求文档附录 A 登记；bench:B-20260822-05 真实轻模型压缩冒烟。
 ## 3. 待借入（按优先级）
 
 | 设计 | 来源 | 价值 | 前置条件 |
@@ -94,7 +104,6 @@
 | 计划权限/异常分支校验 | Harness | 校验命令是否可执行、步骤是否越权、异常分支是否完整 | plan-validation 有真实使用反馈 |
 | 记忆双通道召回 | OpenSquilla | SQLite FTS + embedding 语义，低分关键词兜底 | §8 语义检索实现时 |
 | 分层沙箱 + 拒绝账本 | OpenSquilla | Standard/Strict/Locked 三档 + 连续拒绝暂停自主执行 | sandbox.ts 档位化 |
-| 工具结果压缩 + 上下文预算 | OpenSquilla | bounded preview + handle + compact 摘要 | §8.3 工作记忆开发时 |
 | Skill 按需过滤 + eligibility | OpenSquilla | 每轮检索/门控后注入，环境依赖不可用则不注入 | Skill 元数据扩展 |
 
 ## 4. 不借 / 暂缓

@@ -7,11 +7,18 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { createLightClient } from './llm.js';
 import type { LLMClient } from './llm.js';
 import type { QuotaStoreLike } from './quota.js';
 import type { SearchProvider } from './providers/types.js';
 import type { MemoryStore } from '../memory/store.js';
 import { defaultMemoryStore } from '../memory/store.js';
+import {
+  SessionContextStore,
+  buildRecentMemory,
+  buildSessionNotes,
+  type SessionContext,
+} from '../memory/session-context.js';
 import type { ExperienceEntry } from '../memory/experience.js';
 import type { SearchSourceStats } from './source-stats.js';
 import type { TrajectoryEventBody, TrajectoryLogLike } from '../trajectory/trajectory-log.js';
@@ -73,6 +80,7 @@ export interface AnswerResult {
   mode?: UiMode;
   submode?: string;
   videos?: VideoResult[];
+  notice?: string;
 }
 
 export interface PipelineDeps {
@@ -102,6 +110,7 @@ export interface PipelineDeps {
     recordUse?(name: string): void;
   };
   trajectory?: TrajectoryLogLike;
+  sessionContext?: Pick<SessionContextStore, 'load' | 'append' | 'compactIfNeeded'>;
   browserSession?: BrowserFetcher;
 }
 
@@ -116,6 +125,12 @@ export interface PipelineOptions {
     state: 'generating' | 'done' | 'failed';
     path?: string;
   }) => void;
+}
+
+let sharedSessionContext: SessionContextStore | null = null;
+function defaultSessionContext(): SessionContextStore {
+  sharedSessionContext ??= new SessionContextStore();
+  return sharedSessionContext;
 }
 
 export async function pipeline(
@@ -196,6 +211,35 @@ export async function pipeline(
   } catch {
     // 记忆读取失败不阻塞主对话
   }
+  // 会话上下文（§8.3 E193）：同一会话摘要 + 逐字窗口注入，供路由/合成消歧
+  const conversationId = opts.conversationId ?? '';
+  const sessionStore = deps.sessionContext ?? defaultSessionContext();
+  let sessionCtx: SessionContext | null = null;
+  if (conversationId) {
+    try {
+      sessionCtx = await sessionStore.load(conversationId);
+    } catch {
+      // 会话上下文读取失败不阻塞主对话
+    }
+  }
+  const sessionNotes = buildSessionNotes(sessionCtx);
+  if (sessionNotes.length > 0) memoryNotes = [...sessionNotes, ...memoryNotes];
+  const sessionMemory = buildRecentMemory(sessionCtx);
+  if (sessionMemory.length > 0) recentMemory = [...sessionMemory, ...recentMemory];
+  const recordSessionTurns = async (userText: string, assistantText: string): Promise<void> => {
+    if (!conversationId) return;
+    try {
+      await sessionStore.append(conversationId, 'user', userText);
+      await sessionStore.append(conversationId, 'assistant', assistantText);
+      void sessionStore
+        .compactIfNeeded(conversationId, deps.llm ?? createLightClient())
+        .catch(() => {
+          // 压缩失败静默，不阻塞主回答
+        });
+    } catch {
+      // 会话上下文写入失败不阻塞主回答
+    }
+  };
   prepared.memoryNotes = memoryNotes;
   const contextHints = memoryBlock
     ? [...memoryNotes, ...memoryBlock.split('\n').filter((line) => line.trim())]
@@ -217,6 +261,7 @@ export async function pipeline(
       // 记忆写入失败不阻塞确认回复
     }
     const answer = `已记住：${rememberContent}`;
+    await recordSessionTurns(query, answer);
     recordTrajectory({
       type: 'answer',
       answer: {
@@ -251,6 +296,7 @@ export async function pipeline(
         elapsedMs: Date.now() - start,
       },
     });
+    await recordSessionTurns(query, rollback.message);
     return {
       query,
       answer: rollback.message,
@@ -671,6 +717,8 @@ export async function pipeline(
     },
   });
 
+  const searchNotices = [...new Set(search.notices ?? [])];
+
   // Stage 4：四过滤器 + 加权评分 + 规则① + 来源权威注入
   const relevanceQuery = search.subQueries[0] ?? searchQuery;
   let fused = fuseResults(
@@ -861,6 +909,7 @@ export async function pipeline(
     // 会话摘要写入失败不阻塞回复
   }
 
+  await recordSessionTurns(query, final.answer);
   return {
     query,
     answer: final.answer,
@@ -871,6 +920,7 @@ export async function pipeline(
     mode: uiRoute.mode,
     submode: uiRoute.submode,
     videos: videoResults.length > 0 ? videoResults : undefined,
+    ...(searchNotices.length > 0 ? { notice: searchNotices[0] } : {}),
   };
 }
 

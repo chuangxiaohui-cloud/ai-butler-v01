@@ -28,6 +28,7 @@
 | `src/search/providers/` | `types.ts`、`bocha.ts`、`anysearch.ts`、`tavily.ts` | 搜索适配器，统一 `SearchProvider` | ✅ |
 | `src/search/` | `fusion.ts`、`rule1.ts`、`rule3.ts`、`authority.ts` | 融合、事实一致性、安全阀、权威度 | ✅ |
 | `src/search/` | `llm.ts`、`llm-client.ts`、`llm-registry.ts`、`model-router.ts` | LLM 客户端、Provider Registry、模型分档 | ✅ |
+| `src/search/` | `balance.ts` | Bocha 余额探测/缓存/告警（§D.3，E192） | ✅ |
 | `src/agent/` | `router-v2.ts`、`routing-table.ts`、`intent-feature.ts`、`extract.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` | 三层意图路由、rewrite/记住指令、时间表达解析 | ✅ |
 | `src/agent/` | `mode-mapper.ts`、`multimodal-preprocessor.ts`、`executors.ts` | 模式映射、多模态信号、执行器状态 | ✅ |
 | `src/agent/` | `route-case-store.ts`、`route-case-audit.ts`、`confidence-calibration.ts` | 路由 case 采集、审核、校准闭环 | ✅ |
@@ -36,6 +37,7 @@
 | `src/memory/` | `store.ts`、`memorycore-store.ts`、`schema.sql` | MemoryStore 双实现与冻结 schema | ✅ |
 | `src/memory/` | `experience.ts`、`distill.ts`、`confidence-decay.ts` | 经验、蒸馏、衰减 | ✅ |
 | `src/memory/` | `user-context-store.ts`、`user-context.ts` | 用户画像、长期事实、会话摘要 | ✅ |
+| `src/memory/` | `session-context.ts` | 会话上下文持久化与逐字窗口压缩（§8.3，E193） | ✅ |
 | `src/reminder/` | `reminder-store.ts` | 主动提醒 SQLite 存储与到期轮询 | ✅ |
 | `src/gateway/` | `app.ts`、`server.ts` | 单一 TurnLoop Express gateway | ✅ |
 | `src/gateway/` | `attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts` | 附件、终端、文件、SSE 事件 | ✅ |
