@@ -47,7 +47,10 @@
   `npm run build` + `npm run test:all` 全绿；`doc-lint` 0 FAIL 0 WARN。
 - E1：复验门 PASS，推荐 [P-04]=1750ms，等 owner 签认晋升。
 - E2：复验门（超时率）未触发（Bocha≈2.4%、AnySearch≈5.0%），但对冲③ 双返回率≈34% <70% 触发
-  [P-02] 重新决策；根因 Bocha 快速 HTTP 错误（疑似配额/余额），需联网探活确认现状。
-- 提交：待提交。
-- 遗留事项：Bocha 探活（`npm run search:smoke`）；owner 签认 P-04 晋升；双返回率数据的
-  smoke/bench/test 来源拆分待后续加 source 标记。
+  [P-02] 重新决策；根因 Bocha 快速 HTTP 错误（疑似配额/余额）。
+- 探活（2026-08-22 `npm run search:smoke`，用户手动执行）：Bocha 10/10 快速失败（failRate 100%、
+  timeout5sRate 0%、58-285ms HTTP 错误）、AnySearch 10/10 ok、双返回率 0%——Bocha 可用性故障
+  坐实，[P-02] 重开决策成立。
+- 提交：核心 `0a0d5df` 已提交；探活结果登记待 housekeeping 提交。
+- 遗留事项：Bocha 余额/Key 排查与恢复（探活已确认故障）；owner 签认 [P-04] 晋升 1750ms 并同步
+  `LLM_CLASSIFY_TIMEOUT_MS`；双返回率数据的 smoke/bench/test 来源拆分待后续加 source 标记。

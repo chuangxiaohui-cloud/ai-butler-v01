@@ -1,6 +1,6 @@
 # 进度交接 2026-08-22（v0.2b 续作）
 
-> 当前分支：`v0.2b`｜E177-E186 已提交（HEAD=`5b0bd8b`），E187 已实现待提交。上一份交接见 `docs/2026-08-21-progress-handoff.md`。
+> 当前分支：`v0.2b`｜E177-E187 已提交（HEAD=`0a0d5df`），E187 探活登记待 housekeeping。上一份交接见 `docs/2026-08-21-progress-handoff.md`。
 
 ## 今日已收口
 
@@ -70,7 +70,7 @@
     E2 判断区分复验门（超时率）与对冲③（双返回率<70% 触发重开）。结论：E1 复验门 PASS
     （classify n=70、timeout 0%、准确率 80%、p95=1406ms → 推荐 [P-04]=1750ms，等 owner 签认）；
     E2 全库无 Bocha 真实 5s 超时（max=1055ms、timeout5sRate=2.5%；AnySearch=8.0%，复验门未触发），
-    但双返回率 31.7%<70% 触发对冲③ → [P-02] 重开决策，根因 Bocha 快速 HTTP 错误（疑似配额/余额）。
+    但双返回率 31.7%<70% 触发对冲③ → [P-02] 重开决策；2026-08-22 冷调用探活坐实：Bocha 10/10 快速失败（failRate 100%、超时 0%）、AnySearch 10/10 ok、双返回率 0%。
 
 ## 今日验证
 
@@ -99,19 +99,19 @@
 
 - E187：`recheck:gates`/`finalize:gates` 新口径输出验证（failRate/timeout5sRate/双返回率）；
   E1 PASS、E2 复验门未触发但对冲③触发（双返回率 31.7%<70%）；build + 单测 + 集成 17/17 全绿；
-  doc-lint 0 FAIL 0 WARN（附录 A 949/950）。
+  doc-lint 0 FAIL 0 WARN（附录 A 949/950）；探活：Bocha 10/10 快速失败、AnySearch 10/10 ok、双返回率 0/10。
 
 - 已知边界：部分噪声/模糊图 OCR 文本有误读（如“上海”→“奥”），但合并判断不受影响；
   透字墨色过重（灰度 <90）超出局部对比度阈值时靠相位守卫诚实提示，不产出伪合并。
 
 ## 今日收尾状态
 
-已提交：E177-E186（HEAD=`5b0bd8b`）；E187 已实现待提交（build/单测/集成/doc-lint 全绿）。
+已提交：E177-E187（HEAD=`0a0d5df`）；E187 探活结果登记（4 文件）待 housekeeping 提交。
 - 提交前请勿包含根目录 `.codex-*.cjs`（已 gitignore）、`data/` 临时文件与合成样本（已清理）。
 
 ## 明天继续（按优先级）
-1. E187 收尾：联网跑 `npm run search:smoke` 探活 Bocha 现状（approval 基础设施故障，Agent 无法联网）；
-   owner 签认后晋升 [P-04]→1750ms 并同步 `LLM_CLASSIFY_TIMEOUT_MS`；[P-02] 按对冲③结论重开决策。
+1. E187 收尾：Bocha 探活已完成（10/10 快速失败）——排查余额/Key 或调整引擎优先级后重开 [P-02] 决策；
+   owner 签认后晋升 [P-04]→1750ms 并同步 `LLM_CLASSIFY_TIMEOUT_MS`。
 2. E186 遗留：极端全噪声表头仍走诚实告警；页脚/页码落在表格网格内当正文追加，留待真实样本复核。
 3. 附录 A 行数预算维持 949/950 余 1 行，后续新增条目按需再压缩旧 details 块。
 

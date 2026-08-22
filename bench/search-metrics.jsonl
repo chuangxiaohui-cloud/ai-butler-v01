@@ -1522,3 +1522,13 @@
 {"ts":"2026-08-20T13:46:18.669Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
 {"ts":"2026-08-20T13:46:18.671Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
 {"ts":"2026-08-20T13:46:18.672Z","query":"STM32F103C8T6 立创商城 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-22T08:55:58.135Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":285,"bocha_ok":false,"anysearch_ms":1006,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-22T08:55:59.270Z","query":"TPS5430 输入电压范围","bocha_ms":61,"bocha_ok":false,"anysearch_ms":1128,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-22T08:56:00.851Z","query":"STM32F103 ADC 多通道采集 踩坑 经验","bocha_ms":72,"bocha_ok":false,"anysearch_ms":1569,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-22T08:56:02.002Z","query":"MOSFET 栅极驱动电阻 选型 注意事项","bocha_ms":61,"bocha_ok":false,"anysearch_ms":1148,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-22T08:56:02.969Z","query":"KiCad 和 Altium Designer 对比 优缺点","bocha_ms":64,"bocha_ok":false,"anysearch_ms":964,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-22T08:56:04.421Z","query":"Keil MDK JTAG 配置 步骤","bocha_ms":60,"bocha_ok":false,"anysearch_ms":1450,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-22T08:56:05.300Z","query":"STM32 HAL_UART_Transmit 阻塞 卡死","bocha_ms":65,"bocha_ok":false,"anysearch_ms":877,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-22T08:56:06.402Z","query":"高血压 用药注意事项 禁忌","bocha_ms":61,"bocha_ok":false,"anysearch_ms":1099,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-22T08:56:07.723Z","query":"个人所得税 专项附加扣除 怎么申报","bocha_ms":58,"bocha_ok":false,"anysearch_ms":1318,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-22T08:56:09.103Z","query":"ESP32 I2C 通信失败 无应答","bocha_ms":63,"bocha_ok":false,"anysearch_ms":1378,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"single"}
