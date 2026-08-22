@@ -47,9 +47,7 @@
 
 ## 待提交（本批次）
 
-本批次已全部提交（E202 `8857b47`、E203 `7cb6f3c`、E204 `4b7e34e`、E205 `a05e9fc`）。
-- 本批次：需求文档 §5 [P-08] + 附录 A E206 + `bench/B-20260823-03-l2-distill-acceptance.md`
-  + `docs/plans/2026-08-23-l2-distill-acceptance.md` + 本交接文档（同一主题：v0.2b 记忆蒸馏验收收口）。
+本批次已全部提交（E202 `8857b47`、E203 `7cb6f3c`、E204 `4b7e34e`、E205 `a05e9fc`、E206 `fe5f067`）。
 - `bench/search-metrics.jsonl` 与根目录临时文件**不在任何批次**，勿混入提交。
 
 ## 明日继续（按优先级）
