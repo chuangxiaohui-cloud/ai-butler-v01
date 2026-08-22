@@ -2089,6 +2089,91 @@ print(json.dumps(out))`,
   }
 });
 
+test('office-daily: 图片表格识别左上角垂直标签+斜跨/嵌套多层表头（E184）', { skip: !HAS_LOCAL_RAPIDOCR }, async () => {
+  const dir = tempDir();
+  try {
+    const json = execFileSync(
+      RUNTIME_PYTHON,
+      [
+        '-c',
+        `import base64, io, json, os
+from PIL import Image, ImageDraw, ImageFont
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 26)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+
+def tab(xs, ys, cells):
+    img = Image.new('RGB', (xs[-1] + 40, ys[-1] + 40), 'white')
+    d = ImageDraw.Draw(img)
+    for x in xs:
+        d.line([(x, ys[0]), (x, ys[-1])], fill=(0, 0, 0), width=2)
+    for y in ys:
+        d.line([(xs[0], y), (xs[-1], y)], fill=(0, 0, 0), width=2)
+    for (r, c), t in cells.items():
+        d.text((xs[c] + 18, ys[r] + 32), t, fill=(0, 0, 0), font=font)
+    return img
+
+def b64(im):
+    buf = io.BytesIO(); im.save(buf, 'PNG')
+    return base64.b64encode(buf.getvalue()).decode()
+
+X5 = (40, 190, 340, 490, 640, 790)
+Y4 = (40, 150, 260, 370, 480)
+Y5 = (40, 150, 260, 370, 480, 590)
+X7 = (40, 180, 320, 460, 600, 740, 880, 1020)
+Y6 = (40, 150, 260, 370, 480, 590, 700)
+out = {
+    't1': b64(tab(X5, Y4, {(0, 0): '产品', (0, 1): '2024', (0, 3): '2025', (1, 1): '上半年', (1, 2): '下半年', (1, 3): '上半年', (1, 4): '下半年', (2, 0): '手机', (2, 1): '100', (2, 2): '200', (2, 3): '300', (2, 4): '400', (3, 0): '平板', (3, 1): '110', (3, 2): '210', (3, 3): '310', (3, 4): '410'})),
+    't2': b64(tab(X5, Y5, {(0, 0): '产品', (0, 1): '2024', (0, 3): '2025', (1, 1): '华东', (1, 2): '华北', (1, 3): '华东', (1, 4): '华北', (2, 1): '上海', (2, 2): '杭州', (2, 3): '北京', (2, 4): '广州', (3, 0): '手机', (3, 1): '100', (3, 2): '200', (3, 3): '300', (3, 4): '400', (4, 0): '平板', (4, 1): '110', (4, 2): '210', (4, 3): '310', (4, 4): '410'})),
+    't3': b64(tab(X7, Y6, {(0, 0): '产品', (0, 1): '2024', (0, 5): '2025', (1, 1): '上半年', (1, 3): '下半年', (1, 5): '上半年', (1, 6): '下半年', (2, 1): '一季度', (2, 2): '二季度', (2, 3): '三季度', (2, 4): '四季度', (2, 5): '一季度', (2, 6): '二季度', (3, 0): '手机', (3, 1): '100', (3, 2): '200', (3, 3): '300', (3, 4): '400', (3, 5): '500', (3, 6): '600', (4, 0): '平板', (4, 1): '110', (4, 2): '210', (4, 3): '310', (4, 4): '410', (4, 5): '510', (4, 6): '610', (5, 0): '笔记本', (5, 1): '120', (5, 2): '220', (5, 3): '320', (5, 4): '420', (5, 5): '520', (5, 6): '620'})),
+}
+print(json.dumps(out))`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const images = JSON.parse(json) as Record<string, string>;
+    const cases: Array<{ key: string; expectMerges: string[]; expectCount: number }> = [
+      { key: 't1', expectMerges: ['A1:A2', 'B1:C1', 'D1:E1'], expectCount: 3 }, // 左上角垂直标签（产品 A1:A2）+ 行 0 组头
+      { key: 't2', expectMerges: ['A1:A3', 'B1:C1', 'D1:E1'], expectCount: 3 }, // 斜跨阶梯（产品 A1:A3 + 两级子标签）
+      { key: 't3', expectMerges: ['A1:A3', 'B1:E1', 'F1:G1', 'B2:C2', 'D2:E2'], expectCount: 5 }, // 嵌套 4 层
+    ];
+    const skill = createOfficeDailySkill({ outDir: dir });
+    for (const c of cases) {
+      const png = Buffer.from(images[c.key], 'base64');
+      const out = await skill.execute(
+        {
+          query: '识别这张表格',
+          attachmentSignals: [{ type: 'image', mimeType: 'image/png', sizeBytes: png.length, fileName: 'table.png' }],
+          rawFiles: [fakeFile('table.png', 'image/png', png)],
+          memory: null,
+        },
+        { callVLM: async () => '' },
+      );
+      const result = out.result as { answer?: string; path?: string; warnings?: Array<{ type?: string }> };
+      assert.ok(existsSync(result.path as string), `${c.key} xlsx 落盘`);
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.readFile(result.path as string);
+      const ws = wb.getWorksheet(1);
+      assert.ok(ws, `${c.key} xlsx 读取成功`);
+      const merges = [...ws.model.merges].sort();
+      assert.deepEqual(merges, [...c.expectMerges].sort(), `${c.key} merges: ${JSON.stringify(merges)}`);
+      assert.equal(ws.getCell('A1').value, '产品', `${c.key} 锚点格`);
+      const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+      assert.equal(warnings.length, 0, `${c.key} 不应有 warning`);
+      assert.ok(result.answer?.includes(`已还原 ${c.expectCount} 处合并单元格`), `${c.key} 答案计数`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 function startFakeSmtpServer(): Promise<{
   port: number;
   transcript: string[];

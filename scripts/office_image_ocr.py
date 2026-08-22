@@ -427,6 +427,67 @@ def detect_merges(
                             for cc in range(cols):
                                 covered.add((hr, cc))
                             continue
+        # E184：阶段 B0——第 1 行锚点的垂直组标签向下扩展（左上角标签，如整行标题下的
+        # “产品 A1:A3”）。锚点在行 0、直接下方同列为空时向下扩展到同列连续空格底部；
+        # 守卫：同列下方（扩展区外）必须有内容（避免空表尾/末行缺值），且扩展区行其它
+        # 列至少有一个非数字子标签（表头带证据，避免把数字数据行的缺值格当标签）。
+        for c in range(cols):
+            if not cell_items[0][c] or (0, c) in covered:
+                continue
+            if rows > 1 and cell_items[1][c]:
+                continue
+            r1 = 0
+            while r1 + 1 < rows and not cell_items[r1 + 1][c] and (r1 + 1, c) not in covered:
+                r1 += 1
+            if r1 == 0:
+                continue
+            text = " ".join(
+                it["text"] for it in sorted(cell_items[0][c], key=lambda i: i["cy"])
+            ).strip()
+            if re.search(r"^[0-9][0-9.,%()\-+]*\s*$", text):
+                continue
+            if not any(cell_items[rr][c] for rr in range(r1 + 1, rows)):
+                continue
+            # 扩展区行其它列至少有一个非数字子标签；若全是数字说明是数据行（缺值），不合并
+            sub_label = any(
+                not re.search(r"^[0-9][0-9.,%()\-+]*\s*$", it["text"])
+                for rr in range(1, r1 + 1)
+                for cc in range(cols)
+                if cc != c
+                for it in cell_items[rr][cc]
+            )
+            if not sub_label:
+                continue
+            # E184：扫描件透字残影守卫——锚点文本若在表内其它格重复出现（如透字把
+            # “上海”残影印到左上角空槽，或与真实文本合并成“上海京”），视为噪声不合并
+            # （真实垂直标签文本只出现一次）；用子串匹配覆盖残影与真实文本粘连的场景。
+            other_texts = [
+                " ".join(it2["text"] for it2 in sorted(cell_items[rr2][cc2], key=lambda i: i["cy"]))
+                for rr2 in range(rows)
+                for cc2 in range(cols)
+                if (rr2, cc2) != (0, c) and cell_items[rr2][cc2]
+            ]
+            if any(text in ot for ot in other_texts):
+                continue
+            # E184：右边缘守卫——扩展区行（1..r1）至少有一格在锚点列右侧，否则是
+            # 右缘表头列下方恰好缺值（如“项目 A1:B2 + 数量 C1”的 C2 空槽），不合并。
+            if not any(
+                cell_items[rr][cc]
+                for rr in range(1, r1 + 1)
+                for cc in range(c + 1, cols)
+            ):
+                continue
+            conflict = any(
+                (rr, c) in covered or cell_items[rr][c] for rr in range(1, r1 + 1)
+            )
+            if conflict:
+                continue
+            merges.append(
+                {"row": 0, "col": c, "rowSpan": r1 + 1, "colSpan": 1, "text": text}
+            )
+            for rr in range(0, r1 + 1):
+                covered.add((rr, c))
+
         # 阶段 B：垂直组标签 / 角落合并（L 形表头）
         for hr in range(1, band_v):
             for c in range(cols):
@@ -442,7 +503,6 @@ def detect_merges(
                 if l >= 0:
                     continue
                 if cell_items[hr - 1][c]:
-                    continue
                     continue
                 if hr + 1 >= rows:
                     continue
@@ -525,20 +585,48 @@ def detect_merges(
                         covered.add((rr, cc))
         # 阶段 C：组间空隙水平启发式
         for hr in range(band):
-            row_filled = sum(1 for its in cell_items[hr] if its)
+            vert_cols = {
+                cc
+                for m in merges
+                if m["rowSpan"] > 1
+                and m["colSpan"] == 1
+                and m["row"] <= hr < m["row"] + m["rowSpan"]
+                for cc in range(m["col"], m["col"] + m["colSpan"])
+            }
+            row_filled = sum(
+                1
+                for cc, its in enumerate(cell_items[hr])
+                if its and cc not in vert_cols
+            )
             if row_filled >= max_filled:
                 continue
             empty_runs: list[tuple[int, int]] = []
             c = 0
             while c < cols:
-                if cell_items[hr][c]:
+                if c in vert_cols or cell_items[hr][c]:
                     c += 1
                     continue
                 start = c
-                while c < cols and not cell_items[hr][c]:
+                while c < cols and c not in vert_cols and not cell_items[hr][c]:
                     c += 1
                 empty_runs.append((start, c - 1))
-            if len(empty_runs) + 1 < row_filled:
+            gap_pattern = len(empty_runs) + 1 >= row_filled
+            # E184：嵌套多层表头——锚点全部为非数字标签且空隙全部为单格时，即使锚点
+            # 数比空隙数多（空隙模式检查不成立）也继续，逐空隙并入最近锚点（如
+            # “上半年 | 空 | 下半年 | 空 | 上半年 | 下半年”的嵌套表头行）；数字数据行
+            # （缺值）锚点含数字，不满足条件，保持不误并。
+            nested_header = (
+                row_filled >= 2
+                and bool(empty_runs)
+                and all(s == e for s, e in empty_runs)
+                and all(
+                    not re.search(r"^[0-9][0-9.,%()\-+]*\s*$", it["text"])
+                    for cc, its in enumerate(cell_items[hr])
+                    if its and cc not in vert_cols
+                    for it in its
+                )
+            )
+            if not gap_pattern and not nested_header:
                 continue
             for start, end in empty_runs:
                 if any((hr, cc) in covered for cc in range(start, end + 1)):
