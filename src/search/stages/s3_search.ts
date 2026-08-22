@@ -13,6 +13,7 @@ import {
   BOCHA_DAILY_LIMIT,
   FileQuotaStore,
   FileMonthlyQuotaStore,
+  TAVILY_MONTHLY_LIMIT,
 } from '../quota.js';
 import { anysearchProvider } from '../providers/anysearch.js';
 import { bochaProvider } from '../providers/bocha.js';
@@ -22,7 +23,6 @@ import type { IntentKey } from './s2_classify.js';
 import type { TavilyTrigger } from '../tavily-trigger.js';
 
 const DEFAULT_BUDGET_MS = 5000; // [P-02]
-const TAVILY_MONTHLY_LIMIT = 1000; // [P-64]
 
 export interface SearchAttempt {
   provider: ProviderId;

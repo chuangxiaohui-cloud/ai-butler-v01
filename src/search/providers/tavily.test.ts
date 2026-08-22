@@ -48,3 +48,20 @@ test('tavily: include_domains 限定官方域', async () => {
     delete process.env.TAVILY_API_KEY;
   }
 });
+
+test('tavily: HTTP 432 计划用量超限 → error + notice', async () => {
+  process.env.TAVILY_API_KEY = 'test-key';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    return { ok: false, status: 432 } as Response;
+  }) as typeof fetch;
+  try {
+    const r = await tavilyProvider.search('STM32');
+    assert.equal(r.ok, false);
+    assert.match(r.error ?? '', /432/);
+    assert.match(r.notice ?? '', /超限/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.TAVILY_API_KEY;
+  }
+});

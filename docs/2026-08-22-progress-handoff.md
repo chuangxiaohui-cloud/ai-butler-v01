@@ -110,6 +110,13 @@
     安全审查路由不回退；9 条目标 query 全部 `qa + direct + web_search`，样本库 37/37 度量
     记录直答，全量 742 条决策差分无新增回退。
     计划见 `docs/plans/2026-08-22-route-metric-qa.md`，证据见 `bench/B-20260822-06-route-metric-qa.md`。
+19. **Tavily 触发冒烟 + 配额监控（E195）**：新增 `npm run tavily:smoke`（key 检查 + `shouldTriggerTavily`
+    触发判定 + `runSearchStage` 真实链路 + [P-64] 配额报告）；`quota.ts` 新增只读 `readMonthlyQuota()`、
+    `TAVILY_MONTHLY_LIMIT` 常量单源化（删 s3_search/search-loop 硬编码）；`tavily.ts` 把 HTTP 432
+    （Tavily 计划用量超限）映射为 error + notice（复用 E192 告警透出）。**实测发现**：key 有效但远端
+    返回 432 计划额度耗尽（探测响应体坐实），本地计数 634/1000 与远端矛盾——Tavily 本月条件并联
+    实际不可用（静默熔断），待 owner 决策（升级 / 等下月重置 / 按 credits 复算 [P-64]）。
+    计划见 `docs/plans/2026-08-22-tavily-smoke-quota.md`，证据见 `bench/B-20260822-07-tavily-smoke.md`。
 
 ## 今日验证
 
@@ -121,6 +128,10 @@
   `qa + direct + web_search`（含「开发板多少钱」create 误抢修复）；样本库 37/37 度量型记录
   直答、全量 742 条决策差分无新增回退；router-v2 新增 3 条用例（版本号直答/度量全集/业务
   评估豁免），agent 单测 119/119；build + doc-lint 0 FAIL 0 WARN（附录 950/950，压缩 E191 腾行）。
+- E195（Tavily 冒烟+配额）：`npm run tavily:smoke` 真实链路 HTTP 432（计划用量超限）被显式识别；
+  触发判定 6 例全对（english×3/news/low_confidence/严肃禁区熔断）；quota 6/6 + tavily 3/3（含 432
+  notice）；build + test:all 全绿、doc-lint 0 FAIL 0 WARN（附录 947/950，压缩 E56 腾行）。
+  遗留：Tavily 432 待 owner 决策（升级/等下月重置/按 credits 复算 [P-64]）。
 - E189（[P-02] 定稿）：`npm run search:smoke` 追加 2 轮（各 10/10 双引擎 ok）；充值后窗口
   （2026-08-22T09:02Z 起）`recheck:gates`/`finalize:gates`：Bocha/AnySearch timeout5sRate 均
   0.0%、双返回率 83.3%，复验门 PASS + 对冲③ NOT triggered；doc-lint 0 FAIL 0 WARN
@@ -165,7 +176,7 @@
 
 ## 今日收尾状态
 
-已提交：E177-E187（HEAD=`24916b6`）；E188-E194 待提交（E188-E191 定稿 8 文件 + 两个 metrics JSONL；E192 余额预警：`balance.ts`/`balance.test.ts`/`bocha.ts`/`types.ts`/`s3_search.ts`/`search-loop.ts`/`pipeline.ts`/`main.ts`/`gateway`×3/`package.json`/`balance-smoke.ts`/UI 原型 `App.tsx`+`styles.css`/两个 docs/需求文档/bench 证据 + `search-metrics.jsonl` 追加冒烟行；E193 上下文压缩：`session-context.ts`/`session-context.test.ts`/`pipeline.ts`/`pipeline.test.ts`/UI `App.tsx`/需求文档 §5+§8.3+附录A/计划/交接/code-directory/bench 证据；E194 路由度量问答：`intent-feature.ts`/`router-v2.test.ts`/需求文档附录A/计划/交接/bench:B-20260822-06）。
+已提交：E177-E194（HEAD=`5e2d73d`）；E195 待提交（Tavily 冒烟+配额监控：`scripts/tavily-smoke.ts`/`src/search/quota.ts`/`src/search/providers/tavily.ts`/`src/search/stages/s3_search.ts`/`src/search/search-loop.ts`/`src/search/quota.test.ts`/`src/search/providers/tavily.test.ts`/`package.json`/需求文档附录A/计划/交接/bench:B-20260822-07）；并行改动（SEV-1.1~1.4：`sandbox.ts`/`memorycore-store.ts`/`terminal.ts` 及测试）不在本批次。
 - 提交前请勿包含根目录 `.codex-*.cjs`（已 gitignore）、`data/` 临时文件与合成样本（已清理）。
 
 ## 明天继续（按优先级）
@@ -177,6 +188,13 @@
 4. 斜杠命令层（备忘，勿忘）：`/compact`（手动触发当前会话压缩）+ `/context`（查看会话状态：轮次/逐字窗口/摘要/token 粗估）
    ——E193 上下文压缩的手动入口，参考 AI-Butler 增补方案 §12.7（MiMo-Code `/compact`，SessionCompaction + COMPACTABLE_TOOL_NAMES）
    与 `src/interaction/memory-hub.ts`（规则版滚动摘要 + 实体槽位/指代消解，零 LLM 成本兜底）；owner 已确认按计划在合适时机实现，不由本批次推进。
+5. Tavily（备忘，勿忘）：**已接入并启用**，不是后续里程碑——`src/search/providers/tavily.ts`（v0.2a WP0，
+   §6.2.1）+ `tavily-trigger.ts` 条件并联（news/英文技术/低置信提示，医疗政务禁区熔断）；pipeline → s3_search
+   `useTavily` 并行执行，另承担 E72 官方域兜底（`search-loop.ts` include_domains）；`main.ts`/`gateway/server.ts`
+   均为 `tavily.enabled=true`，`.env` 的 `TAVILY_API_KEY` 已配置（勿忘，成本预期管理用）。月度配额
+   [P-64]=1000 落盘 `data/tavily-monthly.json`（配额耗尽=当日熔断不报错）。**E195 已落地冒烟+监控**：
+   `npm run tavily:smoke` + `readMonthlyQuota` + 432 notice；**当前实测 432 配额超限**，遗留为
+   owner 决策：A) 升级 Tavily 计划；B) 等下月重置；C) 按远端 credits 复算 [P-64] 口径与本地计数。
 
 
 ## 常用命令

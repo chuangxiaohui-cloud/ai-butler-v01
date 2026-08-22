@@ -69,12 +69,19 @@ export class TavilyProvider implements SearchProvider {
         signal: controller.signal,
       });
       if (!resp.ok) {
+        // 432：Tavily 计划用量超限（E195 配额监控）——key 有效但额度耗尽，透出 notice 供 CLI/gateway 展示
+        const quotaLimited = resp.status === 432;
         return {
           provider: this.id,
           ok: false,
           results: [],
           latencyMs: Date.now() - start,
-          error: `HTTP ${resp.status}`,
+          error: quotaLimited
+            ? 'Tavily 计划用量超限（HTTP 432），需升级或等下月重置'
+            : `HTTP ${resp.status}`,
+          notice: quotaLimited
+            ? 'Tavily 计划用量已超限，本月不再提供搜索结果（Bocha/AnySearch 不受影响）'
+            : undefined,
         };
       }
       const data = (await resp.json()) as TavilyResponse;

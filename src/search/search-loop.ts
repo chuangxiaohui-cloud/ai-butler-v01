@@ -23,13 +23,12 @@ import {
   officialSourceHintForQuery,
   techOfficialDomainsForQuery,
 } from './authority.js';
-import { FileMonthlyQuotaStore } from './quota.js';
+import { FileMonthlyQuotaStore, TAVILY_MONTHLY_LIMIT } from './quota.js';
 import { tavilyProvider } from './providers/tavily.js';
 import type { SearchSourceStats } from './source-stats.js';
 
 export const DEFAULT_MAX_SUB_SEARCHES = 5; // [P-85]
 export const DEFAULT_MIN_RESULTS = 5; // [P-86]
-const TAVILY_MONTHLY_LIMIT = 1000; // [P-64]
 
 export interface BrowserFetcher {
   fetchPage(

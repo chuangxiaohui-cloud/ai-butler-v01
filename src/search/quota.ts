@@ -74,3 +74,35 @@ export class FileMonthlyQuotaStore implements QuotaStoreLike {
     return true;
   }
 }
+
+export const TAVILY_MONTHLY_LIMIT = 1000; // [P-64] Tavily 免费月配额（月末重置）
+
+export interface MonthlyQuotaSnapshot {
+  month: string;
+  key: string;
+  used: number;
+  limit: number;
+  remaining: number;
+  ratio: number;
+}
+
+/** 只读读取月配额快照：跨月/缺失/损坏一律按 0 处理，不写文件。 */
+export function readMonthlyQuota(
+  filePath: string,
+  key: string,
+  limit: number,
+): MonthlyQuotaSnapshot {
+  const month = localDateString().slice(0, 7);
+  let used = 0;
+  try {
+    const state = JSON.parse(readFileSync(filePath, 'utf-8')) as {
+      month?: string;
+      counts?: Record<string, number>;
+    };
+    if (state.month === month) used = state.counts?.[key] ?? 0;
+  } catch {
+    // 文件缺失或损坏：按 0 处理
+  }
+  const remaining = Math.max(0, limit - used);
+  return { month, key, used, limit, remaining, ratio: limit > 0 ? used / limit : 0 };
+}
