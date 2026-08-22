@@ -45,5 +45,5 @@ Tavily 触发路径与月度配额 [P-64]=1000 无可见性。本轮补：
   `npm run build` ✓、`npm run test:all` 全绿（集成 17/17）、`doc-lint` 0 FAIL 0 WARN（附录 947/950，
   压缩 E56 腾行）。
 - 提交：（待提交）
-- 遗留事项：**Tavily 处于配额超限（432）**，待 owner 决策：A) 升级计划；B) 等下月重置；
-  C) 按远端 credits 复算 [P-64] 口径与本地计数。
+- 遗留事项：**Tavily 处于配额超限（432）**；owner 已决策等下月重置（已核实用量耗尽），
+  9 月重置后跑 `npm run tavily:smoke` 复核，并评估 [P-64] 口径复算（本地计数 vs 远端 credits）。
