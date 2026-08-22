@@ -45,6 +45,22 @@ function pythonHasLocalRapidOcr(): boolean {
 
 const HAS_LOCAL_RAPIDOCR = pythonHasLocalRapidOcr();
 
+/** E185：表格识别 runPython 实际回退到 PATH python（OFFICE_PYTHON 无 fitz），以 PATH python 为准。 */
+function pythonHasFitzOnPath(): boolean {
+  try {
+    const out = execFileSync(
+      'python',
+      ['-c', "import importlib.util as u; print('1' if u.find_spec('fitz') else '0')"],
+      { encoding: 'utf8' },
+    ).trim();
+    return out === '1';
+  } catch {
+    return false;
+  }
+}
+
+const HAS_PATH_FITZ = pythonHasFitzOnPath();
+
 
 function tempDir(): string {
   return mkdtempSync(join(tmpdir(), 'office-daily-test-'));
@@ -2169,6 +2185,83 @@ print(json.dumps(out))`,
       assert.equal(warnings.length, 0, `${c.key} 不应有 warning`);
       assert.ok(result.answer?.includes(`已还原 ${c.expectCount} 处合并单元格`), `${c.key} 答案计数`);
     }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 图片表格识别跨页 PDF 拼接（2 页重复表头去重，E185）', { skip: !HAS_LOCAL_RAPIDOCR || !HAS_PATH_FITZ }, async () => {
+  const dir = tempDir();
+  try {
+    // 合成 2 页表 PDF：首页表头+2 行正文，次页重复表头+2 行正文（PIL save_all 直接出 PDF）
+    const b64 = execFileSync(
+      'python',
+      [
+        '-c',
+        `import base64, io, os
+from PIL import Image, ImageDraw, ImageFont
+font = None
+for fp in [r'C:\\Windows\\Fonts\\msyh.ttc', r'C:\\Windows\\Fonts\\simhei.ttf']:
+    if os.path.exists(fp):
+        try:
+            font = ImageFont.truetype(fp, 26)
+            break
+        except Exception:
+            pass
+if font is None:
+    font = ImageFont.load_default()
+
+def tab(xs, ys, cells):
+    img = Image.new('RGB', (xs[-1] + 40, ys[-1] + 40), 'white')
+    d = ImageDraw.Draw(img)
+    for x in xs:
+        d.line([(x, ys[0]), (x, ys[-1])], fill=(0, 0, 0), width=2)
+    for y in ys:
+        d.line([(xs[0], y), (xs[-1], y)], fill=(0, 0, 0), width=2)
+    for (r, c), t in cells.items():
+        d.text((xs[c] + 18, ys[r] + 32), t, fill=(0, 0, 0), font=font)
+    return img
+
+X5 = (40, 190, 340, 490, 640, 790)
+Y4 = (40, 150, 260, 370, 480)
+header = {(0, 0): '产品', (0, 1): '2024', (0, 3): '2025', (1, 1): '上半年', (1, 2): '下半年', (1, 3): '上半年', (1, 4): '下半年'}
+p1 = tab(X5, Y4, {**header, (2, 0): '手机', (2, 1): '100', (2, 2): '200', (2, 3): '300', (2, 4): '400', (3, 0): '平板', (3, 1): '110', (3, 2): '210', (3, 3): '310', (3, 4): '410'})
+p2 = tab(X5, Y4, {**header, (2, 0): '笔记本', (2, 1): '120', (2, 2): '220', (2, 3): '320', (2, 4): '420', (3, 0): '台式', (3, 1): '130', (3, 2): '230', (3, 3): '330', (3, 4): '430'})
+buf = io.BytesIO()
+p1.save(buf, 'PDF', save_all=True, append_images=[p2])
+print(base64.b64encode(buf.getvalue()).decode())`,
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    const pdf = Buffer.from(b64, 'base64');
+    const skill = createOfficeDailySkill({ outDir: dir });
+    const out = await skill.execute(
+      {
+        query: '识别这张表格',
+        attachmentSignals: [{ type: 'document', mimeType: 'application/pdf', sizeBytes: pdf.length, fileName: 'scan.pdf' }],
+        rawFiles: [fakeFile('scan.pdf', 'application/pdf', pdf)],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; path?: string; warnings?: Array<{ type?: string }>; pages?: number };
+    assert.ok(existsSync(result.path as string), 'xlsx 落盘');
+    assert.equal(result.pages, 2, '多页字段');
+    assert.ok(result.answer?.includes('2 页拼接'), result.answer);
+    assert.ok(result.answer?.includes('6 行 × 5 列'), result.answer);
+    assert.ok(result.answer?.includes('已还原 3 处合并单元格'), result.answer);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(result.path as string);
+    const ws = wb.getWorksheet(1);
+    assert.ok(ws, 'xlsx 读取成功');
+    const merges = [...ws.model.merges].sort();
+    assert.deepEqual(merges, ['A1:A2', 'B1:C1', 'D1:E1'].sort(), JSON.stringify(merges));
+    assert.equal(ws.getCell('A1').value, '产品', '锚点格');
+    assert.equal(ws.getCell('A5').value, '笔记本', '第 2 页正文首行');
+    assert.equal(ws.getCell('A6').value, '台式', '第 2 页正文末行');
+    assert.equal(ws.getCell('E6').value, '430', '第 2 页末行末列');
+    const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+    assert.equal(warnings.length, 0, JSON.stringify(warnings));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

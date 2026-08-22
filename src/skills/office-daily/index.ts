@@ -1365,11 +1365,12 @@ ${timeLabel}
         }
       }
       if (mode === 'table_ocr') {
-        // E168/E172/E173：图片表格结构识别 → .xlsx（exceljs）；TSR 输出含 bbox/span/merges，无法还原的疑似合并区如实提示
-        const file = findImageFile(input);
+        // E168/E172/E173/E185：图片/PDF 表格结构识别 → .xlsx（exceljs）；TSR 输出含 bbox/span/merges，
+        // 多页 PDF 跨页拼接（重复表头去重），无法还原的疑似合并区如实提示
+        const file = findImageFile(input) ?? findPdfFile(input);
         if (!file) {
           return {
-            result: { answer: '请上传要识别表格的图片。' },
+            result: { answer: '请上传要识别表格的图片或 PDF。' },
             confidence: 0.4,
           };
         }
@@ -1390,6 +1391,8 @@ ${timeLabel}
             grid?: string[][];
             warnings?: TableMergeWarning[];
             merges?: TableMerge[];
+            pages?: number;
+            page_stitched?: boolean;
             error?: string;
           };
           if (!result.ok) {
@@ -1412,15 +1415,19 @@ ${timeLabel}
           const csvText = (result.csv ?? '').trim();
           const preview = csvText.slice(0, 120) + (csvText.length > 120 ? '…' : '');
           const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+          const multiPage =
+            typeof result.pages === 'number' && result.pages > 1 ? result.pages + ' 页拼接 ' : '';
           return {
             result: {
               answer:
-                '已识别表格（' + (result.rows ?? 0) + ' 行 × ' + (result.cols ?? 0) + ' 列）：' +
+                '已识别表格（' + multiPage + (result.rows ?? 0) + ' 行 × ' + (result.cols ?? 0) + ' 列）：' +
                 preview + '；XLSX 已保存：' + xlsxPath + tableMergesNote(merges) + tableWarningsNote(warnings),
               path: xlsxPath,
               csv: csvText,
               rows: result.rows ?? 0,
               cols: result.cols ?? 0,
+              pages: result.pages ?? 1,
+              pageStitched: result.page_stitched ?? false,
               warnings,
               merges,
             },

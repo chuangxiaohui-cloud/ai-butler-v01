@@ -746,8 +746,12 @@ def suppress_faint_ink(arr, threshold: float = 85.0):
 
         img = Image.fromarray(arr)
         gray = np.asarray(img.convert("L")).astype(np.float32)
+        # E185：200dpi 渲染页（min 边 >1000px）网格线约 5-6px 粗，固定 5px 模糊会把
+        # AA 边缘列打成碎片、网格线检测分裂出伪列；按图像尺寸放大模糊半径。
+        min_side = min(gray.shape)
+        radius = 5 if min_side <= 1000 else max(6, min_side // 100)
         blur = np.asarray(
-            img.convert("L").filter(ImageFilter.GaussianBlur(5))
+            img.convert("L").filter(ImageFilter.GaussianBlur(radius))
         ).astype(np.float32)
         mask = (blur - gray) > threshold
         out = np.where(mask, 0, 255).astype(np.uint8)
@@ -766,6 +770,247 @@ def run_ocr(engine, src: str):
         return None, f"{os.path.basename(src)}：{exc}"
 
 
+TABLE_PDF_DPI = 200  # E185：多页 PDF 渲染 DPI
+
+
+def process_table_array(engine, arr):
+    """E168..E185：单张图像 → 表格结构 dict。
+
+    含 deskew/透字抑制/OCR/网格重建/detect_merges/合并重排/cells/spans；
+    cell_items 保留每格原始 bbox（TSR 数据），供 E185 跨页拼接复用。"""
+    corrected, _skew = deskew_image(arr)
+    cleaned = suppress_faint_ink(corrected)
+    items, run_err = run_ocr(engine, cleaned)
+    if run_err:
+        raise RuntimeError(run_err)
+    items = items or []
+    # E174：优先网格线重建（行列结构精确），无网格回退文本聚类
+    grid_lines = detect_table_lines(cleaned)
+    if grid_lines:
+        x_edges, y_edges = grid_lines
+        grid, rows, cols, cell_items, col_cx, row_anchors = reconstruct_grid(
+            items, x_edges, y_edges
+        )
+        merges, warnings = detect_merges(
+            cell_items, col_cx, row_anchors, (x_edges[1:-1], y_edges[1:-1])
+        )
+    else:
+        grid, rows, cols, cell_items, col_cx, row_anchors = reconstruct_table(items)
+        merges, warnings = detect_merges(cell_items, col_cx, row_anchors)
+    # E173：合并区文本重排到锚点格（grid/cells 同步；spans 保留原始 bbox 与 score）
+    for m in merges:
+        mrow, mcol = m["row"], m["col"]
+        anchor_items: list[dict] = []
+        for rr in range(mrow, mrow + m["rowSpan"]):
+            for cc in range(mcol, mcol + m["colSpan"]):
+                if (rr, cc) != (mrow, mcol):
+                    anchor_items.extend(cell_items[rr][cc])
+                    cell_items[rr][cc] = []
+        cell_items[mrow][mcol].extend(anchor_items)
+        cell_items[mrow][mcol] = sorted(
+            cell_items[mrow][mcol], key=lambda i: i["cy"]
+        )
+    grid = [
+        [
+            " ".join(it["text"] for it in sorted(cells, key=lambda i: i["cy"])).strip()
+            for cells in row
+        ]
+        for row in cell_items
+    ]
+    cells = [
+        {
+            "row": r,
+            "col": c,
+            "text": " ".join(
+                it["text"] for it in sorted(its, key=lambda i: i["cy"])
+            ).strip(),
+            "bbox": _bbox_of(its),
+        }
+        for r, row in enumerate(cell_items)
+        for c, its in enumerate(row)
+        if its
+    ]
+    spans = [
+        {
+            "row": r,
+            "col": c,
+            "text": it["text"],
+            "bbox": {"x": it["x"], "y": it["y"], "w": it["w"], "h": it["h"]},
+            "score": it.get("score"),
+        }
+        for r, row in enumerate(cell_items)
+        for c, its in enumerate(row)
+        for it in its
+    ]
+    return {
+        "grid": grid,
+        "rows": rows,
+        "cols": cols,
+        "cell_items": cell_items,
+        "merges": merges,
+        "warnings": warnings,
+        "cells": cells,
+        "spans": spans,
+        "pages": 1,
+        "page_stitched": False,
+        "page_headers": 0,
+    }
+
+
+def render_pdf_pages(src: str):
+    """E185：fitz 按 dpi=200 渲染 PDF 每页 → RGB numpy 数组列表。"""
+    import fitz
+    import numpy as np
+
+    doc = fitz.open(src)
+    pages: list = []
+    try:
+        for page in doc:
+            pix = page.get_pixmap(dpi=TABLE_PDF_DPI, colorspace=fitz.csRGB)
+            arr = np.frombuffer(pix.samples, dtype=np.uint8)
+            arr = arr.reshape(pix.height, pix.width, pix.n)
+            if arr.shape[2] == 4:
+                arr = arr[:, :, :3]
+            pages.append(arr)
+    finally:
+        doc.close()
+    if not pages:
+        raise RuntimeError("PDF 无页面")
+    return pages
+
+
+def _row_similar(a: list, b: list) -> bool:
+    """E185：两行表头文本相似度——非空格文本匹配率 ≥ 70% 视为同表头。"""
+    n = eq = 0
+    for x, y in zip(a, b):
+        x = (x or "").strip()
+        y = (y or "").strip()
+        if not x and not y:
+            continue
+        n += 1
+        if x == y:
+            eq += 1
+    if n == 0:
+        return True
+    return eq / n >= 0.7
+
+
+def _common_header_rows(grid_a: list, grid_b: list) -> int:
+    """E185：求 grid_b 前部与 grid_a 的公共表头行数（最长公共前缀）。"""
+    h = 0
+    for ra, rb in zip(grid_a, grid_b):
+        if _row_similar(ra, rb):
+            h += 1
+        else:
+            break
+    return h
+
+
+def stitch_table_pages(page_dicts: list[dict]) -> dict:
+    """E185：跨页大表拼接——首页表头保留一次，后续页去重表头后正文行顺序追加。
+
+    复用 TSR 已保留的 bbox/span：每页独立 OCR/网格/合并还原，这里只做行级拼接与
+    全局行号重排（不重跑识别）。返回与单页同构的 dict，附 pages/page_stitched/
+    page_headers 字段。列数不一致或表头无法匹配时诚实告警，不产出错误结构。"""
+    if len(page_dicts) == 1:
+        page = page_dicts[0]
+        return {
+            "grid": page["grid"],
+            "rows": page["rows"],
+            "cols": page["cols"],
+            "cell_items": page["cell_items"],
+            "merges": page["merges"],
+            "warnings": page["warnings"],
+            "cells": page["cells"],
+            "spans": page["spans"],
+            "pages": 1,
+            "page_stitched": False,
+            "page_headers": 0,
+        }
+    base = page_dicts[0]
+    grid = [list(row) for row in base["grid"]]
+    merges = [dict(m) for m in base["merges"]]
+    warnings = [dict(w) for w in base["warnings"]]
+    cells = [dict(c) for c in base["cells"]]
+    spans = [dict(s) for s in base["spans"]]
+    cols = base["cols"]
+    total_rows = base["rows"]
+    stitched = False
+    for idx, page in enumerate(page_dicts[1:], start=2):
+        h = _common_header_rows(base["grid"], page["grid"])
+        if h >= 1:
+            body = page["grid"][h:]
+            drop_rows = h
+            offset = total_rows - h
+            stitched = True
+        else:
+            body = page["grid"]
+            drop_rows = 0
+            offset = total_rows
+            warnings.append(
+                {
+                    "type": "page_header_mismatch",
+                    "page": idx,
+                    "detail": f"第 {idx} 页表头与首页不一致，无法自动去重表头，已整页拼接，请人工核对",
+                }
+            )
+        if page["cols"] != cols:
+            warnings.append(
+                {
+                    "type": "page_col_mismatch",
+                    "page": idx,
+                    "detail": f"第 {idx} 页列数 {page['cols']} 与首页 {cols} 不一致，已按首页列数补齐/截断",
+                }
+            )
+        # 正文行按首页列数对齐（补齐/截断），并入总表
+        for row in body:
+            grid.append((list(row) + [""] * cols)[:cols])
+        # 合并区重排：后续页表头行（drop_rows）丢弃；正文合并偏移到全局行号
+        for m in page["merges"]:
+            if m["row"] < drop_rows or m["col"] >= cols:
+                continue
+            nm = dict(m)
+            nm["row"] = m["row"] + offset
+            merges.append(nm)
+        # cells/spans 重排：表头行丢弃，正文行号全局化（复用 TSR bbox/span）
+        for c in page["cells"]:
+            if c["row"] < drop_rows or c["col"] >= cols:
+                continue
+            nc = dict(c)
+            nc["row"] = c["row"] + offset
+            cells.append(nc)
+        for s in page["spans"]:
+            if s["row"] < drop_rows or s["col"] >= cols:
+                continue
+            ns = dict(s)
+            ns["row"] = s["row"] + offset
+            spans.append(ns)
+        total_rows += len(body)
+        base = page  # 后续页以当前页为基准继续对表头（分页切片对齐）
+    merges.sort(key=lambda m: (m["row"], m["col"]))
+    cells.sort(key=lambda c: (c["row"], c["col"]))
+    spans.sort(key=lambda s: (s["row"], s["col"]))
+    header_h = (
+        _common_header_rows(page_dicts[0]["grid"], page_dicts[1]["grid"])
+        if len(page_dicts) > 1
+        else 0
+    )
+    return {
+        "grid": grid,
+        "rows": len(grid),
+        "cols": cols,
+        "cell_items": None,  # 拼接后不保留 cell_items（grid/cells/spans 已全局化）
+        "merges": merges,
+        "warnings": warnings,
+        "cells": cells,
+        "spans": spans,
+        "pages": len(page_dicts),
+        "page_stitched": stitched,
+        "page_headers": header_h,
+    }
+
+
+
 def main() -> int:
     args = sys.argv[1:]
     table_mode = len(args) >= 1 and args[0] == "--table"
@@ -778,46 +1023,22 @@ def main() -> int:
             engine, err = get_engine()
             if engine is None:
                 return fail(err or "OCR 引擎不可用")
-            arr_src = load_image(src)
-            corrected, _skew = deskew_image(arr_src)
-            cleaned = suppress_faint_ink(corrected)
-            items, run_err = run_ocr(engine, cleaned)
-            if run_err:
-                return fail(run_err)
-            items = items or []
-            # E174：优先网格线重建（行列结构精确），无网格回退文本聚类
-            grid_lines = detect_table_lines(cleaned)
-            if grid_lines:
-                x_edges, y_edges = grid_lines
-                grid, rows, cols, cell_items, col_cx, row_anchors = reconstruct_grid(
-                    items, x_edges, y_edges
-                )
-                merges, warnings = detect_merges(
-                    cell_items, col_cx, row_anchors, (x_edges[1:-1], y_edges[1:-1])
-                )
+            ext = os.path.splitext(src)[1].lower()
+            if ext == ".pdf":
+                # E185：多页 PDF 扫描件——逐页识别后跨页拼接（复用 TSR bbox/span，不重跑整图识别）
+                try:
+                    page_dicts = [
+                        process_table_array(engine, arr)
+                        for arr in render_pdf_pages(src)
+                    ]
+                except ImportError:
+                    return fail("PDF 表格识别需要 PyMuPDF（fitz），当前环境未安装；请运行 `python -m pip install pymupdf` 后重试")
+                page = stitch_table_pages(page_dicts)
             else:
-                grid, rows, cols, cell_items, col_cx, row_anchors = reconstruct_table(items)
-                merges, warnings = detect_merges(cell_items, col_cx, row_anchors)
-            # E173：合并区文本重排到锚点格（grid/cells 同步；spans 保留原始 bbox 与 score）
-            for m in merges:
-                mrow, mcol = m["row"], m["col"]
-                anchor_items: list[dict] = []
-                for rr in range(mrow, mrow + m["rowSpan"]):
-                    for cc in range(mcol, mcol + m["colSpan"]):
-                        if (rr, cc) != (mrow, mcol):
-                            anchor_items.extend(cell_items[rr][cc])
-                            cell_items[rr][cc] = []
-                cell_items[mrow][mcol].extend(anchor_items)
-                cell_items[mrow][mcol] = sorted(
-                    cell_items[mrow][mcol], key=lambda i: i["cy"]
-                )
-            grid = [
-                [
-                    " ".join(it["text"] for it in sorted(cells, key=lambda i: i["cy"])).strip()
-                    for cells in row
-                ]
-                for row in cell_items
-            ]
+                page = process_table_array(engine, load_image(src))
+            grid, rows, cols = page["grid"], page["rows"], page["cols"]
+            merges, warnings = page["merges"], page["warnings"]
+            cells, spans = page["cells"], page["spans"]
             buf = io.StringIO()
             writer = csv.writer(buf)
             writer.writerows(grid)
@@ -825,32 +1046,6 @@ def main() -> int:
             if out_csv:
                 with open(out_csv, "w", encoding="utf-8", newline="") as fh:
                     fh.write(csv_text)
-            # E172：TSR 原始数据——cells/spans 保留行列归属与 bbox；merges 为还原结果
-            cells = [
-                {
-                    "row": r,
-                    "col": c,
-                    "text": " ".join(
-                        it["text"] for it in sorted(its, key=lambda i: i["cy"])
-                    ).strip(),
-                    "bbox": _bbox_of(its),
-                }
-                for r, row in enumerate(cell_items)
-                for c, its in enumerate(row)
-                if its
-            ]
-            spans = [
-                {
-                    "row": r,
-                    "col": c,
-                    "text": it["text"],
-                    "bbox": {"x": it["x"], "y": it["y"], "w": it["w"], "h": it["h"]},
-                    "score": it.get("score"),
-                }
-                for r, row in enumerate(cell_items)
-                for c, its in enumerate(row)
-                for it in its
-            ]
             print(
                 json.dumps(
                     {
@@ -863,6 +1058,9 @@ def main() -> int:
                         "spans": spans,
                         "merges": merges,
                         "warnings": warnings,
+                        "pages": page["pages"],
+                        "page_stitched": page["page_stitched"],
+                        "page_headers": page["page_headers"],
                     },
                     ensure_ascii=False,
                 )
