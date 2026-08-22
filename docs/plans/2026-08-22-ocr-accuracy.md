@@ -52,3 +52,15 @@ owner 对五项增量方向审阅后决策如下，本计划文档为过程记�
 | 方向 5：排除项 | ✅ 归档 | WinRT OCR、列裁剪、二值化、直方图均衡实测无效，记录在案，后续不再重复验证。 |
 
 **方向 1 阻塞明细（供 owner 处理）**：审核服务模型名匹配规则只认 `deepseek-v4-pro` / `deepseek-v4-flash` / `deepseek-v4-flash-vision-exp`，而当前调用模型为 `gpt-5.6-luna`，导致所有 `require_escalated` 命令被自动审核误拒。建议运维/安全团队修正审核白名单模型名匹配规则（放开或映射当前模型名），修好后重跑 `python M:\202608111\data\exp-paddle.py`；如审批流程允许，也可由 owner 本机直接跑脚本。注意 PaddleOCR 冷启动约 117s（E97 实测），属正常现象。
+
+## 方向 1 实测归档 + E201 词典扩展（2026-08-23 登记，E203）
+
+方向 1（换 PP-OCRv6）由 owner 本机真跑（`data/exp-paddle.py`，paddleocr 3.7.0 / paddlex 3.7.2，PP-OCRv6_medium det+rec）**不达标，归档**：
+
+- 排障链：① xlrd 残缺/命名空间包 → 真值预提取 `data/exp-paddle-gt.json` 兜底；② oneDNN 指令不兼容（`ConvertPirAttribute2RuntimeAttribute not support`）→ `PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT=False`（同 E97）；③ PP-OCRv6 rec 框为 `[l,t,r,b]` 而非 4 点 → 通用解析。
+- 目标残差 3 处（`需胶枪→糖胶枪`、FR405 型号乱码、FR407 单位「套」漏检）**全部未修复**；新引入 `LBD补光灯`/`宣鼎SSD`/`GO70VW01`/`LVD8线`/`外亮模具` 5 处新错（RapidOCR+E201 均正确）；单图 `predict` 约 240s（比 RapidOCR 慢约 100 倍）。
+- 结论：默认引擎维持 RapidOCR；`PDF_OCR_ENGINE=paddle` 保留为可选慢速通道。方向 3（超分）维持暂缓——「换模型即提升」假设被证伪，残差集中在上下文消歧与整格漏检，词典/网格优先。
+- E201 词典扩展：型号补 `白色(糖胶枪)`、FR405 两通道乱码读数（RapidOCR/Paddle）映射规范值 `2.54-9P扁排线(一头2*5P牛角插头,另外一头杜邦2.0)`、尾片段 `%2.01` 清洗；备件名称 `LBD补光灯→LED补光灯`/`外亮模具→外壳模具`/`LVD8线→LVDS线`。bench:B-20260823-01 真跑：型号 43/45→**44/45**（FR405 修复），其余列与 B-20260822-09 持平。
+- 剩余残差 2 处（诚实登记）：登加型歧义（`叠加型/分开型` 合并行拆分，需按备件名/上下文消歧）、FR407 单位「套」整格漏检（两通道均未检出，词典无法补缺失文本，需网格补位或源头提分辨率）。
+
+**验证**：`--selftest` 覆盖新变体（dict_corrected 14→16）；OCRtest.png 结构不变（54×7、`merged_conflict` 预存 1 条）；E181 变体不受影响；doc-lint 0 FAIL 0 WARN。
