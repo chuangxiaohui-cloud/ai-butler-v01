@@ -258,6 +258,18 @@
     `SkillLifecycle.ensureMarketSkillsRegistered` 市场 Skill 进入生命周期统计（§8.2.3 成熟度，幂等）。
     新增单测 21 条；全量单测 777/778（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN（附录 522/950）。
     计划见 `docs/plans/2026-08-23-v1-s7-skill-market.md`。
+32. **v1.0 S8 LLM 增强路由 + MemoryCoreStore 切换（E227）**：v1.0 收尾片——
+    ① LLM 增强路由接线生产入口（E21/E207-H6 留待项）：`src/search/llm.ts` 新增
+    `createOptionalHeavyClient()`（有 Provider 返回 heavy 客户端、无 Provider 返回 undefined，
+    避免启动抛错与无配置误触发 [P-84] 折扣），main/gateway 的 pipeline deps 注入 llm——
+    CLI/gateway 问答现走 LLM 特征提取路由（失败自动回退规则 + 折扣），无 Provider 保持纯规则；
+    ② MemoryCoreStore 切换（E207-D5 留待项）：`resolveMemoryStoreKind`（默认 sqlite/未知安全回退）
+    + `createDefaultMemoryStore`（`MEMORY_STORE=memorycore` 构造 MemoryCoreStore，身份三元组/强 key
+    缺一显式抛错不静默回退），`defaultMemoryStore` 返回 MemoryStore 接口，`.env.example` 登记
+    `MEMORY_STORE=sqlite`；③ fast description 不复活（P-87/P-88 已 E207 tombstone）。
+    新增单测 6 条；全量单测 783/784（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN（附录 523/950）。
+    计划见 `docs/plans/2026-08-23-v1-s8-llm-routing-memorycore.md`。
+
 
 
 
@@ -266,7 +278,7 @@
 - 架构审计全部批次 + E219/E220 已提交：安全/数据/正确性批 `60b419d`、决策批 E207 `615bb62`、
   中期批 1-7 E208-E214 `109021b`、P17 E215 `0cbde9b`、P1/P2/P10 E216 `ce1abf8`、
   B2/B3 E217 `f575040`、S1-S3 E218 `3fb4cc6`、E219 `e3513f7`、v1.0 S1 深度报告 E220 `09e89bc`、
-  v1.0 S2 证据链 UI + 深度报告恢复 E221 `fdf2392`、v1.0 S3 MCP 子 Agent 骨架 E222 `2f0fd42`、v1.0 S4 安全模型补齐 E223 `31ce84b`、v1.0 S5 远程对话通道骨架 E224 `c18cbd6`；待提交清单已清空。v1.0 S5 远程对话通道骨架 E224 `c18cbd6`、v1.0 S6 代码托管联动 E225 `fcac8de`；待提交清单已清空。v1.0 S6 代码托管联动 E225 `fcac8de`、v1.0 S7 Skill 市场远程化 E226 `3f10293`；待提交清单已清空。
+  v1.0 S2 证据链 UI + 深度报告恢复 E221 `fdf2392`、v1.0 S3 MCP 子 Agent 骨架 E222 `2f0fd42`、v1.0 S4 安全模型补齐 E223 `31ce84b`、v1.0 S5 远程对话通道骨架 E224 `c18cbd6`；待提交清单已清空。v1.0 S5 远程对话通道骨架 E224 `c18cbd6`、v1.0 S6 代码托管联动 E225 `fcac8de`；待提交清单已清空。v1.0 S6 代码托管联动 E225 `fcac8de`、v1.0 S7 Skill 市场远程化 E226 `3f10293`；待提交清单已清空。v1.0 S7 Skill 市场远程化 E226 `3f10293`、v1.0 S8 LLM 增强路由 + MemoryCoreStore 切换 E227 `4a839a1`；待提交清单已清空。
 - `bench/search-metrics.jsonl` 与根目录临时文件/`docs/2026-08-23-architecture-code-audit.md`
   不在任何批次，未混入提交（审计文档保留为只读第三方输入）。
 
@@ -297,7 +309,9 @@
    push:hosts 运维通道承载）；
    S7 Skill 市场远程化（E226）已收口（索引/校验/权限门禁/安装记录/生命周期统计，
    真实可执行 handler 接入待 §10 流程）；
-   剩余 S8 LLM 增强路由 + fast description + MemoryCoreStore 切换；
+   S8 LLM 增强路由 + MemoryCoreStore 切换（E227）已收口（fast description 已在 E207
+   tombstone 不复活）；v1.0 切片 S1-S8 全部完成，后续回到 OCR 备忘 / Tavily 月度复核 /
+   附录行数 retention 等常规项；
    [P-13] 保持 provisional，待真实使用实测按 E197 口径复测。`docs/plans/YYYY-MM-DD-<主题>.md` 三段式。
 
 ## 常用命令
