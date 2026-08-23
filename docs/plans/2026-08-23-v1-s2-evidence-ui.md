@@ -43,5 +43,5 @@ v1.0 切片第二片（S2）：补上 §9.2 证据链交互（证据可点击验
 
 - 验证：`npm exec tsx scripts/doc-lint.ts` 0 FAIL 0 WARN（C8 36 key、附录 517/950）；主项目 `npm run build` + UI 原型 `npm --prefix ui/prototype run build` 通过；`npm run test:all` 全绿。
 - 测试：单测 699/700（1 skip）+ 集成 15/15；新增 9 条（deep-report-store 5 + deep-report 恢复/回调 3 + pipeline 恢复分发 1）。
-- 提交：`（待填）`（E221）+ `（待填）`（handoff 登记）
+- 提交：`fdf2392`（E221）+ `e0e6b21`（handoff 登记）
 - 遗留事项：S1 遗留「深度报告恢复」收口完成；剩余切片 S3 MCP 子 Agent、S4 安全模型补齐等按 `docs/plans/2026-08-23-v1-slicing.md` 排期继续；[P-13] 维持 provisional。
