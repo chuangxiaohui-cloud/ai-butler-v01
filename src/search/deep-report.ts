@@ -153,38 +153,52 @@ export async function generateDeepReport(
   const sections: string[] = [...resumedSections];
   let usedLlm = false;
   safeStage('report-sections');
-  for (let i = sections.length; i < Math.min(sectionCount, usedHeadings.length); i++) {
+  // Stage B：分节生成（E231 并行：大纲 1 次 + 分节并行 1 次 = 2 轮 RTT；仅大纲标题走 LLM，超出补 fallback）
+  // 并行任务各自组装并缓存 markdown，按序号顺序释放回调 onSection（保持 S2 逐节落盘语义：
+  // 先完成的节立即持久化、取消可续，且 sections 顺序与序号一致）
+  const targetSectionCount = Math.min(sectionCount, Math.max(usedHeadings.length, fallbackSections.length));
+  const pending: number[] = [];
+  for (let i = sections.length; i < targetSectionCount; i++) {
     if (externalSignal?.aborted) throw new DeepReportCancelledError();
     safeStage(`report-section-${i + 1}`);
-    const heading = usedHeadings[i];
-    let body: string | null = null;
-    if (outline !== null && opts.llm) {
-      body = await callWithBudget(
-        [
-          { role: 'system', content: REPORT_SYSTEM_PROMPT },
-          {
-            role: 'user',
-            content: `${contextBlock}\n\n请撰写报告小节「${heading}」的内容（Markdown，300-500 字，引用来源 URL）。`,
-          },
-        ],
-        MAX_SECTION_TOKENS,
-      );
-    }
-    const fb = fallbackSections.find((s) => s.heading === heading) ?? fallbackSections[Math.min(i, fallbackSections.length - 1)];
-    const markdown = body ? `## ${heading}\n\n${body.trim()}` : fb.markdown;
-    sections.push(markdown);
-    if (body) usedLlm = true;
-    opts.onSection?.(i + 1, markdown);
-    if (remaining() <= 0) {
-      timedOut = true;
-      break;
-    }
+    pending.push(i);
   }
-  for (let i = sections.length; i < Math.min(sectionCount, fallbackSections.length); i++) {
-    const markdown = fallbackSections[i].markdown;
-    sections.push(markdown);
-    opts.onSection?.(i + 1, markdown);
-  }
+  const resolved = new Map<number, string>();
+  let nextIndex = sections.length;
+  const orderedMarkdown: string[] = [];
+  const flush = (): void => {
+    while (resolved.has(nextIndex)) {
+      const markdown = resolved.get(nextIndex)!;
+      orderedMarkdown.push(markdown);
+      opts.onSection?.(nextIndex + 1, markdown);
+      nextIndex++;
+    }
+  };
+  await Promise.all(
+    pending.map(async (i) => {
+      let body: string | null = null;
+      if (outline !== null && opts.llm && i < usedHeadings.length) {
+        const heading = usedHeadings[i];
+        body = await callWithBudget(
+          [
+            { role: 'system', content: REPORT_SYSTEM_PROMPT },
+            {
+              role: 'user',
+              content: `${contextBlock}\n\n请撰写报告小节「${heading}」的内容（Markdown，300-500 字，引用来源 URL）。`,
+            },
+          ],
+          MAX_SECTION_TOKENS,
+        );
+      }
+      const heading = usedHeadings[i] ?? fallbackSections[Math.min(i, fallbackSections.length - 1)]?.heading;
+      const fb = fallbackSections.find((s) => s.heading === heading) ?? fallbackSections[Math.min(i, fallbackSections.length - 1)];
+      const markdown = body ? `## ${heading}\n\n${body.trim()}` : fb.markdown;
+      if (body) usedLlm = true;
+      resolved.set(i, markdown);
+      flush();
+    }),
+  );
+  for (const markdown of orderedMarkdown) sections.push(markdown);
 
   // Stage C：证据附录（规则组装，不耗 LLM 预算）
   safeStage('report-evidence');

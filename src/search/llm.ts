@@ -3,6 +3,7 @@
  * 轻/重/视觉客户端签名保持不变；provider 与模型改由 llm-registry 解析。
  */
 
+import { PARAMS } from '../config/params.js';
 import type { VLMClient } from '../skills/deps.js';
 import {
   defaultRegistry,
@@ -46,6 +47,18 @@ export function createHeavyClient(): LLMClient {
 export function createOptionalHeavyClient(): LLMClient | undefined {
   try {
     return createHeavyClient();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * 深度报告专用 heavy 客户端（E231）：per-call fallback 预算放开到 [P-13]，
+ * 避免被 P-116（对齐 Stage 5 的 12s）提前截断分节生成；未配置 Provider 返回 undefined。
+ */
+export function createDeepReportHeavyClient(): LLMClient | undefined {
+  try {
+    return createClientForRole('heavy', { totalBudgetMs: PARAMS.deepReportBudgetMs });
   } catch {
     return undefined;
   }

@@ -1033,6 +1033,7 @@ test('pipeline: 深度报告走搜索 + 分阶段报告生成 + 证据附录', a
       quota: new FakeQuota(),
       memoryStore: new FakeMemoryStore(),
       deepReportStore: new DeepReportStore(join(dir, 'jobs.jsonl')),
+      deepReportLlm: llm,
     },
     { onProgress: (s) => progress.push(s) },
   );
@@ -1079,6 +1080,7 @@ test('pipeline: 深度报告取消后同 query 自动恢复已生成分节', asy
       quota: new FakeQuota(),
       memoryStore: new FakeMemoryStore(),
       deepReportStore: store,
+      deepReportLlm: llm1,
     },
     { onProgress: (s) => progress1.push(s), signal: controller.signal },
   );
@@ -1101,6 +1103,7 @@ test('pipeline: 深度报告取消后同 query 自动恢复已生成分节', asy
       quota: new FakeQuota(),
       memoryStore: new FakeMemoryStore(),
       deepReportStore: store,
+      deepReportLlm: llm2,
     },
     { onProgress: (s) => progress2.push(s) },
   );

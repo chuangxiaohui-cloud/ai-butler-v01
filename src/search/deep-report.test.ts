@@ -59,6 +59,25 @@ test('deep-report: LLM 路径分阶段生成 + 证据附录', async () => {
   assert.equal(result.timedOut, false);
 });
 
+test('deep-report: 分节并行生成（2 轮 RTT，耗时约等于 max 而非 sum）', async () => {
+  const slow = new (class extends FakeLLM {
+    override async complete(messages: Array<{ role: string; content: string }>): Promise<string> {
+      await new Promise((r) => setTimeout(r, 80));
+      return await super.complete(messages);
+    }
+  })();
+  const start = Date.now();
+  const result = await generateDeepReport('STM32 调研', evidence, {
+    llm: slow,
+    budgetMs: 5000,
+  });
+  const elapsed = Date.now() - start;
+  assert.equal(result.source, 'llm');
+  assert.equal(slow.calls, 4, '大纲 1 次 + 3 节并行 1 次');
+  assert.ok(elapsed < 280, `并行应约 160ms（2×80）而非顺序 320ms（4×80），实测 ${elapsed}ms`);
+  assert.equal(result.sections.length, 3);
+});
+
 test('deep-report: 预算超时快速降级，不等待挂起 LLM', async () => {
   const llm = new FakeLLM('hang');
   const start = Date.now();

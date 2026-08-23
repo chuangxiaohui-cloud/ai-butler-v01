@@ -5,7 +5,7 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { createLightClient } from './llm.js';
+import { createDeepReportHeavyClient, createLightClient } from './llm.js';
 import type { LLMClient } from './llm.js';
 import type { QuotaStoreLike } from './quota.js';
 import type { SearchProvider } from './providers/types.js';
@@ -120,6 +120,8 @@ export interface PipelineDeps {
   browserSession?: BrowserFetcher;
   /** v1.0 S2：深度报告任务状态存储（取消恢复；测试可注入内存实现） */
   deepReportStore?: DeepReportStoreLike;
+  /** E231：深度报告专用 LLM（per-call 预算=[P-13]，测试可注入 FakeLLM；缺省用 createDeepReportHeavyClient） */
+  deepReportLlm?: LLMClient | null;
   /** §10.3 搜索脱敏开关（默认开；工程开发栏显式携带项目上下文时可关） */
   querySanitizeEnabled?: boolean;
 }
@@ -897,7 +899,7 @@ export async function pipeline(
     const jobId = reportStore.start(prepared.cleanQuery, evidence.length, resumed ?? null);
     try {
       const report = await generateDeepReport(prepared.cleanQuery, evidence, {
-        llm: deps.llm,
+        llm: deps.deepReportLlm ?? createDeepReportHeavyClient() ?? deps.llm,
         budgetMs: PARAMS.deepReportBudgetMs,
         signal: opts.signal,
         onStage: (stage) => safeProgress(stage),

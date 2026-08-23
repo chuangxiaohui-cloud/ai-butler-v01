@@ -11,10 +11,11 @@
  *   npm run deep:bench -- --dry-run        # 离线自检（fallback 组装，无 LLM 调用，零 token）
  *   npm run deep:bench -- --samples 15     # 指定样本数（晋升需 n>=15，query 循环复用）
  *   npm run deep:bench -- --sections 3     # 分节数（默认 3，与生产一致）
+ *   npm run deep:bench -- --budget-ms 20000  # 覆盖预算（E231 校准用，默认 PARAMS.deepReportBudgetMs）
  */
 import { loadEnvFile } from '../src/config/env.js';
 import { PARAMS } from '../src/config/params.js';
-import { createOptionalHeavyClient } from '../src/search/llm.js';
+import { createDeepReportHeavyClient } from '../src/search/llm.js';
 import {
   generateDeepReport,
   type DeepReportEvidenceItem,
@@ -59,9 +60,11 @@ async function main(): Promise<void> {
     ?? args[args.indexOf('--sections') + 1] ?? '3';
   const samples = Math.max(1, Number(samplesArg) || 3);
   const sectionCount = Math.max(1, Number(sectionsArg) || 3);
-  const budgetMs = PARAMS.deepReportBudgetMs;
+  const budgetArg = args.find((a) => a.startsWith('--budget-ms='))?.split('=')[1]
+    ?? args[args.indexOf('--budget-ms') + 1];
+  const budgetMs = Math.max(1, Number(budgetArg) || PARAMS.deepReportBudgetMs);
 
-  const llm = dryRun ? undefined : createOptionalHeavyClient();
+  const llm = dryRun ? undefined : createDeepReportHeavyClient();
   const mode = llm ? 'LLM 真跑' : dryRun ? 'dry-run（fallback，无 LLM）' : '未配置 heavy client → fallback';
   console.log(`[P-13] 深度报告复测（E229）：samples=${samples} sections=${sectionCount} budget=${budgetMs}ms 模式=${mode}\n`);
 
