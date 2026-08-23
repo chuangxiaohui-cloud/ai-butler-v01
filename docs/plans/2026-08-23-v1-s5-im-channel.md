@@ -41,5 +41,5 @@ v1.0 切片第五片（S5）：落地 §4.5 远程对话通道骨架——IM 消
 
 - 验证：`npm exec tsx scripts/doc-lint.ts` 0 FAIL 0 WARN（C8 44 key、附录 520/950）；主项目 `npm run build` 通过；`npm run test:all` 全绿。
 - 测试：单测 741/742（1 skip）+ 集成 15/15；新增 12 条（gate 2 + session 2 + format 4 + service 4）。
-- 提交：`（待填）`（E224）+ `（待填）`（handoff 登记）
+- 提交：`c18cbd6`（E224）+ `25e24c7`（handoff 登记）
 - 遗留事项：S5 骨架完成；真实微信/QQ/飞书适配器按平台协议后续接入（实现 ImChannel 并注入 ask）；剩余切片 S6 代码托管联动、S7 Skill 市场远程化、S8 LLM 增强路由 + fast description + MemoryCoreStore 切换按 `docs/plans/2026-08-23-v1-slicing.md` 排期继续。
