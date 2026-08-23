@@ -231,6 +231,8 @@ function App() {
   const [l1Open, setL1Open] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
   const [rightTab, setRightTab] = useState<RightTab>('files');
+  const [browserUrl, setBrowserUrl] = useState('https://item.szlcsc.com/9243.html');
+  const [highlightFile, setHighlightFile] = useState<string | null>(null);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsKey, setSettingsKey] = useState<SettingsKey>('providers');
@@ -242,6 +244,23 @@ function App() {
   const [files, setFiles] = useState<Array<{ path: string; size: number; kind: string }>>([]);
   const [progressStage, setProgressStage] = useState('');
   const [generatingSkills, setGeneratingSkills] = useState<Record<string, string>>({});
+
+  // §9.2 证据链交互：证据引用可点击验证
+  const handleEvidenceClick = (ev: Evidence) => {
+    if (ev.type === 'search') {
+      const url = /^https?:\/\//i.test(ev.detail) ? ev.detail : ev.label;
+      setRightOpen(true);
+      setRightTab('browser');
+      setBrowserUrl(url);
+    } else if (ev.type === 'file') {
+      setRightOpen(true);
+      setRightTab('files');
+      setHighlightFile(ev.label.split(':')[0]);
+    } else if (ev.type === 'terminal') {
+      setRightOpen(true);
+      setRightTab('terminal');
+    }
+  };
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}model-providers.json`)
@@ -554,6 +573,7 @@ function App() {
                   msg={msg}
                   liked={liked[msg.id]}
                   onLike={(value) => setLiked((prev) => ({ ...prev, [msg.id]: value }))}
+                  onEvidence={handleEvidenceClick}
                 />
               ))}
             </div>
@@ -614,7 +634,12 @@ function App() {
                 ))}
                 {files.length === 0 && <p className="settings-note">暂无产物文件</p>}
                 {files.map((file) => (
-                  <div className="file-row" key={file.path}>
+                  <div
+                    className={`file-row ${highlightFile === file.path ? 'highlight' : ''}`}
+                    key={file.path}
+                    onClick={() => setHighlightFile(file.path)}
+                    title="点击高亮定位"
+                  >
                     <FileText size={15} />
                     <div>
                       <strong>{file.path}</strong>
@@ -628,12 +653,12 @@ function App() {
             {rightTab === 'browser' && (
               <div className="browser-preview">
                 <div className="browser-bar">
-                  <span>https://item.szlcsc.com/9243.html</span>
+                  <span>{browserUrl}</span>
                   <ArrowUpRight size={14} />
                 </div>
                 <div className="browser-body">
-                  <strong>STM32F103C8T6 · 数据手册</strong>
-                  <span>内置浏览器使用独立会话；登录态场景走主浏览器或后端代理。</span>
+                  <strong>{browserHost(browserUrl)}</strong>
+                  <span>点击证据来源跳转到此页；内置浏览器使用独立会话，登录态场景走主浏览器或后端代理。</span>
                 </div>
               </div>
             )}
@@ -702,16 +727,27 @@ function App() {
   );
 }
 
+function browserHost(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
 function MessageItem({
   msg,
   liked,
   onLike,
+  onEvidence,
 }: {
   msg: Message;
   liked: boolean | undefined;
   onLike: (value: boolean) => void;
+  onEvidence: (ev: Evidence) => void;
 }) {
   const isUser = msg.role === 'user';
+  const [expandedTest, setExpandedTest] = useState<string | null>(null);
   return (
     <article className={`message ${isUser ? 'user' : 'agent'}`}>
       <div className="message-avatar">
@@ -748,14 +784,41 @@ function MessageItem({
         {msg.evidence && msg.evidence.length > 0 && (
           <div className="evidence-list">
             {msg.evidence.map((ev, i) => (
-              <button className="evidence-chip" key={`${ev.label}-${i}`}>
-                <span>{ev.type === 'search' ? (ev.hard ? 'H' : 'S') : ev.type === 'file' ? 'F' : ev.type === 'terminal' ? 'T' : 'C'}</span>
-                <div>
-                  <strong>{ev.label}</strong>
-                  <small>{ev.detail}</small>
-                </div>
-                <ArrowUpRight size={13} />
-              </button>
+              <div className="evidence-item" key={`${ev.label}-${i}`}>
+                <button
+                  className={`evidence-chip ${ev.type === 'test' && expandedTest === ev.label ? 'expanded' : ''}`}
+                  onClick={() => {
+                    if (ev.type === 'test') {
+                      setExpandedTest((prev) => (prev === ev.label ? null : ev.label));
+                    } else {
+                      onEvidence(ev);
+                    }
+                  }}
+                  title={
+                    ev.type === 'search'
+                      ? '在内置浏览器打开来源'
+                      : ev.type === 'file'
+                        ? '在文件面板打开并高亮'
+                        : ev.type === 'terminal'
+                          ? '切换到终端面板定位'
+                          : '展开/收起测试详情'
+                  }
+                >
+                  <span>{ev.type === 'search' ? (ev.hard ? 'H' : 'S') : ev.type === 'file' ? 'F' : ev.type === 'terminal' ? 'T' : 'C'}</span>
+                  <div>
+                    <strong>{ev.label}</strong>
+                    <small>{ev.detail}</small>
+                  </div>
+                  <ArrowUpRight size={13} />
+                </button>
+                {ev.type === 'test' && expandedTest === ev.label && (
+                  <div className="evidence-detail">
+                    <strong>测试详情</strong>
+                    <code>{ev.label}</code>
+                    <p>{ev.detail}</p>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}

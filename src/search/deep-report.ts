@@ -4,6 +4,8 @@
  * 输出：结构化 Markdown 报告（分节生成）+ 证据附录
  * 预算：[P-13] 生成+证据组装总预算（不含内部搜索调用）；超时/失败降级为规则组装，不阻塞主对话。
  * 取消：外部 AbortSignal 生效，取消抛出 DeepReportCancelledError，由调用方转「已取消」应答。
+ * 恢复（S2）：opts.resume 携带上次取消任务的 headings + 已生成 sections，跳过重复生成，
+ * 不重新请求大纲；opts.onSection 每节生成后回调，供调用方逐节落盘（取消后可续）。
  */
 
 import type { LLMClient } from './llm-client.js';
@@ -29,6 +31,10 @@ export interface DeepReportOptions {
   synthesis?: string;
   /** 报告分节数（默认 3，测试可调小） */
   sectionCount?: number;
+  /** S2 恢复：上次取消任务的已生成分节与大纲（跳过重复生成，不重新请求大纲） */
+  resume?: { headings: string[]; sections: string[] } | null;
+  /** S2 每节生成后回调（index 1-based，与进度事件一致）；用于取消恢复持久化 */
+  onSection?: (index: number, section: string) => void;
 }
 
 export interface DeepReportResult {
@@ -101,38 +107,52 @@ export async function generateDeepReport(
         reject(new Error('深度报告预算超时'));
       }, left);
     });
+    // S2 改进：外部取消立即生效（abort 事件同步 reject，不等预算耗尽才响应）
+    let rejectAbort!: (err: Error) => void;
+    const abortPromise = new Promise<never>((_, reject) => {
+      rejectAbort = reject;
+    });
+    const onAbort = () => rejectAbort(new DeepReportCancelledError());
+    controller.signal.addEventListener('abort', onAbort, { once: true });
     try {
       const attempt = opts.llm.complete(messages, { maxTokens, signal: controller.signal });
-      return await Promise.race([attempt, budgetReject]);
+      return await Promise.race([attempt, budgetReject, abortPromise]);
     } catch {
       if (externalSignal?.aborted) throw new DeepReportCancelledError();
       return null;
     } finally {
       if (timer !== undefined) clearTimeout(timer);
+      controller.signal.removeEventListener('abort', onAbort);
     }
   };
 
   const contextBlock = buildContext(query, evidence);
 
-  // Stage A：大纲（LLM 一次性给分节标题）
-  safeStage('report-outline');
-  const outline = await callWithBudget(
-    [
-      { role: 'system', content: REPORT_SYSTEM_PROMPT },
-      { role: 'user', content: `${contextBlock}\n\n请先只输出报告分节大纲，每行一个小节标题，2-4 节，不要输出其他内容。` },
-    ],
-    MAX_OUTLINE_TOKENS,
-  );
+  // Stage A：大纲（LLM 一次性给分节标题；恢复场景复用上次大纲，不重新请求）
+  const resumedSections = opts.resume?.sections ?? [];
+  let outline: string | null = null;
+  if (resumedSections.length > 0 && (opts.resume?.headings.length ?? 0) > 0) {
+    outline = opts.resume!.headings.join('\n');
+  } else if (resumedSections.length === 0) {
+    safeStage('report-outline');
+    outline = await callWithBudget(
+      [
+        { role: 'system', content: REPORT_SYSTEM_PROMPT },
+        { role: 'user', content: `${contextBlock}\n\n请先只输出报告分节大纲，每行一个小节标题，2-4 节，不要输出其他内容。` },
+      ],
+      MAX_OUTLINE_TOKENS,
+    );
+  }
 
   const fallbackSections = buildFallbackSections(query, evidence, opts.synthesis);
   const headings = parseOutline(outline);
   const usedHeadings = headings.length > 0 ? headings : fallbackSections.map((s) => s.heading);
 
-  // Stage B：分节生成（逐节共享剩余预算；预算耗尽补降级节）
-  const sections: string[] = [];
-  const usedLlm = outline !== null;
+  // Stage B：分节生成（逐节共享剩余预算；预算耗尽补降级节；恢复跳过已生成分节）
+  const sections: string[] = [...resumedSections];
+  let usedLlm = false;
   safeStage('report-sections');
-  for (let i = 0; i < Math.min(sectionCount, usedHeadings.length); i++) {
+  for (let i = sections.length; i < Math.min(sectionCount, usedHeadings.length); i++) {
     if (externalSignal?.aborted) throw new DeepReportCancelledError();
     safeStage(`report-section-${i + 1}`);
     const heading = usedHeadings[i];
@@ -149,19 +169,20 @@ export async function generateDeepReport(
         MAX_SECTION_TOKENS,
       );
     }
-    if (body) {
-      sections.push(`## ${heading}\n\n${body.trim()}`);
-    } else {
-      const fb = fallbackSections.find((s) => s.heading === heading) ?? fallbackSections[Math.min(i, fallbackSections.length - 1)];
-      sections.push(fb.markdown);
-    }
+    const fb = fallbackSections.find((s) => s.heading === heading) ?? fallbackSections[Math.min(i, fallbackSections.length - 1)];
+    const markdown = body ? `## ${heading}\n\n${body.trim()}` : fb.markdown;
+    sections.push(markdown);
+    if (body) usedLlm = true;
+    opts.onSection?.(i + 1, markdown);
     if (remaining() <= 0) {
       timedOut = true;
       break;
     }
   }
   for (let i = sections.length; i < Math.min(sectionCount, fallbackSections.length); i++) {
-    sections.push(fallbackSections[i].markdown);
+    const markdown = fallbackSections[i].markdown;
+    sections.push(markdown);
+    opts.onSection?.(i + 1, markdown);
   }
 
   // Stage C：证据附录（规则组装，不耗 LLM 预算）

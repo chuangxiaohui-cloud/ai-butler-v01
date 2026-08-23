@@ -125,3 +125,60 @@ test('deep-report: sectionCount 可调小（测试/预算优先）', async () =>
   });
   assert.equal(result.sections.length, 1);
 });
+test('deep-report: 恢复（resume）跳过已生成分节，不重新请求大纲', async () => {
+  const llm = new FakeLLM();
+  const sections: string[] = [];
+  const result = await generateDeepReport('STM32 调研', evidence, {
+    llm,
+    resume: {
+      headings: ['概述', '关键发现', '应用场景'],
+      sections: ['## 概述\n\n已完成的第一节'],
+    },
+    onSection: (index, section) => sections.push(`${index}:${section.slice(0, 12)}`),
+  });
+  // 大纲不重发，剩余 2 节各一次 LLM 调用
+  assert.equal(llm.calls, 2, '恢复后只生成剩余分节');
+  assert.equal(result.sections.length, 3);
+  assert.equal(result.sections[0], '## 概述\n\n已完成的第一节');
+  assert.equal(result.source, 'llm');
+  assert.equal(sections.length, 2, 'onSection 只回调新生成分节');
+  assert.ok(sections[0].startsWith('2:'));
+  assert.ok(sections[1].startsWith('3:'));
+});
+
+test('deep-report: 恢复时全部已生成则不调用 LLM，直接组装报告', async () => {
+  const llm = new FakeLLM();
+  const result = await generateDeepReport('STM32 调研', evidence, {
+    llm,
+    resume: {
+      headings: ['概述', '关键发现', '应用场景'],
+      sections: [
+        '## 概述\n\n一',
+        '## 关键发现\n\n二',
+        '## 应用场景\n\n三',
+      ],
+    },
+  });
+  assert.equal(llm.calls, 0, '已全生成不重复调用');
+  assert.equal(result.sections.length, 3);
+  assert.match(result.report, /^# STM32 调研/);
+  assert.match(result.report, /## 证据附录/);
+});
+
+test('deep-report: 恢复后 LLM 失败剩余节降级为 fallback 且逐节回调', async () => {
+  const llm = new FakeLLM('fail');
+  const called: number[] = [];
+  const result = await generateDeepReport('STM32 调研', evidence, {
+    llm,
+    resume: {
+      headings: ['概述', '关键发现', '应用场景'],
+      sections: ['## 概述\n\n已完成的第一节'],
+    },
+    onSection: (index) => called.push(index),
+    synthesis: '恢复降级摘要',
+  });
+  assert.equal(result.source, 'fallback');
+  assert.equal(result.sections.length, 3);
+  assert.equal(result.sections[0], '## 概述\n\n已完成的第一节');
+  assert.deepEqual(called, [2, 3]);
+});

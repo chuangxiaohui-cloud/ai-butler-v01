@@ -21,6 +21,7 @@ import { pipeline } from './pipeline.js';
 import { getSkills } from '../skills/registry.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { appendOperation } from '../security/operation-log.js';
+import { DeepReportStore } from './deep-report-store.js';
 import type { TrajectoryEvent } from '../trajectory/trajectory-log.js';
 
 process.env.SEARCH_METRICS_LOG = join(tmpdir(), 'pipeline-search-metrics-test.jsonl');
@@ -1023,6 +1024,7 @@ test('pipeline: 执行器真实失败如实归因（B4）', async () => {
 test('pipeline: 深度报告走搜索 + 分阶段报告生成 + 证据附录', async () => {
   const llm = new FakeLLM();
   const progress: string[] = [];
+  const dir = sandboxTmpDir('deep-report');
   const result = await pipeline(
     '写一份 STM32 的调研报告',
     {
@@ -1030,6 +1032,7 @@ test('pipeline: 深度报告走搜索 + 分阶段报告生成 + 证据附录', a
       providers: [new FakeProvider()],
       quota: new FakeQuota(),
       memoryStore: new FakeMemoryStore(),
+      deepReportStore: new DeepReportStore(join(dir, 'jobs.jsonl')),
     },
     { onProgress: (s) => progress.push(s) },
   );
@@ -1041,4 +1044,69 @@ test('pipeline: 深度报告走搜索 + 分阶段报告生成 + 证据附录', a
   assert.ok(progress.some((s) => s.startsWith('report-section-')));
   assert.ok(progress.includes('report-evidence'));
   assert.equal(result.evidence.length, 1);
+});
+class HangAfterFirstSectionLLM extends FakeLLM {
+  private firstSectionDone = false;
+
+  override async complete(messages: ChatMessage[]): Promise<string> {
+    const user = messages[messages.length - 1]?.content ?? '';
+    if (user.includes('大纲')) return '概述\n关键发现\n应用场景';
+    if (user.includes('撰写报告小节')) {
+      if (!this.firstSectionDone) {
+        this.firstSectionDone = true;
+        return '已生成的第一节（取消前完成）。';
+      }
+      // 第二节挂起，等待外部取消
+      return await new Promise<never>(() => {});
+    }
+    return super.complete(messages);
+  }
+}
+
+test('pipeline: 深度报告取消后同 query 自动恢复已生成分节', async () => {
+  const dir = sandboxTmpDir('deep-report-resume');
+  const store = new DeepReportStore(join(dir, 'jobs.jsonl'));
+
+  // 第一轮：第二节挂起后取消 → 落盘 1 节 cancelled job
+  const controller = new AbortController();
+  const llm1 = new HangAfterFirstSectionLLM();
+  const progress1: string[] = [];
+  const p1 = pipeline(
+    '写一份 STM32 的调研报告',
+    {
+      llm: llm1,
+      providers: [new FakeProvider()],
+      quota: new FakeQuota(),
+      memoryStore: new FakeMemoryStore(),
+      deepReportStore: store,
+    },
+    { onProgress: (s) => progress1.push(s), signal: controller.signal },
+  );
+  setTimeout(() => controller.abort(), 100);
+  const r1 = await p1;
+  assert.match(r1.answer, /深度报告已取消/);
+  const cancelled = store.findResumable('写一份 STM32 的调研报告');
+  assert.ok(cancelled, '取消后应有可恢复 job');
+  assert.ok(cancelled.sections.length >= 1, '已生成分节应落盘');
+  assert.match(cancelled.sections[0], /已生成的第一节/);
+
+  // 第二轮：同 query 自动恢复，保留第一节、续写剩余分节、完成 markDone
+  const llm2 = new FakeLLM();
+  const progress2: string[] = [];
+  const r2 = await pipeline(
+    '写一份 STM32 的调研报告',
+    {
+      llm: llm2,
+      providers: [new FakeProvider()],
+      quota: new FakeQuota(),
+      memoryStore: new FakeMemoryStore(),
+      deepReportStore: store,
+    },
+    { onProgress: (s) => progress2.push(s) },
+  );
+  assert.ok(progress2.includes('report-resumed'), '恢复应透出 report-resumed 进度');
+  assert.match(r2.answer, /^# 写一份 STM32 的调研报告/);
+  assert.match(r2.answer, /已生成的第一节（取消前完成）。/, '恢复保留已生成分节');
+  assert.match(r2.answer, /## 证据附录/);
+  assert.equal(store.findResumable('写一份 STM32 的调研报告'), null, '完成后不再可恢复');
 });

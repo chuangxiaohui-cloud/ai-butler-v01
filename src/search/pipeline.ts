@@ -32,6 +32,7 @@ import {
   DeepReportCancelledError,
   generateDeepReport,
 } from './deep-report.js';
+import { DeepReportStore, type DeepReportStoreLike } from './deep-report-store.js';
 import { pickSecondPassTargets, shouldSecondPass } from './second-pass.js';
 import { applyRule3 } from './rule3.js';
 import { shouldTriggerTavily } from './tavily-trigger.js';
@@ -116,6 +117,8 @@ export interface PipelineDeps {
   trajectory?: TrajectoryLogLike;
   sessionContext?: Pick<SessionContextStore, 'load' | 'append' | 'compactIfNeeded'>;
   browserSession?: BrowserFetcher;
+  /** v1.0 S2：深度报告任务状态存储（取消恢复；测试可注入内存实现） */
+  deepReportStore?: DeepReportStoreLike;
 }
 
 export interface PipelineOptions {
@@ -137,6 +140,12 @@ let sharedSessionContext: SessionContextStore | null = null;
 function defaultSessionContext(): SessionContextStore {
   sharedSessionContext ??= new SessionContextStore();
   return sharedSessionContext;
+}
+
+let sharedDeepReportStore: DeepReportStore | null = null;
+function defaultDeepReportStore(): DeepReportStore {
+  sharedDeepReportStore ??= new DeepReportStore();
+  return sharedDeepReportStore;
 }
 
 export async function pipeline(
@@ -870,9 +879,14 @@ export async function pipeline(
     if (usedSkillName) deps.skillLifecycle?.recordUse?.(usedSkillName);
   }
 
-  // v1.0 S1：深度报告（§4.3.2）——搜索证据基础上分阶段生成结构化报告 + 证据附录
+  // v1.0 S1/S2：深度报告（§4.3.2）——搜索证据基础上分阶段生成结构化报告 + 证据附录；
+  // 取消后同 query 再次触发自动恢复上次已生成分节（状态持久化，逐节落盘）
   let finalAnswerText = synthesized.answer + videoBlock;
   if (routeSelected.intent === 'deep_report') {
+    const reportStore = deps.deepReportStore ?? defaultDeepReportStore();
+    const resumed = reportStore.findResumable(prepared.cleanQuery);
+    if (resumed) safeProgress('report-resumed');
+    const jobId = reportStore.start(prepared.cleanQuery, evidence.length, resumed ?? null);
     try {
       const report = await generateDeepReport(prepared.cleanQuery, evidence, {
         llm: deps.llm,
@@ -880,14 +894,20 @@ export async function pipeline(
         signal: opts.signal,
         onStage: (stage) => safeProgress(stage),
         synthesis: synthesized.answer,
+        resume: resumed ? { headings: resumed.headings, sections: resumed.sections } : undefined,
+        onSection: (index, section) => reportStore.appendSection(jobId, section),
       });
+      reportStore.markDone(jobId);
       finalAnswerText = report.report;
     } catch (err) {
-      // 取消 → 简短应答；失败 → 降级为 Stage 5 常规摘要，不静默等待
-      finalAnswerText =
-        err instanceof DeepReportCancelledError
-          ? '深度报告已取消。'
-          : `深度报告生成失败，已降级为常规摘要：\n\n${synthesized.answer}`;
+      // 取消 → 标记可恢复并简短应答；失败 → 降级为 Stage 5 常规摘要，不静默等待
+      if (err instanceof DeepReportCancelledError) {
+        reportStore.markCancelled(jobId);
+        finalAnswerText = '深度报告已取消。';
+      } else {
+        reportStore.markFailed(jobId);
+        finalAnswerText = `深度报告生成失败，已降级为常规摘要：\n\n${synthesized.answer}`;
+      }
     }
   }
 
