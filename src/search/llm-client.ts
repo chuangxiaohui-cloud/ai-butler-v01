@@ -13,6 +13,8 @@ export interface CompleteOptions {
   temperature?: number;
   maxTokens?: number;
   json?: boolean;
+  /** 外部取消信号（P17 fallback 总预算透传），与内部超时合并 */
+  signal?: AbortSignal;
 }
 
 export interface LLMClient {
@@ -40,6 +42,9 @@ export class OpenAiCompatibleClient implements LLMClient {
 
   async complete(messages: ChatMessage[], opts: CompleteOptions = {}): Promise<string> {
     const controller = new AbortController();
+    if (opts.signal?.aborted) controller.abort();
+    const onExternalAbort = () => controller.abort();
+    opts.signal?.addEventListener('abort', onExternalAbort, { once: true });
     const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs);
     try {
       const resp = await fetch(`${this.opts.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
@@ -86,6 +91,7 @@ export class OpenAiCompatibleClient implements LLMClient {
       return content;
     } finally {
       clearTimeout(timer);
+      opts.signal?.removeEventListener('abort', onExternalAbort);
     }
   }
 }

@@ -149,6 +149,8 @@ function buildLegacyProfile(
 
 export interface FallbackClientOptions {
   timeoutMs?: number;
+  /** P-116 整条 fallback 链总预算（超时即停止兜底，不再 3 家 × 30s 串行） */
+  totalBudgetMs?: number;
   preferredId?: string;
   onFallback?: (from: string, to: string, error: unknown) => void;
 }
@@ -156,32 +158,60 @@ export interface FallbackClientOptions {
 export class FallbackLLMClient implements LLMClient {
   private readonly chain: Array<{ providerId: string; model: string; client: LLMClient }>;
   private readonly onFallback?: (from: string, to: string, error: unknown) => void;
+  private readonly totalBudgetMs?: number;
   private lastUsedProviderId: string | null = null;
   private fallbackEvents: Array<{ from: string; to: string }> = [];
 
   constructor(
     chain: Array<{ providerId: string; model: string; client: LLMClient }>,
     onFallback?: (from: string, to: string, error: unknown) => void,
+    totalBudgetMs?: number,
   ) {
     this.chain = chain;
     this.onFallback = onFallback;
+    this.totalBudgetMs = totalBudgetMs;
   }
 
+  // P17（架构审计 2026-08-23）：整条 fallback 链共享 [P-116] 总预算——超时即 abort 并
+  // 停止后续兜底，最坏不再 3 家 × 30s = 90s；预算按每次 complete 独立起算，成功后清 timer。
   async complete(messages: ChatMessage[], opts?: CompleteOptions): Promise<string> {
     let lastError: unknown;
-    for (let i = 0; i < this.chain.length; i++) {
-      const { providerId, client } = this.chain[i];
-      try {
-        this.lastUsedProviderId = providerId;
-        return await client.complete(messages, opts);
-      } catch (err) {
-        lastError = err;
-        if (i < this.chain.length - 1) {
-          const to = this.chain[i + 1].providerId;
-          this.fallbackEvents.push({ from: providerId, to });
-          this.onFallback?.(providerId, to, err);
+    const budgetMs = this.totalBudgetMs;
+    const deadline = budgetMs !== undefined && budgetMs > 0 ? Date.now() + budgetMs : null;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const budgetReject =
+      deadline !== null
+        ? new Promise<never>((_, reject) => {
+            timer = setTimeout(() => {
+              controller.abort();
+              reject(new Error(`LLM fallback 链总预算 ${budgetMs}ms 超时`));
+            }, budgetMs);
+          })
+        : null;
+    try {
+      for (let i = 0; i < this.chain.length; i++) {
+        const { providerId, client } = this.chain[i];
+        if (deadline !== null && Date.now() >= deadline) break;
+        try {
+          this.lastUsedProviderId = providerId;
+          const attempt = client.complete(
+            messages,
+            deadline !== null ? { ...opts, signal: controller.signal } : opts,
+          );
+          return await (budgetReject !== null ? Promise.race([attempt, budgetReject]) : attempt);
+        } catch (err) {
+          lastError = err;
+          if (deadline !== null && Date.now() >= deadline) break;
+          if (i < this.chain.length - 1) {
+            const to = this.chain[i + 1].providerId;
+            this.fallbackEvents.push({ from: providerId, to });
+            this.onFallback?.(providerId, to, err);
+          }
         }
       }
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
     }
     throw lastError ?? new Error('无可用 LLM Provider');
   }
@@ -297,10 +327,19 @@ export class LlmProviderRegistry {
       }),
     }));
     if (chain.length === 1) return chain[0].client;
-    return new FallbackLLMClient(chain, opts.onFallback);
+    return new FallbackLLMClient(
+      chain,
+      opts.onFallback,
+      opts.totalBudgetMs ?? PARAMS.llmFallbackTotalBudgetMs,
+    );
   }
 }
 
+// P3（架构审计 2026-08-23）：defaultRegistry 改为模块级惰性单例——process.env 为活引用，
+// 每次 createForRole 仍实时读取 key/model/超时，但不再每次 new Registry + loadEnvFile + 读 provider-order。
+let cachedDefaultRegistry: LlmProviderRegistry | null = null;
+
 export function defaultRegistry(): LlmProviderRegistry {
-  return new LlmProviderRegistry();
+  if (!cachedDefaultRegistry) cachedDefaultRegistry = new LlmProviderRegistry();
+  return cachedDefaultRegistry;
 }

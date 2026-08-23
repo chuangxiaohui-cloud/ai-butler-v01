@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  defaultRegistry,
   FallbackLLMClient,
   LlmProviderRegistry,
 } from './llm-registry.js';
@@ -19,6 +20,14 @@ function clientThrowing(message: string): LLMClient {
   return {
     async complete(): Promise<string> {
       throw new Error(message);
+    },
+  };
+}
+
+function clientHanging(): LLMClient {
+  return {
+    async complete(): Promise<string> {
+      return await new Promise<never>(() => {});
     },
   };
 }
@@ -59,6 +68,10 @@ describe('llm-registry: provider 选择', () => {
     assert.equal(profile.models.heavy, 'custom-heavy');
   });
 
+  it('defaultRegistry 返回同一实例（P3 单例缓存）', () => {
+    assert.equal(defaultRegistry(), defaultRegistry());
+  });
+
   it('无任何 key 时抛出明确错误', () => {
     const registry = new LlmProviderRegistry({});
     assert.throws(() => registry.createForRole('heavy'), /未配置 heavy 模型 Provider/);
@@ -91,5 +104,44 @@ describe('llm-registry: fallback 链', () => {
       { providerId: 'zhipu', model: 'glm-5.2', client: clientThrowing('b') },
     ]);
     await assert.rejects(() => client.complete([{ role: 'user', content: 'hi' }]), /b/);
+  });
+
+  it('总预算超时立即终止，不再尝试后续 provider（P17）', async () => {
+    let secondCalled = false;
+    const client = new FallbackLLMClient(
+      [
+        { providerId: 'deepseek', model: 'deepseek-chat', client: clientHanging() },
+        {
+          providerId: 'zhipu',
+          model: 'glm-5.2',
+          client: {
+            async complete(): Promise<string> {
+              secondCalled = true;
+              return 'ok';
+            },
+          },
+        },
+      ],
+      undefined,
+      60,
+    );
+    const start = Date.now();
+    await assert.rejects(() => client.complete([{ role: 'user', content: 'hi' }]), /总预算/);
+    assert.ok(Date.now() - start < 2000, '不能等 client 自身超时（P17 总预算生效）');
+    assert.equal(secondCalled, false);
+  });
+
+  it('预算内首 provider 失败仍正常兜底（P17）', async () => {
+    const client = new FallbackLLMClient(
+      [
+        { providerId: 'deepseek', model: 'deepseek-chat', client: clientThrowing('timeout') },
+        { providerId: 'zhipu', model: 'glm-5.2', client: clientReturning('ok') },
+      ],
+      undefined,
+      1000,
+    );
+    const answer = await client.complete([{ role: 'user', content: 'hi' }]);
+    assert.equal(answer, 'ok:1');
+    assert.equal(client.describe()?.provider, 'zhipu');
   });
 });
