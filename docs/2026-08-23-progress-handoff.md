@@ -208,11 +208,21 @@
     全量单测 689/690（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。计划见
     `docs/plans/2026-08-23-v1-slicing.md`。
 
+26. **v1.0 S2 证据链 UI + 深度报告恢复（E221）**：收口 §4.3.2「取消/恢复」——新模块
+    `src/search/deep-report-store.ts` JSONL 落盘任务状态（`data/deep-report-jobs.jsonl`，原子写、
+    容量上限），取消后同 query 再触发自动恢复上次已生成分节（恢复不重发大纲、逐节落盘、旧 job
+    收编防重复恢复、失败任务不参与恢复）；取消即时生效（abort 事件同步 reject，不再等预算耗尽）；
+    §9.2 证据链交互落地（evidence-chip 可点击：search→浏览器面板打开来源、file→文件面板高亮、
+    terminal→终端面板、test→展开详情；文件行可点击高亮）。新增单测 9 条；全量单测 699/700
+    （1 skip）+ 集成 15/15；UI 原型 build 通过；doc-lint 0 FAIL 0 WARN（附录 517/950）。计划见
+    `docs/plans/2026-08-23-v1-s2-evidence-ui.md`。
+
 ## 待提交（本批次）
 
 - 架构审计全部批次 + E219/E220 已提交：安全/数据/正确性批 `60b419d`、决策批 E207 `615bb62`、
   中期批 1-7 E208-E214 `109021b`、P17 E215 `0cbde9b`、P1/P2/P10 E216 `ce1abf8`、
-  B2/B3 E217 `f575040`、S1-S3 E218 `3fb4cc6`、E219 `e3513f7`、v1.0 S1 深度报告 E220 `09e89bc`；待提交清单已清空。
+  B2/B3 E217 `f575040`、S1-S3 E218 `3fb4cc6`、E219 `e3513f7`、v1.0 S1 深度报告 E220 `09e89bc`、
+  v1.0 S2 证据链 UI + 深度报告恢复 E221 `fdf2392`；待提交清单已清空。
 - `bench/search-metrics.jsonl` 与根目录临时文件/`docs/2026-08-23-architecture-code-audit.md`
   不在任何批次，未混入提交（审计文档保留为只读第三方输入）。
 
@@ -235,9 +245,9 @@
    收口 → 架构审计全部批次完成（安全 H1-H4/H10 + 数据 H5 + 正确性 H9/B1/B4/H8 + 决策
    H6/D1-D5 + 中期 P1-P17 + 校准 B2/B3 + 安全 S1-S3）；审计文档归档为只读输入。后续
    回到 OCR 备忘 / Tavily 月度复核 / 附录行数 retention 等常规项。
-5. **v1.0 后续切片（S2-S8）**：S1 深度报告已落地（E220）；剩余 S2 证据链 UI、S3 MCP 子 Agent、
-   S4 安全模型补齐、S5 远程对话通道、S6 代码托管联动、S7 Skill 市场远程化、S8 LLM 增强路由 + 
-   fast description + MemoryCoreStore 切换；深度报告「取消/恢复」的恢复（状态持久化）留待 S2 后补；
+5. **v1.0 后续切片（S3-S8）**：S1 深度报告（E220）与 S2 证据链 UI + 深度报告恢复（E221）已落地
+   （S1 遗留「恢复状态持久化」已收口）；剩余 S3 MCP 子 Agent、S4 安全模型补齐、S5 远程对话通道、
+   S6 代码托管联动、S7 Skill 市场远程化、S8 LLM 增强路由 + fast description + MemoryCoreStore 切换；
    [P-13] 保持 provisional，待真实使用实测按 E197 口径复测。`docs/plans/YYYY-MM-DD-<主题>.md` 三段式。
 
 ## 常用命令
