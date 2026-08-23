@@ -4,15 +4,10 @@
  */
 
 import { randomUUID } from 'crypto';
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 
+import { appendJsonl } from '../log/jsonl.js';
 import type { RouteResultV2 } from './router-v2.js';
 
 export type RouteFeedback = 'accept' | 'reject' | 'correct';
@@ -59,7 +54,8 @@ export class RouteCaseStore {
       source: meta.source,
       result,
     };
-    appendFileSync(this.filePath, `${JSON.stringify(record)}\n`, 'utf-8');
+    // P13：共享 JSONL 追加（句柄复用 + [P-113] 轮转），O(1)/事件
+    appendJsonl(this.filePath, JSON.stringify(record));
     return record.id;
   }
 
@@ -83,33 +79,65 @@ export class RouteCaseStore {
     feedback: RouteFeedback,
     correctedRoute?: { primaryLens?: string; intent?: string },
   ): boolean {
-    const records = this.list();
-    const index = records.findIndex((r) => r.id === id);
-    if (index < 0) return false;
-    records[index] = {
-      ...records[index],
+    return this.updateRecord(id, (record) => ({
+      ...record,
       feedback,
       ...(correctedRoute ? { correctedRoute } : {}),
-    };
-    writeFileSync(
-      this.filePath,
-      `${records.map((r) => JSON.stringify(r)).join('\n')}\n`,
-      'utf-8',
-    );
-    return true;
+    }));
   }
 
   attachModelRoute(id: string, modelRoute: ModelRouteRecord): boolean {
+    return this.updateRecord(id, (record) => ({ ...record, modelRoute }));
+  }
+
+  /**
+   * 批量回写反馈（P13）：单趟读 + 单趟写，batch-mark 不再 O(m×n) 循环全文重写。
+   * 同步 fs 读改写在同一进程内天然串行，不会与 record() 追加交错丢行。
+   */
+  batchMarkFeedback(
+    updates: Array<{
+      id: string;
+      feedback: RouteFeedback;
+      correctedRoute?: { primaryLens?: string; intent?: string };
+    }>,
+  ): { updated: string[]; failed: string[] } {
+    const records = this.list();
+    const byId = new Map(records.map((r) => [r.id, r]));
+    const updated: string[] = [];
+    const failed: string[] = [];
+    for (const update of updates) {
+      const record = byId.get(update.id);
+      if (!record) {
+        failed.push(update.id);
+        continue;
+      }
+      record.feedback = update.feedback;
+      if (update.correctedRoute) record.correctedRoute = update.correctedRoute;
+      updated.push(update.id);
+    }
+    if (updated.length > 0) this.rewriteAll(records);
+    return { updated, failed };
+  }
+
+  /** 单条读改写的唯一出口：读全量 → 更新一条 → 整文件重写 */
+  private updateRecord(
+    id: string,
+    update: (record: RouteCaseRecord) => RouteCaseRecord,
+  ): boolean {
     const records = this.list();
     const index = records.findIndex((r) => r.id === id);
     if (index < 0) return false;
-    records[index] = { ...records[index], modelRoute };
+    records[index] = update(records[index]);
+    this.rewriteAll(records);
+    return true;
+  }
+
+  private rewriteAll(records: RouteCaseRecord[]): void {
     writeFileSync(
       this.filePath,
       `${records.map((r) => JSON.stringify(r)).join('\n')}\n`,
       'utf-8',
     );
-    return true;
   }
 
   stats(): {

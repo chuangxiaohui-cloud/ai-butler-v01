@@ -90,3 +90,35 @@ test('quota: readMonthlyQuota 损坏文件按 0 处理', () => {
     rmSync(file, { force: true });
   }
 });
+
+test('quota: P5 并发 take 不丢计数（同实例）', async () => {
+  const file = tempFile();
+  try {
+    const store = new FileQuotaStore(file);
+    const results = await Promise.all(Array.from({ length: 10 }, () => store.take('bocha', 10)));
+    assert.deepEqual(results, Array(10).fill(true));
+    const state = JSON.parse(readFileSync(file, 'utf-8')) as { counts: Record<string, number> };
+    assert.equal(state.counts.bocha, 10);
+  } finally {
+    rmSync(file, { force: true });
+  }
+});
+
+test('quota: P5 跨实例同文件并发也不丢计数', async () => {
+  const file = tempFile();
+  try {
+    const a = new FileQuotaStore(file);
+    const b = new FileQuotaStore(file);
+    const results = await Promise.all([
+      a.take('bocha', 2),
+      b.take('bocha', 2),
+      a.take('bocha', 2),
+      b.take('bocha', 2),
+    ]);
+    assert.deepEqual(results, [true, true, false, false]);
+    const state = JSON.parse(readFileSync(file, 'utf-8')) as { counts: Record<string, number> };
+    assert.equal(state.counts.bocha, 2);
+  } finally {
+    rmSync(file, { force: true });
+  }
+});

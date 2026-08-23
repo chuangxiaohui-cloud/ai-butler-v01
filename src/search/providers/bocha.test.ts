@@ -91,3 +91,26 @@ test('bocha: 未配置 key → 明确报错且不探测余额', async () => {
     process.env.BOCHA_API_KEY = original;
   }
 });
+
+test('bocha: P4 外部 signal 立即取消 fetch（不等到自身超时）', async () => {
+  freshCache();
+  let fetchCalled = false;
+  stubFetch(async (_url, init) => {
+    fetchCalled = true;
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(resolve, 2000);
+      init?.signal?.addEventListener('abort', () => {
+        clearTimeout(timer);
+        reject(new DOMException('This operation was aborted', 'AbortError'));
+      }, { once: true });
+    });
+    return jsonResponse({ data: { webPages: { value: [] } } });
+  });
+  const controller = new AbortController();
+  const p = bochaProvider.search('q', { signal: controller.signal });
+  controller.abort();
+  const r = await p;
+  assert.equal(r.ok, false);
+  assert.ok(r.error && /abort/i.test(r.error), `expect abort error, got: ${r.error}`);
+  assert.equal(fetchCalled, true, 'fetch 已发起但被外部 signal 中止');
+});

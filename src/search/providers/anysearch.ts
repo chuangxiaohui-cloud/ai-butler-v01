@@ -45,6 +45,8 @@ export class AnySearchProvider implements SearchProvider {
     const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const onExternalAbort = (): void => controller.abort();
+    opts.signal?.addEventListener('abort', onExternalAbort, { once: true });
     try {
       const resp = await fetch(ENDPOINT, {
         method: 'POST',
@@ -93,6 +95,7 @@ export class AnySearchProvider implements SearchProvider {
       };
     } finally {
       clearTimeout(timer);
+      opts.signal?.removeEventListener('abort', onExternalAbort);
     }
   }
 }

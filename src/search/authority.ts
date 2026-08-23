@@ -44,7 +44,20 @@ const VENDOR_DOMAIN_MAP: Array<{ prefix: string; domain: string }> = [
   { prefix: 'LT', domain: 'analog.com' },
 ];
 
-const SOFTWARE_OFFICIAL_RULES: Array<{ names: string[]; hosts: string[] }> = [
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+interface SoftwareOfficialRule {
+  names: string[];
+  hosts: string[];
+  // P6：name 正则模块级预编译，避免每条结果每个规则 new RegExp
+  nameRe: RegExp;
+}
+
+const SOFTWARE_OFFICIAL_RULES: SoftwareOfficialRule[] = (
+  [
+
   { names: ['tauri'], hosts: ['github.com', 'v2.tauri.app'] },
   { names: ['freecad'], hosts: ['freecadweb.org', 'github.com'] },
   { names: ['kicad'], hosts: ['kicad.org', 'gitlab.com', 'github.com'] },
@@ -55,7 +68,11 @@ const SOFTWARE_OFFICIAL_RULES: Array<{ names: string[]; hosts: string[] }> = [
   { names: ['arduino'], hosts: ['arduino.cc', 'github.com'] },
   { names: ['openworker'], hosts: ['github.com'] },
   { names: ['openclaw'], hosts: ['github.com', 'docs.openclaw.ai', 'docs2.openclaw.ai'] },
-];
+  ] as Array<{ names: string[]; hosts: string[] }>
+).map((rule) => ({
+  ...rule,
+  nameRe: new RegExp(rule.names.map((name) => `\\b${escapeRegExp(name)}\\b`).join('|')),
+}));
 
 const TECH_OFFICIAL_DOMAINS: Array<{ pattern: RegExp; domains: string[] }> = [
   {
@@ -163,33 +180,59 @@ export function isDomesticDatasheetUrl(url: string): boolean {
   );
 }
 
+export interface OfficialQueryContext {
+  q: string;
+  techDomains: string[];
+  spaceStatus: boolean;
+  part: string | null;
+  vendor: { prefix: string; domain: string } | null;
+}
+
+// P6：query 派生值一次算好传入，融合/仲裁循环内不再每条结果重算
+export function buildOfficialQueryContext(query: string): OfficialQueryContext {
+  const q = query.toLowerCase();
+  const part = extractPartNumber(query);
+  return {
+    q,
+    techDomains: techOfficialDomainsForQuery(query),
+    spaceStatus: SPACE_STATUS_RE.test(q),
+    part,
+    vendor:
+      part === null
+        ? null
+        : VENDOR_DOMAIN_MAP.find((v) => part.toUpperCase().startsWith(v.prefix)) ?? null,
+  };
+}
+
 export function isHighTrustDatasheetUrl(url: string, query: string): boolean {
-  return isOfficialForQuery(url, query) || isDomesticDatasheetUrl(url);
+  return isHighTrustDatasheetUrlCtx(url, buildOfficialQueryContext(query));
+}
+
+export function isHighTrustDatasheetUrlCtx(url: string, ctx: OfficialQueryContext): boolean {
+  return isOfficialForQueryCtx(url, ctx) || isDomesticDatasheetUrl(url);
 }
 
 export function isOfficialForQuery(url: string, query: string): boolean {
-  const q = query.toLowerCase();
+  return isOfficialForQueryCtx(url, buildOfficialQueryContext(query));
+}
+
+export function isOfficialForQueryCtx(url: string, ctx: OfficialQueryContext): boolean {
   const hostname = getHostname(url);
   for (const rule of SOFTWARE_OFFICIAL_RULES) {
-    const nameHit = rule.names.some((name) => new RegExp(`\\b${name}\\b`).test(q));
+    const nameHit = rule.nameRe.test(ctx.q);
     const hostHit = rule.hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`));
     if (nameHit && hostHit) return true;
   }
   if (
-    techOfficialDomainsForQuery(query).some(
-      (host) => hostname === host || hostname.endsWith(`.${host}`),
-    )
+    ctx.techDomains.some((host) => hostname === host || hostname.endsWith(`.${host}`))
   ) {
     return true;
   }
-  if (isSpaceStatusQuery(q)) {
+  if (ctx.spaceStatus) {
     return SPACE_STATUS_DOMAINS.some(
       (host) => hostname === host || hostname.endsWith(`.${host}`),
     );
   }
-  const part = extractPartNumber(query);
-  if (!part) return false;
-  const vendor = VENDOR_DOMAIN_MAP.find((v) => part.toUpperCase().startsWith(v.prefix));
-  if (!vendor) return false;
-  return hostname === vendor.domain || hostname.endsWith(`.${vendor.domain}`);
+  if (!ctx.part || !ctx.vendor) return false;
+  return hostname === ctx.vendor.domain || hostname.endsWith(`.${ctx.vendor.domain}`);
 }

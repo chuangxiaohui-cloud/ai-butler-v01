@@ -135,6 +135,7 @@ export async function runSearchStage(
   const notices: string[] = [];
   let collected: SearchProviderResult[] = [];
   const aiAnswers: string[] = [];
+  const stageController = new AbortController(); // P4：stage 超时即取消进行中的 provider fetch
   const allSettled = Promise.allSettled(
     providers.map(async (provider) => {
       const attemptStart = Date.now();
@@ -156,6 +157,7 @@ export async function runSearchStage(
         const result = await provider.search(query, {
           topic: opts.intent === 'news' ? 'news' : undefined,
           days: opts.intent === 'news' ? 30 : undefined,
+          signal: stageController.signal,
         });
         heartbeat.record(provider.id, result.ok);
         attempts.push({
@@ -179,11 +181,16 @@ export async function runSearchStage(
     }),
   );
 
+  let timeoutTimer: NodeJS.Timeout | undefined;
   const timeoutRace = new Promise<'timeout'>((resolve) => {
-    setTimeout(() => resolve('timeout'), budgetMs);
+    timeoutTimer = setTimeout(() => {
+      stageController.abort(); // P4：超时后立即中止底层 fetch，不再烧配额
+      resolve('timeout');
+    }, budgetMs);
   });
   const outcome = await Promise.race([allSettled.then(() => 'done' as const), timeoutRace]);
   const timedOut = outcome === 'timeout';
+  if (timeoutTimer) clearTimeout(timeoutTimer); // P4：race 后清理 timer，防长驻进程泄漏
 
   const results = dedupe(collected.flatMap((r) => r.results));
   const okProviders = attempts.filter((a) => a.ok).map((a) => a.provider);

@@ -142,6 +142,7 @@ export function openCalendarDb(dbPath?: string): DatabaseSync {
     dbPath ?? process.env.CALENDAR_DB_PATH ?? join(process.cwd(), 'data', 'calendar.db');
   mkdirSync(dirname(resolved), { recursive: true });
   const database = new DatabaseSync(resolved);
+  database.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL;');
   database.exec(`
     CREATE TABLE IF NOT EXISTS calendar_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

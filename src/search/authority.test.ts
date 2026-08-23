@@ -2,9 +2,11 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import {
+  buildOfficialQueryContext,
   getDomainAuthority,
   isHighTrustDatasheetUrl,
   isOfficialForQuery,
+  isOfficialForQueryCtx,
   officialSourceHintForQuery,
   techOfficialDomainsForQuery,
 } from './authority.js';
@@ -143,4 +145,46 @@ test('authority: e2e/community/freertos 域识别为官方源', () => {
   assert.equal(getDomainAuthority('https://e2e.ti.com/') >= 1.0, true);
   assert.equal(getDomainAuthority('https://community.st.com/') >= 1.0, true);
   assert.equal(getDomainAuthority('https://www.freertos.org/') >= 1.0, true);
+});
+test('authority: buildOfficialQueryContext 派生值一次计算（P6）', () => {
+  const ctx = buildOfficialQueryContext('STM32 看门狗 PWM');
+  assert.equal(ctx.q, 'stm32 看门狗 pwm');
+  assert.deepEqual(ctx.techDomains, ['st.com', 'community.st.com']);
+  assert.equal(ctx.spaceStatus, false);
+  assert.equal(ctx.part, 'STM32');
+  assert.deepEqual(ctx.vendor, { prefix: 'STM32', domain: 'st.com' });
+  const spaceCtx = buildOfficialQueryContext('中国空间站现在有哪几个航天员在太空');
+  assert.equal(spaceCtx.spaceStatus, true);
+  assert.equal(spaceCtx.part, null);
+  const noPartCtx = buildOfficialQueryContext('Tauri 框架 架构 技术栈');
+  assert.equal(noPartCtx.part, null);
+  assert.equal(noPartCtx.vendor, null);
+  const partCtx = buildOfficialQueryContext('TPS5430 输入电压范围');
+  assert.equal(partCtx.part, 'TPS5430');
+  assert.deepEqual(partCtx.vendor, { prefix: 'TPS', domain: 'ti.com' });
+});
+
+test('authority: isOfficialForQueryCtx 与 isOfficialForQuery 等价（P6）', () => {
+  const query = 'Tauri 框架 架构 技术栈';
+  const ctx = buildOfficialQueryContext(query);
+  const urls = [
+    'https://github.com/tauri-apps/tauri',
+    'https://medium.example/tauri',
+    'https://www.st.com/zh/stm32f103c8.html',
+    'https://item.szlcsc.com/515651.html',
+  ];
+  for (const url of urls) {
+    assert.equal(isOfficialForQueryCtx(url, ctx), isOfficialForQuery(url, query));
+  }
+});
+
+test('authority: 大写 query 仍识别官方源（P6 预编译 nameRe）', () => {
+  assert.equal(
+    isOfficialForQuery('https://github.com/tauri-apps/tauri', 'TAURI 框架 架构'),
+    true,
+  );
+  assert.equal(
+    isOfficialForQuery('https://docs.openclaw.ai/releases', 'OPENCLAW最新版本号是多少'),
+    true,
+  );
 });

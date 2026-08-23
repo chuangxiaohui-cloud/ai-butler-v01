@@ -6,7 +6,7 @@
 
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, type StatementSync } from 'node:sqlite';
 
 import {
   DAY_MS,
@@ -95,11 +95,22 @@ interface FactRow {
 
 export class UserContextStore {
   private readonly db: DatabaseSync;
+  // P11：热路径语句构造器预编译复用，避免每次 prepare
+  private readonly addSessionSummaryStmt: StatementSync;
+  private readonly archiveStmt: StatementSync;
 
   constructor(dbPath = join(process.cwd(), 'data', 'user-context.db')) {
     mkdirSync(dirname(dbPath), { recursive: true });
     this.db = new DatabaseSync(dbPath);
+    this.db.exec(
+      'PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL;',
+    );
     this.db.exec(SCHEMA_SQL);
+    this.addSessionSummaryStmt = this.db.prepare(
+      `INSERT INTO session_summaries (user_id, session_id, summary, topics, created_at)
+       VALUES (?, ?, ?, ?, ?)`,
+    );
+    this.archiveStmt = this.db.prepare('UPDATE user_facts SET archived = 1 WHERE id = ?');
   }
 
   close(): void {
@@ -234,12 +245,7 @@ export class UserContextStore {
     topics: string[],
     now = Date.now(),
   ): void {
-    this.db
-      .prepare(
-        `INSERT INTO session_summaries (user_id, session_id, summary, topics, created_at)
-         VALUES (?, ?, ?, ?, ?)`,
-      )
-      .run(userId, sessionId, summary, JSON.stringify(topics), now);
+    this.addSessionSummaryStmt.run(userId, sessionId, summary, JSON.stringify(topics), now);
   }
 
   archiveExpired(userId: string, now = Date.now()): number {
@@ -249,20 +255,25 @@ export class UserContextStore {
       )
       .all(userId) as unknown as FactRow[];
     let archivedCount = 0;
-    const archiveStmt = this.db.prepare(
-      'UPDATE user_facts SET archived = 1 WHERE id = ?',
-    );
-    for (const row of rows) {
-      const days = Math.max(0, (now - row.last_accessed_at) / DAY_MS);
-      const confidence = decayedConfidence(
-        row.confidence,
-        days,
-        row.source as FactSource,
-      );
-      if (shouldArchive(confidence)) {
-        archiveStmt.run(row.id);
-        archivedCount += 1;
+    // P11：逐行 UPDATE 包一次事务（否则每行一次 fsync）
+    this.db.exec('BEGIN');
+    try {
+      for (const row of rows) {
+        const days = Math.max(0, (now - row.last_accessed_at) / DAY_MS);
+        const confidence = decayedConfidence(
+          row.confidence,
+          days,
+          row.source as FactSource,
+        );
+        if (shouldArchive(confidence)) {
+          this.archiveStmt.run(row.id);
+          archivedCount += 1;
+        }
       }
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
     }
     return archivedCount;
   }

@@ -33,6 +33,7 @@ export class SkillLifecycle {
   constructor(dbPath = join(process.cwd(), 'data', 'experience.db')) {
     mkdirSync(dirname(dbPath), { recursive: true });
     this.db = new DatabaseSync(dbPath);
+    this.db.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL;');
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS skill_stats (
         name TEXT PRIMARY KEY,

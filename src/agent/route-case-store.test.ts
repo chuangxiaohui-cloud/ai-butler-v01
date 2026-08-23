@@ -71,7 +71,7 @@ test('confidence-calibration: 拒绝样本抬高 low 阈值', () => {
     { result: { confidence: 0.6 } },
   ].map((r, i) => ({
     id: `r${i}`,
-    timestamp: i,
+    timestamp: Date.now() - i * 1000,
     query: `q${i}`,
     result: r.result as never,
     feedback: 'reject' as const,
@@ -88,7 +88,7 @@ test('confidence-calibration: 该直答却澄清的 reject 不抬高 low 阈值'
     { result: { confidence: 0.7, decision: { type: 'option_clarify' } } },
   ].map((r, i) => ({
     id: `r${i}`,
-    timestamp: i,
+    timestamp: Date.now() - i * 1000,
     query: `q${i}`,
     result: r.result as never,
     feedback: 'reject' as const,
@@ -97,4 +97,41 @@ test('confidence-calibration: 该直答却澄清的 reject 不抬高 low 阈值'
   const suggestion = calibrateThresholds(records as never);
   assert.ok(suggestion.suggestedLow <= 0.45);
   assert.equal(suggestion.rejectedCount, 3);
+});
+test('route-case-store: batchMarkFeedback 单趟批量回写 + 部分失败', () => {
+  const { store, dir } = tempStore();
+  try {
+    const a = store.record(routeV2('问题 A'), { source: 't' });
+    const b = store.record(routeV2('问题 B'), { source: 't' });
+    store.record(routeV2('问题 C'), { source: 't' });
+    const result = store.batchMarkFeedback([
+      { id: a, feedback: 'accept' },
+      { id: b, feedback: 'reject', correctedRoute: { primaryLens: 'secretary', intent: 'web_search' } },
+      { id: 'missing', feedback: 'accept' },
+    ]);
+    assert.deepEqual(result.updated, [a, b]);
+    assert.deepEqual(result.failed, ['missing']);
+    const byId = new Map(store.list().map((r) => [r.id, r]));
+    assert.equal(byId.get(a)?.feedback, 'accept');
+    assert.equal(byId.get(b)?.feedback, 'reject');
+    assert.deepEqual(byId.get(b)?.correctedRoute, { primaryLens: 'secretary', intent: 'web_search' });
+    assert.equal(byId.get(a)?.result.query, '问题 A'); // 未标记字段保留
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('route-case-store: 批量回写后新增 record 仍保留（不丢追加）', () => {
+  const { store, dir } = tempStore();
+  try {
+    const id = store.record(routeV2('回写目标'), { source: 't' });
+    const id2 = store.record(routeV2('回写前追加'), { source: 't' });
+    const result = store.batchMarkFeedback([{ id, feedback: 'accept' }]);
+    assert.deepEqual(result.updated, [id]);
+    const records = store.list();
+    assert.equal(records.length, 2);
+    assert.ok(records.some((r) => r.id === id2));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

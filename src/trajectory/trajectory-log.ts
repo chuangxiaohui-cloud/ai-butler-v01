@@ -5,8 +5,9 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { appendFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { appendJsonl, closeJsonl } from '../log/jsonl.js';
 
 export interface TrajectoryRoute {
   decisionType: string;
@@ -80,10 +81,14 @@ export class TrajectoryLog implements TrajectoryLogLike {
   }
 
   record(event: TrajectoryEvent): void {
-    appendFileSync(
+    appendJsonl(
       this.filePath,
-      `${JSON.stringify({ id: randomUUID(), timestamp: Date.now(), ...event })}\n`,
-      'utf-8',
+      JSON.stringify({ id: randomUUID(), timestamp: Date.now(), ...event }),
     );
+  }
+
+  /** P15：关闭底层文件句柄（进程退出/测试清理用） */
+  close(): void {
+    closeJsonl(this.filePath);
   }
 }

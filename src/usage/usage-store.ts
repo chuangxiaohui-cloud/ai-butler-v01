@@ -3,8 +3,8 @@
  * OpenAI 兼容客户端每次调用后记录 usage，聚合今日/近7天/本月。
  */
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'fs';
-import { dirname, join } from 'path';
+import { join } from 'path';
+import { appendJsonl, readJsonlCached } from '../log/jsonl.js';
 
 export interface UsageRecord {
   ts: number;
@@ -19,37 +19,34 @@ export function usagePath(root = process.cwd()): string {
 }
 
 export function recordUsage(record: UsageRecord, file = usagePath()): void {
-  mkdirSync(dirname(file), { recursive: true });
-  appendFileSync(file, `${JSON.stringify(record)}\n`, 'utf-8');
+  appendJsonl(file, JSON.stringify(record));
 }
 
+function parseUsageLine(line: string): UsageRecord | null {
+  try {
+    const raw = JSON.parse(line) as Partial<UsageRecord>;
+    if (
+      typeof raw.ts !== 'number' ||
+      typeof raw.promptTokens !== 'number' ||
+      typeof raw.completionTokens !== 'number'
+    ) {
+      return null;
+    }
+    return {
+      ts: raw.ts,
+      provider: typeof raw.provider === 'string' ? raw.provider : 'unknown',
+      model: typeof raw.model === 'string' ? raw.model : 'unknown',
+      promptTokens: raw.promptTokens,
+      completionTokens: raw.completionTokens,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// P15：mtime+size 缓存读，避免每次全量解析整文件
 export function readUsage(file = usagePath()): UsageRecord[] {
-  if (!existsSync(file)) return [];
-  return readFileSync(file, 'utf-8')
-    .split(/\r?\n/)
-    .filter((line) => line.trim())
-    .map((line) => {
-      try {
-        const raw = JSON.parse(line) as Partial<UsageRecord>;
-        if (
-          typeof raw.ts !== 'number' ||
-          typeof raw.promptTokens !== 'number' ||
-          typeof raw.completionTokens !== 'number'
-        ) {
-          return null;
-        }
-        return {
-          ts: raw.ts,
-          provider: typeof raw.provider === 'string' ? raw.provider : 'unknown',
-          model: typeof raw.model === 'string' ? raw.model : 'unknown',
-          promptTokens: raw.promptTokens,
-          completionTokens: raw.completionTokens,
-        };
-      } catch {
-        return null;
-      }
-    })
-    .filter((r): r is UsageRecord => r !== null);
+  return readJsonlCached(file, parseUsageLine);
 }
 
 export interface UsageStats {

@@ -3,7 +3,7 @@
  * 本地 JSON 文件持久化，按自然日计数。
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
 
 export const BOCHA_DAILY_LIMIT = Number(process.env.BOCHA_DAILY_LIMIT ?? '1000000'); // [P-63] 不设硬限，默认仅观察
@@ -25,28 +25,100 @@ export function localDateString(d = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
+// P5（架构审计 2026-08-23）：进程内按文件路径串行化读-改-写，防 gateway 多请求并发取配额丢计数
+const fileLocks = new Map<string, Promise<void>>();
+
+function withFileLock<T>(filePath: string, fn: () => Promise<T>): Promise<T> {
+  const prev = fileLocks.get(filePath) ?? Promise.resolve();
+  const run = prev.then(fn, fn);
+  const tail = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  fileLocks.set(filePath, tail);
+  void tail.then(() => {
+    if (fileLocks.get(filePath) === tail) fileLocks.delete(filePath);
+  });
+  return run;
+}
+
+interface PeriodQuotaState {
+  counts: Record<string, number>;
+  [periodKey: string]: string | Record<string, number>;
+}
+
+interface CachedFileState<T> {
+  mtimeMs: number;
+  state: T;
+}
+
+/** P5：单进程内配额状态缓存，跨进程写靠 mtime 变化感知（statSync 命中即复用，免重复 readFileSync+parse） */
+const stateCache = new Map<string, CachedFileState<PeriodQuotaState>>();
+
+function readStateCached(filePath: string): PeriodQuotaState | null {
+  try {
+    const st = statSync(filePath);
+    const cached = stateCache.get(filePath);
+    if (cached && cached.mtimeMs === st.mtimeMs) return cached.state;
+    const parsed = JSON.parse(readFileSync(filePath, 'utf-8')) as PeriodQuotaState;
+    stateCache.set(filePath, { mtimeMs: st.mtimeMs, state: parsed });
+    return parsed;
+  } catch {
+    stateCache.delete(filePath);
+    return null;
+  }
+}
+
+/** P5：temp+rename 原子写，防读者读到半截 JSON；写后刷新缓存；失败静默（仅本次不计数） */
+function writeStateAtomic(filePath: string, state: PeriodQuotaState): void {
+  const tmp = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+  try {
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(tmp, JSON.stringify(state, null, 2), 'utf-8');
+    renameSync(tmp, filePath);
+  } catch {
+    try {
+      rmSync(tmp, { force: true });
+    } catch {
+      // 忽略清理失败
+    }
+    return;
+  }
+  try {
+    const st = statSync(filePath);
+    stateCache.set(filePath, { mtimeMs: st.mtimeMs, state });
+  } catch {
+    stateCache.delete(filePath);
+  }
+}
+
+/** 日/月配额共用 take 逻辑：互斥串行化 + 原子写 + mtime 缓存 */
+async function takePeriodQuota(
+  filePath: string,
+  periodKey: 'date' | 'month',
+  current: string,
+  key: string,
+  limit: number,
+): Promise<boolean> {
+  return withFileLock(filePath, async () => {
+    const cached = readStateCached(filePath);
+    const state: PeriodQuotaState =
+      cached && cached[periodKey] === current
+        ? cached
+        : ({ [periodKey]: current, counts: {} } as PeriodQuotaState);
+    const used = state.counts[key] ?? 0;
+    if (used >= limit) return false;
+    state.counts[key] = used + 1;
+    writeStateAtomic(filePath, state);
+    return true;
+  });
+}
+
 export class FileQuotaStore implements QuotaStoreLike {
   constructor(private readonly filePath: string) {}
 
   async take(key: string, limit: number): Promise<boolean> {
-    const today = localDateString();
-    let state: QuotaState = { date: today, counts: {} };
-    try {
-      state = JSON.parse(readFileSync(this.filePath, 'utf-8')) as QuotaState;
-    } catch {
-      // 首次使用或文件损坏：从空状态开始
-    }
-    if (state.date !== today) state = { date: today, counts: {} };
-    const used = state.counts[key] ?? 0;
-    if (used >= limit) return false;
-    state.counts[key] = used + 1;
-    try {
-      mkdirSync(dirname(this.filePath), { recursive: true });
-      writeFileSync(this.filePath, JSON.stringify(state, null, 2), 'utf-8');
-    } catch {
-      // 配额文件写失败不阻塞搜索，仅本次不计数
-    }
-    return true;
+    return takePeriodQuota(this.filePath, 'date', localDateString(), key, limit);
   }
 }
 
@@ -54,24 +126,7 @@ export class FileMonthlyQuotaStore implements QuotaStoreLike {
   constructor(private readonly filePath: string) {}
 
   async take(key: string, limit: number): Promise<boolean> {
-    const month = localDateString().slice(0, 7);
-    let state: { month: string; counts: Record<string, number> } = { month, counts: {} };
-    try {
-      state = JSON.parse(readFileSync(this.filePath, 'utf-8')) as typeof state;
-    } catch {
-      // 首次使用或文件损坏
-    }
-    if (state.month !== month) state = { month, counts: {} };
-    const used = state.counts[key] ?? 0;
-    if (used >= limit) return false;
-    state.counts[key] = used + 1;
-    try {
-      mkdirSync(dirname(this.filePath), { recursive: true });
-      writeFileSync(this.filePath, JSON.stringify(state, null, 2), 'utf-8');
-    } catch {
-      // 配额文件写失败不阻塞
-    }
-    return true;
+    return takePeriodQuota(this.filePath, 'month', localDateString().slice(0, 7), key, limit);
   }
 }
 

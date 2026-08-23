@@ -6,7 +6,7 @@
 
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, type StatementSync } from 'node:sqlite';
 
 export type ReminderRepeat = '' | 'daily' | 'weekly';
 
@@ -40,10 +40,15 @@ const REPEAT_MS: Record<Exclude<ReminderRepeat, ''>, number> = {
 
 export class ReminderStore {
   private readonly db: DatabaseSync;
+  // P11：dueReminders 循环内 reschedule 语句构造器预编译复用
+  private readonly rescheduleStmt: StatementSync;
 
   constructor(dbPath = reminderDbPath()) {
     mkdirSync(dirname(dbPath), { recursive: true });
     this.db = new DatabaseSync(dbPath);
+    this.db.exec(
+      'PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL;',
+    );
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS reminders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,6 +66,7 @@ export class ReminderStore {
     } catch {
       // 列已存在则跳过
     }
+    this.rescheduleStmt = this.db.prepare('UPDATE reminders SET remind_at = ? WHERE id = ?');
   }
 
   close(): void {
@@ -108,22 +114,30 @@ export class ReminderStore {
       .all(now) as unknown as ReminderRow[];
     if (rows.length === 0) return [];
     const onceIds: number[] = [];
-    for (const row of rows) {
-      if (row.repeat) {
-        // E165：重复提醒顺延到下一个未来时刻，避免离线多日补发刷屏
-        const step = REPEAT_MS[row.repeat as Exclude<ReminderRepeat, ''>] ?? 24 * 60 * 60 * 1000;
-        let next = row.remind_at;
-        while (next <= now) next += step;
-        this.db.prepare('UPDATE reminders SET remind_at = ? WHERE id = ?').run(next, row.id);
-      } else {
-        onceIds.push(row.id);
+    // P11：逐行顺延/标记 UPDATE 包一次事务（否则每行一次 fsync）
+    this.db.exec('BEGIN');
+    try {
+      for (const row of rows) {
+        if (row.repeat) {
+          // E165：重复提醒顺延到下一个未来时刻，避免离线多日补发刷屏
+          const step = REPEAT_MS[row.repeat as Exclude<ReminderRepeat, ''>] ?? 24 * 60 * 60 * 1000;
+          let next = row.remind_at;
+          while (next <= now) next += step;
+          this.rescheduleStmt.run(next, row.id);
+        } else {
+          onceIds.push(row.id);
+        }
       }
-    }
-    if (onceIds.length > 0) {
-      const placeholders = onceIds.map(() => '?').join(',');
-      this.db
-        .prepare(`UPDATE reminders SET fired = 1 WHERE id IN (${placeholders})`)
-        .run(...onceIds);
+      if (onceIds.length > 0) {
+        const placeholders = onceIds.map(() => '?').join(',');
+        this.db
+          .prepare(`UPDATE reminders SET fired = 1 WHERE id IN (${placeholders})`)
+          .run(...onceIds);
+      }
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
     }
     return rows.map(mapRow).map((r) => ({ ...r, fired: r.remindAt <= now }));
   }

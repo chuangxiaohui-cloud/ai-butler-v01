@@ -42,6 +42,7 @@ desktop/src-tauri/icons/android/
 
 # 运行时数据（SQLite、JSONL、缓存）
 data/
+*.jsonl.1
 
 # CodeGraph 本地索引（不入库）
 .codegraph/

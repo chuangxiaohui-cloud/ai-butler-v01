@@ -27,6 +27,7 @@ export function createQuoteCompareSkill(
     join(process.cwd(), 'data', 'quotes.db');
   mkdirSync(dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
+  db.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL;');
   db.exec(`
     CREATE TABLE IF NOT EXISTS vendor_quotes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

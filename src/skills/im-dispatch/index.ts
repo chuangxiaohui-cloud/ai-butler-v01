@@ -22,6 +22,7 @@ export function createImDispatchSkill(
     if (!db) {
       mkdirSync(dirname(dbPath), { recursive: true });
       db = new DatabaseSync(dbPath);
+      db.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL;');
       db.exec(`
         CREATE TABLE IF NOT EXISTS message_outbox (
           id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -28,6 +28,8 @@ export interface SearchOptions {
   topic?: 'general' | 'news';
   days?: number;
   includeDomains?: string[];
+  /** P4（架构审计 2026-08-23）：外部取消信号，stage 超时/中断时立即中止 fetch */
+  signal?: AbortSignal;
 }
 
 export interface SearchProvider {

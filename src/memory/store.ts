@@ -5,7 +5,7 @@
 
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, type StatementSync } from 'node:sqlite';
 
 export interface MemoryRecord {
   session_id: string;
@@ -50,11 +50,21 @@ CREATE INDEX IF NOT EXISTS idx_l1_session ON l1_memory(session_id, timestamp);
 
 export class SqliteDirectStore implements MemoryStore {
   private readonly db: DatabaseSync;
+  // P11：热路径 put 语句构造器预编译复用
+  private readonly putStmt: StatementSync;
 
   constructor(dbPath = join(process.cwd(), 'data', 'memory.db')) {
     mkdirSync(dirname(dbPath), { recursive: true });
     this.db = new DatabaseSync(dbPath);
+    this.db.exec(
+      'PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL;',
+    );
     this.db.exec(SCHEMA_SQL);
+    this.putStmt = this.db.prepare(
+      `INSERT INTO l0_memory
+         (session_id, query, answer, confidence, evidence_hash, raw_jsonl, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    );
   }
 
   close(): void {
@@ -63,21 +73,15 @@ export class SqliteDirectStore implements MemoryStore {
 
   async put(record: MemoryRecord): Promise<string> {
     const rawJsonl = JSON.stringify(record);
-    const result = this.db
-      .prepare(
-        `INSERT INTO l0_memory
-           (session_id, query, answer, confidence, evidence_hash, raw_jsonl, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        record.session_id,
-        record.query,
-        record.answer,
-        record.confidence,
-        record.evidence_hash,
-        rawJsonl,
-        record.timestamp,
-      );
+    const result = this.putStmt.run(
+      record.session_id,
+      record.query,
+      record.answer,
+      record.confidence,
+      record.evidence_hash,
+      rawJsonl,
+      record.timestamp,
+    );
     return String(result.lastInsertRowid);
   }
 

@@ -7,8 +7,8 @@ import {
   extractPartNumber,
   getDomainAuthority,
   isDomesticDatasheetUrl,
-  isHighTrustDatasheetUrl,
-  isOfficialForQuery,
+  isOfficialForQueryCtx,
+  buildOfficialQueryContext,
   OFFICIAL_MULTIPLIER,
 } from './authority.js';
 import { resolveFactConsistency } from './rule1.js';
@@ -73,11 +73,14 @@ function tokenizeText(text: string): string[] {
   return tokens;
 }
 
-function relevanceScore(query: string, item: SearchResultItem): number {
-  const tokens = [...new Set(tokenizeText(query))];
+// P6：query 侧 tokenize+去重每条结果只算一次；per-item 只做小写包含判断
+function buildRelevanceTokens(query: string): string[] {
+  return [...new Set(tokenizeText(query))];
+}
+
+function relevanceScore(tokens: string[], textLower: string): number {
   if (tokens.length === 0) return 0.5;
-  const text = `${item.title} ${item.content}`.toLowerCase();
-  const hits = tokens.filter((t) => text.includes(t.toLowerCase())).length;
+  const hits = tokens.filter((t) => textLower.includes(t)).length;
   return hits / tokens.length;
 }
 
@@ -255,20 +258,36 @@ const ANSWER_SIGNALS: Partial<Record<IntentKey, string[]>> = {
   ],
 };
 
-function answerCoverageScore(item: SearchResultItem, intent: IntentKey): number {
-  const signals = ANSWER_SIGNALS[intent];
+// P6：信号表模块级预编译小写，避免每条结果重复 toLowerCase
+const ANSWER_SIGNALS_LOWER: Partial<Record<IntentKey, string[]>> = Object.fromEntries(
+  Object.entries(ANSWER_SIGNALS).map(([intent, signals]) => [
+    intent,
+    signals.map((s) => s.toLowerCase()),
+  ]),
+) as Partial<Record<IntentKey, string[]>>;
+
+function answerCoverageScore(intent: IntentKey, textLower: string): number {
+  const signals = ANSWER_SIGNALS_LOWER[intent];
   if (!signals || signals.length === 0) return 1;
-  const text = `${item.title} ${item.content}`.toLowerCase();
-  const hits = signals.filter((s) => text.includes(s.toLowerCase())).length;
+  const hits = signals.filter((s) => textLower.includes(s)).length;
   return Math.min(1, hits / 3);
 }
 
-function isFaqWithoutProcedure(item: SearchResultItem, intent: IntentKey): boolean {
+interface ItemText {
+  text: string; // `${title} ${content}` 原始拼接
+  lower: string; // 标题+正文全小写（P6：每 item 只拼一次）
+  titleLower: string;
+}
+
+function buildItemText(item: SearchResultItem): ItemText {
+  const text = `${item.title} ${item.content}`;
+  return { text, lower: text.toLowerCase(), titleLower: item.title.toLowerCase() };
+}
+
+function isFaqWithoutProcedure(itemText: ItemText, intent: IntentKey): boolean {
   if (intent !== 'how_to') return false;
-  const title = item.title.toLowerCase();
-  if (!/常见疑问|常见问题|答疑|50答|q&a|faq|问答/.test(title)) return false;
-  const text = `${title} ${item.content}`.toLowerCase();
-  return !/申报|填报|办理|操作流程|步骤|第[一二三四五六七八九十\d]步|一键确认|提交|入口|流程|guide|tutorial|steps/.test(text);
+  if (!/常见疑问|常见问题|答疑|50答|q&a|faq|问答/.test(itemText.titleLower)) return false;
+  return !/申报|填报|办理|操作流程|步骤|第[一二三四五六七八九十\d]步|一键确认|提交|入口|流程|guide|tutorial|steps/.test(itemText.lower);
 }
 
 const TROUBLESHOOTING_TOPIC_TERMS = [
@@ -286,16 +305,14 @@ const TROUBLESHOOTING_TOPIC_TERMS = [
 ];
 
 function isErrorTopicMismatch(
-  query: string,
-  item: SearchResultItem,
+  queryLower: string,
+  itemText: ItemText,
   intent: IntentKey,
 ): boolean {
   if (intent !== 'troubleshooting') return false;
-  const q = query.toLowerCase();
-  const specific = TROUBLESHOOTING_TOPIC_TERMS.filter((term) => q.includes(term));
+  const specific = TROUBLESHOOTING_TOPIC_TERMS.filter((term) => queryLower.includes(term));
   if (specific.length === 0) return false;
-  const title = item.title.toLowerCase();
-  return !specific.some((term) => title.includes(term));
+  return !specific.some((term) => itemText.titleLower.includes(term));
 }
 
 function timelinessScore(item: SearchResultItem, recencySensitive = false): number {
@@ -314,18 +331,17 @@ function usabilityScore(item: SearchResultItem): number {
   return 0.4;
 }
 
-function isSeoNoise(item: SearchResultItem): boolean {
-  const text = `${item.title} ${item.content}`.toLowerCase();
+function isSeoNoise(item: SearchResultItem, itemText: ItemText): boolean {
   if (
     /24小时|在线客服|人工服务|加微信|联系电话|联系客服|服务至上|现货|批发|免费注册|购物车|下单|爱采购|厂家|报价|订购|立即购买|欢迎咨询/.test(
-      text,
+      itemText.lower,
     )
   ) {
     return true;
   }
   if (
     /文库|程序员大本营|文档下载|积分下载|下载文档|一键导入|永久使用|热点项目精选|维基词典|wiktionary|jisho|wanikani|汉字|笔顺|字源/.test(
-      text,
+      itemText.lower,
     )
   ) {
     return true;
@@ -400,14 +416,20 @@ export function fuseResults(
   const recencySensitive = isRecencySensitiveQuery(query);
   const effectiveIntent = recencySensitive ? 'news' : intent;
   const weights = INTENT_WEIGHTS[effectiveIntent] ?? INTENT_WEIGHTS.default;
+  // P6：query 派生值每条结果只算一次（relevance token / 官方域上下文 / 小写 query）
+  const relevanceTokens = buildRelevanceTokens(relevanceQuery);
+  const officialCtx = buildOfficialQueryContext(query);
+  const queryLower = query.toLowerCase();
 
   const fused: FusionItem[] = candidates.map((result) => {
-    const official = isOfficialForQuery(result.url, query);
+    const itemText = buildItemText(result);
+    const official = isOfficialForQueryCtx(result.url, officialCtx);
     const domainAuthority = getDomainAuthority(result.url);
     const seoNoise =
-      isSeoNoise(result) && !(result.provider === 'browser' && isHighTrustDatasheetUrl(result.url, query));
-    const relevance = relevanceScore(relevanceQuery, result);
-    const answerCoverage = answerCoverageScore(result, intent);
+      isSeoNoise(result, itemText) &&
+      !(result.provider === 'browser' && (official || isDomesticDatasheetUrl(result.url)));
+    const relevance = relevanceScore(relevanceTokens, itemText.lower);
+    const answerCoverage = answerCoverageScore(intent, itemText.lower);
     const timeliness = timelinessScore(result, recencySensitive);
     const usability = usabilityScore(result);
     const factConsistency = rule1.factConsistency.get(result.url) ?? 1;
@@ -426,8 +448,8 @@ export function fuseResults(
     ) {
       score *= 0.7 + 0.3 * relevance;
     }
-    if (!official && isFaqWithoutProcedure(result, intent)) score *= 0.75;
-    if (!official && isErrorTopicMismatch(query, result, intent)) score *= 0.75;
+    if (!official && isFaqWithoutProcedure(itemText, intent)) score *= 0.75;
+    if (!official && isErrorTopicMismatch(queryLower, itemText, intent)) score *= 0.75;
     if (!official) score *= 0.9 + 0.1 * domainAuthority;
     if (official) score *= OFFICIAL_MULTIPLIER;
     return {

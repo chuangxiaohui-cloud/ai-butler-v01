@@ -6,7 +6,7 @@
 
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { isColdAfter, weeklyDecayConfidence } from './confidence-decay.js';
 
 const P30_DECAY_PER_WEEK = 0.9; // [P-30]
@@ -37,10 +37,15 @@ export interface ExperienceSearchOptions {
 
 export class ExperienceManager {
   private readonly db: DatabaseSync;
+  // P11：热路径 recordUse 语句构造器预编译复用
+  private readonly recordUseStmt: StatementSync;
 
   constructor(dbPath = join(process.cwd(), 'data', 'experience.db')) {
     mkdirSync(dirname(dbPath), { recursive: true });
     this.db = new DatabaseSync(dbPath);
+    this.db.exec(
+      'PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL;',
+    );
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS experiences (
         id TEXT PRIMARY KEY,
@@ -56,6 +61,11 @@ export class ExperienceManager {
         needs_review INTEGER NOT NULL DEFAULT 0
       );
     `);
+    this.recordUseStmt = this.db.prepare(
+      `UPDATE experiences
+       SET usage_count = usage_count + 1, confidence = ?, last_used_at = ?, consecutive_down = 0
+       WHERE id = ?`,
+    );
   }
 
   close(): void {
@@ -87,13 +97,7 @@ export class ExperienceManager {
     if (!row) return;
     const decayed = this.decayConfidence(row, now);
     const confidence = Math.min(1, decayed + 0.02); // 使用次数提升置信度
-    this.db
-      .prepare(
-        `UPDATE experiences
-         SET usage_count = usage_count + 1, confidence = ?, last_used_at = ?, consecutive_down = 0
-         WHERE id = ?`,
-      )
-      .run(confidence, now, id);
+    this.recordUseStmt.run(confidence, now, id);
   }
 
   recordFeedback(id: string, up: boolean, now = Date.now()): void {
@@ -126,12 +130,10 @@ export class ExperienceManager {
 
   search(query: string, opts: ExperienceSearchOptions = {}): ExperienceEntry[] {
     const now = opts.now ?? Date.now();
-    const rows = this.all();
     const tokens = query.toLowerCase().split(/\s+/).filter((t) => t.length >= 2);
+    if (tokens.length === 0) return [];
+    const rows = this.searchRows(tokens, now);
     const scored = rows
-      .filter((r) => !r.needsReview)
-      .filter((r) => !this.isCold(r, now))
-      .filter((r) => r.confidence >= P32_CONFIDENCE_MIN)
       .map((r) => {
         const text = `${r.content} ${r.keywords.join(' ')}`.toLowerCase();
         const hits = tokens.filter((t) => text.includes(t)).length;
@@ -145,12 +147,29 @@ export class ExperienceManager {
   }
 
   stats(now = Date.now()): { total: number; active: number; cold: number; review: number } {
-    const rows = this.all();
+    // P12：单趟聚合 COUNT，不再全表载入
+    const coldCutoff = now - P31_COLD_DAYS * 24 * 3600 * 1000;
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(*) AS total,
+                SUM(CASE WHEN (last_used_at IS NOT NULL AND last_used_at >= ?)
+                          OR (last_used_at IS NULL AND created_at >= ?) THEN 1 ELSE 0 END) AS active,
+                SUM(CASE WHEN (last_used_at IS NOT NULL AND last_used_at < ?)
+                          OR (last_used_at IS NULL AND created_at < ?) THEN 1 ELSE 0 END) AS cold,
+                SUM(CASE WHEN needs_review = 1 THEN 1 ELSE 0 END) AS review
+         FROM experiences`,
+      )
+      .get(coldCutoff, coldCutoff, coldCutoff, coldCutoff) as unknown as {
+      total: number;
+      active: number;
+      cold: number;
+      review: number;
+    };
     return {
-      total: rows.length,
-      active: rows.filter((r) => !this.isCold(r, now)).length,
-      cold: rows.filter((r) => this.isCold(r, now)).length,
-      review: rows.filter((r) => r.needsReview).length,
+      total: row.total,
+      active: row.active,
+      cold: row.cold,
+      review: row.review,
     };
   }
 
@@ -163,6 +182,29 @@ export class ExperienceManager {
 
   private all(): ExperienceEntry[] {
     const rows = this.db.prepare('SELECT * FROM experiences').all() as unknown as ExperienceRow[];
+    return rows.map(mapRow);
+  }
+
+  /** P12：候选下推 SQL（review/置信度/冷存/关键词 LIKE），避免每次请求全表载入 */
+  private searchRows(tokens: string[], now: number): ExperienceEntry[] {
+    const coldCutoff = now - P31_COLD_DAYS * 24 * 3600 * 1000;
+    const params: (string | number)[] = [P32_CONFIDENCE_MIN, coldCutoff, coldCutoff];
+    const clauses: string[] = [];
+    for (const token of tokens) {
+      const pattern = `%${escapeLike(token)}%`;
+      clauses.push(`content LIKE ? ${LIKE_ESCAPE} OR keywords LIKE ? ${LIKE_ESCAPE}`);
+      params.push(pattern, pattern);
+    }
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM experiences
+         WHERE needs_review = 0
+           AND confidence >= ?
+           AND ((last_used_at IS NOT NULL AND last_used_at >= ?)
+                OR (last_used_at IS NULL AND created_at >= ?))
+           AND (${clauses.join(' OR ')})`,
+      )
+      .all(...params) as unknown as ExperienceRow[];
     return rows.map(mapRow);
   }
 
@@ -182,6 +224,12 @@ export class ExperienceManager {
   private isCold(entry: ExperienceEntry, now: number): boolean {
     return isColdAfter(entry.lastUsedAt ?? entry.createdAt, now, P31_COLD_DAYS);
   }
+}
+
+const LIKE_ESCAPE = `ESCAPE '\\'`; // SQLite LIKE 转义符声明，配合 escapeLike 按字面匹配
+/** 转义 LIKE 通配符 %/_ 与转义符自身，防查询 token 扩大匹配面（P12） */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 }
 
 interface ExperienceRow {

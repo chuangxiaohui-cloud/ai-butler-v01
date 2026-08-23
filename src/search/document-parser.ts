@@ -4,6 +4,7 @@
  */
 
 import { spawn } from 'node:child_process';
+import { PARAMS } from '../config/params.js';
 import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
 import type { RawFileLike } from '../skills/deps.js';
@@ -26,6 +27,8 @@ interface PdfTextResult {
   error?: string;
 }
 
+const PDF_PARSE_TIMEOUT_MS = PARAMS.documentParsePythonTimeoutMs; // [P-111]
+
 async function parsePdfWithPython(buffer: Buffer): Promise<PdfTextResult | null> {
   for (const cmd of PYTHON_CANDIDATES) {
     try {
@@ -36,6 +39,19 @@ async function parsePdfWithPython(buffer: Buffer): Promise<PdfTextResult | null>
         });
         let out = '';
         let err = '';
+        let settled = false;
+        // P9：超时杀子进程，防 PyMuPDF/OCR 卡死永久挂起
+        const timer = setTimeout(() => {
+          settled = true;
+          child.kill();
+          reject(new Error(`python pdf 解析超时（${PDF_PARSE_TIMEOUT_MS}ms）`));
+        }, PDF_PARSE_TIMEOUT_MS);
+        const finish = (fn: () => void): void => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          fn();
+        };
         child.stdout.setEncoding('utf8');
         child.stderr.setEncoding('utf8');
         child.stdout.on('data', (chunk: string) => {
@@ -44,11 +60,15 @@ async function parsePdfWithPython(buffer: Buffer): Promise<PdfTextResult | null>
         child.stderr.on('data', (chunk: string) => {
           err += chunk;
         });
-        child.on('error', reject);
+        child.on('error', (e) => finish(() => reject(e)));
         child.on('close', (code) => {
-          if (code === 0) resolve(out);
-          else reject(new Error(err.trim() || `python exit ${code}`));
+          finish(() => {
+            if (code === 0) resolve(out);
+            else reject(new Error(err.trim() || `python exit ${code}`));
+          });
         });
+        // P9：子进程提前退出时 stdin 会 EPIPE，吞掉避免未捕获异常
+        child.stdin.on('error', () => {});
         child.stdin.end(buffer);
       });
       const parsed = JSON.parse(stdout.trim()) as PdfTextResult;

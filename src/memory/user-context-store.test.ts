@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 
 import { buildMemoryInjection } from './user-context.js';
+import { DatabaseSync } from 'node:sqlite';
+
 import { UserContextStore } from './user-context-store.js';
 
 const DAY_MS = 24 * 3600 * 1000;
@@ -76,6 +78,37 @@ test('user-context-store: buildMemoryInjection 过滤低置信事实', () => {
     const injection = buildMemoryInjection(ctx);
     assert.ok(injection.includes('周星驰'));
     assert.ok(!injection.includes('临时推测'));
+  } finally {
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+test('user-context-store: 数据库启用 WAL（P11 PRAGMA 落地）', () => {
+  const { path, dir } = tempDb();
+  const store = new UserContextStore(path);
+  store.close();
+  const db = new DatabaseSync(path);
+  try {
+    const mode = db.prepare('PRAGMA journal_mode').get() as { journal_mode: string };
+    assert.equal(mode.journal_mode, 'wal'); // WAL 持久化在库文件头，同批 busy_timeout 已随构造 exec 生效
+  } finally {
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('user-context-store: archiveExpired 一次事务归档多条（P11）', () => {
+  const { path, dir } = tempDb();
+  const store = new UserContextStore(path);
+  try {
+    const created = Date.now();
+    store.addFact('u1', '冷记忆1', 'inferred', created - 100 * DAY_MS, 0.4);
+    store.addFact('u1', '冷记忆2', 'inferred', created - 100 * DAY_MS, 0.4);
+    store.addFact('u1', '活跃记忆', 'user_explicit', created, 0.9);
+    assert.equal(store.archiveExpired('u1', created), 2);
+    const ctx = store.load('u1', created);
+    assert.equal(ctx.longTermFacts.length, 1);
+    assert.equal(ctx.longTermFacts[0].content, '活跃记忆');
   } finally {
     store.close();
     rmSync(dir, { recursive: true, force: true });

@@ -49,18 +49,19 @@ CLI (src/main.ts)  UI (ui/prototype)  桌面壳 (desktop)
 
 | 模块 | 职责 | 关键文件 |
 |------|------|----------|
-| `src/search/` | Stage 1-6 搜索问答管道、搜索 provider、融合、兜底链 | `pipeline.ts`、`stages/`、`providers/`、`fusion.ts`、`rule1.ts`、`rule3.ts` |
-| `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理、rewrite/记住指令、时间表达 | `router-v2.ts`、`routing-table.ts`、`mode-mapper.ts`、`route-case-store.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` |
+| `src/search/` | Stage 1-6 搜索问答管道、搜索 provider、融合、兜底链 | `pipeline.ts`、`stages/`、`providers/`、`fusion.ts`、`rule1.ts`、`rule3.ts`、`second-pass.ts`、`second-pass-fetch.ts` |
+| `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理、rewrite/记住指令、时间表达、路由 case JSONL（追加/轮转） | `router-v2.ts`、`routing-table.ts`、`mode-mapper.ts`、`route-case-store.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` |
 | `src/skills/` | Skill 注册、生命周期、预置 Skill | `registry.ts`、`lifecycle.ts`、`deps.ts`、`skills/*` |
 | `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏 | `store.ts`、`memorycore-store.ts`、`experience.ts`、`distill.ts` |
 | `src/slash/` | 斜杠命令层（/compact 手动压缩、/context 会话状态，§8.3 E204） | `slash-commands.ts` |
 | `src/reminder/` | 主动提醒存储 | `reminder-store.ts` |
-| `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API | `app.ts`、`server.ts`、`attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts` |
+| `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API | `app.ts`、`server.ts`、`attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts`、`rate-limit.ts` |
 | `src/browser/` | 浏览器会话、CDP 持久化、页面抓取 | `session.ts` |
 | `src/config/` | PARAM、Provider Registry、模型目录、安全/用量/Skill 配置 | `params.ts`、`model-catalog.ts`、`provider-order.ts`、`security-config.ts` |
 | `src/trajectory/` | append-only 轨迹日志 | `trajectory-log.ts` |
+| `src/log/` | JSONL 追加/轮转（.1 归档）/缓存读 | `jsonl.ts` |
 | `src/usage/` | Token 计量与聚合 | `usage-store.ts` |
-| `src/security/` | 沙箱路径白名单、审计、Agent 操作日志与回滚 | `sandbox.ts`、`operation-log.ts` |
+| `src/security/` | 沙箱路径白名单、审计、Agent 操作日志与回滚、浏览器抓取 URL 安全 | `sandbox.ts`、`operation-log.ts`、`url-safety.ts` |
 | `src/postprocess/` | 输出后处理（文化回复等） | `cultural-reply.ts` |
 | `src/wiki/` | 冷启动知识种子 | `index.ts` |
 

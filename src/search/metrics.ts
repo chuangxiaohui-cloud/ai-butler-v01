@@ -3,8 +3,8 @@
  * 每条请求一条 JSONL，字段含 bocha_ms / anysearch_ms / timeout 标志。
  */
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'fs';
-import { dirname, join } from 'path';
+import { join } from 'path';
+import { appendJsonl, readJsonlCached } from '../log/jsonl.js';
 
 export interface SearchRequestMetric {
   ts: string;
@@ -26,28 +26,24 @@ export function logSearchRequest(
     join(process.cwd(), 'bench', 'search-metrics.jsonl'),
 ): void {
   try {
-    mkdirSync(dirname(logPath), { recursive: true });
-    appendFileSync(logPath, `${JSON.stringify(entry)}\n`, 'utf-8');
+    appendJsonl(logPath, JSON.stringify(entry));
   } catch {
     // 时延日志失败不阻塞搜索
   }
 }
 
+function parseMetricLine(line: string): SearchRequestMetric | null {
+  try {
+    return JSON.parse(line) as SearchRequestMetric;
+  } catch {
+    return null;
+  }
+}
+
+// P15：mtime+size 缓存读，避免每次全量解析整文件
 export function readSearchMetrics(
   logPath = process.env.SEARCH_METRICS_LOG ||
     join(process.cwd(), 'bench', 'search-metrics.jsonl'),
 ): SearchRequestMetric[] {
-  if (!existsSync(logPath)) return [];
-  return readFileSync(logPath, 'utf-8')
-    .trim()
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => {
-      try {
-        return JSON.parse(line) as SearchRequestMetric;
-      } catch {
-        return null;
-      }
-    })
-    .filter((x): x is SearchRequestMetric => x !== null);
+  return readJsonlCached(logPath, parseMetricLine);
 }

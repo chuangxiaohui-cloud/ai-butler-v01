@@ -349,3 +349,21 @@ test('fusion: 强时效问题缺失日期证据降权', () => {
   const r = fuseResults('中国空间站现在有哪几个航天员在太空', [noDate], 'factual');
   assert.equal(r.items[0].timeliness, 0.15);
 });
+test('fusion: P6 预计算后大写 query 仍识别官方源并乘数生效', () => {
+  const items = [
+    item({
+      url: 'https://github.com/tauri-apps/tauri',
+      title: 'Tauri framework',
+      content: 'Tauri 框架 架构 技术栈 功能 特性 使用 开源 项目 仓库 100A 完整 内容 足够 长',
+    }),
+    item({
+      url: 'https://medium.example/tauri',
+      title: 'Medium Tauri 教程',
+      content: 'Tauri 框架 架构 技术栈 完整 内容 示例 足够 长 100A',
+    }),
+  ];
+  const r = fuseResults('TAURI 框架 架构 技术栈', items, 'github_analysis');
+  const github = r.items.find((f) => f.result.url.includes('github.com'));
+  assert.ok(github);
+  assert.equal(github.official, true);
+});

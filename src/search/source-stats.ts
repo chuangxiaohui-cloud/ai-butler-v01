@@ -5,7 +5,7 @@
 
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, type StatementSync } from 'node:sqlite';
 
 import type { ProviderId } from './providers/types.js';
 import type { IntentKey } from './stages/s2_classify.js';
@@ -20,6 +20,8 @@ export interface SourceStatRow {
 
 export class SearchSourceStats {
   private readonly db: DatabaseSync;
+  // P11：热路径 record 语句构造器预编译复用
+  private readonly recordStmt: StatementSync;
 
   constructor(dbPath = join(process.cwd(), 'data', 'source-stats.db')) {
     mkdirSync(dirname(dbPath), { recursive: true });
@@ -37,6 +39,14 @@ export class SearchSourceStats {
         PRIMARY KEY (source, intent)
       );
     `);
+    this.recordStmt = this.db.prepare(
+      `INSERT INTO source_stats (source, intent, calls, ok_calls, total_ms)
+       VALUES (?, ?, 1, ?, ?)
+       ON CONFLICT(source, intent) DO UPDATE SET
+         calls = calls + 1,
+         ok_calls = ok_calls + excluded.ok_calls,
+         total_ms = total_ms + excluded.total_ms`,
+    );
   }
 
   close(): void {
@@ -44,16 +54,7 @@ export class SearchSourceStats {
   }
 
   record(source: ProviderId, intent: IntentKey, ok: boolean, latencyMs: number): void {
-    this.db
-      .prepare(
-        `INSERT INTO source_stats (source, intent, calls, ok_calls, total_ms)
-         VALUES (?, ?, 1, ?, ?)
-         ON CONFLICT(source, intent) DO UPDATE SET
-           calls = calls + 1,
-           ok_calls = ok_calls + excluded.ok_calls,
-           total_ms = total_ms + excluded.total_ms`,
-      )
-      .run(source, intent, ok ? 1 : 0, Math.max(0, Math.round(latencyMs)));
+    this.recordStmt.run(source, intent, ok ? 1 : 0, Math.max(0, Math.round(latencyMs)));
   }
 
   summary(): SourceStatRow[] {

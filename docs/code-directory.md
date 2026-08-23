@@ -24,6 +24,7 @@
 |------|---------|------|------|
 | `src/main.ts` | CLI 入口 | 组装依赖并调用 `pipeline`，stdout 输出结构化 JSON | ✅ |
 | `src/search/` | `pipeline.ts`、`stages/`、`search-loop.ts` | Stage 1-6 唯一问答管道 | ✅ |
+| `src/search/` | `second-pass.ts`、`second-pass-fetch.ts` | 低置信二次取证选目标 + 并发抓取（[P-117] 预算 / [P-118] PDF 上限，P1/P2） | ✅ |
 | `src/search/stages/` | `s1_prepare.ts`、`s2_classify.ts`、`s3_search.ts`、`s5_synthesize.ts`、`s6_post.ts` | 六阶段独立实现 | ✅ |
 | `src/search/providers/` | `types.ts`、`bocha.ts`、`anysearch.ts`、`tavily.ts` | 搜索适配器，统一 `SearchProvider` | ✅ |
 | `src/search/` | `fusion.ts`、`rule1.ts`、`rule3.ts`、`authority.ts` | 融合、事实一致性、安全阀、权威度 | ✅ |
@@ -33,7 +34,7 @@
 | src/search/ | 	avily-trigger.ts | Tavily 条件并联触发判定（§6.2.1，E72/E195） | ✅ |
 | `src/agent/` | `router-v2.ts`、`routing-table.ts`、`intent-feature.ts`、`extract.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` | 三层意图路由、rewrite/记住指令、时间表达解析 | ✅ |
 | `src/agent/` | `mode-mapper.ts`、`multimodal-preprocessor.ts`、`executors.ts` | 模式映射、多模态信号、执行器状态 | ✅ |
-| `src/agent/` | `route-case-store.ts`、`route-case-audit.ts`、`confidence-calibration.ts` | 路由 case 采集、审核、校准闭环 | ✅ |
+| `src/agent/` | `route-case-store.ts`、`route-case-audit.ts`、`confidence-calibration.ts` | 路由 case 采集、审核、校准闭环（JSONL 追加/轮转 P13） | ✅ |
 | `src/skills/` | `registry.ts`、`lifecycle.ts`、`deps.ts`、`install.ts` | Skill 注册、生命周期、依赖注入、安装 | ✅ |
 | `src/skills/*/` | 23 个 Skill 目录 | 预置能力 | ✅ |
 | `src/memory/` | `store.ts`、`memorycore-store.ts`、`schema.sql` | MemoryStore 双实现与冻结 schema | ✅ |
@@ -43,14 +44,16 @@
 | `src/slash/` | `slash-commands.ts` | 斜杠命令层：`/compact` 手动压缩 + `/context` 会话状态（§8.3，E204） | ✅ |
 | `src/reminder/` | `reminder-store.ts` | 主动提醒 SQLite 存储与到期轮询 | ✅ |
 | `src/gateway/` | `app.ts`、`server.ts` | 单一 TurnLoop Express gateway | ✅ |
+| `src/gateway/` | `rate-limit.ts` | 限速桶（P16 [P-114]）+ 并发闸门（[P-115]） | ✅ |
 | `src/gateway/` | `attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts` | 附件、终端、文件、SSE 事件 | ✅ |
 | `src/browser/` | `session.ts` | 浏览器会话、CDP 持久化、页面抓取 | ✅ |
 | `src/config/` | `params.ts`、`env.ts` | PARAM 登记与环境解析 | ✅ |
 | `src/config/` | `model-catalog.ts`、`provider-order.ts` | 模型目录与 provider 顺序 | ✅ |
 | `src/config/` | `security-config.ts`、`skills-config.ts`、`usage-budget.ts` | 安全、Skill、Token 预算持久化 | ✅ |
 | `src/trajectory/` | `trajectory-log.ts` | append-only 轨迹日志 | ✅ |
+| `src/log/` | `jsonl.ts` | JSONL 追加/轮转（.1 归档）/缓存读（P15） | ✅ |
 | `src/usage/` | `usage-store.ts` | Token 计量与聚合 | ✅ |
-| `src/security/` | `sandbox.ts`、`operation-log.ts` | 文件沙箱白名单、审计、Agent 操作日志与回滚 | ✅ |
+| `src/security/` | `sandbox.ts`、`operation-log.ts`、`url-safety.ts` | 文件沙箱白名单、审计、Agent 操作日志与回滚、浏览器抓取 URL 安全（S1） | ✅ |
 | `src/postprocess/` | `cultural-reply.ts` | 文化梗回复后处理 | ✅ |
 | `src/wiki/` | `index.ts` | 冷启动知识种子 | ✅ |
 

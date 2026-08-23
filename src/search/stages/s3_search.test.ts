@@ -8,6 +8,7 @@ import { readSearchMetrics } from '../metrics.js';
 import type { QuotaStoreLike } from '../quota.js';
 import type {
   ProviderId,
+  SearchOptions,
   SearchProvider,
   SearchProviderResult,
   SearchResultItem,
@@ -261,4 +262,40 @@ test('s3: 透出 provider notice（§D.3 余额告警）', async () => {
     quota: new FakeQuota(),
   });
   assert.deepEqual(r.notices, ['Bocha 余额已耗尽，请购买体验包']);
+});
+
+test('s3: P4 超时后 stage 取消进行中的 provider fetch', async () => {
+  clearCacheForTests();
+  let sawAbort = false;
+  const hanging: SearchProvider = {
+    id: 'bocha',
+    async search(_query: string, opts?: SearchOptions): Promise<SearchProviderResult> {
+      await new Promise<void>((resolve, reject) => {
+        if (!opts?.signal) {
+          reject(new Error('missing signal'));
+          return;
+        }
+        if (opts.signal.aborted) {
+          sawAbort = true;
+          resolve();
+          return;
+        }
+        opts.signal.addEventListener('abort', () => {
+          sawAbort = true;
+          resolve();
+        }, { once: true });
+      });
+      return { provider: 'bocha', ok: false, results: [], latencyMs: 0, error: 'aborted' };
+    },
+  };
+  const start = Date.now();
+  const r = await runSearchStage('q', {
+    intent: 'factual',
+    providers: [hanging],
+    quota: new FakeQuota(),
+    budgetMs: 50,
+  });
+  assert.equal(sawAbort, true, 'stage 超时后进行中的 provider 必须收到 aborted signal');
+  assert.ok(Date.now() - start < 2000, '不能等 provider 自身超时（P4 取消生效）');
+  assert.equal(r.degraded, true);
 });

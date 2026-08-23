@@ -14,6 +14,7 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PARAMS } from '../../config/params.js';
 
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 import type { RawFileLike, SkillDeps } from '../deps.js';
@@ -82,6 +83,9 @@ const PPTX_CREATE_SCRIPT = fileURLToPath(
   new URL('../../../scripts/office_pptx_create.py', import.meta.url),
 );
 const PYTHON_CANDIDATES = ['python', 'python3'];
+
+const OFFICE_PYTHON_TIMEOUT_MS = PARAMS.officePythonTimeoutMs; // [P-112]
+const PYTHON_STDOUT_CAP = 64 * 1024 * 1024; // P9：stdout 累加上限，防异常输出撑爆内存
 
 export function buildAttendanceCsv(): string {
   const header = '序号,姓名,日期,上班时间,下班时间,状态,备注';
@@ -361,24 +365,51 @@ function runPython(args: string[]): Promise<string> {
       });
       let out = '';
       let err = '';
+      let settled = false;
+      // P9：超时杀子进程，防 OCR/PDF 转换卡死永久挂起
+      const timer = setTimeout(() => {
+        settled = true;
+        child.kill();
+        lastError = new Error(`python 超时（${OFFICE_PYTHON_TIMEOUT_MS}ms）`);
+        tryRun(index + 1);
+      }, OFFICE_PYTHON_TIMEOUT_MS);
+      const finish = (fn: () => void): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        fn();
+      };
       child.stdout.setEncoding('utf8');
       child.stderr.setEncoding('utf8');
       child.stdout.on('data', (c: string) => {
+        // P9：stdout 累加设上限，防异常输出撑爆内存
+        if (out.length + c.length > PYTHON_STDOUT_CAP) {
+          settled = true;
+          clearTimeout(timer);
+          child.kill();
+          lastError = new Error(`python stdout 超过 ${PYTHON_STDOUT_CAP} 字节`);
+          tryRun(index + 1);
+          return;
+        }
         out += c;
       });
       child.stderr.on('data', (c: string) => {
         err += c;
       });
       child.on('error', (e) => {
-        lastError = e;
-        tryRun(index + 1);
+        finish(() => {
+          lastError = e;
+          tryRun(index + 1);
+        });
       });
       child.on('close', (code) => {
-        if (code === 0) resolve(out);
-        else {
-          lastError = new Error(err.trim() || `python exit ${code}`);
-          tryRun(index + 1);
-        }
+        finish(() => {
+          if (code === 0) resolve(out);
+          else {
+            lastError = new Error(err.trim() || `python exit ${code}`);
+            tryRun(index + 1);
+          }
+        });
       });
     };
     tryRun(0);
