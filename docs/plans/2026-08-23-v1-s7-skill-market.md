@@ -44,4 +44,7 @@ v1.0 切片第七片（S7）：落地 §8.2.3 Skill 市场安装的远程化骨�
 
 ## 结果
 
-- （执行后补）
+- 验证：`npm exec tsx scripts/doc-lint.ts` 0 FAIL 0 WARN（C8 44 key、附录 522/950）；主项目 `npm run build` 通过；`npm run test:all` 全绿。
+- 测试：单测 777/778（1 skip）+ 集成 15/15；新增 21 条（manifest 4 + index-client 4 + store 4 + installer 7 + lifecycle 2）。
+- 提交：`3f10293`（E226）+ `ccaadeb`（handoff 登记）
+- 遗留事项：S7 骨架完成（索引/校验/权限门禁/安装记录/生命周期统计）；真实可执行 handler 接入需过 §10 文件沙箱与命令白名单流程；剩余 S8 LLM 增强路由 + fast description + MemoryCoreStore 切换按 `docs/plans/2026-08-23-v1-slicing.md` 排期继续。
