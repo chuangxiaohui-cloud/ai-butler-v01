@@ -43,4 +43,7 @@ v1.0 切片第八片（S8，收尾片）：① **LLM 增强路由接线生产入
 
 ## 结果
 
-- （执行后补）
+- 验证：`npm exec tsx scripts/doc-lint.ts` 0 FAIL 0 WARN（C8 44 key、附录 523/950）；主项目 `npm run build` 通过；`npm run test:all` 全绿。
+- 测试：单测 783/784（1 skip）+ 集成 15/15；新增 6 条（llm 可选客户端 2 + store 切换 4）。
+- 提交：`4a839a1`（E227）+ `9fd2ff0`（handoff 登记）
+- 遗留事项：LLM 增强路由效果待生产实跑观测（路由 case 采样/校准闭环可继续）；MemoryCore sidecar 切换按 `MEMORY_STORE=memorycore` + 身份三元组 + 强 key 启用；v1.0 切片 S1-S8 全部完成。
