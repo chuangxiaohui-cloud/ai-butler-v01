@@ -53,6 +53,6 @@
 - 验证：doc-lint 0 FAIL 0 WARN（附录 524/950）；`npm run build` 通过；
   真实 `/usage` 探测（本会话）：usage=1000、limit=null、search_usage=1000、plan=Researcher（与 provider 432 印证）
 - 测试：单测 788/789（1 skip）+ 集成 15/15（tavily-usage 新增 5 条）
-- 提交：主体 `<hash>` · handoff `<hash>` · 结果段 `<hash>`
+- 提交：`f3b6b48`（E228 主体）+ `1e41f2c`（handoff 登记）
 - 遗留事项：9 月重置后跑 `npm run tavily:smoke` 复核远端归零与本地计数重建；
   news/advanced 是否多倍计费待月度实证后按需再校 [P-64] 语义。
