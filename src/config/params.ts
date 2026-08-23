@@ -78,6 +78,22 @@ export const PARAMS = {
   cdpStateTtlMs: 10 * 60 * 1000,
   /** P-13 深度报告增量预算（生成+证据组装，不含内部搜索调用；对齐 §4.3.2） */
   deepReportBudgetMs: 13_000,
+  /** P-38 编译/构建超时（§11.1.3，Keil/gcc/cmake） */
+  compileTimeoutMs: 300_000,
+  /** P-39 烧录/下载超时（§11.1.3） */
+  flashTimeoutMs: 120_000,
+  /** P-40 单文件生成超时（§11.1.3） */
+  fileGenTimeoutMs: 60_000,
+  /** P-41 子Agent心跳超时（§11.1.3） */
+  subAgentHeartbeatMs: 30_000,
+  /** P-44 确定性操作重试次数（§11.1.2，编译/下载/格式化） */
+  subAgentRetryDeterministic: 2,
+  /** P-45 非确定性操作重试次数（§11.1.2，生成类） */
+  subAgentRetryNonDeterministic: 1,
+  /** P-46 退避基数（§11.1.2，指数退避逐次翻倍） */
+  subAgentBackoffBaseMs: 2_000,
+  /** P-57 子Agent启动延迟（§4.3/§11，启动后须在此时间内进入执行状态） */
+  subAgentStartTimeoutMs: 1_000,
 } as const;
 
 export type ParamKey = keyof typeof PARAMS;
@@ -118,6 +134,14 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   pdfParseMaxBytes: 'P-118',
   calibrationWindowDays: 'P-119',
   llmRuleBoostMax: 'P-120',
+  compileTimeoutMs: 'P-38',
+  flashTimeoutMs: 'P-39',
+  fileGenTimeoutMs: 'P-40',
+  subAgentHeartbeatMs: 'P-41',
+  subAgentRetryDeterministic: 'P-44',
+  subAgentRetryNonDeterministic: 'P-45',
+  subAgentBackoffBaseMs: 'P-46',
+  subAgentStartTimeoutMs: 'P-57',
   cdpStateTtlMs: 'P-121',
   deepReportBudgetMs: 'P-13',
 };
