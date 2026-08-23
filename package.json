@@ -31,6 +31,7 @@
     "baseline:devil-v25": "tsx scripts/export-devil-baseline.ts",
     "compare:devil-v25": "tsx scripts/compare-devil-baseline.ts",
     "bench:provider-router": "tsx scripts/bench-provider-router.ts",
+    "deep:bench": "tsx scripts/deep-report-bench.ts",
     "model:export": "tsx scripts/export-model-catalog.ts",
     "score:v02a": "tsx scripts/score-v02a.ts",
     "worksheet:v02a": "tsx scripts/export-v02a-answers.ts",

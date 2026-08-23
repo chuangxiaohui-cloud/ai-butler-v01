@@ -92,6 +92,7 @@
 | `scripts/office_image_ocr.py` | 图片/PDF 表格 OCR（E168-E201：TSR 结构、跨页拼接、页脚过滤、三通道文本融合、编号模式纠正、词典纠正；`--selftest`/`--dict`/`--table`/`--batch`） | ✅ |
 | scripts/datasheet.ts | 官方 datasheet 下载与校验 | ✅ |
 | scripts/tavily-smoke.ts | Tavily 触发冒烟 + 配额监控 + 远端用量对比（E195/E228） | ✅ |
+| scripts/deep-report-bench.ts | 深度报告 [P-13] 复测工具（dry-run/LLM 模式，E229） | ✅ |
 | `scripts/migrate-to-memorycore.ts` | 历史记忆迁移 | ✅ |
 | `scripts/distill-worker.ts` | L1 蒸馏 worker | ✅ |
 | `scripts/push-to-hosts.ts` | Gitee/GitHub 双端同步 | ✅ |
