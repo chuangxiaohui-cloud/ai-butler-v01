@@ -35,5 +35,5 @@
 
 - 验证：`npm exec tsx scripts/doc-lint.ts` 0 FAIL 0 WARN（附录 515/950、附录 A 291/500，均回预算内）。
 - 测试：文档-only 改动，代码未变；提交前复跑 `npm run test:all` 确认单测 680/681 + 集成 15/15。
-- 提交：`<hash>` · 推送：Gitee / GitHub
+- 提交：`e3513f7`（E219）+ `91f270c`（handoff 登记）· 推送：Gitee / GitHub
 - 遗留事项：v1.0 切片时继续按 retention 纪律维护附录。
