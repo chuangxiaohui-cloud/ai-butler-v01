@@ -28,6 +28,10 @@ import { extractPartNumber, getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
 import { PARAMS } from '../config/params.js';
 import { fetchSecondPassTargets } from './second-pass-fetch.js';
+import {
+  DeepReportCancelledError,
+  generateDeepReport,
+} from './deep-report.js';
 import { pickSecondPassTargets, shouldSecondPass } from './second-pass.js';
 import { applyRule3 } from './rule3.js';
 import { shouldTriggerTavily } from './tavily-trigger.js';
@@ -119,6 +123,8 @@ export interface PipelineOptions {
   userId?: string;
   conversationId?: string;
   modelSelection?: ModelSelection;
+  /** 外部取消信号（v1.0 S1 深度报告等长任务透传） */
+  signal?: AbortSignal;
   onProgress?: (stage: string) => void;
   onArtifact?: (event: {
     skill: string;
@@ -864,11 +870,32 @@ export async function pipeline(
     if (usedSkillName) deps.skillLifecycle?.recordUse?.(usedSkillName);
   }
 
+  // v1.0 S1：深度报告（§4.3.2）——搜索证据基础上分阶段生成结构化报告 + 证据附录
+  let finalAnswerText = synthesized.answer + videoBlock;
+  if (routeSelected.intent === 'deep_report') {
+    try {
+      const report = await generateDeepReport(prepared.cleanQuery, evidence, {
+        llm: deps.llm,
+        budgetMs: PARAMS.deepReportBudgetMs,
+        signal: opts.signal,
+        onStage: (stage) => safeProgress(stage),
+        synthesis: synthesized.answer,
+      });
+      finalAnswerText = report.report;
+    } catch (err) {
+      // 取消 → 简短应答；失败 → 降级为 Stage 5 常规摘要，不静默等待
+      finalAnswerText =
+        err instanceof DeepReportCancelledError
+          ? '深度报告已取消。'
+          : `深度报告生成失败，已降级为常规摘要：\n\n${synthesized.answer}`;
+    }
+  }
+
   // Stage 6：后处理 + L0 记忆写入
   const final = await postProcess(
     {
       query,
-      answer: synthesized.answer + videoBlock,
+      answer: finalAnswerText,
       confidence,
       evidence,
       gateTriggered: gate,

@@ -28,6 +28,7 @@ export const ACTION_TYPES = [
   'generate_bom',
   'office_daily',
   'learn_video',
+  'deep_report',
   'unknown',
 ] as const;
 
@@ -123,6 +124,8 @@ const ACTION_RE: Array<[ActionType, RegExp]> = [
   ['send', /发消息|发邮件|通知|发给|转发|发送|微信|QQ|飞书/],
   ['schedule', /安排|预约|预定|订个|约个|帮我订/],
   ['modify', /修改|改下|更新|重构|修复|不对|改成|换成|我要的是|修正|调整/],
+  // v1.0 S1：深度报告（§4.3.2 长任务首实例），须置于 create 之前防止「写一份…报告」被 create 抢走
+  ['deep_report', /深度报告|调研报告|研究报告|深度分析|出一份.*报告|写一份.*报告|做一份.*报告|整理成.*报告|做个.*(调研|报告)|报告.*(调研|分析)/],
   ['create', /创建|生成|写个|写一个|做个|做一个|开发|搭建|实现|写一份|帮我写|设计|画/],
 ];
 
@@ -307,7 +310,7 @@ export function buildIntentFeaturePrompt(
           .join('\n')}`
       : '';
   return `你是一个意图特征提取器。只输出 JSON，不要做路由决策。
-字段：actionType(create|modify|query|send|analyze|clarify|emergency|illegal_request|property_emergency|cultural_reference|office_daily|learn_video|qa|summarize|extract_structure|generate_bom|rewrite|pack|schedule|compare|chat|apply_to_project|unknown), targetDomain(code|document|schedule|message|search|finance|security|color|unknown), scope(atomic|multi_step|project_level|unknown), requiresExternalSearch(boolean), searchSourceHint(local_skill|web_search|internal_db|vendor_db|none), hasImplicitContext(boolean), hasGithubLink(boolean), urgency(normal|urgent|critical), rawEntities(string[]), ambiguityFlags(missing_referent|scope_unclear|target_ambiguous[])。
+字段：actionType(create|modify|query|send|analyze|clarify|emergency|illegal_request|property_emergency|cultural_reference|office_daily|learn_video|deep_report|qa|summarize|extract_structure|generate_bom|rewrite|pack|schedule|compare|chat|apply_to_project|unknown), targetDomain(code|document|schedule|message|search|finance|security|color|unknown), scope(atomic|multi_step|project_level|unknown), requiresExternalSearch(boolean), searchSourceHint(local_skill|web_search|internal_db|vendor_db|none), hasImplicitContext(boolean), hasGithubLink(boolean), urgency(normal|urgent|critical), rawEntities(string[]), ambiguityFlags(missing_referent|scope_unclear|target_ambiguous[])。
 hasImage(boolean), hasDocument(boolean), attachmentTypes(string[]), fastImageDescription(string|undefined), timeExpression(string|undefined), hasTimeExpression(boolean)。
 用户输入：${query}${attachmentBlock}${contextBlock}`;
 }

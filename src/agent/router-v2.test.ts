@@ -650,3 +650,14 @@ test('router-v2: 直接写入盘符路径 → project_writer', () => {
   }
 });
 
+
+test('router-v2: 深度报告意图 → project_manager deep_report 且开搜索', () => {
+  const r = routeV2('写一份 STM32 的调研报告');
+  assert.equal(r.features.actionType, 'deep_report');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'deep_report');
+    assert.equal(r.decision.selected.searchNeed, true);
+    assert.equal(r.decision.selected.primaryLens, 'project_manager');
+  }
+});

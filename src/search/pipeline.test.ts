@@ -180,6 +180,22 @@ class FakeLLM implements LLMClient {
           attachmentTypes: [],
         });
       }
+      if (content.includes('调研报告')) {
+        return JSON.stringify({
+          actionType: 'deep_report',
+          targetDomain: 'search',
+          scope: 'multi_step',
+          requiresExternalSearch: true,
+          searchSourceHint: 'web_search',
+          hasImplicitContext: false,
+          urgency: 'normal',
+          rawEntities: [],
+          ambiguityFlags: [],
+          hasImage: false,
+          hasDocument: false,
+          attachmentTypes: [],
+        });
+      }
       return JSON.stringify({
         actionType: 'query',
         targetDomain: 'search',
@@ -208,6 +224,11 @@ class FakeLLM implements LLMClient {
     }
     if (system.includes('严肃领域')) {
       return '请遵医嘱，并以医生判断为准。';
+    }
+    if (system.includes('深度报告助手')) {
+      const userContent = messages[1]?.content ?? '';
+      if (userContent.includes('大纲')) return '概述\n关键发现\n应用场景';
+      return '本节测试内容（引用 https://example.com/1）。';
     }
     this.lastUserContent = messages[1]?.content ?? '';
     return '根据证据，这是一个测试答案。';
@@ -997,4 +1018,27 @@ test('pipeline: 执行器真实失败如实归因（B4）', async () => {
     if (existedAsFile) writeFileSync(dbPath, '');
     imDispatch?.close?.();
   }
+});
+
+test('pipeline: 深度报告走搜索 + 分阶段报告生成 + 证据附录', async () => {
+  const llm = new FakeLLM();
+  const progress: string[] = [];
+  const result = await pipeline(
+    '写一份 STM32 的调研报告',
+    {
+      llm,
+      providers: [new FakeProvider()],
+      quota: new FakeQuota(),
+      memoryStore: new FakeMemoryStore(),
+    },
+    { onProgress: (s) => progress.push(s) },
+  );
+  assert.match(result.answer, /^# 写一份 STM32 的调研报告/);
+  assert.match(result.answer, /## 概述/);
+  assert.match(result.answer, /## 证据附录/);
+  assert.ok(result.answer.includes('https://example.com/1'));
+  assert.ok(progress.includes('report-outline'));
+  assert.ok(progress.some((s) => s.startsWith('report-section-')));
+  assert.ok(progress.includes('report-evidence'));
+  assert.equal(result.evidence.length, 1);
 });

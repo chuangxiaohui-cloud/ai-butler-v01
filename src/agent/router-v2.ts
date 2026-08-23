@@ -207,7 +207,8 @@ export function routeFromFeatures(
     (features.actionType === 'rewrite' && top?.intent === 'rewrite') ||
     (features.actionType === 'pack' && top?.intent === 'pack_project') ||
     (features.actionType === 'chat' && top?.intent === 'companion_chat') ||
-    (features.actionType === 'apply_to_project' && top?.intent === 'apply_to_project')
+    (features.actionType === 'apply_to_project' && top?.intent === 'apply_to_project') ||
+    (features.actionType === 'deep_report' && top?.intent === 'deep_report')
   ) {
     decision = { type: 'direct', selected: top };
   } else if (

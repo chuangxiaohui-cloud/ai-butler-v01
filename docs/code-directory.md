@@ -25,6 +25,7 @@
 | `src/main.ts` | CLI 入口 | 组装依赖并调用 `pipeline`，stdout 输出结构化 JSON | ✅ |
 | `src/search/` | `pipeline.ts`、`stages/`、`search-loop.ts` | Stage 1-6 唯一问答管道 | ✅ |
 | `src/search/` | `second-pass.ts`、`second-pass-fetch.ts` | 低置信二次取证选目标 + 并发抓取（[P-117] 预算 / [P-118] PDF 上限，P1/P2） | ✅ |
+| `src/search/` | `deep-report.ts` | 深度报告分阶段生成（v1.0 S1，§4.3.2，[P-13] 预算，E220） | ✅ |
 | `src/search/stages/` | `s1_prepare.ts`、`s2_classify.ts`、`s3_search.ts`、`s5_synthesize.ts`、`s6_post.ts` | 六阶段独立实现 | ✅ |
 | `src/search/providers/` | `types.ts`、`bocha.ts`、`anysearch.ts`、`tavily.ts` | 搜索适配器，统一 `SearchProvider` | ✅ |
 | `src/search/` | `fusion.ts`、`rule1.ts`、`rule3.ts`、`authority.ts` | 融合、事实一致性、安全阀、权威度 | ✅ |

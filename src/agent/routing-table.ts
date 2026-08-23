@@ -48,6 +48,15 @@ export const ROUTING_TABLE: RoutingRule[] = [
     confidenceBoost: 0.2,
   },
   {
+    id: 'R002d',
+    match: { actionType: 'deep_report' },
+    primaryLens: 'project_manager',
+    intent: 'deep_report',
+    tags: ['deep_report', 'craft'],
+    searchNeed: true,
+    confidenceBoost: 0.2,
+  },
+  {
     id: 'R003',
     match: { actionType: 'create', targetDomain: 'code', scope: 'atomic' },
     primaryLens: 'architect',

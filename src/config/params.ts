@@ -76,6 +76,8 @@ export const PARAMS = {
   llmRuleBoostMax: 0.25,
   /** P-121 CDP 调试口状态自动过期时间（风险窗口有界） */
   cdpStateTtlMs: 10 * 60 * 1000,
+  /** P-13 深度报告增量预算（生成+证据组装，不含内部搜索调用；对齐 §4.3.2） */
+  deepReportBudgetMs: 13_000,
 } as const;
 
 export type ParamKey = keyof typeof PARAMS;
@@ -117,4 +119,5 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   calibrationWindowDays: 'P-119',
   llmRuleBoostMax: 'P-120',
   cdpStateTtlMs: 'P-121',
+  deepReportBudgetMs: 'P-13',
 };
