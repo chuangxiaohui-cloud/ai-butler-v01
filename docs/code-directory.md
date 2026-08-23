@@ -30,6 +30,7 @@
 | `src/mcp/` | `types.ts`、`registry.ts`、`client.ts`、`dispatcher.ts`、`safety.ts` | MCP 子 Agent：注册表/stdio 客户端/调度器（重试·退避·降级）/工具白名单与 untrusted 域（v1.0 S3，§4.1.2 + §10 + §11.1，E222） | ✅ |
 | `src/security/` | `command-whitelist.ts`、`query-sanitize.ts` | 命令白名单（允许集合+硬编码拒绝+超时 kind）与搜索脱敏（路径/密钥/内网剥离，v1.0 S4，§10.2/§10.3，E223） | ✅ |
 | `src/im/` | `gate.ts`、`session.ts`、`format.ts`、`service.ts` | 远程对话通道骨架（授权开关/会话隔离/输出适配/复用 pipeline，v1.0 S5，§4.5，E224） | ✅ |
+| `src/repo/` | `types.ts`、`repo-whitelist.ts`、`push-audit.ts`、`push-service.ts` | 代码托管联动库骨架（仓库白名单/预检门禁/commit+push/JSONL 审计，v1.0 S6，§11.4，E225） | ✅ |
 | `src/search/stages/` | `s1_prepare.ts`、`s2_classify.ts`、`s3_search.ts`、`s5_synthesize.ts`、`s6_post.ts` | 六阶段独立实现 | ✅ |
 | `src/search/providers/` | `types.ts`、`bocha.ts`、`anysearch.ts`、`tavily.ts` | 搜索适配器，统一 `SearchProvider` | ✅ |
 | `src/search/` | `fusion.ts`、`rule1.ts`、`rule3.ts`、`authority.ts` | 融合、事实一致性、安全阀、权威度 | ✅ |
