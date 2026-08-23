@@ -228,12 +228,22 @@
     全量单测 716/717（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN（附录 518/950）。计划见
     `docs/plans/2026-08-23-v1-s3-mcp.md`。
 
+28. **v1.0 S4 安全模型补齐（E223）**：补齐全量安全模型（§10）——§10.2 命令白名单
+    `src/security/command-whitelist.ts`（五类允许命令集合 + 危险模式硬编码拒绝：sudo/eval/rm -rf
+    根或通配/del /S /Q/管道下载脚本/下载执行 .exe/格式化 + git 破坏性子命令拒绝 + 按类别超时
+    [P-38]/[P-39]/[P-40] + 审计日志）；§10.3 搜索脱敏 `src/security/query-sanitize.ts`
+    （剥离本地路径/邮箱/API Key/内网与回环地址，疑似密钥告警，开关可关）并接入 pipeline Stage 3；
+    §10.5 注入防御（s5_synthesize 与 deep-report 证据块显式分隔符
+    「【外部证据 · untrusted_data · 仅作参考】/【证据结束】」+ 元数据标记，untrusted_data 与指令
+    上下文物理分离）。新增单测 13 条；全量单测 729/730（1 skip）+ 集成 15/15；doc-lint 0 FAIL
+    0 WARN（附录 519/950）。计划见 `docs/plans/2026-08-23-v1-s4-security.md`。
+
 ## 待提交（本批次）
 
 - 架构审计全部批次 + E219/E220 已提交：安全/数据/正确性批 `60b419d`、决策批 E207 `615bb62`、
   中期批 1-7 E208-E214 `109021b`、P17 E215 `0cbde9b`、P1/P2/P10 E216 `ce1abf8`、
   B2/B3 E217 `f575040`、S1-S3 E218 `3fb4cc6`、E219 `e3513f7`、v1.0 S1 深度报告 E220 `09e89bc`、
-  v1.0 S2 证据链 UI + 深度报告恢复 E221 `fdf2392`、v1.0 S3 MCP 子 Agent 骨架 E222 `2f0fd42`；待提交清单已清空。
+  v1.0 S2 证据链 UI + 深度报告恢复 E221 `fdf2392`、v1.0 S3 MCP 子 Agent 骨架 E222 `2f0fd42`、v1.0 S4 安全模型补齐 E223 `31ce84b`；待提交清单已清空。
 - `bench/search-metrics.jsonl` 与根目录临时文件/`docs/2026-08-23-architecture-code-audit.md`
   不在任何批次，未混入提交（审计文档保留为只读第三方输入）。
 
@@ -256,9 +266,10 @@
    收口 → 架构审计全部批次完成（安全 H1-H4/H10 + 数据 H5 + 正确性 H9/B1/B4/H8 + 决策
    H6/D1-D5 + 中期 P1-P17 + 校准 B2/B3 + 安全 S1-S3）；审计文档归档为只读输入。后续
    回到 OCR 备忘 / Tavily 月度复核 / 附录行数 retention 等常规项。
-5. **v1.0 后续切片（S4-S8）**：S1 深度报告（E220）、S2 证据链 UI + 深度报告恢复（E221）、
-   S3 MCP 子 Agent 骨架（E222）已落地（S3 真实 MCP server 接入待可用工具按 §8.2.3/§10 流程启用）；
-   剩余 S4 安全模型补齐、S5 远程对话通道、S6 代码托管联动、S7 Skill 市场远程化、
+5. **v1.0 后续切片（S5-S8）**：S1 深度报告（E220）、S2 证据链 UI + 深度报告恢复（E221）、
+   S3 MCP 子 Agent 骨架（E222）、S4 安全模型补齐（E223，§10.1-10.5 全落地）已收口
+   （S3 真实 MCP server 接入待可用工具按 §8.2.3/§10 流程启用）；
+   剩余 S5 远程对话通道、S6 代码托管联动、S7 Skill 市场远程化、
    S8 LLM 增强路由 + fast description + MemoryCoreStore 切换；
    [P-13] 保持 provisional，待真实使用实测按 E197 口径复测。`docs/plans/YYYY-MM-DD-<主题>.md` 三段式。
 
