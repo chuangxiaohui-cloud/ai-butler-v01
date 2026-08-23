@@ -38,6 +38,7 @@
 | `src/search/` | `llm.ts`、`llm-client.ts`、`llm-registry.ts`、`model-router.ts` | LLM 客户端、Provider Registry、模型分档、可选 heavy 客户端（`createOptionalHeavyClient`，v1.0 S8 路由接线，E227） | ✅ |
 | src/search/ | alance.ts | Bocha 余额探测/缓存/告警（§D.3，E192） | ✅ |
 | src/search/ | quota.ts | 搜索配额计数与月度快照（[P-63]/[P-64]/[P-65]，E195） | ✅ |
+| src/search/ | tavily-usage.ts | Tavily 远端 /usage 用量快照（[P-64] 口径复算，E228） | ✅ |
 | src/search/ | 	avily-trigger.ts | Tavily 条件并联触发判定（§6.2.1，E72/E195） | ✅ |
 | `src/agent/` | `router-v2.ts`、`routing-table.ts`、`intent-feature.ts`、`extract.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` | 三层意图路由、rewrite/记住指令、时间表达解析 | ✅ |
 | `src/agent/` | `mode-mapper.ts`、`multimodal-preprocessor.ts`、`executors.ts` | 模式映射、多模态信号、执行器状态 | ✅ |
@@ -90,7 +91,7 @@
 | `scripts/office_xlsx_read.py` / `office_xls_read.py` / `office_doc_*.py` / `office_docx_*.py` / `office_pptx_create.py` / `office_pdf_merge.py` / `office_pdf_encrypt.py` / `office_pdf_compress.py` / `office_image_convert.py` / `compress_image.py` | 办公日常文件处理 | ✅ |
 | `scripts/office_image_ocr.py` | 图片/PDF 表格 OCR（E168-E201：TSR 结构、跨页拼接、页脚过滤、三通道文本融合、编号模式纠正、词典纠正；`--selftest`/`--dict`/`--table`/`--batch`） | ✅ |
 | scripts/datasheet.ts | 官方 datasheet 下载与校验 | ✅ |
-| scripts/tavily-smoke.ts | Tavily 触发冒烟 + 配额监控（E195） | ✅ |
+| scripts/tavily-smoke.ts | Tavily 触发冒烟 + 配额监控 + 远端用量对比（E195/E228） | ✅ |
 | `scripts/migrate-to-memorycore.ts` | 历史记忆迁移 | ✅ |
 | `scripts/distill-worker.ts` | L1 蒸馏 worker | ✅ |
 | `scripts/push-to-hosts.ts` | Gitee/GitHub 双端同步 | ✅ |

@@ -5,7 +5,7 @@
  * 1) TAVILY_API_KEY 配置检查（不显示值）
  * 2) shouldTriggerTavily 触发判定样例（news / english / low_confidence_hint / 严肃禁区）
  * 3) 真实链路冒烟：runSearchStage 注入 Tavily（走真实月配额 + provider，1 次调用）
- * 4) 月度配额报告：[P-64]=1000，已用/剩余，剩余 <20% 预警
+ * 4) 月度配额报告：[P-64]=1000，远端 /usage 权威 vs 本地尝试次数计数对比（E228 口径复算）
  *
  * 用法: npm run tavily:smoke
  */
@@ -17,6 +17,7 @@ import { tavilyProvider } from '../src/search/providers/tavily.js';
 import { runSearchStage } from '../src/search/stages/s3_search.js';
 import type { IntentKey } from '../src/search/stages/s2_classify.js';
 import { shouldTriggerTavily } from '../src/search/tavily-trigger.js';
+import { fetchTavilyUsage } from '../src/search/tavily-usage.js';
 
 loadEnvFile();
 
@@ -85,20 +86,40 @@ async function main(): Promise<void> {
     }
   }
 
-  // 4) 月度配额报告（结合实测：远端 432 说明本地计数口径低于实际额度消耗）
+  // 4) 月度配额报告（E228 口径复算：远端 /usage 权威 vs 本地尝试次数计数）
   const quotaLimited = (att?.error ?? '').includes('432');
   const q = readMonthlyQuota(quotaFile, 'tavily', TAVILY_MONTHLY_LIMIT);
   const pct = Math.round(q.ratio * 100);
   console.log(
-    `\n月度配额（[P-64]=${q.limit} 次/月）：本月 ${q.month} 已用 ${q.used}（${pct}%），剩余 ${q.remaining}`,
+    `\n本地计数（尝试次数，调用前预增）：本月 ${q.month} 已用 ${q.used}（${pct}%），上限 ${q.limit}`,
   );
-  if (quotaLimited) {
-    console.warn('⚠️  实测远端已超限（HTTP 432）：本地计数未到 [P-64] 但额度耗尽，');
-    console.warn('    说明实际计划额度 <1000 或 news/advanced 等按多倍计费，需按实测复算 [P-64]');
-  } else if (q.remaining < 0.2 * q.limit) {
-    console.warn(`⚠️  Tavily 月配额剩余 <20%（${q.remaining}），按需关注成本/提前熔断`);
+  const remote = await fetchTavilyUsage();
+  if (remote.ok) {
+    const remotePct = q.limit > 0 ? Math.round(((remote.usage ?? 0) / q.limit) * 100) : 0;
+    console.log(
+      `远端 /usage（权威，${remote.latencyMs}ms）：usage=${remote.usage}（${remotePct}%）` +
+        ` search=${remote.searchUsage} crawl=${remote.crawlUsage} extract=${remote.extractUsage}` +
+        ` map=${remote.mapUsage} research=${remote.researchUsage}` +
+        ` plan=${remote.plan ?? '-'} limit=${remote.limit ?? 'null(无硬限)'}`,
+    );
+    const remoteExceeded = (remote.usage ?? 0) >= q.limit;
+    if (quotaLimited || remoteExceeded) {
+      console.warn('⚠️  远端额度已耗尽（432 拦截与 /usage 相互印证）：本地计数为尝试次数口径，');
+      console.warn('    实际计费按远端 usage（news/advanced 多倍计费或失败尝试不计入远端），以远端为准');
+    } else if (q.remaining < 0.2 * q.limit) {
+      console.warn(`⚠️  Tavily 月配额剩余 <20%（${q.remaining}），按需关注成本/提前熔断`);
+    } else {
+      console.log('✅ 配额健康（剩余 ≥20%）');
+    }
   } else {
-    console.log('✅ 配额健康（剩余 ≥20%）');
+    console.warn(`远端 /usage 不可达（${remote.error}），降级用本地计数观察`);
+    if (quotaLimited) {
+      console.warn('⚠️  实测远端已超限（HTTP 432）：本地计数未到 [P-64] 但额度耗尽');
+    } else if (q.remaining < 0.2 * q.limit) {
+      console.warn(`⚠️  Tavily 月配额剩余 <20%（${q.remaining}）`);
+    } else {
+      console.log('✅ 配额健康（剩余 ≥20%）');
+    }
   }
 
   console.log(`\n${failed ? '❌ 冒烟失败' : '✅ 冒烟通过'}`);
