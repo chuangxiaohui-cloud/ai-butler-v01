@@ -247,6 +247,18 @@
     741/742（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN（附录 520/950）。计划见
     `docs/plans/2026-08-23-v1-s5-im-channel.md`。
 30. **v1.0 S6 代码托管联动（E225）**：§11.4 库级骨架——新模块 `src/repo/`：`repo-whitelist.ts`（RepoWhitelist 仓库白名单：默认空，显式 authorize 后放行，JSONL 落盘 `data/repo-whitelist.jsonl`，revoke 原子重写、损坏行忽略）、`push-audit.ts`（logPushEvent JSONL 事件日志 `data/repo-push-events.jsonl`：ts/host/owner/repo/branch/commit/url/ok/conflict/error，复用 §11.3）、`push-service.ts`（PushService.push：未授权拒绝 → token 缺失拒绝 → 预检（默认 npm test + build，可注入）→ add/commit → push 返回裸 URL → 审计落盘；git 命令逐条过 §10.2 命令白名单；失败保留本地变更与日志；远程冲突返回 conflict + rebase/merge 提示；Token 只经环境变量注入，URL 内联直推不写 `.git/config`，参数校验拒绝明文 token）。新增单测 15 条；全量单测 756/757（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN（附录 521/950）。计划见 `docs/plans/2026-08-23-v1-s6-code-hosting.md`。
+31. **v1.0 S7 Skill 市场远程化（E226）**：§8.2.3 远程化骨架——新模块 `src/skills/market/`：
+    `index-client.ts`（市场索引客户端：JSON 数组/{skills:[...]}/JSONL 三格式解析、非法条目跳过、
+    http/https + 256KB 上限）、`manifest.ts`（扩展 manifest 校验：强制显式声明 permissions、
+    非法权限值拒绝、steps/verify/deps 非空字符串数组）、`store.ts`（MarketStore JSONL 安装记录
+    `data/skill-market-installs.jsonl`：list/latest/statusOf/installed/markDisabled）、
+    `installer.ts`（MarketInstaller：拉取包 → 校验 → 包与条目 name/version/权限一致性
+    （包不得自提权限）→ 高风险权限逐项 confirm 默认拒绝 → SHA-256 → 原子落盘
+    `data/market-skills/<name>/manifest.json` → 记录；uninstall 标记 disabled 保留记录）；
+    `SkillLifecycle.ensureMarketSkillsRegistered` 市场 Skill 进入生命周期统计（§8.2.3 成熟度，幂等）。
+    新增单测 21 条；全量单测 777/778（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN（附录 522/950）。
+    计划见 `docs/plans/2026-08-23-v1-s7-skill-market.md`。
+
 
 
 ## 待提交（本批次）
@@ -254,7 +266,7 @@
 - 架构审计全部批次 + E219/E220 已提交：安全/数据/正确性批 `60b419d`、决策批 E207 `615bb62`、
   中期批 1-7 E208-E214 `109021b`、P17 E215 `0cbde9b`、P1/P2/P10 E216 `ce1abf8`、
   B2/B3 E217 `f575040`、S1-S3 E218 `3fb4cc6`、E219 `e3513f7`、v1.0 S1 深度报告 E220 `09e89bc`、
-  v1.0 S2 证据链 UI + 深度报告恢复 E221 `fdf2392`、v1.0 S3 MCP 子 Agent 骨架 E222 `2f0fd42`、v1.0 S4 安全模型补齐 E223 `31ce84b`、v1.0 S5 远程对话通道骨架 E224 `c18cbd6`；待提交清单已清空。v1.0 S5 远程对话通道骨架 E224 `c18cbd6`、v1.0 S6 代码托管联动 E225 `fcac8de`；待提交清单已清空。
+  v1.0 S2 证据链 UI + 深度报告恢复 E221 `fdf2392`、v1.0 S3 MCP 子 Agent 骨架 E222 `2f0fd42`、v1.0 S4 安全模型补齐 E223 `31ce84b`、v1.0 S5 远程对话通道骨架 E224 `c18cbd6`；待提交清单已清空。v1.0 S5 远程对话通道骨架 E224 `c18cbd6`、v1.0 S6 代码托管联动 E225 `fcac8de`；待提交清单已清空。v1.0 S6 代码托管联动 E225 `fcac8de`、v1.0 S7 Skill 市场远程化 E226 `3f10293`；待提交清单已清空。
 - `bench/search-metrics.jsonl` 与根目录临时文件/`docs/2026-08-23-architecture-code-audit.md`
   不在任何批次，未混入提交（审计文档保留为只读第三方输入）。
 
@@ -283,7 +295,9 @@
    均待真实协议按相应流程接入）；
    S6 代码托管联动（E225）已收口（库级骨架：白名单/预检/commit+push/审计，真实推送由
    push:hosts 运维通道承载）；
-   剩余 S7 Skill 市场远程化、S8 LLM 增强路由 + fast description + MemoryCoreStore 切换；
+   S7 Skill 市场远程化（E226）已收口（索引/校验/权限门禁/安装记录/生命周期统计，
+   真实可执行 handler 接入待 §10 流程）；
+   剩余 S8 LLM 增强路由 + fast description + MemoryCoreStore 切换；
    [P-13] 保持 provisional，待真实使用实测按 E197 口径复测。`docs/plans/YYYY-MM-DD-<主题>.md` 三段式。
 
 ## 常用命令
