@@ -530,6 +530,176 @@ test('gateway: 终端命令白名单拒绝未授权前缀', async () => {
   }
 });
 
+test('gateway: GATEWAY_AUTH_TOKEN 设置后写端点要求鉴权', async () => {
+  const old = process.env.GATEWAY_AUTH_TOKEN;
+  process.env.GATEWAY_AUTH_TOKEN = 'test-secret-token';
+  try {
+    const dir = mkdtempSync(join(tmpdir(), 'gateway-auth-'));
+    const file = join(dir, 'security-config.json');
+    const app = createGatewayApp({ deps: testDeps(), securityConfigPath: file });
+    const server = createServer(app);
+    try {
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const port = (server.address() as AddressInfo).port;
+      const base = `http://127.0.0.1:${port}`;
+      // 未带 token：写端点必须 401
+      const persist = await fetch(`${base}/api/security/persist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shellEnabled: true }),
+      });
+      assert.equal(persist.status, 401, 'security/persist 未鉴权应 401');
+      const ask = await fetch(`${base}/api/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'hi' }),
+      });
+      assert.equal(ask.status, 401, '/api/ask 未鉴权应 401');
+      const forget = await fetch(`${base}/api/memory/forget`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: 'fact:1', type: 'fact' }),
+      });
+      assert.equal(forget.status, 401, 'memory/forget 未鉴权应 401');
+      // 带 token：可写
+      const ok = await fetch(`${base}/api/security/persist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-secret-token',
+        },
+        body: JSON.stringify({ shellEnabled: true }),
+      });
+      assert.equal(ok.status, 200);
+    } finally {
+      server.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  } finally {
+    if (old === undefined) delete process.env.GATEWAY_AUTH_TOKEN;
+    else process.env.GATEWAY_AUTH_TOKEN = old;
+  }
+});
+
+test('gateway: 终端白名单 default-deny（空列表拒绝所有命令）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-deny-'));
+  const file = join(dir, 'security-config.json');
+  writeSecurityConfig(
+    {
+      shellEnabled: true,
+      fileAccess: 'project-only',
+      externalApiEnabled: false,
+      illegalEnabled: true,
+      personalEmergencyEnabled: true,
+      propertyEmergencyEnabled: true,
+      allowedCommandPrefixes: [],
+    },
+    file,
+  );
+  const app = createGatewayApp({ deps: testDeps(), securityConfigPath: file });
+  const server = createServer(app);
+  try {
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}`;
+    const execResp = await fetch(`${base}/api/terminal/exec`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'git status' }),
+    });
+    assert.equal(execResp.status, 403);
+    const body = (await execResp.json()) as { error?: string };
+    assert.ok(body.error?.includes('白名单为空'), body.error);
+  } finally {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('gateway: 终端硬拒绝危险命令（rm -rf 根目录）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-harddeny-'));
+  const file = join(dir, 'security-config.json');
+  writeSecurityConfig(
+    {
+      shellEnabled: true,
+      fileAccess: 'project-only',
+      externalApiEnabled: false,
+      illegalEnabled: true,
+      personalEmergencyEnabled: true,
+      propertyEmergencyEnabled: true,
+      allowedCommandPrefixes: ['git', 'rm'],
+    },
+    file,
+  );
+  const app = createGatewayApp({ deps: testDeps(), securityConfigPath: file });
+  const server = createServer(app);
+  try {
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}`;
+    const execResp = await fetch(`${base}/api/terminal/exec`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'rm -rf /' }),
+    });
+    assert.equal(execResp.status, 403);
+    const body = (await execResp.json()) as { error?: string };
+    assert.ok(body.error?.includes('安全策略拒绝'), body.error);
+  } finally {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('gateway: 解释器通道需白名单显式放行（node -e）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-interp-'));
+  const file = join(dir, 'security-config.json');
+  const makeApp = (prefixes: string[]) => {
+    writeSecurityConfig(
+      {
+        shellEnabled: true,
+        fileAccess: 'project-only',
+        externalApiEnabled: false,
+        illegalEnabled: true,
+        personalEmergencyEnabled: true,
+        propertyEmergencyEnabled: true,
+        allowedCommandPrefixes: prefixes,
+      },
+      file,
+    );
+    return createGatewayApp({ deps: testDeps(), securityConfigPath: file });
+  };
+  const run = async (app: ReturnType<typeof createGatewayApp>, command: string) => {
+    const server = createServer(app);
+    try {
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const port = (server.address() as AddressInfo).port;
+      return await fetch(`http://127.0.0.1:${port}/api/terminal/exec`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command }),
+      });
+    } finally {
+      server.close();
+    }
+  };
+  try {
+    // 只白名单 "node"：node -e 仍应被拒（解释器通道需显式写全）
+    const denied = await run(makeApp(['node']), 'node -e process.stdout.write("x")');
+    assert.equal(denied.status, 403);
+    const body = (await denied.json()) as { error?: string };
+    assert.ok(body.error?.includes('显式配置'), body.error);
+    // 白名单写全 "node -e"：放行并真实执行
+    const allowed = await run(makeApp(['node -e']), 'node -e process.stdout.write("x")');
+    assert.equal(allowed.status, 200);
+    const result = (await allowed.json()) as { stdout?: string; exitCode?: number };
+    assert.equal(result.exitCode, 0);
+    assert.ok(result.stdout?.includes('x'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('gateway: /api/mail/credentials 读写且不暴露密码', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'gateway-mail-'));
   const file = join(dir, 'mail-credentials.json');

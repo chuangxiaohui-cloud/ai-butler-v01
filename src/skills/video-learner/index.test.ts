@@ -14,9 +14,11 @@ import {
   buildFrameEvidence,
   buildVideoMaterial,
   cleanTranscript,
+  createLearnerWorkDir,
   createVideoLearnerSkill,
   extractBiliBvid,
   extractVideoUrl,
+  isSafeYtDlpUrl,
   normalizeProtocolRelativeUrl,
   parseBiliSubtitle,
 } from './index.js';
@@ -25,11 +27,31 @@ function tempDir(): string {
   return mkdtempSync(join(tmpdir(), 'video-learner-test-'));
 }
 
+test('video-learner: H7 工作目录每次执行唯一且可清理', () => {
+  const base = tempDir();
+  const a = createLearnerWorkDir(base);
+  const b = createLearnerWorkDir(base);
+  assert.notEqual(a, b, '并发两次执行必须使用不同目录');
+  assert.ok(a.startsWith(base) && b.startsWith(base));
+  assert.ok(existsSync(a) && existsSync(b));
+  rmSync(a, { recursive: true, force: true });
+  rmSync(b, { recursive: true, force: true });
+  assert.equal(existsSync(a), false, 'finally 只清理自己的目录');
+});
+
 test('video-learner: 提取视频 URL', () => {
   assert.equal(
     extractVideoUrl('学习这个视频 https://www.bilibili.com/video/BV1xx'),
     'https://www.bilibili.com/video/BV1xx',
   );
+});
+
+test('video-learner: yt-dlp URL 安全校验（H10）', () => {
+  assert.equal(isSafeYtDlpUrl('https://www.youtube.com/watch?v=abc'), true);
+  assert.equal(isSafeYtDlpUrl('http://example.com/v.mp4'), true);
+  assert.equal(isSafeYtDlpUrl('--exec=calc'), false, '选项形 URL 必须拒绝');
+  assert.equal(isSafeYtDlpUrl('file:///etc/passwd'), false, '非 http(s) 必须拒绝');
+  assert.equal(isSafeYtDlpUrl(''), false);
 });
 
 test('video-learner: 提取 B站 BV 号', () => {

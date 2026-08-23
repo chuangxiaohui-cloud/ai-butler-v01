@@ -7,7 +7,7 @@ import { UserContextStore } from './memory/user-context-store.js';
 import { RouteCaseStore } from './agent/route-case-store.js';
 import { createHeavyClient, createVisionClient } from './search/llm.js';
 import { SessionContextStore } from './memory/session-context.js';
-import { handleSlashCommand } from './slash/slash-commands.js';
+import { handleSlashCommand, parseSlashCommand } from './slash/slash-commands.js';
 import { parseDocumentFile } from './search/document-parser.js';
 import type { SkillDeps } from './skills/deps.js';
 import { TrajectoryLog } from './trajectory/trajectory-log.js';
@@ -59,7 +59,10 @@ async function warnBochaBalance(): Promise<void> {
 }
 
 
-warnBochaBalance()
+// P8：/context、/compact 等零网络斜杠命令跳过 Bocha 余额探测，白省一个 RTT+超时
+const isSlashCommand = parseSlashCommand(arg) !== null;
+const prelude: Promise<void> = isSlashCommand ? Promise.resolve() : warnBochaBalance();
+prelude
   .then(() => handleSlashCommand(arg, CLI_CONVERSATION_ID, { sessionContext }))
   .then((slashResult) => {
     if (slashResult) {
@@ -76,6 +79,8 @@ warnBochaBalance()
   skillDeps,
   trajectory: trajectoryLog,
   browserSession,
+  // H5：CLI 的 slash 与 pipeline 共用同一会话实例，避免双实例并发丢历史
+  sessionContext,
 }, {
   userId: 'cli-user',
   conversationId: CLI_CONVERSATION_ID,
@@ -94,5 +99,6 @@ warnBochaBalance()
     skillLifecycle.close();
     sourceStats.close();
     userContextStore.close();
+    trajectoryLog.close(); // P15：关闭 JSONL 句柄
     browserSession.close();
   });

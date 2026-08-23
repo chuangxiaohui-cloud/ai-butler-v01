@@ -3,7 +3,9 @@
  * 仅用 node:net/node:tls，无外部依赖：
  *   - secure=true：TLS 直连（465）
  *   - secure=false：明文连接，服务器支持且选项开启时 STARTTLS 升级（587）
- * 认证 AUTH LOGIN，正文 base64 UTF-8，头部 UTF-8 编码。
+ * 认证 AUTH LOGIN 仅在加密通道（TLS 直连或 STARTTLS 升级后）发送；
+ * 服务器要求认证但连接为明文时拒绝发送凭据（H4，架构审计 2026-08-23）。
+ * 正文 base64 UTF-8，头部 UTF-8 编码。
  */
 
 import { randomUUID } from 'node:crypto';
@@ -265,7 +267,7 @@ export async function sendMail(
       await session.upgradeToTls(creds.host, options.allowInsecureTls ?? false);
       await command(session, 'EHLO ai-butler.local', ['250']);
     }
-    if (creds.secure || didStartTls || /AUTH\s+LOGIN/i.test(caps)) {
+    if (creds.secure || didStartTls) {
       session.write('AUTH LOGIN');
       await session.expect((l) => /^334( |$)/.test(l));
       session.write(base64Utf8(creds.user));
@@ -275,6 +277,12 @@ export async function sendMail(
       if (!authReply.startsWith('235')) {
         throw new Error(`SMTP 认证失败：${authReply}`);
       }
+    } else if (/AUTH\s+LOGIN/i.test(caps)) {
+      // H4：服务器要求 AUTH 但不支持 STARTTLS——明文发送 base64 凭据可被窃听，拒绝
+      throw new Error(
+        'SMTP 服务器要求认证但不支持 STARTTLS，拒绝在明文连接上发送凭据。' +
+          '请改用 secure=true（465 TLS 直连）或支持 STARTTLS 的服务器（587）。',
+      );
     }
     await command(session, `MAIL FROM:<${creds.from}>`, ['250']);
     await command(session, `RCPT TO:<${msg.to}>`, ['250', '251']);

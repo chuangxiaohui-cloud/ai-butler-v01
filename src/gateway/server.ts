@@ -10,6 +10,7 @@ import { RouteCaseStore } from '../agent/route-case-store.js';
 import { browserSession } from '../browser/session.js';
 import { ExperienceManager } from '../memory/experience.js';
 import { UserContextStore } from '../memory/user-context-store.js';
+import { SessionContextStore } from '../memory/session-context.js';
 import { parseDocumentFile } from '../search/document-parser.js';
 import { createHeavyClient, createVisionClient } from '../search/llm.js';
 import { SearchSourceStats } from '../search/source-stats.js';
@@ -28,6 +29,8 @@ const experienceManager = new ExperienceManager();
 const skillLifecycle = new SkillLifecycle();
 const sourceStats = new SearchSourceStats();
 const userContextStore = new UserContextStore();
+// H5：唯一会话上下文实例——slash（app opts）与 pipeline（deps）必须共用，避免跨实例丢历史
+const sessionContext = new SessionContextStore();
 const routeCaseStore = new RouteCaseStore();
 const trajectoryLog = new TrajectoryLog();
 const skillDeps: SkillDeps = {
@@ -49,6 +52,7 @@ const app = createGatewayApp({
   routeCaseStore,
   userContextStore,
   experienceManager,
+  sessionContext,
   deps: {
     tavily: { enabled: true },
     experienceManager,
@@ -59,6 +63,7 @@ const app = createGatewayApp({
     skillDeps,
     trajectory: trajectoryLog,
     browserSession,
+    sessionContext,
   },
 });
 

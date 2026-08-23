@@ -2433,10 +2433,11 @@ function startFakeSmtpServer(): Promise<{
           }
           continue;
         }
-        transcript.push(line);
-        const cmd = line.toUpperCase();
-        if (cmd.startsWith('EHLO')) {
-          socket.write('250-test.local\r\n250 AUTH LOGIN\r\n');
+          transcript.push(line);
+          const cmd = line.toUpperCase();
+          if (cmd.startsWith('EHLO')) {
+            // H4 后明文连接不得 AUTH：假服务器按免认证服务器通告（smtp.test.ts 覆盖 TLS AUTH）
+            socket.write('250-test.local\r\n250-SIZE 10485760\r\n250 OK\r\n');
         } else if (cmd === 'AUTH LOGIN') {
           socket.write('334 VXNlcm5hbWU6\r\n');
         } else if (line === Buffer.from('you@qq.com').toString('base64')) {

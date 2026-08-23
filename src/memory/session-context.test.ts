@@ -2,7 +2,7 @@
  * §8.3 会话上下文压缩单测（E193）
  */
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -192,4 +192,82 @@ test('session: buildRecentMemory 按 user/assistant 配对', () => {
   assert.deepEqual(pairs, [
     { query: 'q1', answer: 'a1' },
   ]);
+});
+
+test('session: 跨实例并发 append 不丢更新（H5 跨进程锁回归）', async () => {
+  const d = freshDir();
+  const storeA = new SessionContextStore({ dir: d });
+  const storeB = new SessionContextStore({ dir: d });
+  await Promise.all([
+    ...Array.from({ length: 5 }, (_, i) => storeA.append('c1', 'user', `A${i}`)),
+    ...Array.from({ length: 5 }, (_, i) => storeB.append('c1', 'assistant', `B${i}`)),
+  ]);
+  const ctx = await storeA.load('c1');
+  assert.ok(ctx, '会话文件应存在');
+  assert.equal(ctx.turns.length, 10, '两实例并发 append 应无丢失');
+  const texts = ctx.turns.map((t) => t.text);
+  assert.ok(texts.includes('A0') && texts.includes('B4'), '两实例的轮次都应保留');
+});
+
+test('session: 原子写后无 tmp/锁残留（H5）', async () => {
+  const d = freshDir();
+  const store = new SessionContextStore({ dir: d });
+  await store.append('c1', 'user', '第一轮');
+  await store.append('c1', 'assistant', '回答');
+  const files = readdirSync(d).sort();
+  assert.deepEqual(files, ['c1.json'], `目录应只剩 c1.json，实际：${files.join(', ')}`);
+  const ctx = await store.load('c1');
+  assert.equal(ctx?.turns.length, 2);
+});
+
+test('session: 陈旧锁文件可被夺锁恢复（崩溃残留）', async () => {
+  const d = freshDir();
+  const store = new SessionContextStore({ dir: d });
+  const lockPath = join(d, 'c1.json.lock');
+  writeFileSync(lockPath, '99999\n', 'utf-8');
+  const past = new Date(Date.now() - 60_000);
+  utimesSync(lockPath, past, past);
+  await store.append('c1', 'user', 'x');
+  const ctx = await store.load('c1');
+  assert.equal(ctx?.turns.length, 1);
+  assert.ok(!readdirSync(d).includes('c1.json.lock'), '操作结束后锁应被移除');
+});
+test('session: 摘要存储受上限约束，保留最新段（P14）', async () => {
+  const store = new SessionContextStore({ dir: freshDir() });
+  const ctx = ctxOf(VERBATIM_WINDOW_TURNS + 2);
+  ctx.summary = 'A'.repeat(700);
+  await store.save('c1', ctx);
+  const llm = new FakeLLM();
+  const next = await store.compact('c1', llm);
+  assert.ok(next);
+  assert.ok(next.summary!.length <= 600);
+  // 最新压缩段保留（尾部截断，不再丢 601 字符后的信息）
+  assert.ok(next.summary!.includes('实体：STM32F103C8T6'));
+});
+
+test('session: buildSessionNotes 只注入逐字窗口轮次（P14 硬顶）', () => {
+  const turns: SessionTurn[] = [];
+  for (let i = 0; i < 12; i += 1) {
+    turns.push(turn(i % 2 === 0 ? 'user' : 'assistant', `第${i + 1}轮`));
+  }
+  const ctx: SessionContext = { conversationId: 'c1', turns, summary: null, updatedAt: '' };
+  const notes = buildSessionNotes(ctx);
+  assert.equal(notes.length, VERBATIM_WINDOW_TURNS);
+  assert.ok(notes[0].includes('第8轮'));
+});
+
+test('session: buildRecentMemory 只保留最近窗口配对（P14 硬顶）', () => {
+  const turns: SessionTurn[] = [];
+  for (let i = 0; i < 14; i += 1) {
+    turns.push(turn('user', `q${i}`));
+    turns.push(turn('assistant', `a${i}`));
+  }
+  const pairs = buildRecentMemory({
+    conversationId: 'c1',
+    turns,
+    summary: null,
+    updatedAt: '',
+  });
+  assert.equal(pairs.length, VERBATIM_WINDOW_TURNS);
+  assert.deepEqual(pairs[pairs.length - 1], { query: 'q13', answer: 'a13' });
 });

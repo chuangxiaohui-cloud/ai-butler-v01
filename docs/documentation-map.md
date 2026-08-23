@@ -59,6 +59,7 @@
 | 13 | 已知限制与技术债务清单 | 持续更新 | `docs/plans/` 遗留事项、provisional PARAM、E-NN 偏离登记 |
 | 14 | 成熟度评估报告 | v1.0 收口 | 需求 §12.4 五维指标 |
 | 15 | 文档治理合规报告 | 每次发布 | `npm exec tsx scripts/doc-lint.ts` 结果 |
+| 16 | 架构代码审计报告（2026-08-23 第三方输入） | 已归档 | `docs/2026-08-23-architecture-code-audit.md`（处置批次：H1-H10 `docs/plans/2026-08-23-security-audit-batch.md`、H5 `docs/plans/2026-08-23-session-context-h5.md`、H9/B1/B4/H8 `docs/plans/2026-08-23-audit-correctness-batch.md`、H6/D1-D5 `docs/plans/2026-08-23-audit-decision-batch.md`、H7+P4 `docs/plans/2026-08-23-audit-mid-batch-1.md`、P3+P5 `docs/plans/2026-08-23-audit-mid-batch-2.md`、P6+P8 `docs/plans/2026-08-23-audit-mid-batch-3.md`、P7+P11 `docs/plans/2026-08-23-audit-mid-batch-4.md`、P9+P15 `docs/plans/2026-08-23-audit-mid-batch-5.md`、P12+P16 `docs/plans/2026-08-23-audit-mid-batch-6.md`、P13+P14 `docs/plans/2026-08-23-audit-mid-batch-7.md`） |
 
 ## 维护规则
 

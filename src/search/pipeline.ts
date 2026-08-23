@@ -4,8 +4,6 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 
 import { createLightClient } from './llm.js';
 import type { LLMClient } from './llm.js';
@@ -14,6 +12,7 @@ import type { SearchProvider } from './providers/types.js';
 import type { MemoryStore } from '../memory/store.js';
 import { defaultMemoryStore } from '../memory/store.js';
 import {
+  COMPACT_TIMEOUT_MS,
   SessionContextStore,
   buildRecentMemory,
   buildSessionNotes,
@@ -27,6 +26,8 @@ import type { RawFileLike, SkillDeps } from '../skills/deps.js';
 import { executorStatus } from '../agent/executors.js';
 import { extractPartNumber, getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
+import { PARAMS } from '../config/params.js';
+import { fetchSecondPassTargets } from './second-pass-fetch.js';
 import { pickSecondPassTargets, shouldSecondPass } from './second-pass.js';
 import { applyRule3 } from './rule3.js';
 import { shouldTriggerTavily } from './tavily-trigger.js';
@@ -57,7 +58,6 @@ import {
   collectVideoResults,
   type VideoResult,
 } from './videos.js';
-import { parseDocumentFile } from './document-parser.js';
 import { resolveModelTier } from './model-router.js';
 import type { ModelRouteInfo } from './model-router.js';
 import type { ModelSelection } from './model-id.js';
@@ -232,7 +232,7 @@ export async function pipeline(
       await sessionStore.append(conversationId, 'user', userText);
       await sessionStore.append(conversationId, 'assistant', assistantText);
       void sessionStore
-        .compactIfNeeded(conversationId, deps.llm ?? createLightClient())
+        .compactIfNeeded(conversationId, deps.llm ?? createLightClient({ timeoutMs: COMPACT_TIMEOUT_MS }))
         .catch(() => {
           // 压缩失败静默，不阻塞主回答
         });
@@ -585,9 +585,22 @@ export async function pipeline(
           mode: uiRoute.mode,
           submode: uiRoute.submode,
         };
-      } catch {
-        // Skill 执行失败，落到诚实降级
+      } catch (err) {
+        // B4：执行器真实失败要如实归因，不落到"尚未接入"误报
         safeArtifact({ skill: skill.name, state: 'failed' });
+        const reason = err instanceof Error ? err.message : String(err);
+        return {
+          query,
+          answer:
+            `✅ 路由成功：${routeSelected.primaryLens}/${routeSelected.intent}（confidence ${route.confidence.toFixed(2)}）\n` +
+            `⚠️ 执行器执行失败：${skill.name}（${reason}），当前无法完成。`,
+          confidence: route.confidence,
+          evidence: [],
+          gate_triggered: 'none',
+          elapsed_ms: Date.now() - start,
+          mode: uiRoute.mode,
+          submode: uiRoute.submode,
+        };
       }
     }
     return {
@@ -753,43 +766,20 @@ export async function pipeline(
     deps.browserSession
   ) {
     const targets = pickSecondPassTargets(search.results, prepared.cleanQuery, fused.items);
-    let secondPassAdded = false;
-    for (const target of targets) {
-      try {
-        let secondPassText = '';
-        if (/\.pdf(\?|#|$)/i.test(target.url)) {
-          const safeName = (extractPartNumber(prepared.cleanQuery) ?? 'datasheet').replace(
-            /[^a-zA-Z0-9_-]+/g,
-            '',
-          );
-          const dest = resolve(process.cwd(), 'data', 'datasheets', `${safeName}-${Date.now()}.pdf`);
-          const downloaded = await deps.browserSession.downloadFile(target.url, dest);
-          if (downloaded.ok && downloaded.size > 0) {
-            const buffer = readFileSync(dest);
-            secondPassText = await parseDocumentFile({
-              name: `${safeName}.pdf`,
-              type: 'application/pdf',
-              size: downloaded.size,
-              arrayBuffer: async () =>
-                buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer,
-            });
-          }
-        } else {
-          const page = await deps.browserSession.fetchPage(target.url, 8000, 3000);
-          secondPassText = page.text;
-        }
-        if (secondPassText.trim().length > 0) {
-          secondPassAdded = true;
-          search.results.push({
-            title: target.url.includes('szlcsc.com') ? `${extractPartNumber(prepared.cleanQuery)} 数据手册` : target.url,
-            url: target.url,
-            content: secondPassText.slice(0, 5000),
-            provider: 'browser',
-          });
-        }
-      } catch {
-        // 二次取证失败不改变原结果
-      }
+    const secondPassResults = await fetchSecondPassTargets(
+      targets,
+      prepared.cleanQuery,
+      deps.browserSession,
+      PARAMS.secondPassBudgetMs,
+    );
+    const secondPassAdded = secondPassResults.length > 0;
+    for (const { target, text } of secondPassResults) {
+      search.results.push({
+        title: target.url.includes('szlcsc.com') ? `${extractPartNumber(prepared.cleanQuery)} 数据手册` : target.url,
+        url: target.url,
+        content: text.slice(0, 5000),
+        provider: 'browser',
+      });
     }
     if (secondPassAdded) {
       const refused = fuseResults(

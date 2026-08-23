@@ -5,7 +5,8 @@ import {
   validateIntentFeature,
   extractIntentFeatureRuleBased,
 } from './intent-feature.js';
-import { routeFromFeatures, routeV2 } from './router-v2.js';
+import { routeFromFeatures, routeV2, shouldOptionClarifyByGap } from './router-v2.js';
+import { PARAMS } from '../config/params.js';
 
 test('router-v2: 完整 App 前端 → PM plan 直接路由', () => {
   const r = routeV2('帮我做一个完整的 App 前端');
@@ -224,6 +225,29 @@ test('router-v2: PCB 安全审查 → owner/risk_review 且关闭搜索', () => 
   assert.equal(r.candidates[0].primaryLens, 'owner');
   assert.equal(r.candidates[0].intent, 'risk_review');
   assert.equal(r.candidates[0].searchNeed, false);
+  // B1：top 与 second 分差 ≥ P-82 时不再消歧，直接 confirm（P-82 分差门槛恢复生效）
+  assert.equal(r.decision.type, 'confirm');
+  if (r.decision.type === 'confirm') {
+    assert.equal(r.decision.selected.intent, 'risk_review');
+  }
+});
+
+test('router-v2: B1 消歧分差门槛（P-82）', () => {
+  const gap = PARAMS.routeCandidateGap;
+  // 无第二候选：永不该消歧
+  assert.equal(shouldOptionClarifyByGap(0.6, undefined), false);
+  // 窄分差（gap < P-82）：进入选项式消歧
+  assert.equal(shouldOptionClarifyByGap(0.4, 0.4 - gap + 0.02), true);
+  // 宽分差（gap ≥ P-82）：直接 confirm
+  assert.equal(shouldOptionClarifyByGap(0.7, 0.7 - gap - 0.02), false);
+  // 恰好等于 P-82：受 1e-9 容差保护，不算窄分差
+  assert.equal(shouldOptionClarifyByGap(0.7, 0.7 - gap), false);
+});
+
+test('router-v2: 窄分差仍选项式消歧（B1 不误伤原行为）', () => {
+  const r = routeV2('这个方案成本多少，值不值');
+  assert.equal(r.decision.type, 'option_clarify');
+  assert.ok(Math.abs(r.candidates[0].confidence - r.candidates[1].confidence) < PARAMS.routeCandidateGap);
 });
 
 test('router-v2: 会议安排 → secretary/create_calendar 且带时间门控', () => {

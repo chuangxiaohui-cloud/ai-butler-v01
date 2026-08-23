@@ -49,7 +49,7 @@ interface FakeSmtpServer {
   close(): Promise<void>;
 }
 
-function startFakeSmtpServer(): Promise<FakeSmtpServer> {
+function startFakeSmtpServer(opts: { advertiseAuth?: boolean } = {}): Promise<FakeSmtpServer> {
   const transcript: string[] = [];
   const dataReceived = { value: '' };
   let socketBuffer = '';
@@ -75,7 +75,11 @@ function startFakeSmtpServer(): Promise<FakeSmtpServer> {
         transcript.push(line);
         const cmd = line.toUpperCase();
         if (cmd.startsWith('EHLO')) {
-          socket.write('250-test.local\r\n250-SIZE 10485760\r\n250 AUTH LOGIN\r\n');
+          socket.write(
+            opts.advertiseAuth
+              ? '250-test.local\r\n250-SIZE 10485760\r\n250 AUTH LOGIN\r\n'
+              : '250-test.local\r\n250-SIZE 10485760\r\n250 OK\r\n',
+          );
         } else if (cmd === 'AUTH LOGIN') {
           socket.write('334 VXNlcm5hbWU6\r\n');
         } else if (line === Buffer.from('test@example.com').toString('base64')) {
@@ -116,7 +120,7 @@ function startFakeSmtpServer(): Promise<FakeSmtpServer> {
   });
 }
 
-test('smtp: 纯文本全命令序列（EHLO/AUTH LOGIN/MAIL/RCPT/DATA/QUIT）', async () => {
+test('smtp: 明文免认证服务器全命令序列（EHLO/MAIL/RCPT/DATA/QUIT，无 AUTH）', async () => {
   const fake = await startFakeSmtpServer();
   const dir = tempDir();
   try {
@@ -130,7 +134,7 @@ test('smtp: 纯文本全命令序列（EHLO/AUTH LOGIN/MAIL/RCPT/DATA/QUIT）', 
     assert.equal(sent.messageId, 'test-message-id');
     const commands = fake.transcript;
     assert.ok(commands[0].startsWith('EHLO '));
-    assert.equal(commands.includes('AUTH LOGIN'), true);
+    assert.equal(commands.includes('AUTH LOGIN'), false, '明文连接不得发送 AUTH（H4）');
     assert.equal(commands.includes(`MAIL FROM:<sender@example.com>`), true);
     assert.equal(commands.includes(`RCPT TO:<rcpt@example.com>`), true);
     assert.equal(commands.includes('DATA'), true);
@@ -149,17 +153,23 @@ test('smtp: 纯文本全命令序列（EHLO/AUTH LOGIN/MAIL/RCPT/DATA/QUIT）', 
   }
 });
 
-test('smtp: 认证失败抛错且不含密码', async () => {
-  const fake = await startFakeSmtpServer();
+test('smtp: 明文服务器要求 AUTH 时拒绝发送凭据（H4）', async () => {
+  const fake = await startFakeSmtpServer({ advertiseAuth: true });
   try {
     const port = await fake.waitForPort();
     await assert.rejects(
       sendMail(
-        { ...CREDS, port, pass: 'wrong' },
+        { ...CREDS, port },
         { to: 'rcpt@example.com', subject: 'x', text: 'y' },
         { timeoutMs: 5000 },
       ),
-      (err: Error) => err.message.includes('认证失败') && !err.message.includes('wrong'),
+      (err: Error) => err.message.includes('明文') && !err.message.includes('secret'),
+    );
+    assert.equal(fake.transcript.includes('AUTH LOGIN'), false, '不得发出 AUTH LOGIN');
+    assert.equal(
+      fake.transcript.some((l) => l.includes(Buffer.from('secret').toString('base64'))),
+      false,
+      '不得在明文连接上出现 base64 凭据',
     );
   } finally {
     await fake.close();
@@ -173,31 +183,11 @@ test('smtp: encodeHeaderWord 仅非 ASCII 编码', () => {
   assert.ok(encoded.endsWith('?='));
 });
 
-test('smtp: TLS 直连（secure=true，自签证书）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
-  const dir = tempDir();
-  const certPath = join(dir, 'cert.pem');
-  const keyPath = join(dir, 'key.pem');
-  const python =
-    process.env.OFFICE_PYTHON ??
-    'C:\\Users\\zhxh\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe';
-  const genScript = `
-from cryptography import x509
-from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-import datetime, sys
-key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'localhost')])
-cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
-        .public_key(key.public_key()).serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1))
-        .not_valid_after(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30))
-        .sign(key, hashes.SHA256()))
-open(sys.argv[1], 'wb').write(cert.public_bytes(serialization.Encoding.PEM))
-open(sys.argv[2], 'wb').write(key.private_bytes(serialization.Encoding.PEM,
-    serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
-`;
-  execFileSync(python, ['-c', genScript, certPath, keyPath], { encoding: 'utf8' });
+function startFakeTlsSmtpServer(certPath: string, keyPath: string): Promise<{
+  port: number;
+  transcript: string[];
+  close(): Promise<void>;
+}> {
   const transcript: string[] = [];
   const tlsServer: TlsServer = createTlsServer(
     { cert: readFileSync(certPath), key: readFileSync(keyPath) },
@@ -246,10 +236,49 @@ open(sys.argv[2], 'wb').write(key.private_bytes(serialization.Encoding.PEM,
       });
     },
   );
+  return new Promise((resolve) => {
+    tlsServer.listen(0, '127.0.0.1', () => {
+      const address = tlsServer.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      resolve({
+        port,
+        transcript,
+        close: async () => {
+          tlsServer.close();
+        },
+      });
+    });
+  });
+}
+
+test('smtp: TLS 直连（secure=true，自签证书）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const certPath = join(dir, 'cert.pem');
+  const keyPath = join(dir, 'key.pem');
+  const python =
+    process.env.OFFICE_PYTHON ??
+    'C:\\Users\\zhxh\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe';
+  const genScript = `
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+import datetime, sys
+key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'localhost')])
+cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
+        .public_key(key.public_key()).serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1))
+        .not_valid_after(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30))
+        .sign(key, hashes.SHA256()))
+open(sys.argv[1], 'wb').write(cert.public_bytes(serialization.Encoding.PEM))
+open(sys.argv[2], 'wb').write(key.private_bytes(serialization.Encoding.PEM,
+    serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
+`;
+  execFileSync(python, ['-c', genScript, certPath, keyPath], { encoding: 'utf8' });
+  const tlsFake = await startFakeTlsSmtpServer(certPath, keyPath);
   try {
-    await new Promise<void>((resolve) => tlsServer.listen(0, '127.0.0.1', resolve));
-    const address = tlsServer.address();
-    const port = typeof address === 'object' && address ? address.port : 0;
+    const port = tlsFake.port;
     const sent = await sendMail(
       { ...CREDS, port, secure: true },
       { to: 'rcpt@example.com', subject: 'tls', text: 'secure body' },
@@ -257,9 +286,50 @@ open(sys.argv[2], 'wb').write(key.private_bytes(serialization.Encoding.PEM,
     );
     assert.equal(sent.accepted, 'rcpt@example.com');
     assert.equal(sent.messageId, 'tls-message-id');
-    assert.equal(transcript.includes('AUTH LOGIN'), true);
+    assert.equal(tlsFake.transcript.includes('AUTH LOGIN'), true);
   } finally {
-    tlsServer.close();
+    await tlsFake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('smtp: TLS 通道认证失败抛错且不含密码', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const certPath = join(dir, 'cert.pem');
+  const keyPath = join(dir, 'key.pem');
+  const python =
+    process.env.OFFICE_PYTHON ??
+    'C:\\Users\\zhxh\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe';
+  const genScript = `
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+import datetime, sys
+key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'localhost')])
+cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
+        .public_key(key.public_key()).serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1))
+        .not_valid_after(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30))
+        .sign(key, hashes.SHA256()))
+open(sys.argv[1], 'wb').write(cert.public_bytes(serialization.Encoding.PEM))
+open(sys.argv[2], 'wb').write(key.private_bytes(serialization.Encoding.PEM,
+    serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
+`;
+  execFileSync(python, ['-c', genScript, certPath, keyPath], { encoding: 'utf8' });
+  const tlsFake = await startFakeTlsSmtpServer(certPath, keyPath);
+  try {
+    await assert.rejects(
+      sendMail(
+        { ...CREDS, port: tlsFake.port, secure: true, pass: 'wrong' },
+        { to: 'rcpt@example.com', subject: 'x', text: 'y' },
+        { timeoutMs: 8000, allowInsecureTls: true },
+      ),
+      (err: Error) => err.message.includes('认证失败') && !err.message.includes('wrong'),
+    );
+  } finally {
+    await tlsFake.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });

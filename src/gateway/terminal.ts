@@ -6,6 +6,11 @@
  *   ~、!、#、\、换行）一律拒绝；白名单只允许"空格分隔的 argv"。
  * - maxBuffer 1MB/流，超出截断并标注，避免 `cat /dev/zero` 把网关撑爆。
  * - 超时 SIGTERM → 1s 后 SIGKILL，避免子进程忽略 SIGTERM 后继续输出。
+ *
+ * H3（架构审计 2026-08-23）：新增 classifyCommand——§10.2 硬编码拒绝表
+ * （rm -rf <根>、del/rd /S、sudo、eval、format、PowerShell -EncodedCommand）
+ * 无条件拦截；解释器通道（node -e、python -c、powershell -Command 等）标记后
+ * 由网关层要求"白名单显式放行"。
  */
 
 import { spawn, type ChildProcess } from 'node:child_process';
@@ -22,6 +27,42 @@ export interface RunCommandResult {
 const SHELL_META = /[;|&<>]/;
 const MAX_BUFFER = 1024 * 1024; // 1 MiB per stream
 const DEFAULT_TIMEOUT_MS = 15000;
+
+export interface CommandPolicy {
+  /** 硬编码拒绝原因（§10.2：无论是否在白名单都拒绝） */
+  hardDenied?: string;
+  /** 解释器通道描述（需网关层要求白名单显式放行） */
+  interpreterChannel?: string;
+}
+
+// §10.2 硬编码拒绝表：危险模式无条件拦截。
+// spawn(shell:false) 下这些命令可经自身 argv 完成破坏，不依赖 shell 元字符。
+const HARD_DENY_RULES: ReadonlyArray<{ re: RegExp; reason: string }> = [
+  { re: /\brm\s+-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*\s+(\/|~|\/\*)/i, reason: 'rm -rf 根目录/主目录' },
+  { re: /\b(del|rd|rmdir)\s+\/s(\s+\/q)?\s+/i, reason: 'del/rd /S 递归删除' },
+  { re: /\b(sudo|eval)\b/i, reason: 'sudo/eval 为 §10.2 硬编码拒绝项' },
+  { re: /\bformat\s+[a-zA-Z]:/i, reason: '磁盘格式化命令' },
+  { re: /\b(powershell|pwsh)\s+-(enc|encodedcommand)(\s|$)/i, reason: 'PowerShell -EncodedCommand 编码命令通道' },
+];
+
+// 解释器通道：即使命令本身在白名单前缀内，也要求白名单显式写全通道（如 "node -e"）。
+const INTERPRETER_CHANNELS: ReadonlyArray<{ re: RegExp; channel: string }> = [
+  { re: /\bnode\s+(-e|--eval)\b/i, channel: 'node -e' },
+  { re: /\b(python|python3|py)\s+-c\b/i, channel: 'python -c' },
+  { re: /\b(powershell|pwsh)\s+(-command|-c|-enc|-encodedcommand)\b/i, channel: 'powershell -command' },
+  { re: /\b(cmd|sh|bash|zsh)\s+(-c|-command)\b/i, channel: 'sh -c' },
+];
+
+/** 安全策略分类：硬拒绝 + 解释器通道标记（网关层复用，§10.2 兜底） */
+export function classifyCommand(command: string): CommandPolicy {
+  for (const rule of HARD_DENY_RULES) {
+    if (rule.re.test(command)) return { hardDenied: rule.reason };
+  }
+  for (const rule of INTERPRETER_CHANNELS) {
+    if (rule.re.test(command)) return { interpreterChannel: rule.channel };
+  }
+  return {};
+}
 
 function rejectMeta(command: string): string | null {
   const match = command.match(SHELL_META);
@@ -42,6 +83,10 @@ export async function runCommand(
   const metaErr = rejectMeta(command);
   if (metaErr) {
     return { stdout: '', stderr: metaErr, exitCode: 1, durationMs: 0 };
+  }
+  const policy = classifyCommand(command);
+  if (policy.hardDenied) {
+    return { stdout: '', stderr: `命令被安全策略拒绝：${policy.hardDenied}`, exitCode: 1, durationMs: 0 };
   }
   const argv = command.trim().split(/\s+/).filter(Boolean);
   if (argv.length === 0) {

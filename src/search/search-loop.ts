@@ -315,49 +315,76 @@ export async function runSearchLoop(
     needsMoreEvidence()
   ) {
     const officialProvider = opts.officialProvider ?? tavilyProvider;
-    const monthly =
-      opts.tavilyMonthlyQuota ??
-      new FileMonthlyQuotaStore(join(process.cwd(), 'data', 'tavily-monthly.json'));
-    const allowed = await monthly.take('tavily', TAVILY_MONTHLY_LIMIT);
-    if (allowed) {
-      const fallbackSearches: Array<{
-        query: string;
-        includeDomains: string[];
-      }> = [];
-      for (const domain of techDomains) {
-        fallbackSearches.push({
-          query: `${query} site:${domain}`,
-          includeDomains: [domain],
-        });
-      }
-      if (officialHint) {
-        fallbackSearches.push({
-          query: `${part} ${officialHint.domain} datasheet`,
-          includeDomains: [officialHint.domain],
-        });
-      }
+    // H9：先攒查询再消耗配额——无型号时只发 site: 定向查询，
+    // `${part} … datasheet` 类补搜仅在 part 非空时加入，杜绝 "null 立创商城 …"。
+    const fallbackSearches: Array<{
+      query: string;
+      includeDomains: string[];
+    }> = [];
+    for (const domain of techDomains) {
+      fallbackSearches.push({
+        query: `${query} site:${domain}`,
+        includeDomains: [domain],
+      });
+    }
+    if (officialHint && part) {
+      fallbackSearches.push({
+        query: `${part} ${officialHint.domain} datasheet`,
+        includeDomains: [officialHint.domain],
+      });
+    }
+    if (part) {
       fallbackSearches.push({
         query: `${part} 立创商城 芯查查 半导小芯 datasheet`,
         includeDomains: DOMESTIC_DATASHEET_DOMAINS,
       });
-      for (const fallback of fallbackSearches) {
-        const fallbackSearch = await officialProvider.search(fallback.query, {
-          includeDomains: fallback.includeDomains,
-          timeoutMs: 5000,
-        });
-        attempts.push({
-          provider: fallbackSearch.provider,
-          ok: fallbackSearch.ok,
-          latencyMs: fallbackSearch.latencyMs,
-          error: fallbackSearch.error,
-        });
-        opts.sourceStats?.record(
-          fallbackSearch.provider,
-          opts.intent,
-          fallbackSearch.ok,
-          fallbackSearch.latencyMs,
+    }
+    // 无任何可发查询（理论不可达：外层条件保证 part 或 techDomains 非空）——不消耗配额
+    if (fallbackSearches.length > 0) {
+      const monthly =
+        opts.tavilyMonthlyQuota ??
+        new FileMonthlyQuotaStore(join(process.cwd(), 'data', 'tavily-monthly.json'));
+      const allowed = await monthly.take('tavily', TAVILY_MONTHLY_LIMIT);
+      if (allowed) {
+        // H9：补搜相互独立（不同 includeDomains），并联把尾部延迟压到单次超时
+        const started = Date.now();
+        const settled = await Promise.allSettled(
+          fallbackSearches.map((fallback) =>
+            officialProvider.search(fallback.query, {
+              includeDomains: fallback.includeDomains,
+              timeoutMs: 5000,
+            }),
+          ),
         );
-        if (fallbackSearch.ok) results.push(...fallbackSearch.results);
+        settled.forEach((result, i) => {
+          const fallback = fallbackSearches[i];
+          if (result.status === 'fulfilled') {
+            const fallbackSearch = result.value;
+            attempts.push({
+              provider: fallbackSearch.provider,
+              ok: fallbackSearch.ok,
+              latencyMs: fallbackSearch.latencyMs,
+              error: fallbackSearch.error,
+            });
+            opts.sourceStats?.record(
+              fallbackSearch.provider,
+              opts.intent,
+              fallbackSearch.ok,
+              fallbackSearch.latencyMs,
+            );
+            if (fallbackSearch.ok) results.push(...fallbackSearch.results);
+          } else {
+            const reason =
+              result.reason instanceof Error ? result.reason.message : String(result.reason);
+            attempts.push({
+              provider: officialProvider.id,
+              ok: false,
+              latencyMs: Date.now() - started,
+              error: reason,
+            });
+            opts.sourceStats?.record(officialProvider.id, opts.intent, false, Date.now() - started);
+          }
+        });
       }
     }
   }

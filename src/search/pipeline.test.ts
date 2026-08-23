@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
@@ -17,6 +18,7 @@ import type { QuotaStoreLike } from './quota.js';
 import type { MemoryRecord, MemoryStore } from '../memory/store.js';
 import type { SearchProvider, SearchProviderResult, SearchResultItem } from './providers/types.js';
 import { pipeline } from './pipeline.js';
+import { getSkills } from '../skills/registry.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { appendOperation } from '../security/operation-log.js';
 import type { TrajectoryEvent } from '../trajectory/trajectory-log.js';
@@ -514,17 +516,18 @@ test('pipeline: 发消息走 im-dispatch 待发送队列', async () => {
 });
 
 test('pipeline: 项目打包带路径走 project-packager 真实执行', async (t) => {
-  if (process.platform !== 'win32') {
-    t.skip('需要 Windows PowerShell Compress-Archive');
-    return;
-  }
-  const dir = mkdtempSync(join(tmpdir(), 'pipeline-pack-'));
+  // H2 后打包需过 §10.1 沙箱白名单：目录建在工作区内并显式授权
+  const dir = sandboxTmpDir('pipeline-pack-');
   mkdirSync(join(dir, 'src'));
   writeFileSync(join(dir, 'src', 'main.c'), 'int main(void){return 0;}\n');
+  const oldSandbox = process.env.SANDBOX_ALLOWED_DIRS;
+  process.env.SANDBOX_ALLOWED_DIRS = dir;
   try {
     const r = await pipeline(`打包 ${dir}`, { ...deps, llm: undefined });
     assert.ok(r.answer.includes('已打包'));
   } finally {
+    if (oldSandbox === undefined) delete process.env.SANDBOX_ALLOWED_DIRS;
+    else process.env.SANDBOX_ALLOWED_DIRS = oldSandbox;
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -969,4 +972,29 @@ test('pipeline: 无 conversationId 不启用会话上下文', async () => {
   const session = new FakeSessionContextStore('实体：X；决策：Y');
   await pipeline('普通查询', { ...deps, sessionContext: session });
   assert.equal(session.appendCalls.length, 0);
+});
+
+test('pipeline: 执行器真实失败如实归因（B4）', async () => {
+  // im-dispatch 的 dbPath 在 registry 模块加载时捕获（ESM 导入先于本文件模块体），
+  // 实际落在 cwd/data/messages.db——对该路径用目录占位即可让 ensureDb 必然抛错
+  const dbPath = join(process.cwd(), 'data', 'messages.db');
+  const skills = getSkills();
+  const imDispatch = skills.find((s) => s.name === 'im-dispatch') as unknown as
+    | { close?: () => void }
+    | undefined;
+  imDispatch?.close?.();
+  const existedAsFile = existsSync(dbPath) && !statSync(dbPath).isDirectory();
+  if (existsSync(dbPath)) rmSync(dbPath, { recursive: true, force: true });
+  mkdirSync(dbPath, { recursive: true });
+  try {
+    // im-dispatch 的 ensureDb 对目录路径开库必然抛错 → 走 B4 失败归因
+    const r = await pipeline('发消息给老张，说明天下午开会', deps);
+    assert.ok(r.answer.includes('执行器执行失败：im-dispatch'));
+    assert.ok(r.answer.includes('当前无法完成'));
+    assert.ok(!r.answer.includes('尚未接入'));
+  } finally {
+    rmSync(dbPath, { recursive: true, force: true });
+    if (existedAsFile) writeFileSync(dbPath, '');
+    imDispatch?.close?.();
+  }
 });

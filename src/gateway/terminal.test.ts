@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { runCommand } from './terminal.js';
+import { classifyCommand, runCommand } from './terminal.js';
 
 test('terminal: 安全命令返回 stdout 与退出码', async () => {
   // 注意：spawn 后引号是字面量；JS 代码必须自行可解析，不需要 shell 剥离外层引号。
@@ -56,4 +56,41 @@ test('terminal: 超时返回 exitCode 124 且 stderr 不空', async () => {
     : 'sleep 10';
   const result = await runCommand(cmd, { timeoutMs: 1000 });
   assert.equal(result.exitCode, 124, `期望 124，实际 ${result.exitCode}`);
+});
+
+// H3：§10.2 硬编码拒绝表 + 解释器通道标记
+test('terminal: classifyCommand 硬拒绝危险模式', () => {
+  const cases: string[] = [
+    'rm -rf /',
+    'rm -rf /*',
+    'rm -rf ~',
+    'del /S /Q C:\\temp\\x',
+    'rd /S /Q D:\\data',
+    'sudo apt install evil',
+    'eval 1',
+    'format c:',
+    'powershell -enc AAAA',
+    'pwsh -EncodedCommand AAAA',
+  ];
+  for (const cmd of cases) {
+    const policy = classifyCommand(cmd);
+    assert.ok(policy.hardDenied, `应硬拒绝：${cmd}`);
+    assert.equal(policy.interpreterChannel, undefined, `硬拒绝优先：${cmd}`);
+  }
+});
+
+test('terminal: classifyCommand 标记解释器通道但不硬拒绝', () => {
+  assert.equal(classifyCommand('node -e process.exit(0)').interpreterChannel, 'node -e');
+  assert.equal(classifyCommand('python -c "print(1)"').interpreterChannel, 'python -c');
+  assert.equal(classifyCommand('powershell -Command Get-Process').interpreterChannel, 'powershell -command');
+  assert.equal(classifyCommand('sh -c "ls"').interpreterChannel, 'sh -c');
+  const normal = classifyCommand('git status');
+  assert.equal(normal.hardDenied, undefined);
+  assert.equal(normal.interpreterChannel, undefined);
+});
+
+test('terminal: runCommand 硬拒绝不 spawn 危险命令', async () => {
+  const result = await runCommand('rm -rf /', { timeoutMs: 1000 });
+  assert.equal(result.exitCode, 1);
+  assert.ok(result.stderr.includes('安全策略拒绝'), result.stderr);
 });

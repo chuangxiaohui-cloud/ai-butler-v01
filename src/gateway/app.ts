@@ -4,6 +4,7 @@
  */
 
 import { existsSync } from 'node:fs';
+import { timingSafeEqual } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,6 +13,7 @@ import express from 'express';
 import { auditRouteCases } from '../agent/route-case-audit.js';
 import { RouteCaseStore, type RouteCaseRecord, type RouteFeedback } from '../agent/route-case-store.js';
 import { buildModelCatalog } from '../config/model-catalog.js';
+import { PARAMS } from '../config/params.js';
 import { defaultRegistry } from '../search/llm-registry.js';
 import { OpenAiCompatibleClient } from '../search/llm-client.js';
 import { parseModelId } from '../search/model-id.js';
@@ -27,7 +29,8 @@ import { SessionContextStore } from '../memory/session-context.js';
 import { handleSlashCommand } from '../slash/slash-commands.js';
 import { aggregateUsage, readUsage } from '../usage/usage-store.js';
 import { listProjectFiles } from './files.js';
-import { runCommand } from './terminal.js';
+import { ConcurrencyGate, RateLimiter } from './rate-limit.js';
+import { classifyCommand, runCommand } from './terminal.js';
 import { publishArtifactEvent, subscribeArtifactEvents } from './artifact-bus.js';
 import type { RawFileLike } from '../skills/deps.js';
 import { dataUrlToRawFile, type AttachmentPayload } from './attachments.js';
@@ -64,12 +67,12 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
   const sessionContext = opts.sessionContext ?? new SessionContextStore();
   app.use(express.json({ limit: '25mb' }));
 
-  // SEV-1.4：网关鉴权 + /api/ask 速率限制
+  // SEV-1.4 + H3：网关鉴权（非 GET 端点统一挂载）+ /api/ask 速率限制
   const GATEWAY_AUTH_TOKEN = process.env.GATEWAY_AUTH_TOKEN ?? '';
   if (!GATEWAY_AUTH_TOKEN) {
     // eslint-disable-next-line no-console
     console.warn(
-      '[gateway] GATEWAY_AUTH_TOKEN 未设置：SSE / terminal / mail 端点将以 dev 模式开放。' +
+      '[gateway] GATEWAY_AUTH_TOKEN 未设置：所有写端点将以 dev 模式开放。' +
         '生产或局域网暴露前必须设置。',
     );
   }
@@ -86,7 +89,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     // 恒定时间比较，避免时序侧信道
     const a = Buffer.from(candidate);
     const b = Buffer.from(GATEWAY_AUTH_TOKEN);
-    const equal = a.length === b.length && require('node:crypto').timingSafeEqual(a, b);
+    const equal = a.length === b.length && timingSafeEqual(a, b);
     if (!equal) {
       res.status(401).json({ error: '未授权：缺少或无效 token' });
       return;
@@ -94,23 +97,31 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     next();
   };
 
-  // 简易令牌桶：按 IP 限速 /api/ask，避免单 IP 风暴拖垮管线
+  // 按 IP 令牌桶限速 + 并发闸门（P16）：避免单 IP 风暴拖垮管线 / 并发打满 LLM 配额
   const RATE_LIMIT_PER_MIN = Math.max(1, Number(process.env.ASK_RATE_LIMIT_PER_MIN ?? '30'));
-  const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+  const rateLimiter = new RateLimiter(RATE_LIMIT_PER_MIN);
+  const askConcurrency = new ConcurrencyGate(PARAMS.askMaxConcurrent); // [P-115]
   const rateLimitAsk: express.RequestHandler = (req, res, next) => {
     const ip = req.ip ?? req.socket?.remoteAddress ?? 'unknown';
-    const now = Date.now();
-    const bucket = rateBuckets.get(ip);
-    if (!bucket || bucket.resetAt < now) {
-      rateBuckets.set(ip, { count: 1, resetAt: now + 60_000 });
-      next();
-      return;
-    }
-    if (bucket.count >= RATE_LIMIT_PER_MIN) {
+    if (!rateLimiter.allow(ip)) {
       res.status(429).json({ error: '请求过于频繁，请稍后再试', retryAfterSec: 60 });
       return;
     }
-    bucket.count++;
+    next();
+  };
+  const concurrencyLimitAsk: express.RequestHandler = (req, res, next) => {
+    if (!askConcurrency.tryAcquire()) {
+      res.status(429).json({ error: '系统繁忙，请稍后再试', retryAfterSec: 5 });
+      return;
+    }
+    let released = false;
+    const release = (): void => {
+      if (released) return;
+      released = true;
+      askConcurrency.release();
+    };
+    res.on('finish', release);
+    res.on('close', release);
     next();
   };
 
@@ -162,7 +173,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     });
   });
 
-  app.post('/api/providers/default', (req, res) => {
+  app.post('/api/providers/default', requireGatewayAuth, (req, res) => {
     const body = (req.body ?? {}) as { providerId?: unknown };
     const providerId = typeof body.providerId === 'string' ? body.providerId.trim() : '';
     const registry = defaultRegistry();
@@ -179,7 +190,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     }
   });
 
-  app.post('/api/providers/test', async (req, res) => {
+  app.post('/api/providers/test', requireGatewayAuth, async (req, res) => {
     const body = (req.body ?? {}) as { providerId?: unknown };
     const providerId = typeof body.providerId === 'string' ? body.providerId.trim() : '';
     const registry = defaultRegistry();
@@ -214,7 +225,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     });
   });
 
-  app.post('/api/skills/sync', (req, res) => {
+  app.post('/api/skills/sync', requireGatewayAuth, (req, res) => {
     const body = (req.body ?? {}) as { disabled?: unknown };
     const known = new Set(listSkillMetadata().map((s) => s.name));
     const disabled = Array.isArray(body.disabled)
@@ -286,7 +297,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     res.json({ total: items.length, items });
   });
 
-  app.post('/api/memory/forget', (req, res) => {
+  app.post('/api/memory/forget', requireGatewayAuth, (req, res) => {
     const body = (req.body ?? {}) as { id?: unknown; type?: unknown };
     const id = typeof body.id === 'string' ? body.id : '';
     const type = body.type;
@@ -311,7 +322,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     res.json(readSecurityConfig(opts.securityConfigPath));
   });
 
-  app.post('/api/security/persist', (req, res) => {
+  app.post('/api/security/persist', requireGatewayAuth, (req, res) => {
     const body = (req.body ?? {}) as Partial<Record<string, unknown>>;
     const current = readSecurityConfig(opts.securityConfigPath);
     const next = {
@@ -400,7 +411,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     }
   });
 
-  app.post('/api/calendar/import', (req, res) => {
+  app.post('/api/calendar/import', requireGatewayAuth, (req, res) => {
     const body = (req.body ?? {}) as { ics?: unknown };
     const text = typeof body.ics === 'string' ? body.ics.trim() : '';
     if (!text) {
@@ -435,15 +446,33 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       res.status(403).json({ error: 'Shell 权限未开启，请先到安全中心开启' });
       return;
     }
+    // H3：§10.2 硬编码拒绝表先行（rm -rf <根>、del /S、sudo、powershell -enc 等）
+    const policy = classifyCommand(command);
+    if (policy.hardDenied) {
+      res.status(403).json({ error: `命令被安全策略拒绝：${policy.hardDenied}` });
+      return;
+    }
     const allowlist = (security.allowedCommandPrefixes ?? [])
       .map((prefix) => prefix.trim().toLowerCase())
       .filter(Boolean);
-    if (
-      allowlist.length > 0 &&
-      !allowlist.some((prefix) => command.toLowerCase().startsWith(prefix))
-    ) {
+    // H3：白名单 default-deny——空列表 = 拒绝所有命令（§10.2 "仅允许白名单内命令"）
+    if (allowlist.length === 0) {
+      res.status(403).json({
+        error: 'Shell 命令白名单为空，默认拒绝所有命令。请先在安全中心配置 allowedCommandPrefixes。',
+      });
+      return;
+    }
+    if (!allowlist.some((prefix) => command.toLowerCase().startsWith(prefix))) {
       res.status(403).json({
         error: `命令不在白名单：允许前缀 ${allowlist.join(' / ')}`,
+      });
+      return;
+    }
+    // H3：解释器通道（node -e、python -c、powershell -Command 等）需白名单显式写全通道
+    const channel = policy.interpreterChannel;
+    if (channel && !allowlist.some((prefix) => prefix.startsWith(channel))) {
+      res.status(403).json({
+        error: `解释器通道（${channel}）需在白名单中显式配置，例如 "${channel}"。`,
       });
       return;
     }
@@ -451,7 +480,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     res.json({ command, ...result });
   });
 
-  app.post('/api/usage/budget', (req, res) => {
+  app.post('/api/usage/budget', requireGatewayAuth, (req, res) => {
     const body = (req.body ?? {}) as {
       budgetYuan?: unknown;
       degradeAtPercent?: unknown;
@@ -482,7 +511,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     });
   });
 
-  app.post('/api/routing/batch-mark', (req, res) => {
+  app.post('/api/routing/batch-mark', requireGatewayAuth, (req, res) => {
     const body = (req.body ?? {}) as {
       updates?: Array<{
         id?: unknown;
@@ -491,8 +520,12 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       }>;
     };
     const updates = Array.isArray(body.updates) ? body.updates : [];
-    const updated: string[] = [];
     const failed: string[] = [];
+    const valid: Array<{
+      id: string;
+      feedback: RouteFeedback;
+      correctedRoute?: { primaryLens?: string; intent?: string };
+    }> = [];
     for (const update of updates) {
       if (typeof update?.id !== 'string') continue;
       const feedback = update.feedback;
@@ -513,16 +546,18 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
                   : undefined,
             }
           : undefined;
-      if (routeCaseStore.recordFeedback(update.id, feedback as RouteFeedback, corrected)) {
-        updated.push(update.id);
-      } else {
-        failed.push(update.id);
-      }
+      valid.push({
+        id: update.id,
+        feedback: feedback as RouteFeedback,
+        ...(corrected ? { correctedRoute: corrected } : {}),
+      });
     }
-    res.json({ updated, failed });
+    // P13：单趟读 + 单趟写批量回写，不再 O(m×n) 循环全文重写
+    const result = routeCaseStore.batchMarkFeedback(valid);
+    res.json({ updated: result.updated, failed: [...failed, ...result.failed] });
   });
 
-  app.post('/api/routing/export', (req, res) => {
+  app.post('/api/routing/export', requireGatewayAuth, (req, res) => {
     const body = (req.body ?? {}) as { format?: unknown };
     const format = body.format === 'json' ? 'json' : 'csv';
     const records = routeCaseStore.list();
@@ -555,7 +590,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       .send([header, ...rows].join('\n'));
   });
 
-  app.post('/api/ask', rateLimitAsk, async (req, res) => {
+  app.post('/api/ask', requireGatewayAuth, rateLimitAsk, concurrencyLimitAsk, async (req, res) => {
     const body = (req.body ?? {}) as AskBody;
     const query = typeof body.query === 'string' ? body.query.trim() : '';
     if (!query) {

@@ -69,6 +69,32 @@ class FakeDomesticProvider implements SearchProvider {
   }
 }
 
+class CapturingOfficialProvider implements SearchProvider {
+  readonly id = 'tavily' as const;
+  queries: Array<{ query: string; includeDomains: string[] }> = [];
+  active = 0;
+  maxActive = 0;
+  private readonly delayMs: number;
+
+  constructor(delayMs = 0) {
+    this.delayMs = delayMs;
+  }
+
+  async search(
+    query: string,
+    opts?: { includeDomains?: string[]; timeoutMs?: number },
+  ): Promise<SearchProviderResult> {
+    this.queries.push({ query, includeDomains: opts?.includeDomains ?? [] });
+    this.active += 1;
+    this.maxActive = Math.max(this.maxActive, this.active);
+    if (this.delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, this.delayMs));
+    }
+    this.active -= 1;
+    return { provider: 'tavily', ok: false, results: [], latencyMs: 1 };
+  }
+}
+
 class EmptyThenHitProvider implements SearchProvider {
   readonly id = 'bocha' as const;
 
@@ -402,4 +428,39 @@ test('search-loop: 已有高可信源但证据不足时浏览器补证并跳过 
   assert.ok(r.results.length >= 2);
   assert.ok(r.results.every((x) => x.url.includes('szlcsc.com')));
   assert.ok(!r.attempts.some((a) => a.provider === 'tavily'));
+});
+
+test('search-loop: 无型号但命中技术域时 Tavily 补搜不发 null 查询（H9）', async () => {
+  const official = new CapturingOfficialProvider();
+  const r = await runSearchLoop('rtos 看门狗怎么配置', {
+    intent: 'how_to',
+    providers: [new EmptyThenHitProvider({})],
+    quota: new FakeQuota(),
+    tavily: { enabled: true },
+    tavilyMonthlyQuota: new FakeQuota(),
+    officialProvider: official,
+    minResults: 5,
+  });
+  assert.ok(official.queries.length >= 3, '应发出全部技术域定向查询');
+  assert.ok(official.queries.every((q) => !q.query.includes('null')));
+  assert.ok(official.queries.every((q) => !q.query.includes('datasheet')));
+  for (const domain of ['st.com', 'community.st.com', 'freertos.org']) {
+    assert.ok(official.queries.some((q) => q.query.includes(`site:${domain}`)), domain);
+  }
+  assert.ok(r.attempts.some((a) => a.provider === 'tavily'));
+});
+
+test('search-loop: Tavily 官方域补搜并联并发（H9）', async () => {
+  const official = new CapturingOfficialProvider(40);
+  await runSearchLoop('rtos 看门狗怎么配置', {
+    intent: 'how_to',
+    providers: [new EmptyThenHitProvider({})],
+    quota: new FakeQuota(),
+    tavily: { enabled: true },
+    tavilyMonthlyQuota: new FakeQuota(),
+    officialProvider: official,
+    minResults: 5,
+  });
+  assert.ok(official.queries.length >= 3);
+  assert.ok(official.maxActive >= 2, `maxActive=${official.maxActive}，串行时恒为 1`);
 });

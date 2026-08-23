@@ -6,6 +6,7 @@
 import { spawn } from 'node:child_process';
 import {
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
@@ -42,6 +43,11 @@ export function extractBiliBvid(url: string): string | null {
 
 export function normalizeProtocolRelativeUrl(url: string): string {
   return url.startsWith('//') ? `https:${url}` : url;
+}
+
+/** H10：yt-dlp 的 URL 必须是 http(s) 且不以 '-' 开头，避免被解析为选项 */
+export function isSafeYtDlpUrl(url: string): boolean {
+  return /^https?:\/\//i.test(url) && !url.startsWith('-');
 }
 
 export function cleanTranscript(text: string): string {
@@ -113,6 +119,7 @@ function runFfmpeg(args: string[]): Promise<string> {
 }
 
 async function downloadSubtitles(url: string, dir: string): Promise<string> {
+  if (!isSafeYtDlpUrl(url)) return '';
   const output = join(dir, 'subs.%(ext)s');
   await runYtDlp([
     '--skip-download',
@@ -124,6 +131,7 @@ async function downloadSubtitles(url: string, dir: string): Promise<string> {
     'vtt/srt',
     '--output',
     output,
+    '--',
     url,
   ]);
   const files = readdirSync(dir)
@@ -135,9 +143,10 @@ async function downloadSubtitles(url: string, dir: string): Promise<string> {
 }
 
 async function downloadMedia(url: string, dir: string): Promise<string> {
+  if (!isSafeYtDlpUrl(url)) return '';
   const output = join(dir, 'media.%(ext)s');
   try {
-    await runYtDlp(['--no-playlist', '-f', 'b', '--output', output, url]);
+    await runYtDlp(['--no-playlist', '-f', 'b', '--output', output, '--', url]);
   } catch {
     return '';
   }
@@ -524,6 +533,13 @@ function fallbackSkill(url: string, title: string): LearnedSkill {
   };
 }
 
+/** H7（架构审计 2026-08-23）：每次执行用独立临时目录，杜绝并发互删 */
+export function createLearnerWorkDir(outDir?: string): string {
+  const baseDir = outDir ?? join(process.cwd(), 'data', 'learned-videos');
+  mkdirSync(baseDir, { recursive: true });
+  return mkdtempSync(join(baseDir, 'learn-'));
+}
+
 export function createVideoLearnerSkill(opts?: {
   outDir?: string;
   subtitles?: boolean;
@@ -563,8 +579,7 @@ export function createVideoLearnerSkill(opts?: {
         if (inline) transcript = inline.trim();
       }
 
-      const workDir = join(opts?.outDir ?? join(process.cwd(), 'data', 'learned-videos'), 'tmp');
-      mkdirSync(workDir, { recursive: true });
+      const workDir = createLearnerWorkDir(opts?.outDir);
       try {
         let biliMedia: BiliMediaPaths | null = null;
         if (!transcript && opts?.subtitles !== false) {

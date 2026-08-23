@@ -2,10 +2,24 @@
  * §8.3 会话上下文分层压缩（E193）
  * 同一会话内：逐字窗口（[P-29] 5 轮）完整保留；窗口外轮次由轻模型压缩为
  * 「实体 + 决策 + 未决事项」摘要；触发为 [P-29] 轮数或 [P-109] token 预算双触发。
+ *
+ * H5（架构审计 2026-08-23）：persist 改 temp+rename 原子写，杜绝并发读半截 JSON；
+ * runExclusive 追加跨进程文件锁——CLI 与 gateway 跨进程共享同一会话文件时，
+ * 实例内队列（单进程）失效，需锁文件串行化读-改-写，否则整段会话历史被清空。
  */
 
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync } from 'fs';
+import {
+  closeSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+  writeSync,
+} from 'fs';
 import { dirname, join } from 'path';
 
 import type { ChatMessage, LLMClient } from '../search/llm.js';
@@ -13,8 +27,11 @@ import type { ChatMessage, LLMClient } from '../search/llm.js';
 export const VERBATIM_WINDOW_TURNS = 5; // [P-29] 逐字窗口轮数
 export const CONTEXT_TOKEN_BUDGET = 6000; // [P-109] 会话上下文 token 预算（压缩触发硬约束）
 export const COMPACT_MAX_TOKENS = 300; // 压缩摘要输出上限（轻模型 max_tokens）
-export const COMPACT_TIMEOUT_MS = 8000; // 压缩调用超时（轻模型，独立于主对话预算）
+export const COMPACT_TIMEOUT_MS = 8000; // [P-43] 蒸馏 worker 超时之外的会话压缩超时（轻模型，独立于主对话预算；D2 接线 /compact 与 pipeline 自动压缩）
 const SUMMARY_INJECT_CAP = 600; // 摘要注入截断长度（字符）
+const LOCK_TIMEOUT_MS = 5000; // 跨进程锁等待上限
+const LOCK_RETRY_MS = 15; // 锁竞争重试间隔
+const STALE_LOCK_MS = 10_000; // 陈旧锁判定：持有者崩溃残留（文件 I/O 远快于此阈值）
 
 export interface SessionTurn {
   id: string;
@@ -66,8 +83,9 @@ export async function compressTurns(turns: SessionTurn[], llm: LLMClient): Promi
 export function buildSessionNotes(ctx: SessionContext | null): string[] {
   if (!ctx) return [];
   const notes: string[] = [];
-  if (ctx.summary) notes.push(`【会话摘要（此前轮次）】${ctx.summary.slice(0, SUMMARY_INJECT_CAP)}`);
-  for (const t of ctx.turns) {
+  // P14：摘要取最新段（尾部），不再丢弃 601 字符后的最新信息；轮次只注入逐字窗口，防压缩失败时全量注入
+  if (ctx.summary) notes.push(`【会话摘要（此前轮次）】${ctx.summary.slice(-SUMMARY_INJECT_CAP)}`);
+  for (const t of ctx.turns.slice(-VERBATIM_WINDOW_TURNS)) {
     notes.push(`${t.role === 'user' ? 'Q' : 'A'}: ${t.text.slice(0, 120)}`);
   }
   return notes;
@@ -85,7 +103,8 @@ export function buildRecentMemory(ctx: SessionContext | null): Array<{ query: st
       pending = null;
     }
   }
-  return pairs;
+  // P14：只保留最近窗口内的配对，防压缩失败时工作记忆无界膨胀
+  return pairs.slice(-VERBATIM_WINDOW_TURNS);
 }
 
 export class SessionContextStore {
@@ -101,20 +120,71 @@ export class SessionContextStore {
     return join(this.dir, `${safeId(conversationId)}.json`);
   }
 
+  /**
+   * 原子写：先写同目录临时文件再 rename 覆盖，读者要么看到旧完整文件、
+   * 要么看到新完整文件，杜绝读到半截 JSON 后 load() 返回 null 重建清空历史。
+   */
   private async persist(conversationId: string, ctx: SessionContext): Promise<void> {
     try {
       const file = this.fileFor(conversationId);
       mkdirSync(dirname(file), { recursive: true });
-      writeFileSync(file, JSON.stringify(ctx, null, 2), 'utf-8');
+      const tmp = `${file}.tmp-${process.pid}-${randomUUID()}`;
+      writeFileSync(tmp, JSON.stringify(ctx, null, 2), 'utf-8');
+      renameSync(tmp, file);
     } catch {
       // 写失败不阻塞
     }
   }
 
-  /** 同一会话的读改写串行化，避免并发 append/compact 丢更新 */
+  /**
+   * 跨进程文件锁：`<会话>.json.lock` 独占创建（'wx'）+ 陈旧锁夺锁 + 超时。
+   * 单进程内由实例级 queues 串行化；CLI 与 gateway 跨进程共享文件时，
+   * 实例级锁失效，必须靠本锁串行化读-改-写（H5）。
+   */
+  private async withFileLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    const lockFile = `${this.fileFor(key)}.lock`;
+    const deadline = Date.now() + LOCK_TIMEOUT_MS;
+    for (;;) {
+      try {
+        const fd = openSync(lockFile, 'wx');
+        try {
+          writeSync(fd, `${process.pid} ${Date.now()}\n`, null, 'utf8');
+        } finally {
+          closeSync(fd);
+        }
+        break;
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+        // 陈旧锁：持有者崩溃残留（如进程被 kill），mtime 超阈值则夺锁
+        try {
+          const st = statSync(lockFile);
+          if (Date.now() - st.mtimeMs > STALE_LOCK_MS) {
+            rmSync(lockFile, { force: true });
+            continue;
+          }
+        } catch {
+          continue; // 锁文件刚被释放/删除，重试
+        }
+        if (Date.now() >= deadline) {
+          throw new Error(`会话锁等待超时：${key}`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS));
+      }
+    }
+    try {
+      return await fn();
+    } finally {
+      rmSync(lockFile, { force: true });
+    }
+  }
+
+  /** 同一会话的读改写串行化（实例内队列 + 跨进程文件锁），避免并发 append/compact 丢更新 */
   private runExclusive<T>(key: string, fn: () => Promise<T>): Promise<T> {
     const prev = this.queues.get(key) ?? Promise.resolve();
-    const next = prev.then(fn, fn);
+    const next = prev.then(
+      () => this.withFileLock(key, fn),
+      () => this.withFileLock(key, fn),
+    );
     this.queues.set(key, next.then(() => undefined, () => undefined));
     return next;
   }
@@ -192,7 +262,10 @@ export class SessionContextStore {
         const fresh = await this.load(conversationId);
         if (!fresh) return null;
         const kept = fresh.turns.filter((t) => !overflowIds.has(t.id));
-        const merged = fresh.summary ? `${fresh.summary}\n${compressed}` : compressed;
+        // P14：合并后截断到注入上限并保留最新段，摘要存储有界
+        const merged = fresh.summary
+          ? `${fresh.summary}\n${compressed}`.slice(-SUMMARY_INJECT_CAP)
+          : compressed;
         const next: SessionContext = {
           ...fresh,
           turns: kept,

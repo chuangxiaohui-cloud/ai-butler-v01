@@ -121,6 +121,19 @@ function scoreRule(feature: IntentFeature, rule: RoutingRule): { base: number; c
   };
 }
 
+/**
+ * B1（架构审计 2026-08-23）：中置信带是否进入选项式消歧——仅当 top 与 second 分差
+ * 低于 P-82 门槛。此前分支带 `|| deduped.length > 1`，使该条件恒真（second 存在
+ * ⇔ 候选数 >1），P-82 分差参数完全失效，消歧率被硬性放大。
+ */
+export function shouldOptionClarifyByGap(
+  topConfidence: number,
+  secondConfidence: number | undefined,
+): boolean {
+  if (secondConfidence === undefined) return false;
+  return topConfidence - secondConfidence < PARAMS.routeCandidateGap - 1e-9;
+}
+
 export function routeFromFeatures(
   query: string,
   features: IntentFeature,
@@ -242,10 +255,7 @@ export function routeFromFeatures(
         candidate: c,
       })),
     };
-  } else if (
-    (second && topConfidence - second.confidence < PARAMS.routeCandidateGap - 1e-9) ||
-    deduped.length > 1
-  ) {
+  } else if (shouldOptionClarifyByGap(topConfidence, second?.confidence)) {
     const tpl = clarifyTemplateFor(top?.primaryLens, 'options');
     decision = {
       type: 'option_clarify',
