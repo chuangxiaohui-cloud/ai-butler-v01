@@ -6,6 +6,7 @@
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
+import { MemoryCoreStore, type MemoryCoreIdentity } from './memorycore-store.js';
 
 export interface MemoryRecord {
   session_id: string;
@@ -115,9 +116,35 @@ export class SqliteDirectStore implements MemoryStore {
   }
 }
 
-let defaultStore: SqliteDirectStore | null = null;
+export type MemoryStoreKind = 'sqlite' | 'memorycore';
 
-export function defaultMemoryStore(): SqliteDirectStore {
-  if (!defaultStore) defaultStore = new SqliteDirectStore();
+/** 记忆存储实现：sqlite（默认，直连）/ memorycore（MemoryCore sidecar，§8.4 同接口同 schema） */
+export function resolveMemoryStoreKind(env: Record<string, string | undefined> = process.env): MemoryStoreKind {
+  return (env.MEMORY_STORE ?? 'sqlite').trim().toLowerCase() === 'memorycore' ? 'memorycore' : 'sqlite';
+}
+
+/**
+ * v1.0 S8：按配置创建默认记忆存储（E207-D5 留待项落地）
+ * memorycore 切换需同时具备身份三元组与强 API key，缺一即显式抛错，不静默回退 sqlite。
+ */
+export function createDefaultMemoryStore(
+  kind: MemoryStoreKind = resolveMemoryStoreKind(),
+  env: Record<string, string | undefined> = process.env,
+): MemoryStore {
+  if (kind === 'memorycore') {
+    const identity: MemoryCoreIdentity = {
+      teamId: env.MEMORY_CORE_TEAM_ID ?? '',
+      agentId: env.MEMORY_CORE_AGENT_ID ?? '',
+      userId: env.MEMORY_CORE_USER_ID ?? '',
+    };
+    return new MemoryCoreStore(identity, undefined, undefined, env.TDAI_GATEWAY_API_KEY);
+  }
+  return new SqliteDirectStore();
+}
+
+let defaultStore: MemoryStore | null = null;
+
+export function defaultMemoryStore(): MemoryStore {
+  if (!defaultStore) defaultStore = createDefaultMemoryStore();
   return defaultStore;
 }

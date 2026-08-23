@@ -12,7 +12,7 @@ import { ExperienceManager } from '../memory/experience.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { SessionContextStore } from '../memory/session-context.js';
 import { parseDocumentFile } from '../search/document-parser.js';
-import { createHeavyClient, createVisionClient } from '../search/llm.js';
+import { createHeavyClient, createOptionalHeavyClient, createVisionClient } from '../search/llm.js';
 import { SearchSourceStats } from '../search/source-stats.js';
 import { SkillLifecycle } from '../skills/lifecycle.js';
 import type { SkillDeps } from '../skills/deps.js';
@@ -55,6 +55,7 @@ const app = createGatewayApp({
   sessionContext,
   deps: {
     tavily: { enabled: true },
+    llm: createOptionalHeavyClient(),
     experienceManager,
     skillLifecycle,
     sourceStats,

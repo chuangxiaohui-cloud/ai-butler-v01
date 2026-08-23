@@ -39,6 +39,19 @@ export function createHeavyClient(): LLMClient {
 }
 
 /**
+ * v1.0 S8：生产入口可选 heavy 客户端（LLM 增强路由接线）
+ * 已配置 Provider 时返回 heavy 客户端；未配置时返回 undefined——
+ * 调用方走纯规则路由（不触发 [P-84] fallback 折扣），避免启动即抛错。
+ */
+export function createOptionalHeavyClient(): LLMClient | undefined {
+  try {
+    return createHeavyClient();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * 视觉模型适配器（Week 3 契约落地）
  * VLMClient：image 必须是 data URL；返回纯文本。
  */

@@ -5,7 +5,7 @@ import { SkillLifecycle } from './skills/lifecycle.js';
 import { SearchSourceStats } from './search/source-stats.js';
 import { UserContextStore } from './memory/user-context-store.js';
 import { RouteCaseStore } from './agent/route-case-store.js';
-import { createHeavyClient, createVisionClient } from './search/llm.js';
+import { createHeavyClient, createOptionalHeavyClient, createVisionClient } from './search/llm.js';
 import { SessionContextStore } from './memory/session-context.js';
 import { handleSlashCommand, parseSlashCommand } from './slash/slash-commands.js';
 import { parseDocumentFile } from './search/document-parser.js';
@@ -71,6 +71,7 @@ prelude
     }
     return pipeline(arg, {
   tavily: { enabled: true },
+  llm: createOptionalHeavyClient(),
   experienceManager,
   skillLifecycle,
   sourceStats,
