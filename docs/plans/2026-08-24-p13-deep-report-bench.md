@@ -46,6 +46,6 @@
 - 验证：`npm run deep:bench -- --dry-run` 自检通过（3 轮 fallback 0ms、3 节、无 LLM 调用）；
   doc-lint 0 FAIL 0 WARN（附录 525/950）
 - 测试：单测 788/789（1 skip）+ 集成 15/15（无新增单测，脚本 dry-run 自检覆盖）
-- 提交：主体 `<hash>` · handoff `<hash>`
+- 提交：`471c414`（E229 主体）+ `284636e`（handoff 登记）
 - 遗留事项：[P-13] 维持 provisional；owner 真跑 `npm run deep:bench -- --samples 15`
   （LLM 模式，需网络 + token）补 n≥15 样本后按 E197 复验门评估晋升。
