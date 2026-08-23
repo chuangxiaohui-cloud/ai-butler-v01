@@ -52,7 +52,7 @@ npm exec tsx scripts/doc-lint.ts   # 需求文档全量验收（唯一验收口�
 
 ## 文档宪法与变更纪律
 
-- §0 是文档宪法，七项检查由 `scripts/doc-lint.ts` 执法：数值扫描、废弃格式、行数预算、引用解析、bench 联动、共变、provisional 超期。
+- §0 是文档宪法，八项检查由 `scripts/doc-lint.ts` 执法：数值扫描、废弃格式、行数预算、引用解析、bench 联动、共变、provisional 超期、PARAM 代码引用。
 - 所有量化参数登记在 §5 的 `[P-NN]` 注册表，代码侧同步维护 `src/config/params.ts` 的 `PARAMS` 与 `PARAM_IDS`。文档正文禁止裸数值；代码注释引用 `P-NN`。
 - 改动需求文档必须在提交前跑全量 `doc-lint`；凡涉及 §5/§6 的变更，必须同时改文档、跑基准并登记附录 A 的 `E-NN` 与 `bench:B-<yyyymmdd>-NN`。
 - 新术语 / 废弃术语必须完成“旧处 tombstone → 附录 E 定义 → 附录 A 登记”三件套。
@@ -80,10 +80,11 @@ npm exec tsx scripts/doc-lint.ts   # 需求文档全量验收（唯一验收口�
 | `src/skills/` | Skill 注册、生命周期与预置 Skill |
 | `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏 |
 | `src/slash/` | 斜杠命令层（/compact、/context，E193 手动入口） |
-| `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API |
+| `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API、限速/并发闸门（P16） |
 | `src/browser/` | 浏览器会话、CDP 持久化、页面抓取 |
 | `src/config/` | PARAM、Provider Registry、模型目录、安全/用量/Skill 配置 |
 | `src/trajectory/` | append-only 轨迹日志（落盘 `data/trajectory.jsonl`） |
+| `src/log/` | JSONL 追加/轮转/缓存读（P15，trajectory/usage/metrics 共用） |
 | `scripts/` | 基准、评分、验收、路由校准、浏览器、PDF/OCR 等工具脚本 |
 | `bench/` | 基准数据与报告（git 跟踪） |
 | `docs/` | 文档资产总账、每日交接、推进计划、ADR、架构/设计/工程文档 |

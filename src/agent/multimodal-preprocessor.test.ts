@@ -8,6 +8,7 @@ import {
   isImageFile,
   preprocessUserMessage,
   toDataUrl,
+  tryNormalizeToPng,
 } from './multimodal-preprocessor.js';
 
 const RUNTIME_PYTHON =
@@ -104,4 +105,27 @@ test('multimodal: HEIC 解码不可用时诚实降级透传', async () => {
   const bytes = new Uint8Array([0x00, 0x01, 0x02, 0x03]);
   const url = await toDataUrl(fakeFile('photo.heic', 'application/octet-stream', bytes));
   assert.ok(url.startsWith('data:image/heic;base64,'));
+});
+
+test('multimodal: 归一化候选回退——首个候选缺失时用下一个 python（P10）', { skip: !HAS_PILLOW }, async () => {
+  const bytes = Buffer.from(pythonImageBase64('tiff'), 'base64');
+  const file = fakeFile('scan.tiff', 'application/octet-stream', bytes);
+  const png = await tryNormalizeToPng(file, bytes, {
+    candidates: ['definitely-missing-python-binary-xyz', RUNTIME_PYTHON],
+    timeoutMs: 5000,
+  });
+  assert.ok(png, '候选回退后应得到 PNG');
+  assert.ok(png.length > 8);
+});
+
+test('multimodal: 总预算耗尽快速返回 null（P10）', async () => {
+  const bytes = Buffer.from([0x00, 0x01, 0x02, 0x03]);
+  const file = fakeFile('bad.tiff', 'application/octet-stream', bytes);
+  const start = Date.now();
+  const png = await tryNormalizeToPng(file, bytes, {
+    candidates: [[RUNTIME_PYTHON, '-u', '-c', 'import time; time.sleep(60)']],
+    timeoutMs: 150,
+  });
+  assert.equal(png, null);
+  assert.ok(Date.now() - start < 3000, '总预算生效，不无限等待');
 });

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * doc-lint.ts — 文档宪法执法脚本（§0.6 七检查 + §0.7 迁移期）
+ * doc-lint.ts — 文档宪法执法脚本（§0.6 八检查 + §0.7 迁移期）
  *
  * 用法:
  *   node doc-lint.ts [--migration] [--doc <path>]
@@ -8,7 +8,7 @@
  * 默认文档路径: ../一人公司AI-Agent需求文档_v2.5.md
  * --migration: 迁移期模式（diff 作用域语义，见 §0.7）
  *
- * 七检查:
+ * 八检查:
  *   C1 数值扫描（三层白名单 + FAIL 模式）
  *   C2 废弃格式（双轨格式校验）
  *   C3 行数预算（按标题统计非空行）
@@ -16,6 +16,7 @@
  *   C5 bench 联动（附录A触及§6/§5必含bench ID）
  *   C6 共变（git diff 触及§6/§5而附录A未变）
  *   C7 provisional 超期（>28天 fail）
+ *   C8 PARAM 代码引用（登记即生效：key 在 src 零引用 fail）
  */
 
 import * as fs from 'fs';
@@ -175,6 +176,9 @@ function main(): void {
 
   // C7: provisional 超期
   results.push(...checkC7(lines));
+
+  // C8: PARAM 代码引用校验（登记即生效，D1 架构审计）
+  results.push(...checkC8());
 
   // 迁移期进度报告
   if (MIGRATION_MODE) {
@@ -853,6 +857,71 @@ function checkC7(lines: string[]): CheckResult[] {
 }
 
 // ============================================================================
+// C8: PARAM 代码引用校验
+// ============================================================================
+
+/**
+ * 登记即生效：src/config/params.ts 中每个 camelCase key 必须在 src/ 下
+ * （排除 params.ts 自身与 *.test.ts）至少被引用 1 次，否则判 FAIL。
+ * 防死参数残留在 §5 注册表（D1，架构审计 2026-08-23）。
+ */
+function checkC8(): CheckResult[] {
+  const results: CheckResult[] = [];
+  const repoRoot = path.join(__dirname, '..');
+  const paramsPath = path.join(repoRoot, 'src', 'config', 'params.ts');
+  if (!fs.existsSync(paramsPath)) {
+    results.push({ check: 'C8', level: 'FAIL', message: `params.ts 不存在：${paramsPath}` });
+    return results;
+  }
+  const text = fs.readFileSync(paramsPath, 'utf-8');
+  const blockStart = text.indexOf('export const PARAMS = {');
+  const blockEnd = text.indexOf('} as const;', blockStart);
+  if (blockStart < 0 || blockEnd < 0) {
+    results.push({ check: 'C8', level: 'FAIL', message: 'params.ts 中未找到 PARAMS 对象定义' });
+    return results;
+  }
+  const keys: string[] = [];
+  const keyRegex = /^  ([a-zA-Z][a-zA-Z0-9]*):/gm;
+  let m: RegExpExecArray | null;
+  keyRegex.lastIndex = blockStart;
+  while ((m = keyRegex.exec(text)) !== null) {
+    if (m.index >= blockEnd) break;
+    keys.push(m[1]);
+  }
+  const unreferenced: string[] = [];
+  for (const key of keys) {
+    const cmd = `rg -l -w "${key}" src --glob "!**/params.ts" --glob "!**/*.test.ts"`;
+    try {
+      const out = execSync(cmd, { cwd: repoRoot, encoding: 'utf-8', stdio: 'pipe' });
+      if (!out.trim()) unreferenced.push(key);
+    } catch (err) {
+      const e = err as { stderr?: string | Buffer };
+      const stderr = (e.stderr ?? '').toString().trim();
+      if (stderr) {
+        results.push({
+          check: 'C8',
+          level: 'FAIL',
+          message: `rg 执行失败（key=${key}）：${stderr.slice(0, 200)}`,
+        });
+        return results;
+      }
+      unreferenced.push(key); // rg 无匹配：exit 1 且 stderr 为空
+    }
+  }
+  if (unreferenced.length === 0) {
+    results.push({ check: 'C8', level: 'PASS', message: `PARAM 代码引用校验通过（${keys.length} 个 key 均有引用）` });
+  } else {
+    results.push({
+      check: 'C8',
+      level: 'FAIL',
+      message: `${unreferenced.length} 个 PARAM key 在 src 零引用：${unreferenced.join(', ')}`,
+      detail: '登记即生效：删除 params.ts + PARAM_IDS 中对应 key，并在需求文档 §5 tombstone 该 P-NN，或补真实调用方。',
+    });
+  }
+  return results;
+}
+
+// ============================================================================
 // 迁移期进度报告
 // ============================================================================
 
@@ -969,7 +1038,7 @@ function printSummary(results: CheckResult[]): void {
   console.log('  检查汇总');
   console.log('══════════════════════════════════════════════════\n');
 
-  const checks = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'];
+  const checks = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8'];
   for (const check of checks) {
     const checkResults = results.filter(r => r.check === check);
     const hasFail = checkResults.some(r => r.level === 'FAIL');

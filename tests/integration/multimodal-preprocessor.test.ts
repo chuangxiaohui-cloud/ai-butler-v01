@@ -1,22 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  maybeFastDescribe,
-  preprocessUserMessage,
-  toDataUrl,
-} from '../../src/agent/multimodal-preprocessor.js';
-import type { SkillDeps } from '../../src/skills/deps.js';
+import * as multimodal from '../../src/agent/multimodal-preprocessor.js';
+import { preprocessUserMessage, toDataUrl } from '../../src/agent/multimodal-preprocessor.js';
 import { fakePng } from './fixtures/fake-files.js';
-import { createMockVLM } from './fixtures/mock-vlm.js';
 
-test('INT-005：传图+纯文字问题 → 零 VLM 调用', async () => {
-  const { client, calls } = createMockVLM();
-  const deps: SkillDeps = { callVLM: client };
-  const processed = preprocessUserMessage('今天天气怎么样', [fakePng()]);
-  const desc = await maybeFastDescribe(processed, false, deps);
-  assert.equal(desc, undefined);
-  assert.equal(calls.length, 0);
+test('INT-005：多模态预处理零 VLM 成本（D3 后无 maybeFastDescribe 入口）', async () => {
+  // D3（架构审计 2026-08-23）：maybeFastDescribe 整条链路无任何调用方，已删除；
+  // 预处理只产轻量信号，不再导出任何会调 VLM 的入口。
+  assert.equal('maybeFastDescribe' in multimodal, false);
+  const processed = preprocessUserMessage('这是什么', [fakePng('shot.png')]);
+  assert.equal(processed.attachmentSignals[0].type, 'image');
+  assert.equal(processed.rawFiles.length, 1);
 });
 
 test('preprocess：图片只产轻量信号，不解内容', async () => {
@@ -24,27 +19,6 @@ test('preprocess：图片只产轻量信号，不解内容', async () => {
   assert.equal(processed.attachmentSignals[0].type, 'image');
   assert.equal(processed.attachmentSignals[0].fileName, 'shot.png');
   assert.equal(processed.rawFiles.length, 1);
-});
-
-test('maybeFastDescribe：意图模糊时调用 VLM 并返回 data URL 描述', async () => {
-  const { client, calls } = createMockVLM({ reply: '截图：对话界面' });
-  const deps: SkillDeps = { callVLM: client };
-  const processed = preprocessUserMessage('这个图是什么', [fakePng()]);
-  const desc = await maybeFastDescribe(processed, true, deps);
-  assert.equal(desc, '截图：对话界面');
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].hasImage, true);
-});
-
-test('maybeFastDescribe：VLM 失败静默降级', async () => {
-  const deps: SkillDeps = {
-    callVLM: async () => {
-      throw new Error('vlm down');
-    },
-  };
-  const processed = preprocessUserMessage('这个图是什么', [fakePng()]);
-  const desc = await maybeFastDescribe(processed, true, deps);
-  assert.equal(desc, undefined);
 });
 
 test('toDataUrl：输出 data URL 契约', async () => {

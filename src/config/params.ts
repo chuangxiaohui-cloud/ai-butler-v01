@@ -2,7 +2,7 @@
  * §5 PARAM 登记中心（Week 1 新建，Phase 2 迁移路由参数）
  * 纪律：
  *  - 每个参数 = P-NN 编号 + camelCase key，编号全局唯一递增；
- *  - P-80~P-84 / P-95~P-104 为路由参数迁移，行为值不变。
+ *  - P-80~P-82 / P-84 / P-95~P-104 为路由参数迁移，行为值不变。
  */
 
 export const PARAMS = {
@@ -12,14 +12,8 @@ export const PARAMS = {
   routeConfidenceLow: 0.45,
   /** P-82 候选分差低于此值判定歧义 */
   routeCandidateGap: 0.15,
-  /** P-83 Layer 1 LLM 特征提取超时(ms) */
-  routeLlmTimeoutMs: 1500,
   /** P-84 fallback 提取全局置信度折扣 */
   fallbackDiscount: 0.9,
-  /** P-87 路由层 fast description 总开关 */
-  fastDescriptionEnabled: true,
-  /** P-88 fast description 超时(ms)，超时静默降级 undefined */
-  fastDescriptionTimeoutMs: 2000,
   /** P-89 wrapLegacySkill 包装旧 handler 的默认置信度 */
   legacySkillConfidence: 0.8,
   /** P-90 长期事实注入 prompt 的最低置信度 */
@@ -58,6 +52,30 @@ export const PARAMS = {
   modelRouterLightConfidence: 0.9,
   /** P-107 Provider fallback 链上限 */
   providerFallbackMax: 3,
+  /** P-110 搜索缓存最大条目数（LRU 淘汰） */
+  cacheMaxEntries: 2000,
+  /** P-111 文档解析 Python 子进程超时 */
+  documentParsePythonTimeoutMs: 20_000,
+  /** P-112 office-daily Python 子进程超时 */
+  officePythonTimeoutMs: 120_000,
+  /** P-113 单文件 JSONL 轮转大小上限（50MB） */
+  jsonlMaxBytes: 50 * 1024 * 1024,
+  /** P-114 gateway 限速桶最大 IP 条目数 */
+  rateLimitMaxEntries: 10_000,
+  /** P-115 /api/ask 最大并发请求数 */
+  askMaxConcurrent: 4,
+  /** P-116 LLM fallback 链总预算（对齐 [P-06] Stage 5 预算） */
+  llmFallbackTotalBudgetMs: 12_000,
+  /** P-117 低置信二次取证总预算（对齐单目标抓取 8s 超时） */
+  secondPassBudgetMs: 8_000,
+  /** P-118 取证 PDF 解析大小上限 */
+  pdfParseMaxBytes: 20 * 1024 * 1024,
+  /** P-119 路由校准样本时间窗（天） */
+  calibrationWindowDays: 30,
+  /** P-120 LLM 规则提案 confidenceBoost 上限 */
+  llmRuleBoostMax: 0.25,
+  /** P-121 CDP 调试口状态自动过期时间（风险窗口有界） */
+  cdpStateTtlMs: 10 * 60 * 1000,
 } as const;
 
 export type ParamKey = keyof typeof PARAMS;
@@ -67,10 +85,7 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   routeConfidenceHigh: 'P-80',
   routeConfidenceLow: 'P-81',
   routeCandidateGap: 'P-82',
-  routeLlmTimeoutMs: 'P-83',
   fallbackDiscount: 'P-84',
-  fastDescriptionEnabled: 'P-87',
-  fastDescriptionTimeoutMs: 'P-88',
   legacySkillConfidence: 'P-89',
   injectMinConfidence: 'P-90',
   injectMaxFacts: 'P-91',
@@ -90,4 +105,16 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   modelRouterDefaultTier: 'P-105',
   modelRouterLightConfidence: 'P-106',
   providerFallbackMax: 'P-107',
+  cacheMaxEntries: 'P-110',
+  documentParsePythonTimeoutMs: 'P-111',
+  officePythonTimeoutMs: 'P-112',
+  jsonlMaxBytes: 'P-113',
+  rateLimitMaxEntries: 'P-114',
+  askMaxConcurrent: 'P-115',
+  llmFallbackTotalBudgetMs: 'P-116',
+  secondPassBudgetMs: 'P-117',
+  pdfParseMaxBytes: 'P-118',
+  calibrationWindowDays: 'P-119',
+  llmRuleBoostMax: 'P-120',
+  cdpStateTtlMs: 'P-121',
 };

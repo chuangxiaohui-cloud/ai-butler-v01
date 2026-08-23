@@ -9,7 +9,7 @@
  * UI / CLI 可直接复用渲染路径。
  */
 
-import { CONTEXT_TOKEN_BUDGET, VERBATIM_WINDOW_TURNS, estimateTokens, type SessionContext, type SessionContextStore } from '../memory/session-context.js';
+import { COMPACT_TIMEOUT_MS, CONTEXT_TOKEN_BUDGET, VERBATIM_WINDOW_TURNS, estimateTokens, type SessionContext, type SessionContextStore } from '../memory/session-context.js';
 import { createLightClient, type LLMClient } from '../search/llm.js';
 
 export type SlashCommandName = 'compact' | 'context';
@@ -136,7 +136,7 @@ async function runCompact(conversationId: string, deps: SlashContextDeps): Promi
       slash: 'compact',
     };
   }
-  const llm = deps.llm ?? createLightClient();
+  const llm = deps.llm ?? createLightClient({ timeoutMs: COMPACT_TIMEOUT_MS });
   const after = await deps.sessionContext.compact(conversationId, llm);
   const afterReport = describeSession(after, deps.sessionContext);
   return {

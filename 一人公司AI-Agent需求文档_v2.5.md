@@ -12,8 +12,7 @@
 ### 0.1 文档定位
 
 1. 本文档是开发实施的唯一需求依据。正文（§1–§13）只写结论；一切过程（变更日志、审阅纪要、测试原始数据、历史教训、采购明细）进附录 A–E，附录只供追溯，不作实施依据。
-2. 任何数值与规则必须带：状态标签（0.3）+ 权威归属（0.2）。无标签者视为文档 bug。
-3. 术语变更三件套（§0.2 规则 8）：旧处 tombstone + 附录 E 新词定义 + 附录 A 记变更理由，缺一审议阻断。
+2. 任何数值与规则必须带：状态标签（0.3）+ 权威归属（0.2）。无标签者视为文档 bug；术语变更须完成三件套（tombstone + 附录 E 定义 + 附录 A 登记，见 §0.2 规则 8），缺一审议阻断。
 
 ### 0.2 权威归属（单家规则）
 
@@ -99,6 +98,7 @@
 5. bench 联动：附录 A 凡触及 §6/§5 的条目必含 `bench:B-<yyyymmdd>-NN`，或 `bench:na(<class>) 理由`（class ∈ {typo, new-param, deprec}）；缺失 fail。脚本只验 class 在枚举内 + 理由非空；不判理由质量（每月人工抽查）。
 6. 共变：git diff 相对上一版本标签触及 §6/§5 锚点而附录 A 未变 → fail。归因算法：新增/修改行→新文件最近前置标题；删除行→旧文件（上一 tag）最近前置标题。交叉校验：git 归因集 ∩ {§5,§6} ⊄ affects 声明集 → fail（防 affects 少报）。
 7. provisional 超期：扫描 `[provisional@D]`，任一 D 距今 > 28 天 → fail。
+8. PARAM 代码引用：`src/config/params.ts` 登记的每个 camelCase key 在 `src/` 下（排除 `params.ts` 自身与 `*.test.ts`）必须至少被引用 1 次 → 零引用 fail（登记即生效，防死参数残留在注册表）。
 
 > **宪法条款**：任何章节违反 §0 视为文档 bug。修该章，或走正式程序修 §0（附录 A 登记），二者不得并存。
 
@@ -597,12 +597,12 @@ Agent 尝试解决问题
 | P-80 | 路由高置信阈值 | 0.75 | numeric | 定稿 | |
 | P-81 | 路由低置信阈值 | 0.45 | numeric | 定稿 | P-81 <= P-80 |
 | P-82 | 候选路由歧义差阈值 | 0.15 | numeric | provisional@2026-08-13 | |
-| P-83 | 路由特征提取 LLM 超时 | 1500ms | numeric | provisional@2026-08-13 | |
+| P-83 | 路由特征提取 LLM 超时 | ~~1500ms~~ | numeric | 已废弃（LLM 提取留待 v1.0，见 E207）| |
 | P-84 | 路由 fallback 置信度折扣 | 0.9 | numeric | provisional@2026-08-13 | |
 | P-85 | 子搜索循环上限 | 5次 | numeric | provisional@2026-08-13 | 3 <= P-85 <= 10 |
 | P-86 | 子搜索覆盖度下限 | 5条 | numeric | provisional@2026-08-13 | |
-| P-87 | 路由层 fast description 开关 | true | conditional | provisional@2026-08-13 | |
-| P-88 | fast description 超时 | 2000ms | numeric | provisional@2026-08-13 | |
+| P-87 | 路由层 fast description 开关 | ~~true~~ | conditional | 已废弃（D3 死链清理，见 E207）| |
+| P-88 | fast description 超时 | ~~2000ms~~ | numeric | 已废弃（D3 死链清理，见 E207）| |
 | P-89 | wrapLegacySkill 默认置信度 | 0.8 | numeric | provisional@2026-08-13 | |
 | P-90 | 长期事实注入最低置信度 | 0.6 | numeric | provisional@2026-08-13 | |
 | P-91 | 单次注入长期事实条数上限 | 10条 | numeric | provisional@2026-08-13 | |
@@ -614,6 +614,18 @@ Agent 尝试解决问题
 | P-107 | Provider fallback 链上限 | 3家 | numeric | provisional@2026-08-16 | |
 | P-108 | Token 用量降级阈值 | 90% | numeric | 定稿 | |
 | P-109 | 会话上下文token预算 | 6000 | numeric | 定稿 | |
+| P-110 | 搜索缓存最大条目数（LRU 淘汰） | 2000条 | numeric | 定稿 | |
+| P-111 | 文档解析 Python 子进程超时 | 20000ms | numeric | 定稿 | |
+| P-112 | office-daily Python 子进程超时 | 120000ms | numeric | 定稿 | |
+| P-113 | 单文件 JSONL 轮转大小上限 | 50MB | numeric | 定稿 | |
+| P-114 | gateway 限速桶最大 IP 条目数 | 10000条 | numeric | 定稿 | |
+| P-115 | /api/ask 最大并发请求数 | 4 | numeric | 定稿 | |
+| P-116 | LLM fallback 链总预算（对齐 [P-06] Stage 5 预算） | 12000ms | numeric | 定稿 | |
+| P-117 | 低置信二次取证总预算（对齐单目标抓取 8s 超时） | 8000ms | numeric | 定稿 | |
+| P-118 | 取证 PDF 解析大小上限 | 20MB | numeric | 定稿 | |
+| P-119 | 路由校准样本时间窗 | 30天 | numeric | 定稿 | |
+| P-120 | LLM 规则提案 confidenceBoost 上限 | 0.25 | numeric | 定稿 | |
+| P-121 | CDP 调试口状态自动过期时间 | 600000ms | numeric | 定稿 | |
 
 > **约束注解**（lint 可评估，语法为线性不等式）：
 > - `P-15+P-13 <= P-14`（分配之和 ≤ 约束）
@@ -1580,7 +1592,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 
 | 路径 | 职责 |
 |------|------|
-| `scripts/doc-lint.ts` | 文档宪法执法（§0.6 七检查 + §0.7 迁移期） |
+| `scripts/doc-lint.ts` | 文档宪法执法（§0.6 八检查 + §0.7 迁移期） |
 | `bench/run.ts` | 基准跑分：产出 B-<id>、追加 raw CSV、打印聚合 diff |
 | `src/search/pipeline.ts` | 搜索管道 Stage 1-6 编排 |
 | `src/search/llm-client.ts` | OpenAI 兼容 LLM 客户端（与 provider 解耦） |
@@ -2576,6 +2588,20 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-23（表格 OCR 网格补位 + 残差收口 E205）<br>- **变更**：`scripts/office_image_ocr.py` 新增 E205 网格补位 `_grid_fill_empty_cells`——按网格线（x_edges/y_edges）裁剪「编号锚定数据行」内空的非代码列单元区域重 OCR（原尺寸优先、2x 预处理兜底），score≥0.95 且 ≤4 字符才补入；仅补「短值列」（数量/单位类，列内已检出文本全部 ≤4 字符）并排除合并覆盖单元与代码列，防把透字/水印残影当数据（同 E200 补框语义）；新增 `grid_filled` warning 透出补位数量；新增可复用真值对比脚本 `scripts/table_ocr_bench.py`（编号对齐 + 空编号续行合并 + 精确/模糊≥0.85 判定）。<br>- **证据**：bench:B-20260823-02（OCRtest.png × XLS 50 行：FR407 单位「套」score 0.979 补入（单位列 46→47 对），FR407-01~-20 真值本就为空未误补；型号 48/48 确认「登加型」已被 E201 词典解决；FR133 合并行（`叠加型 分开型`/`1 1`/`条 条`）与编号全角括号为结构/字形口径差异、单元文本正确；全表开销 +15s）；`--selftest` 13/13；全量单测 600/601 + 集成 17/17；doc-lint 0 FAIL 0 WARN。<br>- **状态**：E200 系列残差收口——方向 1 实测归档、方向 3 维持暂缓、词典（E201）+ 网格补位（E205）完成；已知限制诚实登记：长文本列整格漏检仍无法补、FR133 合并行与编号括号为口径差异。<br>- affects: §6,§13 | bench:B-20260823-02 | E200/E201 交叉引用
 
 ### 2026-08-23（v0.2b L2 记忆蒸馏验收收口 E206）<br>- **变更**：[P-08] 由 草稿/TODO 转 conditional 定稿，验收口径对齐 §4.4 v0.2b 切片（v0.1 数据零丢失自动迁移 + 回归测试）——① 蒸馏链路：项目侧 distill worker（E6 偏离，DeepSeek + 本项目中文 prompt）从 L0 提取写入 ExperienceManager，失败降级保留 L0 + 下次重试，不阻塞主对话（§8.1.4 三硬约束）；② MemoryCoreStore 同接口同 schema（§8.4）切换，身份三元组校验 + HTTP 读写，回归测试覆盖；③ `migrate:memorycore` 迁移含零丢失校验（先备份、逐条写入、按 session 召回校验源条数=召回条数）。范围诚实登记：L2 embedding/向量检索为「后置」（docs/design/memory-system.md），不在 v0.2b 验收内，v1.0 再评估。<br>- **证据**：bench:B-20260823-03（E6 蒸馏链路 bench:B-20260813-01：全量 137 条 → 提取 191 条，成功 130 条，无提取 7 条 ≈5.1%；记忆相关单测 26/26；`migrate:memorycore --dry-run` 读源 903 条 L0 / 2 会话；doc-lint 0 FAIL 0 WARN）。<br>- **状态**：[P-08] 定稿；v0.2b 里程碑验收正式收口，治理缺口消除。<br>- affects: §5,§4.4 | bench:B-20260823-03 | E6 交叉引用
+
+### 2026-08-23（架构审计短期决策批 H6/D1-D5 E207）<br>- **变更**：架构审计「短期（决策）」批收口——H6：LLM 特征提取未接入 CLI/gateway 生产入口（routeV2WithLLM 无 llm 时走规则层），正式降级声明留待 v1.0（与 E22/E23 状态一致）；D1：P-83 routeLlmTimeoutMs 零引用，删键 + 需求文档 tombstone，doc-lint 新增 C8「PARAM 代码引用」执法（登记即生效，key 零引用 FAIL）；D2：COMPACT_TIMEOUT_MS（8s 会话压缩超时）接线 /compact 与 pipeline 自动压缩的轻模型客户端（原走轻档默认 1750ms，大会话压缩易超时）；D3：删除 maybeFastDescribe/withTimeout/SkillDeps 死链，P-87/P-88 tombstone；D4：distill-worker.ts 声明为 L1 蒸馏正式入口（npm run distill，E6 偏离，L2 验收 E206 已用 bench:B-20260813-01 证据）；D5：MemoryCoreStore 为可选 sidecar 切换（默认 SqliteDirectStore），身份隔离修复暴露面留待切换时启用。<br>- **证据**：doc-lint C8 双路径验证（注入假 key → FAIL 阻断、移除 → PASS）；全量单测 + 集成 + doc-lint 0 FAIL 0 WARN，见交接文档。<br>- **状态**：决策批收口；LLM 增强路由 / fast description / MemoryCoreStore 切换按降级或留待声明登记，无新行为接线。<br>- affects: §5,§8.3,§0.6 | bench:na(deprec) 理由：D1/D3 tombstone P-83/P-87/P-88 并新增 C8 执法，无新参数行为变更
+
+### 2026-08-23（架构审计中期批·第一批 H7+P4 E208）<br>- **变更**：中期批开工——H7：video-learner 固定共享 tmp 工作目录（并发执行互删文件，审计批次表漏排的高危项）改 mkdtempSync(join(outDir,'learn-')) 独立目录，finally 只清理自己的目录；P4：s3_search 超时 race 的 setTimeout 保存句柄并在 race 后 clearTimeout（消除长驻进程 timer 泄漏），stage 级 AbortController 在超时触发时 abort，SearchOptions 新增 signal 并穿透 bocha/anysearch/tavily 三个 provider——stage 超时后立即中止底层 fetch，不再烧配额/占连接。<br>- **证据**：新增单测 3 条（H7 工作目录唯一且可清理、s3 超时后 provider 收到 aborted signal、bocha 外部 signal 即时取消 fetch）；全量单测 624/625（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。<br>- **状态**：中期批第一批收口；剩余 P1-P3/P5-P17 + B2/B3 + S1-S3 待续。<br>- affects: §6,§8.2 | bench:na(new-param) 理由：搜索 stage 取消机制与 skill 工作目录语义修复，### 2026-08-23（架构审计中期批·第二批 P3+P5 E209）<br>- **变更**：P5：quota 读改写改进程内互斥锁（withFileLock 按文件路径串行化，防 gateway 并发丢计数）+ temp/rename 原子落盘（防半截 JSON）+ 同进程 mtime 状态缓存（免每次 readFileSync+parse，跨进程写靠 mtime 感知重读）；P3：defaultRegistry 改模块级惰性单例（复用同一 Registry），provider-order read 按 mtime 缓存、write 后显式失效——每次问答省多次 new Registry 与读盘。<br>- **证据**：新增单测 6 条（quota 同实例/跨实例并发 take 不丢计数 2 条、provider-order 缺失/写后失效/mtime 感知 3 条、defaultRegistry 单例 1 条）；全量单测 630/631（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。<br>- **状态**：### 2026-08-23（架构审计中期批·第三批 P6+P8 E210）<br>- **变更**：P6：authority 的 SOFTWARE_OFFICIAL_RULES name 正则模块级预编译（每条规则一条 \b(name1|name2)\b，消掉每条结果每规则 new RegExp），新增 buildOfficialQueryContext 把 q 小写/techDomains/spaceStatus/part/vendor 一次算好 + isOfficialForQueryCtx/isHighTrustDatasheetUrlCtx（原公开函数保持签名转调）；fusion 的 query tokenize/去重每条结果只算一次（buildRelevanceTokens），per-item 预计算 ItemText{text,lower,titleLower} 供 relevance/answerCoverage/FAQ/errorTopic/SEO 复用，ANSWER_SIGNALS 模块级预编译小写——热路径每条结果省 4-5 次字符串拼接与多次 RegExp 构造；P8：CLI 的 /context、/compact 零网络命令跳过 Bocha 余额探测（parseSlashCommand 命中即不进 warnBochaBalance），省一个 RTT+超时。<br>- **证据**：新增单测 4 条（authority ctx 派生值/ctx 等价/大写 query 3 条、fusion 大写 query 官方识别 1 条）；全量单测 634/635（1 skip）+ 集成 15/15；CLI /context 冒烟 3.6s 无余额探测；doc-lint 0 FAIL 0 WARN。<br>- **状态**：### 2026-08-23（架构审计中期批·第四批 P7+P11 E211）<br>- **变更**：P7：搜索缓存新增 [P-110] 容量上限（params.ts cacheMaxEntries=2000，§5 注册）并按 Map 插入序模拟 LRU——get 命中刷新序、set 超容量先清过期再按 LRU 淘汰最冷条目，长驻 gateway 不再无界驻留 7/30 天 TTL 死条目；P11：source-stats 之外 8 个 SQLite 库初始化统一补 PRAGMA journal_mode=WAL / busy_timeout=5000 / synchronous=NORMAL（source-stats 已有作基准）；热路径语句构造器预编译复用（SqliteDirectStore.put、UserContextStore.addSessionSummary、ExperienceManager.recordUse、SearchSourceStats.record、ReminderStore 重复提醒顺延）；UserContextStore.archiveExpired 与 ReminderStore.dueReminders 的逐行 UPDATE 包 BEGIN/COMMIT 事务（失败 ROLLBACK），消除每行一次 fsync。<br>- **证据**：新增单测 5 条（cache LRU 容量淘汰/命中刷新/过期优先清 3 条、user-context WAL 断言 + 批量归档 2 条）；全量单测 639/640（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN（PARAM 100 项、C8 24 key）。<br>- **状态**：中期批第四批收口；剩余 P1/P2/P9/P10/P12-P17 + B2/B3 + S1-S3 待续。<br>- affects: §5,§6 | bench:na(new-param) 理由：缓存 LRU 上限与 SQLite WAL/事务/语句预编译，行为不变，新增 [P-110] 无旧值可基准
+
+### 2026-08-23（架构审计中期批·第五批 P9+P15 E212）<br>- **变更**：P9：document-parser 与 office-daily 的 Python 子进程加 [P-111] 20s / [P-112] 120s 超时（kill 防永久挂起）、stdin EPIPE 吞掉、stdout 64MB 上限；P15：新增 src/log/jsonl.ts（句柄复用免每事件 open-write-close + [P-113] 50MB 轮转保留 .1 归档 + mtime/size/解析函数三重键缓存读），trajectory/usage/metrics 三处接入，main.ts 退出关句柄。<br>- **证据**：新增 jsonl 单测 2 条（追加读回+缓存随写入失效、小上限轮转 .1 归档）+ office-daily 60/60 回归；全量单测 641/642（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。<br>- **状态**：中期批第五批收口；剩余 P1/P2/P10/P12-P14/P16-P17 + B2/B3 + S1-S3 待续。<br>- affects: §5,§6 | bench:na(new-param) 理由：新增 [P-111]/[P-112]/[P-113] 无旧值可基准
+
+### 2026-08-23（架构审计中期批·第六批 P12+P16 E213）<br>- **变更**：P12：experience 的 search 候选下推 SQL（needs_review / 置信度 / [P-31] 冷存 cutoff / 关键词 LIKE 命中，token 转义 %/_/ 反斜杠按字面匹配，无有效 token 返回空）+ stats 改单趟聚合 COUNT——不再每请求全表载入；list 保持管理端全量枚举契约。P16：新增 src/gateway/rate-limit.ts（RateLimiter 按 IP 令牌桶 + 过期桶定期清扫 + 超 [P-114] 上限按插入序淘汰最旧 + ConcurrencyGate [P-115] 并发闸门），/api/ask 挂并发中间件，并发满立即 429，不再无上限打满 LLM 配额。<br>- **证据**：新增单测 7 条（rate-limit 限速放行/拒绝/窗口重置/过期清扫/超上限淘汰/并发闸门 4 条 + experience LIKE 转义/空 token/stats 混合计数 3 条）；全量单测 648/649（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。<br>- **状态**：中期批第六批收口；剩余 P1/P2/P10/P13/P14/P17 + B2/B3 + S1-S3 待续。<br>- affects: §5,§6 | bench:na(new-param) 理由：新增 [P-114]/[P-115] 无旧值可基准
+
+### 2026-08-23（架构审计中期批·第七批 P13+P14 E214）<br>- **变更**：P13：route-case-store 的 record 改走共享 src/log/jsonl.ts appendJsonl（句柄复用 + [P-113] 轮转 .1 归档，O(1)/事件）；新增 batchMarkFeedback 单趟读+单趟写（/api/routing/batch-mark 不再 O(m×n) 循环全文重写），recordFeedback/attachModelRoute 收敛到 updateRecord 唯一出口（同步 fs 读改写进程内天然串行，不丢并发追加）。P14：会话 compact 摘要合并后截断到注入上限并保留最新段（存储有界，不再丢 601 字符后的最新信息）；buildSessionNotes 摘要改取尾部 + 轮次只注入 [P-29] 逐字窗口、buildRecentMemory 只保留最近窗口配对（压缩失败被吞时 prompt 注入有硬顶）。<br>- **证据**：新增单测 5 条（route-case batchMark 批量/部分失败/不丢追加 2 条 + session 摘要上限/buildSessionNotes 窗口硬顶/buildRecentMemory 窗口硬顶 3 条）；全量单测 653/654（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。<br>- **状态**：中期批第七批收口；剩余 P1/P2/P10/P17 + B2/B3 + S1-S3 待续。<br>- affects: §5,§6 | bench:na(new-param) 理由：JSONL 轮转复用 [P-113]、摘要注入上限为既有常量，无新参数与性能基准
+### 2026-08-23（架构审计中期批·第八批 P17 E215）<br>- **变更**：P17：FallbackLLMClient 整条 fallback 链共享 [P-116] 总预算 12s（对齐 [P-06] Stage 5 预算）——链内每 provider 调用带同一 AbortController，预算超时即 abort 并停止后续兜底，最坏不再 3 家 × 30s = 90s；CompleteOptions 新增 signal，OpenAiCompatibleClient 把外部信号与自身超时合并（同 P4 provider 取消模式）。<br>- **证据**：新增单测 3 条（fallback 总预算超时立即终止且不再试第二家、预算内首 provider 失败仍正常兜底、OpenAiCompatibleClient 预中止 signal 立即拒绝不发请求）；全量单测 656/657（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。<br>- **状态**：中期批第八批收口；剩余 P1/P2/P10 + B2/B3 + S1-S3 待续。<br>- affects: §5,§6 | bench:na(new-param) 理由：新增 [P-116] fallback 链总预算，行为收敛（超时更快失败）无旧值可基准
+### 2026-08-23（架构审计中期批·第九批 P1+P2+P10 E216）<br>- **变更**：P1：二次取证抽成 `src/search/second-pass-fetch.ts`——targets 并发抓取 + 共享 [P-117] 总预算 8s（预算耗尽整体放弃，不再逐目标串行 2 × 8s = 16s），PDF 分支改异步有界读取（[P-118] 20MB 上限，不再 readFileSync 同步读整份 datasheet 阻塞事件循环）；P2：取证 PDF 落盘用后即删（finally 清理，data/datasheets 不再无界增长）；P10：multimodal 图片归一化改异步 fs（写图/读图不再阻塞事件循环），多个 python 候选共享总预算（每候选只拿剩余时间，单张图最坏不再 2 × 15s = 30s），候选支持完整 argv 便于测试。<br>- **证据**：新增单测 8 条（second-pass-fetch：HTML 抓取/空正文/PDF 用后即删/大小上限跳过/预算超时快速返回/并发总耗时≈最慢目标 6 条 + multimodal：候选回退/总预算耗尽快速返回 2 条）；全量单测 664/665（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。<br>- **状态**：中期批第九批收口；P1/P2/P10 完成，中期批 P1-P17 全部收口，剩余 B2/B3 + S1-S3。<br>- affects: §5,§6 | bench:na(new-param) 理由：新增 [P-117]/[P-118] 二次取证预算与 PDF 上限，行为收敛（超时更快失败、PDF 落盘即清理）无旧值可基准
+### 2026-08-23（架构审计中期批·第十批 B2+B3 E217）<br>- **变更**：B2：confidence-calibration 分位改 nearest-rank（ceil(p*n)-1，小样本 n=4 p=0.75 不再取最大值）；去掉 Math.max 棘轮——建议阈值按样本分位双向收敛（clamp 仍限定安全范围）；新增 [P-119] 30 天时间窗，只取窗口内样本（早期误标不再把 Low 永久钉死在 clamp 上限，无时间戳旧样本视为窗口内兼容导入）；B3：llm-rule-proposer 的 LLM confidenceBoost 夹到 [0, [P-120] 0.25]，与确定性路径取值域对称，不再允许 0.9/负值支配排序。<br>- **证据**：新增单测 7 条（confidence-calibration 分位/双向收敛/时间窗/accept 分位/样本不足 5 条 + proposer boost 超界/负值 2 条）；既有 apply-calibration/route-case-store 校准用例改用近期时间戳回归；全量单测 671/672（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。<br>- **状态**：中期批第十批收口；B2/B3 完成，剩余 S1-S3（SSRF/CDP/弱 key 安全项）。<br>- affects: §5,§6 | bench:na(new-param) 理由：新增 [P-119]/[P-120] 校准窗口与 boost 上限，校准回路行为收敛无旧值可基准
+### 2026-08-23（架构审计安全批收尾 S1+S2+S3 E218）<br>- **变更**：S1 新增 `src/security/url-safety.ts`——fetchPage/downloadFile 只允许 http/https，拒绝回环（127.0.0.0/8、::1、localhost、IPv4-mapped 含十六进制归一化）/未指定/链路本地/ULA 地址（RFC1918 局域网保留放行，嵌入式内网 datasheet 场景），防网页提示注入驱动带登录态浏览器 SSRF 访问 sidecar（127.0.0.1:8420）；S2 CDP 状态新增 [P-121] 10 分钟过期（超时或旧版无 expiresAt 状态一律清理，不再无限期自动重连），连接与 launch 脚本输出风险提示 + 提醒 `browser:cdp-off`；S3 MemoryCore 客户端拒绝弱默认 key `local-dev-key` 启动（构造即校验，env 或显式参数均可），sidecar 配置 `configs/tdai-gateway.local.yaml` 改 `${TDAI_GATEWAY_API_KEY}` 环境注入，`.env.example` 补充说明。<br>- **证据**：新增单测 9 条（url-safety 回环/协议/放行/assert 4 条 + memorycore 弱 key 拒绝 1 条 + browser session S1 拒绝 2 条 + S2 TTL/旧版状态 2 条）；全量单测 680/681（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。<br>- **状态**：架构审计批次全部收口（安全 H1-H4/H10 + 数据 H5 + 正确性 H9/B1/B4/H8 + 决策 H6/D1-D5 + 中期 P1-P17 + 校准 B2/B3 + 安全 S1-S3）。<br>- affects: §5,§6,§10.2 | bench:na(new-param) 理由：新增 [P-121] CDP 过期时间，安全行为收敛无旧值可基准
 
 ### v2.5（2026-08-12）
 

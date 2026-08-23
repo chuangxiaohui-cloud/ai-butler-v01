@@ -5,13 +5,12 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PARAMS } from '../config/params.js';
-import type { RawFileLike, SkillDeps } from '../skills/deps.js';
+import type { RawFileLike } from '../skills/deps.js';
 
 export interface AttachmentSignal {
   type: 'image' | 'document' | 'audio' | 'unknown';
@@ -77,56 +76,81 @@ const IMAGE_CONVERT_SCRIPT = fileURLToPath(
 );
 const NORMALIZE_TIMEOUT_MS = 15_000;
 
-/**
- * 尽力把非标准图片格式转为 PNG（复用 office-daily 的解码链：Pillow + HEIC 兜底）。
- * 成功返回 PNG Buffer，失败/超时返回 null（调用方诚实降级）。
- */
-function tryNormalizeToPng(file: RawFileLike, buf: Buffer): Promise<Buffer | null> {
+export interface NormalizeToPngOptions {
+  /** 候选程序：单个可执行名（默认 OFFICE_PYTHON 环境变量优先 + python/python3），或完整 argv */
+  candidates?: Array<string | string[]>;
+  /** 整条归一化总预算（默认 15s） */
+  timeoutMs?: number;
+}
+
+/** 单候选执行一次转换，超时/失败返回 null */
+function runImageConvert(argv: string[], dst: string, timeoutMs: number): Promise<Buffer | null> {
   return new Promise((resolve) => {
-    const dir = mkdtempSync(join(tmpdir(), 'img-norm-'));
-    const src = join(dir, `input.${extensionOf(file.name)}`);
-    const dst = join(dir, 'out.png');
-    writeFileSync(src, buf);
-    const candidates = [
-      ...(process.env.OFFICE_PYTHON ? [process.env.OFFICE_PYTHON] : []),
-      ...PYTHON_CANDIDATES,
-    ];
+    const child = spawn(argv[0], argv.slice(1), {
+      windowsHide: true,
+    });
+    const timer = setTimeout(() => child.kill(), timeoutMs);
     let settled = false;
     const finish = (value: Buffer | null): void => {
       if (settled) return;
       settled = true;
-      rmSync(dir, { recursive: true, force: true });
+      clearTimeout(timer);
       resolve(value);
     };
-    const tryRun = (index: number): void => {
-      if (index >= candidates.length) {
+    child.on('error', () => finish(null));
+    child.on('close', (code) => {
+      if (code !== 0) {
         finish(null);
         return;
       }
-      const child = spawn(candidates[index], [IMAGE_CONVERT_SCRIPT, src, dst, 'png'], {
-        windowsHide: true,
-      });
-      const timer = setTimeout(() => child.kill(), NORMALIZE_TIMEOUT_MS);
-      child.stderr.setEncoding('utf8');
-      child.on('error', () => {
-        clearTimeout(timer);
-        tryRun(index + 1);
-      });
-      child.on('close', (code) => {
-        clearTimeout(timer);
-        if (code === 0 && existsSync(dst)) {
-          try {
-            finish(readFileSync(dst));
-            return;
-          } catch {
-            // 落入降级
-          }
-        }
-        tryRun(index + 1);
-      });
-    };
-    tryRun(0);
+      readFile(dst)
+        .then((out) => finish(out))
+        .catch(() => finish(null));
+    });
   });
+}
+
+/**
+ * 尽力把非标准图片格式转为 PNG（复用 office-daily 的解码链：Pillow + HEIC 兜底）。
+ * 成功返回 PNG Buffer，失败/超时返回 null（调用方诚实降级）。
+ * P10（架构审计 2026-08-23）：写图/读图改异步 fs 不再阻塞事件循环；多个 python 候选
+ * 共享总预算（每个候选只拿剩余时间），单张图最坏不再 2 × 15s = 30s。
+ */
+export async function tryNormalizeToPng(
+  file: RawFileLike,
+  buf: Buffer,
+  opts: NormalizeToPngOptions = {},
+): Promise<Buffer | null> {
+  const candidates = opts.candidates ?? [
+    ...(process.env.OFFICE_PYTHON ? [process.env.OFFICE_PYTHON] : []),
+    ...PYTHON_CANDIDATES,
+  ];
+  const timeoutMs = opts.timeoutMs ?? NORMALIZE_TIMEOUT_MS;
+  const dir = await mkdtemp(join(tmpdir(), 'img-norm-'));
+  const src = join(dir, `input.${extensionOf(file.name)}`);
+  const dst = join(dir, 'out.png');
+  try {
+    await writeFile(src, buf);
+  } catch {
+    await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+    return null;
+  }
+  const deadline = Date.now() + timeoutMs;
+  for (const candidate of candidates) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    const argv =
+      typeof candidate === 'string'
+        ? [candidate, IMAGE_CONVERT_SCRIPT, src, dst, 'png']
+        : [...candidate];
+    const out = await runImageConvert(argv, dst, remaining);
+    if (out) {
+      await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+      return out;
+    }
+  }
+  await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+  return null;
 }
 
 /** 纯信号提取，零成本 */
@@ -160,42 +184,4 @@ export async function toDataUrl(file: RawFileLike): Promise<string> {
   return png
     ? `data:image/png;base64,${png.toString('base64')}`
     : `data:${mime};base64,${buf.toString('base64')}`;
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('fast-describe timeout')), ms);
-    promise.then(
-      (v) => {
-        clearTimeout(timer);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(timer);
-        reject(e);
-      },
-    );
-  });
-}
-
-/**
- * 可选 fast description（P-87 开关 / P-88 超时）：
- * 仅 hasImage 且文本意图模糊时触发；超时/失败/关闭 → undefined，绝不阻塞路由。
- */
-export async function maybeFastDescribe(
-  processed: ProcessedMessage,
-  textAmbiguous: boolean,
-  deps: SkillDeps,
-): Promise<string | undefined> {
-  const img = processed.rawFiles.find((f) => isImageFile(f));
-  if (!img || !textAmbiguous || !PARAMS.fastDescriptionEnabled) return undefined;
-  try {
-    const dataUrl = await toDataUrl(img);
-    return await withTimeout(
-      deps.callVLM({ image: dataUrl, prompt: '用5个词描述这张图。' }, { maxTokens: 20 }),
-      PARAMS.fastDescriptionTimeoutMs,
-    );
-  } catch {
-    return undefined;
-  }
 }
