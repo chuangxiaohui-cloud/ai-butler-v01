@@ -25,7 +25,7 @@ test('memorycore-store: put 调用 /v3/conversation/add 并返回 id', async () 
     total_count: 2,
   }) as typeof fetch;
   try {
-    const store = new MemoryCoreStore(IDENTITY, 'http://127.0.0.1:8420');
+    const store = new MemoryCoreStore(IDENTITY, 'http://127.0.0.1:8420', 3000, 'test-api-key');
     const id = await store.put({
       session_id: 's1',
       query: 'q',
@@ -67,7 +67,7 @@ test('memorycore-store: recall 将 user/assistant 消息对映射回 MemoryRecor
     total: 2,
   }) as typeof fetch;
   try {
-    const store = new MemoryCoreStore(IDENTITY, 'http://127.0.0.1:8420');
+    const store = new MemoryCoreStore(IDENTITY, 'http://127.0.0.1:8420', 3000, 'test-api-key');
     const records = await store.recall('s1', 5);
     assert.equal(records.length, 1);
     assert.equal(records[0].query, 'q1');
@@ -85,12 +85,19 @@ test('memorycore-store: forget 调用删除接口', async () => {
   const original = globalThis.fetch;
   globalThis.fetch = fakeFetch(calls, { deleted_count: 1 }) as typeof fetch;
   try {
-    const store = new MemoryCoreStore(IDENTITY, 'http://127.0.0.1:8420');
+    const store = new MemoryCoreStore(IDENTITY, 'http://127.0.0.1:8420', 3000, 'test-api-key');
     await store.forget('s1');
     assert.ok(calls[0].path.endsWith('/v3/conversation/delete'));
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test('memorycore-store: 拒绝弱默认 key 启动（S3）', () => {
+  assert.throws(
+    () => new MemoryCoreStore(IDENTITY, 'http://127.0.0.1:8420', 3000, 'local-dev-key'),
+    /拒绝弱默认 key/,
+  );
 });
 
 test('memorycore-store: 缺少 identity 三元组必须抛出', () => {

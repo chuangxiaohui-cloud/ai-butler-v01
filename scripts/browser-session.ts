@@ -49,7 +49,10 @@ async function main(): Promise<void> {
     if (!Number.isInteger(port) || port <= 0) throw new Error('端口无效');
     const info = await browserSession.connectCdp(port);
     console.log(JSON.stringify({
-      message: '已连接并保存调试端口；后续 Agent 会自动复用该浏览器会话。',
+      message:
+        '已连接并保存调试端口；后续 Agent 会自动复用该浏览器会话。' +
+        '风险提示（S2）：CDP 调试口期间本机任意进程可控制浏览器，关联状态约 10 分钟过期；' +
+        '用完可运行 npm run browser:cdp-off 立即解除。',
       port,
       sessionDomains: info.sessionDomains,
       contexts: info.contexts,

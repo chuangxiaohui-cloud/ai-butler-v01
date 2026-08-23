@@ -16,9 +16,24 @@ export interface MemoryCoreIdentity {
 }
 
 const ENDPOINT = process.env.MEMORY_CORE_ENDPOINT ?? 'http://127.0.0.1:8420';
-const API_KEY = process.env.TDAI_GATEWAY_API_KEY ?? 'local-dev-key';
 const SERVICE_ID = process.env.TDAI_SERVICE_ID ?? 'ai-butler';
 const TIMEOUT_MS = 3000; // [P-42]
+/** S3（架构审计 2026-08-23）：弱默认 key 一律拒绝，部署必须显式随机 key */
+const WEAK_DEFAULT_API_KEY = 'local-dev-key';
+
+function resolveApiKey(
+  explicit?: string,
+  env: Record<string, string | undefined> = process.env,
+): string {
+  const key = (explicit ?? env.TDAI_GATEWAY_API_KEY ?? '').trim();
+  if (!key || key === WEAK_DEFAULT_API_KEY) {
+    throw new Error(
+      'MemoryCore 拒绝弱默认 key 启动（S3）：请设置 TDAI_GATEWAY_API_KEY 为随机 key，' +
+        '并与 configs/tdai-gateway.local.yaml 的 server.apiKey（${TDAI_GATEWAY_API_KEY}）保持一致。',
+    );
+  }
+  return key;
+}
 
 function readIdentityFromEnv(): MemoryCoreIdentity | null {
   const teamId = process.env.MEMORY_CORE_TEAM_ID?.trim();
@@ -46,11 +61,13 @@ export class MemoryCoreStore implements MemoryStore {
   private readonly endpoint: string;
   private readonly timeoutMs: number;
   private readonly identity: MemoryCoreIdentity;
+  private readonly apiKey: string;
 
   constructor(
     identity: MemoryCoreIdentity | null,
     endpoint = ENDPOINT,
     timeoutMs = TIMEOUT_MS,
+    apiKey?: string,
   ) {
     if (!identity) {
       throw new Error(
@@ -63,6 +80,7 @@ export class MemoryCoreStore implements MemoryStore {
     this.identity = identity;
     this.endpoint = endpoint.replace(/\/+$/, '');
     this.timeoutMs = timeoutMs;
+    this.apiKey = resolveApiKey(apiKey);
   }
 
   private async post<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -73,7 +91,7 @@ export class MemoryCoreStore implements MemoryStore {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${API_KEY}`,
+          Authorization: `Bearer ${this.apiKey}`,
           'x-tdai-service-id': SERVICE_ID,
         },
         body: JSON.stringify(body),

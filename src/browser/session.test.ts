@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -132,6 +132,55 @@ test('browser-session: CDP 端口持久化后新实例自动复用', async () =>
   assert.equal(cdpCalls, 2);
   await m2.disconnectCdp();
   assert.equal(m2.savedCdpPort(), null);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('browser-session: fetchPage 拒绝回环地址（S1）', async () => {
+  const manager = new (await import('./session.js')).BrowserSessionManager({
+    userDataDir: 'M:/tmp/browser-session-test',
+    executablePath: 'C:/fake/chrome.exe',
+    launcher: fakeChromium as never,
+  });
+  await assert.rejects(() => manager.fetchPage('http://127.0.0.1:8420/'), /安全策略拒绝/);
+});
+
+test('browser-session: downloadFile 拒绝回环地址（S1）', async () => {
+  const manager = new (await import('./session.js')).BrowserSessionManager({
+    userDataDir: 'M:/tmp/browser-session-test',
+    executablePath: 'C:/fake/chrome.exe',
+    launcher: fakeChromium as never,
+  });
+  const result = await manager.downloadFile('http://localhost:8420/secret', 'M:/tmp/x.pdf');
+  assert.equal(result.ok, false);
+  assert.match(result.error ?? '', /安全策略拒绝/);
+});
+
+test('browser-session: CDP 状态过期后不再复用并清理（S2）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'browser-cdp-expire-'));
+  const statePath = join(dir, 'cdp.json');
+  writeFileSync(statePath, JSON.stringify({ port: 9222, expiresAt: Date.now() - 1000 }), 'utf8');
+  const manager = new (await import('./session.js')).BrowserSessionManager({
+    userDataDir: join(dir, 'p'),
+    executablePath: 'C:/fake/chrome.exe',
+    launcher: fakeLauncherWithCdpCount as never,
+    cdpStatePath: statePath,
+  });
+  assert.equal(manager.savedCdpPort(), null);
+  assert.equal(existsSync(statePath), false, '过期状态应被清理');
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('browser-session: 旧版无 expiresAt 状态视为过期（S2）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'browser-cdp-legacy-'));
+  const statePath = join(dir, 'cdp.json');
+  writeFileSync(statePath, JSON.stringify({ port: 9222 }), 'utf8');
+  const manager = new (await import('./session.js')).BrowserSessionManager({
+    userDataDir: join(dir, 'p'),
+    executablePath: 'C:/fake/chrome.exe',
+    launcher: fakeLauncherWithCdpCount as never,
+    cdpStatePath: statePath,
+  });
+  assert.equal(manager.savedCdpPort(), null);
   rmSync(dir, { recursive: true, force: true });
 });
 

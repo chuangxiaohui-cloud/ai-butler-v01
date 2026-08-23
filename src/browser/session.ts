@@ -16,6 +16,8 @@ import {
   type BrowserType,
   type Page,
 } from 'playwright-core';
+import { assertSafeBrowserUrl } from '../security/url-safety.js';
+import { PARAMS } from '../config/params.js';
 
 export interface BrowserSessionOptions {
   userDataDir?: string;
@@ -185,10 +187,19 @@ export class BrowserSessionManager {
   savedCdpPort(): number | null {
     try {
       const raw = readFileSync(this.cdpStatePath, 'utf8');
-      const parsed = JSON.parse(raw) as { port?: unknown };
-      return typeof parsed.port === 'number' && Number.isInteger(parsed.port)
-        ? parsed.port
-        : null;
+      const parsed = JSON.parse(raw) as { port?: unknown; expiresAt?: unknown };
+      if (typeof parsed.port !== 'number' || !Number.isInteger(parsed.port)) return null;
+      // S2（架构审计 2026-08-23）：状态带 [P-121] 过期时间——超时或旧版无 expiresAt 的
+      // 状态一律清掉，不再无限期自动重连（"曾经开过调试口"的风险窗口有界）。
+      const expiresAt =
+        typeof parsed.expiresAt === 'number' && Number.isFinite(parsed.expiresAt)
+          ? parsed.expiresAt
+          : 0;
+      if (Date.now() > expiresAt) {
+        this.clearCdpState();
+        return null;
+      }
+      return parsed.port;
     } catch {
       return null;
     }
@@ -198,7 +209,15 @@ export class BrowserSessionManager {
     mkdirSync(dirname(this.cdpStatePath), { recursive: true });
     writeFileSync(
       this.cdpStatePath,
-      JSON.stringify({ port, connectedAt: new Date().toISOString() }, null, 2),
+      JSON.stringify(
+        {
+          port,
+          connectedAt: new Date().toISOString(),
+          expiresAt: Date.now() + PARAMS.cdpStateTtlMs,
+        },
+        null,
+        2,
+      ),
       'utf8',
     );
   }
@@ -246,6 +265,10 @@ export class BrowserSessionManager {
     this.cdpBrowser = await this.launcher.connectOverCDP(`http://127.0.0.1:${port}`);
     this.writeCdpState(port);
     const sessionDomains = await this.sessionDomains();
+    console.warn(
+      `[S2] CDP 调试口已连接：本机任意进程可经 ${port} 控制浏览器；` +
+        `关联状态将在 ${Math.round(PARAMS.cdpStateTtlMs / 60_000)} 分钟后过期，用完可运行 npm run browser:cdp-off 立即解除。`,
+    );
     return { sessionDomains, contexts: this.cdpBrowser.contexts().length };
   }
 
@@ -266,6 +289,7 @@ export class BrowserSessionManager {
 
   /** 带会话状态抓取网页正文；登录后会话域内页面可直接读取。 */
   async fetchPage(url: string, timeoutMs = 30_000, waitMs = 0): Promise<FetchPageResult> {
+    assertSafeBrowserUrl(url); // S1：拒绝回环/链路本地/非 http(s)，防 SSRF
     const context = await this.ensureContext();
     const page = await context.newPage();
     try {
@@ -356,6 +380,15 @@ export class BrowserSessionManager {
     destPath: string,
     headers?: Record<string, string>,
   ): Promise<{ ok: boolean; size: number; error?: string }> {
+    const urlCheck = (() => {
+      try {
+        assertSafeBrowserUrl(url); // S1：拒绝回环/链路本地/非 http(s)，防 SSRF
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : 'URL 被安全策略拒绝';
+      }
+    })();
+    if (urlCheck) return { ok: false, size: 0, error: urlCheck };
     const context = await this.ensureContext();
     const resp = await context.request.get(url, { headers, timeout: 30_000 });
     if (!resp.ok()) {

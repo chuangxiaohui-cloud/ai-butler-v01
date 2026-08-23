@@ -82,7 +82,10 @@ child.on('error', (err) => {
 
 setTimeout(() => {
   console.log(JSON.stringify({
-    message: `${browser} 已以调试端口 ${port} 启动，请确认窗口已出现。`,
+    message:
+      `${browser} 已以调试端口 ${port} 启动，请确认窗口已出现。` +
+      '风险提示（S2）：CDP 调试口期间本机任意进程可控制浏览器，关联状态约 10 分钟过期；' +
+      '用完可运行 npm run browser:cdp-off 立即解除。',
     next: `然后运行 npm run browser:cdp -- ${port} 让 Agent 连接。`,
   }, null, 2));
   process.exit(0);
