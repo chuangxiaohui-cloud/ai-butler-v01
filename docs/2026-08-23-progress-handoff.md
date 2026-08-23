@@ -238,12 +238,21 @@
     上下文物理分离）。新增单测 13 条；全量单测 729/730（1 skip）+ 集成 15/15；doc-lint 0 FAIL
     0 WARN（附录 519/950）。计划见 `docs/plans/2026-08-23-v1-s4-security.md`。
 
+29. **v1.0 S5 远程对话通道骨架（E224）**：§4.5 落地——新模块 `src/im/`：`gate.ts`（ImGate 授权
+    开关：默认全关，enable/disable 后 JSON 落盘 `data/im-gate.json` 原子写）、`session.ts`
+    （ImSessionMapper：sessionKey → 确定性 conversationId，用户/群/平台互相隔离、重启稳定）、
+    `format.ts`（adaptReply 输出适配：≤500 字符原样，超长截断 + truncated + 附件/链接提示）、
+    `service.ts`（ImService.route：gate 校验 → 会话映射 → 复用同一 pipeline 问答契约（注入 ask，
+    不另起一套行为逻辑）→ 输出适配；未授权平台拒绝并提示先绑定）。新增单测 12 条；全量单测
+    741/742（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN（附录 520/950）。计划见
+    `docs/plans/2026-08-23-v1-s5-im-channel.md`。
+
 ## 待提交（本批次）
 
 - 架构审计全部批次 + E219/E220 已提交：安全/数据/正确性批 `60b419d`、决策批 E207 `615bb62`、
   中期批 1-7 E208-E214 `109021b`、P17 E215 `0cbde9b`、P1/P2/P10 E216 `ce1abf8`、
   B2/B3 E217 `f575040`、S1-S3 E218 `3fb4cc6`、E219 `e3513f7`、v1.0 S1 深度报告 E220 `09e89bc`、
-  v1.0 S2 证据链 UI + 深度报告恢复 E221 `fdf2392`、v1.0 S3 MCP 子 Agent 骨架 E222 `2f0fd42`、v1.0 S4 安全模型补齐 E223 `31ce84b`；待提交清单已清空。
+  v1.0 S2 证据链 UI + 深度报告恢复 E221 `fdf2392`、v1.0 S3 MCP 子 Agent 骨架 E222 `2f0fd42`、v1.0 S4 安全模型补齐 E223 `31ce84b`、v1.0 S5 远程对话通道骨架 E224 `c18cbd6`；待提交清单已清空。
 - `bench/search-metrics.jsonl` 与根目录临时文件/`docs/2026-08-23-architecture-code-audit.md`
   不在任何批次，未混入提交（审计文档保留为只读第三方输入）。
 
@@ -266,11 +275,12 @@
    收口 → 架构审计全部批次完成（安全 H1-H4/H10 + 数据 H5 + 正确性 H9/B1/B4/H8 + 决策
    H6/D1-D5 + 中期 P1-P17 + 校准 B2/B3 + 安全 S1-S3）；审计文档归档为只读输入。后续
    回到 OCR 备忘 / Tavily 月度复核 / 附录行数 retention 等常规项。
-5. **v1.0 后续切片（S5-S8）**：S1 深度报告（E220）、S2 证据链 UI + 深度报告恢复（E221）、
-   S3 MCP 子 Agent 骨架（E222）、S4 安全模型补齐（E223，§10.1-10.5 全落地）已收口
-   （S3 真实 MCP server 接入待可用工具按 §8.2.3/§10 流程启用）；
-   剩余 S5 远程对话通道、S6 代码托管联动、S7 Skill 市场远程化、
-   S8 LLM 增强路由 + fast description + MemoryCoreStore 切换；
+5. **v1.0 后续切片（S6-S8）**：S1 深度报告（E220）、S2 证据链 UI + 深度报告恢复（E221）、
+   S3 MCP 子 Agent 骨架（E222）、S4 安全模型补齐（E223，§10.1-10.5 全落地）、
+   S5 远程对话通道骨架（E224）已收口（S3 真实 MCP server 接入与 S5 微信/QQ/飞书适配器
+   均待真实协议按相应流程接入）；
+   剩余 S6 代码托管联动、S7 Skill 市场远程化、S8 LLM 增强路由 + fast description +
+   MemoryCoreStore 切换；
    [P-13] 保持 provisional，待真实使用实测按 E197 口径复测。`docs/plans/YYYY-MM-DD-<主题>.md` 三段式。
 
 ## 常用命令
