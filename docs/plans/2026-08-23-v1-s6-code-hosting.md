@@ -41,4 +41,7 @@ v1.0 切片第六片（S6）：落地 §11.4 代码托管与远程协作的库�
 
 ## 结果
 
-- （执行后补）
+- 验证：`npm exec tsx scripts/doc-lint.ts` 0 FAIL 0 WARN（C8 44 key、附录 521/950）；主项目 `npm run build` 通过；`npm run test:all` 全绿。
+- 测试：单测 756/757（1 skip）+ 集成 15/15；新增 15 条（repo-whitelist 4 + push-audit 2 + push-service 9）。
+- 提交：`fcac8de`（E225）+ `27ed752`（handoff 登记）
+- 遗留事项：S6 库级骨架完成（白名单/预检/commit+push/审计，与 push:hosts 运维通道互补）；真实远程推送由 push:hosts 承载；剩余 S7 Skill 市场远程化、S8 LLM 增强路由 + fast description + MemoryCoreStore 切换按 `docs/plans/2026-08-23-v1-slicing.md` 排期继续。
