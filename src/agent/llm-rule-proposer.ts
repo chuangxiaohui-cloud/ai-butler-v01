@@ -4,6 +4,7 @@
  */
 
 import type { LLMClient } from '../search/llm.js';
+import { PARAMS } from '../config/params.js';
 import {
   ACTION_TYPES,
   TARGET_DOMAINS,
@@ -112,7 +113,9 @@ function validate(raw: unknown): LlmProposedRule | null {
   out.route.primaryLens = route.primaryLens as PrimaryLens;
   out.route.intent = route.intent.trim();
   if (typeof o.confidenceBoost === 'number' && Number.isFinite(o.confidenceBoost)) {
-    out.confidenceBoost = o.confidenceBoost;
+    // B3（架构审计 2026-08-23）：LLM 提案 boost 夹到 [0, [P-120]]，与确定性路径取值域
+    // 对称，不再允许 0.9/负值直接支配排序。
+    out.confidenceBoost = Math.max(0, Math.min(PARAMS.llmRuleBoostMax, o.confidenceBoost));
   }
   return out;
 }

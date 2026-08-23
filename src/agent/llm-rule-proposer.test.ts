@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { routeV2 } from './router-v2.js';
 import { proposeRuleWithLLM } from './llm-rule-proposer.js';
 import { ROUTING_TABLE } from './routing-table.js';
+import { PARAMS } from '../config/params.js';
 
 const pcbCase = () => {
   const result = routeV2('帮我检查一下这个PCB的安全性');
@@ -44,6 +45,32 @@ test('llm-rule-proposer: 非法输出回退确定性生成', async () => {
     actionType: 'analyze',
     targetDomain: 'security',
   });
+});
+
+test('llm-rule-proposer: LLM confidenceBoost 超界被夹到上限（B3）', async () => {
+  const llm = {
+    complete: async () =>
+      JSON.stringify({
+        match: { actionType: 'analyze', targetDomain: 'security' },
+        route: { primaryLens: 'owner', intent: 'risk_review' },
+        confidenceBoost: 0.9,
+      }),
+  };
+  const candidate = await proposeRuleWithLLM(pcbCase(), llm as never, []);
+  assert.equal(candidate?.confidenceBoost, PARAMS.llmRuleBoostMax);
+});
+
+test('llm-rule-proposer: LLM 负 boost 夹到 0（B3）', async () => {
+  const llm = {
+    complete: async () =>
+      JSON.stringify({
+        match: { actionType: 'analyze', targetDomain: 'security' },
+        route: { primaryLens: 'owner', intent: 'risk_review' },
+        confidenceBoost: -0.5,
+      }),
+  };
+  const candidate = await proposeRuleWithLLM(pcbCase(), llm as never, []);
+  assert.equal(candidate?.confidenceBoost, 0);
 });
 
 test('llm-rule-proposer: 已被现有规则覆盖时丢弃', async () => {

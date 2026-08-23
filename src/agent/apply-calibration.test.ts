@@ -6,7 +6,7 @@ import { applyCalibration, MIN_CALIBRATION_SAMPLES } from './apply-calibration.j
 function feedbackRecord(id: string, confidence: number, feedback: 'accept' | 'reject') {
   return {
     id,
-    timestamp: 1,
+    timestamp: Date.now(),
     query: `q-${id}`,
     result: { confidence },
     feedback,
