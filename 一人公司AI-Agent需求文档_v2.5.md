@@ -1686,475 +1686,76 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 | §12.2 可验证证据链 + §10.6 证据链交互 + §10.7 轻量反馈 | §9.1-9.3 | 2026-08-12 | ✅ 归零 | [hard]/[soft] 定义入 §9.1，联动 §6；👎降权引 [P-79]；界面 UI 结构入代码围栏 |
 | §0.4 重复条款压缩（"永远不要"清单） | §0 | 2026-08-12 | — | 与 0.1 规则2/0.2 规则1 重复，删除；行数 102→100 达标全量 C3 |
 
-### 2026-08-12（WP3 P-04 参数修正 E1）<br>- **变更**：[P-04] Stage 2 意图分类预算值上调并转 provisional@2026-08-12；依据 10 条基准 query 重跑冒烟（bench:B-20260812-01）。
-- **安全叙事**：S02/L05 两例误判均在 WP5 规则③兜底覆盖内，安全不变量不受影响；低预算下的降级为质量失败而非安全失败，本次为低风险质量/时延权衡。
-- **预算交叉检查**：Stage 各预算为独立上限，非可加约束（§5 约束注解），[P-04] 上调不击穿 [P-15]/[P-14] 约束；无关联参数需对冲。
-- affects: §5,§6 | bench:B-20260812-01 | E2/E3 交叉引用
-
-<details><summary>复验门与重跑证据（bench:B-20260812-01）</summary>
-
-复验门：WP11 bench 累积冷调用 n≥30 次；定稿规则：超时率 ≤10%，新值 = p95×1.2 取整到 250ms 档；若 2000ms 下超时率 >10%，重新升级决策。重跑证据（2026-08-12，超时 2000ms）：10 条中达标 ≥8 条；逐条耗时 min/median/max 已记录，样本附于 bench 输出。
-
-</details>
-
-### 2026-08-12（WP4 验收口径修订 E2）<br>- **变更**：非参数变更，[P-02] 状态不触及（注册表维持 provisional@2026-08-12），定稿交 WP11 复验门（见下）；验收口径修订：门控 = 10/10 query 经任一路径返回可用结果且数量满足 Stage 4 融合输入下限；双返回率转观察指标（软下限七成，本轮九成/八成满足）。
-- **依据**：§6.7（单路超时另一路兜底）；附本轮两轮冒烟证据。
-- **对冲四件**：① 每条请求记录分引擎时延（bocha_ms / anysearch_ms / timeout 标志）进 bench JSONL ② 单路兜底在输出与验收报告中显式标记，禁止静默 ③ WP11 双返回率低于七成时触发 [P-02] 重新决策 ④ 缓存条目打引擎覆盖标记（both/single），防 single 结果在 TTL 内丢失冗余。
-- affects: §5,§6 | bench:B-20260812-01 | E1 交叉引用
-
-<details><summary>测量与定稿门（E2）</summary>
-
-测量：每条请求写 bench/search-metrics.jsonl，字段含 bocha_ms / anysearch_ms / timeout / degraded / cacheEngines。复验门：WP11 冷调用 n≥30 次后，AnySearch@5s 超时率 >30% 或 Bocha 超时率 >10% → 重开决策（届时才有资格谈 P-02 provisional 或引擎优先级）；未触发则维持现状并推进定稿评估。
-E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
-
-</details>
-
-### 2026-08-12（预算交叉检查 E3）<br>- **变更**：E1 落地后完成预算总和交叉检查；Stage 各预算为独立上限，非可加约束（§5 约束注解），[P-04] 上调未击穿 [P-15]/[P-14] 约束；触发条件核销，无需对冲，不留矛盾定稿参数。
-- affects: §5,§6 | bench:B-20260812-01 | E1/E2 交叉引用
-
+### 2026-08-12（WP3 P-04 参数修正 E1）<br>- **变更**：[P-04] Stage 2 意图分类预算值上调并转 provisional@2026-08-12；依据 10 条基准 query 重跑冒烟（bench:B-20260812-01）。<br>- **安全叙事**：S02/L05 两例误判均在 WP5 规则③兜底覆盖内，安全不变量不受影响；低预算下的降级为质量失败而非安全失败，本次为低风险质量/时延权衡。<br>- **预算交叉检查**：Stage 各预算为独立上限，非可加约束（§5 约束注解），[P-04] 上调不击穿 [P-15]/[P-14] 约束；无关联参数需对冲。<br>- affects: §5,§6 | bench:B-20260812-01 | E2/E3 交叉引用<br><details><summary>复验门与重跑证据（bench:B-20260812-01）</summary><br>复验门：WP11 bench 累积冷调用 n≥30 次；定稿规则：超时率 ≤10%，新值 = p95×1.2 取整到 250ms 档；若 2000ms 下超时率 >10%，重新升级决策。重跑证据（2026-08-12，超时 2000ms）：10 条中达标 ≥8 条；逐条耗时 min/median/max 已记录，样本附于 bench 输出。<br></details>
+### 2026-08-12（WP4 验收口径修订 E2）<br>- **变更**：非参数变更，[P-02] 状态不触及（注册表维持 provisional@2026-08-12），定稿交 WP11 复验门（见下）；验收口径修订：门控 = 10/10 query 经任一路径返回可用结果且数量满足 Stage 4 融合输入下限；双返回率转观察指标（软下限七成，本轮九成/八成满足）。<br>- **依据**：§6.7（单路超时另一路兜底）；附本轮两轮冒烟证据。<br>- **对冲四件**：① 每条请求记录分引擎时延（bocha_ms / anysearch_ms / timeout 标志）进 bench JSONL ② 单路兜底在输出与验收报告中显式标记，禁止静默 ③ WP11 双返回率低于七成时触发 [P-02] 重新决策 ④ 缓存条目打引擎覆盖标记（both/single），防 single 结果在 TTL 内丢失冗余。<br>- affects: §5,§6 | bench:B-20260812-01 | E1 交叉引用<br><details><summary>测量与定稿门（E2）</summary><br>测量：每条请求写 bench/search-metrics.jsonl，字段含 bocha_ms / anysearch_ms / timeout / degraded / cacheEngines。复验门：WP11 冷调用 n≥30 次后，AnySearch@5s 超时率 >30% 或 Bocha 超时率 >10% → 重开决策（届时才有资格谈 P-02 provisional 或引擎优先级）；未触发则维持现状并推进定稿评估。<br>E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。<br></details>
+### 2026-08-12（预算交叉检查 E3）<br>- **变更**：E1 落地后完成预算总和交叉检查；Stage 各预算为独立上限，非可加约束（§5 约束注解），[P-04] 上调未击穿 [P-15]/[P-14] 约束；触发条件核销，无需对冲，不留矛盾定稿参数。<br>- affects: §5,§6 | bench:B-20260812-01 | E1/E2 交叉引用
 ### 2026-08-12（SQLite 技术偏离登记 E4）<br>- **偏离项**：§3.1 SQLite 实现：better-sqlite3 → node:sqlite（Node 22 内置）。<br>- **状态**：provisional@2026-08-12。<br>- **依据**：本机 better-sqlite3 原生绑定编译失败；node:sqlite 接口等价、零原生依赖。<br>- **已知代价**：运行时打印 ExperimentalWarning 走 stderr，不污染 stdout JSON 契约；JSON 契约命令用 npm run --silent。<br>- **复验门**：v0.2b MemoryCoreStore 切换时重新决策正式依赖。<br>- **关联**：与 E1-E3 独立，无参数联动。
 
 
-### 2026-08-13（P-63 单日配额调整 E5）<br>- **变更**：[P-63] 由定稿值改为不设单日硬限（账户余额自管理），转 provisional@2026-08-13；保留日计数用于观察。<br>- **理由**：Bocha 账户余额充足（详见下方），owner 拍板取消单日硬限；成本由账户余额与月度观测兜底，不再设日预算护栏。<br>- **实现**：本地配额仍计数不拦截；`BOCHA_DAILY_LIMIT` 可配置覆盖。<br>- affects: §5 | bench:B-20260813-01
-
-<details><summary>余额与观测（bench:B-20260813-01）</summary>
-
-2026-08-13 Bocha 账户余额 540 次；本地日计数 31 次（回归后）；后续以本地日计数 + 月度汇总观察用量，余额低于告警阈值时重新评估是否恢复硬限。
-
-</details>
-
-### 2026-08-13（L1 蒸馏实现偏离 E6）
-
-- **偏离项**：§8.1.4 L1/L2 蒸馏由 MemoryCore 内置 pipeline 承担；因 DeepSeek 与默认 prompt 不兼容，v0.2b 采用项目侧 distill worker（DeepSeek + 本项目中文 prompt）从 L0 提取，写入 ExperienceManager。
-- **状态**：provisional@2026-08-13。
-- **依据**：DeepSeek chat/reasoner 对中文偏好提取实测返回空；few-shot/规则不稳定（bench/v02b-l1-extraction-issue.md）。
-- **落地**：`npm run distill` 全量 L0 蒸馏完成（详见下方），成功率高；MemoryCore 内置 L1 不作为主路径。
-- **复验门**：MemoryCore prompt 或模型适配后评估回切；回切时保留 ExperienceManager 数据。
-- affects: §8 | bench:B-20260813-01
-
-<details><summary>蒸馏数据（bench:B-20260813-01）</summary>
-
-全量 L0 137 条 → 提取记忆 191 条，成功 130 条，无提取 7 条。
-
-</details>
-
-### 2026-08-13（E1/E2 复验门首轮复核 E7）
-
-- **变更**：非参数变更；完成 E1/E2 复验门首轮冷调用复核，并补齐实现缺口：Stage 2 分类默认超时对齐 [P-04] 2000ms（原代码默认 500ms）；分引擎时延日志记录配额跳过标记；新增 `scripts/recheck-gates.ts` 与 `bench/classify-metrics.jsonl`。
-- **E2 证据**：2026-08-13 两轮 31 条回归后，自 2026-08-12T17:56Z 起累计 AnySearch n=62 超时 5 条（8.1%）、Bocha n=62 超时 0 条（0.0%）；最近一轮（融合修订后）双引擎均 0/31 超时。AnySearch@5s ≤30%、Bocha ≤10%，未触发重开，[P-02] 维持 provisional@2026-08-12 并推进定稿评估。
-- **E1 证据**：`npm run classify:smoke -- --rounds=3` 累计 10 条基准 ×3 轮 = n=30；2000ms 下超时率 0/30（0.0%），准确率 24/30（80.0%，S02/L05 分类偏差仍由规则③兜底）。超时率 ≤10% 且准确率 ≥80%，未触发重开，[P-04] 维持 provisional@2026-08-12 并推进定稿评估。
-- **融合评分修复（关联 [P-16]/[P-17]）**：relevance 改为中文子串/二元组命中，实体过滤器按完整型号精确匹配（`TPS5430` 不再误收 `TPS5430DDA`）；`calibrate-rule2.ts` 修正为聚合 5 次重复抓取（原实现 key 未含 rep，只用了最后一轮）。修订后 93 条引擎级人工分校准仍显示正负例分布重叠（阈值 0.6：正例保留 67/75，负例拦截 3/18），[P-16]/[P-17] 继续 provisional，复验门不变。
-- affects: §5,§6,§6.5 | bench:B-20260813-02 | E1/E2 交叉引用
-
-### 2026-08-13（融合评分负例区分修正 E8）
-
-- **变更**：非参数变更；融合层新增意图化答案覆盖评分（answerCoverage），对低词面相关性且无答案覆盖的非官方结果降权；实体过滤器补齐连字符变体（`TPS5430-Q1`）误收；软件项目官方源识别扩展到 Tauri/FreeCAD/KiCad/Altium/Keil/LTspice/Electron/Arduino/OpenWorker；SEO 噪声识别扩展到聚合页、供应商页、词典页、热点清单；校准脚本修正 `how → how_to`、`github → github_analysis` 意图映射并新增正例误伤调试视角。
-- **证据**：93 条引擎级人工分校准，阈值 0.6 正例保留 67/75（与修订前持平）、负例拦截 5/18（修订前 3/18）；`TPS5430DDA` / `TPS5430-Q1` 不再作为 `TPS5430` 的变体误收；Tauri/OpenWorker GitHub 官方仓库可识别。
-- **状态**：[P-16]/[P-17] 维持 provisional@2026-08-12；复验门不变；阈值未调整。
-- affects: §6.5,§6.6 | bench:B-20260813-02 | E7 交叉引用
-
-### 2026-08-13（P-04/P-02 定稿评估 E9）
-
-- **变更**：非参数变更；WP11 冷调用样本已满足 n≥30，新增 `scripts/finalize-gates.ts` 完成 E1/E2 定稿评估；[P-04]/[P-02] 维持 provisional，等 owner 签认。
-- **E1 证据**：n=30，2000ms 下超时率 0.0%，准确率 80.0%；classify p95=1140ms / max=1151ms；推荐 `[P-04]` = `ceil(1140×1.2/250)×250` = 1500ms。
-- **E2 证据**：AnySearch n=125 超时率 12.0%（≤30%）、p95=4577ms / max=4917ms；Bocha n=105 超时率 5.7%（≤10%）、p95=323ms；`[P-02]`=5s 保持成立。
-- **状态**：provisional；定稿前置 ⑤ owner 签认未满足，待签认后改注册表状态并同步 `LLM_CLASSIFY_TIMEOUT_MS` 默认值。
-- affects: §5,§6.7 | bench:B-20260813-03 | E1/E2/E7 交叉引用
-
-### 2026-08-13（错误主题/FAQ 降权 E10）
-
-- **变更**：非参数变更；troubleshooting 查询带具体错误词（DRC/clearance/constraint/NACK 等）时，标题未命中这些词的结果降权；how_to 查询中「常见疑问/FAQ」标题但无操作流程的结果降权；官方源不受影响。
-- **证据**：93 条引擎级人工分校准，阈值 0.6 正例保留 67/75（持平）、负例拦截 6/18（E8 后 5/18、修订前 3/18）；E15 Bocha 铺铜报错页不再作为 DRC clearance 报错的 top1。
-- **状态**：[P-16]/[P-17] 维持 provisional@2026-08-12；复验门不变；阈值未调整。
-- affects: §6.5,§6.6 | bench:B-20260813-02 | E8 交叉引用
-
-### 2026-08-13（WP11 冷调用续采与定稿评估复核 E11）
-
-- **变更**：非参数变更；追加 1 轮 `classify:smoke` 与 1 轮 `search:smoke` 冷调用样本，复核 E1/E2 定稿评估；[P-04]/[P-02] 维持 provisional，等 owner 签认。
-- **E1 证据**：n=40，2000ms 下超时率 0.0%，准确率 80.0%（32/40）；classify p95=1305ms / max=1445ms；推荐 `[P-04]` = `ceil(1305×1.2/250)×250` = 1750ms。
-- **E2 证据**：AnySearch n=135 超时率 11.1%（≤30%）、p95=4577ms / max=4917ms；Bocha n=115 超时率 5.2%（≤10%）、p95=323ms；`[P-02]`=5s 保持成立。
-- **状态**：provisional；定稿前置 ⑤ owner 签认未满足，待签认后改注册表状态并同步 `LLM_CLASSIFY_TIMEOUT_MS` 默认值。
-- affects: §5,§6.7 | bench:B-20260813-04 | E9/E10 交叉引用
-
-### 2026-08-13（WP11 冷调用续采复核 E12）
-
-- **变更**：非参数变更；再追加 1 轮 `classify:smoke` 与 1 轮 `search:smoke` 冷调用样本，复核 E1/E2 定稿评估；[P-04]/[P-02] 维持 provisional，等 owner 签认。
-- **E1 证据**：n=50，2000ms 下超时率 0.0%，准确率 80.0%（40/50）；classify p95=1445ms / max=1542ms；推荐 `[P-04]` = `ceil(1445×1.2/250)×250` = 1750ms。
-- **E2 证据**：AnySearch n=145 超时率 10.3%（≤30%）、p95=4459ms / max=4917ms；Bocha n=125 超时率 4.8%（≤10%）、p95=323ms；`[P-02]`=5s 保持成立。
-- **状态**：provisional；定稿前置 ⑤ owner 签认未满足，待签认后改注册表状态并同步 `LLM_CLASSIFY_TIMEOUT_MS` 默认值。
-- affects: §5,§6.7 | bench:B-20260813-05 | E9/E11 交叉引用
-
-### 2026-08-13（WP11 冷调用续采复核 E13）
-
-- **变更**：非参数变更；再追加 1 轮 `classify:smoke` 与 1 轮 `search:smoke` 冷调用样本，复核 E1/E2 定稿评估；[P-04]/[P-02] 维持 provisional，等 owner 签认。
-- **E1 证据**：n=60，2000ms 下超时率 0.0%，准确率 80.0%（48/60）；classify p95=1445ms / max=1542ms；推荐 `[P-04]` = `ceil(1445×1.2/250)×250` = 1750ms。
-- **E2 证据**：AnySearch n=155 超时率 9.7%（≤30%）、p95=4577ms / max=4917ms；Bocha n=135 超时率 4.4%（≤10%）、p95=323ms；`[P-02]`=5s 保持成立。
-- **状态**：provisional；定稿前置 ⑤ owner 签认未满足，待签认后改注册表状态并同步 `LLM_CLASSIFY_TIMEOUT_MS` 默认值。
-- affects: §5,§6.7 | bench:B-20260813-06 | E9/E12 交叉引用
-
-### 2026-08-13（WP11 冷调用续采复核 E14）
-
-- **变更**：非参数变更；再追加 1 轮 `classify:smoke` 与 1 轮 `search:smoke` 冷调用样本，复核 E1/E2 定稿评估；[P-04]/[P-02] 维持 provisional，等 owner 签认。
-- **E1 证据**：n=70，2000ms 下超时率 0.0%，准确率 80.0%（56/70）；classify p95=1406ms / max=1542ms；推荐 `[P-04]` = `ceil(1406×1.2/250)×250` = 1750ms。
-- **E2 证据**：AnySearch n=165 超时率 9.1%（≤30%）、p95=4459ms / max=4917ms；Bocha n=145 超时率 4.1%（≤10%）、p95=328ms；`[P-02]`=5s 保持成立。
-- **状态**：provisional；定稿前置 ⑤ owner 签认未满足，待签认后改注册表状态并同步 `LLM_CLASSIFY_TIMEOUT_MS` 默认值。
-- affects: §5,§6.7 | bench:B-20260813-07 | E9/E13 交叉引用
-
-### 2026-08-13（Experience/Skill 管道注入 E15）
-
-- **变更**：回灌期启动 Experience/Skill 最小闭环；`pipeline.ts` 接入本仓库 `ExperienceManager` 与 `SkillLifecycle`，将检索经验与命中技能注入 Stage 5 合成上下文，LLM 合成成功后记录使用；`src/main.ts` CLI 默认启用。
-- **证据**：新增 Stage 5 与 pipeline 注入/使用记录单测，89/89 全绿；真实 CLI 冒烟正常返回（STM32F103C8T6 最大主频 72MHz）。
-- **状态**：实现完成；Skill handler 深度输出仍留待 v1.0。
-- affects: §6.7,§8.2,§12.3 | bench:B-20260813-08 | E6 交叉引用
-
-### 2026-08-13（需求增补：远程通道/代码托管/Skill 市场 E16）
-
-- **变更**：正文新增 §4.5 远程对话通道（微信/QQ/飞书）、§8.2.3 Skill 市场安装、§11.4 代码托管与远程协作（GitHub/Gitee）；v1.0 范围扩展。
-- **账号**：GitHub `chuangxiaohui-cloud`、Gitee `cxv138` 已写入 §11.4。
-- **状态**：需求已登记，v1.0 实现待排期。
-- affects: §4,§8,§11
-
-### 2026-08-13（Skill handler 深度输出 E17）
-
-- **变更**：`pipeline.ts` 命中 Skill 后调用 registry 对应 handler，结构化结果注入 Stage 5「技能深度分析」；占位 handler 返回 null 时跳过。
-- **证据**：新增 Stage 5 与 pipeline 深度输出单测，90/90 全绿；真实 CLI 冒烟正常返回（STM32F103C8T6 最大主频 72MHz）。
-- **状态**：实现完成；Skill handler 深度能力随各 Skill 自身实现扩展。
-- affects: §6.7,§8.2 | bench:B-20260813-08 | E15 交叉引用
-
-### 2026-08-13（GitHub/Gitee 代码托管模块 E18）
-
-- **变更**：新增 `scripts/push-to-hosts.ts` 与 `npm run push:hosts`，实现 §11.4 代码托管联动：dry-run 计划 → `npm test` + build 预检 → commit → push GitHub/Gitee。
-- **账号**：GitHub `chuangxiaohui-cloud`、Gitee `cxv138`；Token 仅从环境变量读取，不落盘。
-- **证据**：`npm run push:hosts -- --dry-run` 已验证变更清单与目标仓库输出；真实推送需显式 `--yes`。
-- **状态**：模块就绪，待配置 Token 后启用真实推送。
-- affects: §11.4 | bench:na(new-param) 理由：代码托管模块新增，无 §5/§6 参数变更
-
-### 2026-08-13（代码托管首推 E19）
-
-- **变更**：真实执行 `npm run push:hosts -- --yes --create --repo ai-butler-v01 --scope=project`。
-- **结果**：Gitee `cxv138/ai-butler-v01` 私有仓库创建并推送成功；GitHub 创建仓库返回 403（Token 无仓库创建权限），仓库未创建、推送未发生。
-- **处理**：`.gitignore` 增加 `TencentDB-Agent-Memory/`，避免嵌套 git 仓库被误提交；GitHub 待补仓库创建权限或指定已有仓库后重推。
-- affects: §11.4 | bench:na(new-param) 理由：运维执行记录，无 §5/§6 参数变更
-
-### 2026-08-13（Skill 市场安装器 E20）
-
-- **变更**：新增 `src/skills/install.ts` 与 `npm run install:skill`，实现 §8.2.3 Skill 市场本地安装：manifest 校验 → 生成 Skill 目录 → 自动注册 registry。
-- **证据**：新增 4 条 Skill 安装单测，94/94 全绿；临时 `e2e-test-skill` 端到端安装验证通过后已清理。
-- **状态**：本地包安装可用；远程市场索引与安全审核 UI 留待 v1.0。
-- affects: §8.2 | bench:na(new-param) 理由：Skill 安装器新增，无 §5/§6 参数变更
-
-### 2026-08-13（主 Agent 意图路由 E21）
-
-- **变更**：新增 `src/agent/router.ts` 与 `npm run route:query`，按 §2.2 镜片模型输出主镜片，按 §4 一刀测试输出知识/执行、Ask/Craft/Plan、是否搜索、澄清；`pipeline.ts` 接入路由，主镜片注入 Stage 5 系统提示。
-- **证据**：新增 7 条路由单测与 1 条 Stage 5 主镜片注入单测，102/102 全绿；`npm run route:query` 冒烟通过。
-- **状态**：规则版路由可用；LLM 增强路由与执行调度留待 v1.0。
-- affects: §2.2,§4,§6.7 | bench:na(new-param) 理由：路由模块新增，无 §5/§6 参数变更
-
-### 2026-08-13（三层意图路由 Phase 1 E22）
-
-- **变更**：实现特征提取 → 规则路由表 → 置信度门控三层路由：新增 `src/agent/intent-feature.ts`、`src/agent/routing-table.ts`、`src/agent/router-v2.ts`；`pipeline.ts` 接入 v2，执行/本地动作未接入时明确返回，低置信返回选项式消歧。
-- **PARAM**：新增 `[P-80]` 路由高置信阈值、`[P-81]` 路由低置信阈值、`[P-82]` 候选路由歧义差阈值。
-- **证据**：6 条冒烟 case 回归 + pipeline 消歧/执行器待接入单测，113/113 全绿。
-- **状态**：Phase 1 完成；LLM 特征提取、工作记忆消歧、规则自进化留待 Phase 2/3。
-- affects: §2.2,§4,§5,§6.7 | bench:na(new-param) 理由：路由参数与模块新增，无 §6 参数变更
-
-### 2026-08-13（三层路由规格对齐 E23）
-
-- **变更**：按审阅结论对齐规格：特征权重改为常数分母（action .30 / domain .25 / scope .15 / source .15 / ambiguity .10 / urgency .05）；`scope` 增加 `unknown` 且 unknown=0；R001-R006 boost 对齐为 .15/.20/.10/.20/.25/0；新增 `EXECUTOR_REGISTRY` 与 `not_wired` 诚实降级；新增 `extraction_source` 与 fallback 折扣；退役旧 `router.ts`。
-- **PARAM**：新增 `[P-83]` 路由特征提取 LLM 超时、`[P-84]` 路由 fallback 置信度折扣。
-- **证据**：6 条 case 精确 score 断言 + executor 注册表 + pipeline not_wired/消歧单测，114/114 全绿。
-- **状态**：Phase 1 规格对齐完成；LLM 特征提取与工作记忆消歧待 Phase 2。
-- affects: §2.2,§4,§5,§6.7 | bench:na(new-param) 理由：路由规格对齐与参数新增，无 §6 参数变更
-
-### 2026-08-13（Phase 2：LLM 特征提取 + 工作记忆消歧 E24）
-
-- **变更**：Layer 1 编排为 LLM → 校验 → 规则 fallback，新增 `src/agent/extract.ts`；`routeV2WithLLM` 接入 pipeline 并携带工作记忆，`missing_referent` 消歧选项引用最近记忆候选；`createLightClient` 支持 `[P-83]` 超时覆盖。
-- **证据**：新增 extract 3 条、工作记忆消歧 1 条单测，118/118 全绿；`route:query --llm` 支持真实 LLM 冒烟。
-- **状态**：Phase 2 完成；规则自进化与置信度校准留待 Phase 3。
-- affects: §2.2,§4,§5,§6.7,§8.3 | bench:na(new-param) 理由：Phase 2 能力扩展，无 §6 参数变更
-
-### 2026-08-13（搜索管道：查询改写 + 子搜索循环 E25）
-
-- **变更**：新增 `src/search/query-rewrite.ts`（口语 → 1-4 条子查询，LLM 优先/规则兜底）与 `src/search/search-loop.ts`（子搜索循环 + LLM 覆盖度判断，最多 `[P-85]` 次、结果 `[P-86]` 条）；`pipeline.ts` Stage 3 切换为 `runSearchLoop`。
-- **PARAM**：新增 `[P-85]` 子搜索循环上限、`[P-86]` 子搜索覆盖度下限。
-- **证据**：rewrite 3 条、search-loop 2 条单测，123/123 全绿。
-- **状态**：搜索→摘要最小闭环已跑通；多源质量闭环与排序/脱敏/溯源扩展留待下一步。
-- affects: §5,§6.7 | bench:na(new-param) 理由：搜索管道能力扩展与参数新增，无 §6 参数变更
-
-### 2026-08-13（多源质量闭环 E26）
-
-- **变更**：新增 `src/search/source-stats.ts`，按 源 × 意图 记录调用数、成功数、总耗时；`runSearchLoop` 每次子搜索尝试写入统计；新增 `npm run sources:stats` 查看。
-- **证据**：source-stats 单测 + search-loop 统计记录断言，124/124 全绿。
-- **状态**：质量数据开始累积；后续用统计驱动源优先级与查询改写方向。
-- affects: §6.2,§12.3 | bench:na(new-param) 理由：多源质量闭环新增，无 §5/§6 参数变更
-
-### 2026-08-13（多模态接入层 Week 1 E27）
-
-- **变更**：新增 `src/config/params.ts`（P-87~P-94 双结构登记）、`src/skills/deps.ts`（RawFileLike / VLMClient / SkillDeps）、`src/memory/user-context.ts`（类型）、`src/agent/multimodal-preprocessor.ts`（零成本信号 + maybeFastDescribe）；registry 新增 `ExecutableSkill / SkillInput / SkillOutput / wrapLegacySkill / toDisplayText`，旧 Skill 接口保持不变。
-- **测试**：新增 `tests/integration/`（params 一致性、registry 兼容、枚举一致性、INT-005 零 VLM 成本），集成 10/10、单测 124/124 全绿。
-- **状态**：Week 1 C1/C2 完成；C3/C4/C5 后续补。
-- affects: §5,§6.7,§8.2 | bench:na(new-param) 理由：多模态接入层与参数新增，无 §6 参数变更
-
-### 2026-08-13（Week 1 C3：Skill 注册表迁移 E28）
-
-- **变更**：`registry.ts` 的 `getSkills/findSkill` 改为返回 `ExecutableSkill`，6 项预置 Skill 全部经 `wrapLegacySkill` 包装；`pipeline.ts` Skill 深度输出改用 `execute + toDisplayText`；安装器目标数组更新为 `LegacySkillDef[]`。
-- **证据**：registry 全量回归 + 集成 10/10，124/124 单测全绿。
-- **状态**：旧 `handler` 仅作为 `LegacySkillDef` 输入存在，对外接口已统一为 `ExecutableSkill`。
-- affects: §8.2 | bench:na(new-param) 理由：Skill 注册表接口迁移，无 §5/§6 参数变更
-
-### 2026-08-13（Week 1 C4：IntentFeature 多模态字段 E29）
-
-- **变更**：`IntentFeature` 新增 `hasImage / hasDocument / attachmentTypes / fastImageDescription`；`extractIntentFeatureRuleBased` 与 `extractIntentFeature` 均支持附件信号；`buildIntentFeaturePrompt` 注入附件清单；`routeV2WithLLM` 支持附件参数；未扩枚举、未加路由。
-- **证据**：新增附件信号单测 2 条，126/126 单测 + 10/10 集成全绿。
-- **状态**：C4 完成；多模态路由规则 Week 2/3 再按枚举扩展落地。
-- affects: §2.2,§8.2 | bench:na(new-param) 理由：IntentFeature 字段扩展，无 §5/§6 参数变更
-
-### 2026-08-13（Week 1 收口 C5 E30）
-
-- **变更**：Week 1 C1-C5 全部完成，`npm run test:all` 全绿；打基线 tag `v0.3-week1`。
-- **证据**：单测 126/126 + 集成 10/10，`doc-lint` 0 FAIL / 0 WARN。
-- **状态**：多模态接入层、Skill 统一接口、IntentFeature 多模态字段已入基线；Week 2 开始 cultural_reference 与镜片收敛。
-- affects: §2.2,§5,§6.7,§8.2 | bench:na(new-param) 理由：Week 1 收口与基线登记，无 §6 参数变更
-
-### 2026-08-13（Week 2：镜片收敛 + cultural_reference E31）
-
-- **变更**：新增 `cultural_reference` 枚举与规则特征提取；路由表新增 `R_CULTURAL_REFERENCE`（secretary / cultural_reference / knowledge_qa / postProcess=cultural_reply）；`RouteCandidate` 携带 `postProcess`；新增 `src/postprocess/cultural-reply.ts`，Memory 驱动动态组装（有上下文 → 共鸣+精华+行动，无上下文 → 精简百科）；无新增镜片，复用 secretary，符合 §2.1 封闭集合；执行器注册表显式登记 `knowledge_qa = not_wired`。
-- **测试**：router-v2 新增文化梗路由单测；集成新增 INT-004 两条（有/无 Memory）；单测 127/127 + 集成 12/12 全绿。
-- **状态**：Week 2 完成；`knowledge_qa` 按 not_wired 契约待接，文档 QA 与 color 路由 Week 3 落地。
-- affects: §2.1,§2.2,§6.7,§8.2 | bench:na(new-param) 理由：文化梗专用路由与后处理，无 §5/§6 参数变更
-
-### 2026-08-13（Week 3：color 与文档 QA E32）
-
-- **变更**：`ACTION_TYPES` 新增 `qa/summarize/extract_structure`，`TARGET_DOMAINS` 新增 `color`；路由表新增 `R_IMAGE_COLOR / R_IMAGE_GENERAL / R_DOCUMENT_QA / R_DOCUMENT_SUMMARY / R_DOCUMENT_STRUCTURE`；新增 `color-recognition` Skill（L1 语义色名 + L2 HEX 调色板）与 `document-qa` Skill（parseDocument + 确定性结构提取 + 可选 LLM 摘要/问答），并注册进 registry（8 项）；`SkillDeps` 新增 `complete?: LLMClient`；评分层将 `hasImage/hasDocument` 设为硬门控，门控规则引入 `baseConfidence`，权重重校准（source 0.10 / urgency 0.03 / ambiguity 0.08 / image 0.05 / document 0.04）；执行器登记 `color_recognition/document_qa = available`、`image_analysis = not_wired`。
-- **测试**：router-v2 新增图片颜色/通用图片/文档总结/文档结构路由单测；集成新增 INT-002（摘要/结构）与 INT-003（L1/L2 颜色）；单测 131/131 + 集成 16/16 全绿。
-- **状态**：Week 3 完成；`image_analysis` 与 `knowledge_qa` 按 not_wired 契约待接，Week 4 落地 Memory 置信度与集成测试收尾。
-- affects: §2.2,§5,§6.7,§8.2 | bench:na(new-param) 理由：多模态与文档 Skill 及门控评分扩展，无 §6 参数变更
-
-### 2026-08-13（Week 4：共享衰减 + UserContextStore E33）
-
-- **变更**：新增 `src/memory/confidence-decay.ts` 共享模块（`decayedConfidence` 30/90 天两档 + `weeklyDecayConfidence` + `isColdAfter` + `shouldArchive/injectable`）；ExperienceManager 与 SkillLifecycle 改调共享实现，行为不变；新增 `UserContextStore`（SQLite：`user_profile / user_facts / session_summaries`），支持 profile/fact/session 持久化、纠正覆盖、访问刷新、过期归档；`user-context.ts` 补 `buildMemoryInjection`（按 [P-90]/[P-91] 过滤排序截断）；`FactSource` 收敛到共享模块。
-- **测试**：新增 confidence-decay 5 条 + user-context-store 3 条单测，集成新增 INT-006 全链路；单测 139/139 + 集成 17/17 全绿，ExperienceManager/SkillLifecycle 回归不变。
-- **状态**：Week 4 完成，四周升级计划收口；`image_analysis / knowledge_qa` 仍按 not_wired 契约待接。
-- affects: §3,§5,§8.2,§12.3 | bench:na(new-param) 理由：Memory 置信度/衰减与存储落地，无 §6 参数变更
-
-### 2026-08-13（pipeline 全链路接入 E34）
-
-- **变更**：新增 `image-analysis` 与 `knowledge-qa` Skill 并注册进 registry（10 项），对应执行器转 `available`；`pipeline(query, deps, opts)` 新增 `files/userId` 与 `userContextStore/skillDeps` 注入：多模态预处理信号进入路由，UserContext 在意图提取与最终合成双端注入，非搜索路由按 executor→skill 实际执行并支持 `cultural_reply` 后处理，会话摘要回写 UserContextStore。
-- **测试**：pipeline 新增图片问答、文化梗记忆化秘书回复、文档总结三条全链路单测；单测 142/142 + 集成 17/17 全绿。
-- **状态**：四周基础设施已接入主 pipeline；`calendar_skill / im_dispatch / content_writer` 仍按 not_wired 契约待接。
-- affects: §2.2,§3,§6.7,§8.2 | bench:na(new-param) 理由：pipeline 执行器调度与 Memory 注入接通，无 §5/§6 参数变更
-
-### 2026-08-13（真实运行时适配层 E35）
-
-- **变更**：`src/search/llm.ts` 新增 `createVisionClient()`，落实 VLM 契约（data URL 输入、纯文本输出，OpenAI 兼容协议）；新增 `src/search/document-parser.ts`（md/txt 直接解码、文本型 PDF 轻量提取、docx 诚实报未接入）；新增 `content-writer` Skill（LLM 生成结构化文档）并注册进 registry（11 项），`content_writer` 执行器转 `available`；CLI `src/main.ts` 接入 `UserContextStore + skillDeps + userId`；`.env.example` 补 `VLM_*` 配置。
-- **测试**：新增 document-parser 3 条单测；单测 145/145 + 集成 17/17 全绿。
-- **状态**：真实运行时所需的 VLM/文档解析/LLM 适配器已齐；剩余 `calendar_skill / im_dispatch` 需真实外部接口，保持 not_wired。
-- affects: §6.7,§8.2,§10.2 | bench:na(new-param) 理由：运行时适配层与 content-writer Skill 落地，无 §5/§6 参数变更
-
-### 2026-08-13（Phase 2：PARAM 迁移 + 消歧话术模板 E36）
-
-- **变更**：§5 PARAM 登记中心补入 P-80~P-84（路由置信度/候选分差/LLM 超时/fallback 折扣）与 P-95~P-104（特征权重/base 阈值/候选上限），`router-v2.ts` 全部改从 PARAMS 读取，行为值不变；新增 `src/agent/clarify-templates.ts`（§4.1 五镜片各自的低置信/选项/指代不明话术），Layer 3 消歧改走模板，owner 等镜片不再使用通用话术。
-- **测试**：router-v2 与 pipeline 消歧断言更新为镜片化话术；单测 145/145 + 集成 17/17 全绿。
-- **状态**：Phase 2 的 PARAM 可调与消歧话术模板完成；50+ 真实 case 收集、经验闭环与置信度校准待下一阶段。
-- affects: §4.1,§5,§6.6 | bench:na(new-param) 理由：路由参数迁入 PARAM 注册表与话术模板化，数值不变
-
-### 2026-08-13（Phase 2/3：路由 case 采集 + 置信度校准 E37）
-
-- **变更**：新增 `src/agent/route-case-store.ts`（query/特征/候选/决策落 `data/route-cases.jsonl`，支持 `record/list/recordFeedback/stats`）；`pipeline` 每次路由后自动采集，CLI `src/main.ts` 接入采集器；新增 `src/agent/confidence-calibration.ts`，基于 accept/reject 反馈给出 `routeConfidenceLow/High` 建议阈值（拒绝样本抬高 low，接受样本抬高 high），人工确认后写回 PARAM。
-- **测试**：新增 route-case-store 2 条 + confidence-calibration 1 条单测；单测 148/148 + 集成 17/17 全绿。
-- **状态**：真实 case 从 CLI/pipeline 开始自动积累；待样本足够后进入规则候选生成与阈值自动回写。
-- affects: §5,§6.6,§12.3 | bench:na(new-param) 理由：case 采集与校准建议落地，PARAM 值未自动变更
-
-### 2026-08-13（Phase 3：规则候选生成 + 校准脚本 E38）
-
-- **变更**：新增 `src/agent/rule-candidate.ts`：从 reject/correct 反馈 case 提取特征生成 `proposed` 规则候选，按“已有规则是否覆盖”去重（R002 的 create+document 会吞掉 create+document+multi_step 这类冗余候选，modify+document 则保留）；新增 `scripts/route-calibrate.ts` 与 `npm run route:calibrate`：读取 `route-cases.jsonl`，输出阈值建议并把候选写入 `data/rule-candidates.jsonl` 供人工审核。
-- **测试**：新增 rule-candidate 2 条单测；单测 150/150 + 集成 17/17 全绿。
-- **状态**：失败 case 自动回流 → 规则候选生成已跑通；下一阶段是候选人工审核入库与阈值确认回写。
-- affects: §6.6,§12.3 | bench:na(new-param) 理由：规则候选生成与校准脚本落地，不改 PARAM/路由表默认值
-
-### 2026-08-13（人工审核首轮 E39）
-
-- **变更**：新增 `scripts/seed-route-cases.ts`（生成 6 条 source=seed 的评审 case）与 `scripts/route-import-review.ts`（`npm run route:import-review` 读取 `rule-candidates.review.scored.csv`，汇总 accept/reject/skip，生成 `data/rule-review-summary.md` 路由表补丁与 `data/rule-accepted.json`）。
-- **首轮结论**：RC-2（PCB 安全审查 → owner/risk_review）accept，RC-3/RC-6 skip，RC-1/RC-4/RC-5 reject；阈值建议维持 low 0.45 / high 0.75（样本不足，不回写）。
-- **状态**：人工审核闭环打通；待老板确认 R13 补丁后写入 `routing-table.ts` 并补回归测试。
-- affects: §6.6,§12.3 | bench:na(new-param) 理由：评审导入与首轮打分结论，路由表/PARAM 未变更
-
-### 2026-08-13（评审不一致修复 E40）
-
-- **变更**：定位到 R13 不一致的两处根因并修复：`route:calibrate` 之前对 `rule-candidates.jsonl` 使用 append，导致旧候选残留混入；特征提取把“检查一下”误判为 query/web_search，PCB 又优先映射到 code。修复后 `rule-candidates.jsonl` 每次全量覆盖；`analyze` 提到 `query` 前并补 `审查/检查/巡检/审阅`，security 域提到 code 前，搜索触发用 `(^|[^检])查一下` 排除“检查一下”；候选生成不再携带 `ambiguityFlags`，并跳过 `must_clarify + 0 置信` 的不可靠 case。
-- **回归**：新增 PCB 安全审查提取单测与候选生成单测；单测 152/152 + 集成 17/17 全绿。
-- **状态**：R13 旧补丁作废，未写入路由表；新候选集（PCB 安全审查 / 会议安排 / 报价对比）已重新生成，待老板对新 RC-1 打分确认。
-- affects: §2.2,§6.6,§12.3 | bench:na(new-param) 理由：特征提取与候选生成修正，路由表/PARAM 未变更
-
-### 2026-08-13（R13 确认入库 E41）
-
-- **变更**：老板确认新 RC-1（PCB 安全审查 → owner/risk_review）并同意会议/报价两条暂挂起；`routing-table.ts` 新增 R13（`actionType=analyze + targetDomain=security`，`strictMatch=true`，`searchNeed=false`）；`router-v2` 支持 `strictMatch`，避免 analyze+finance 等部分匹配误撞 R13；新增“PCB 安全审查 → owner/risk_review 且关闭搜索”回归测试。
-- **测试**：单测 153/153 + 集成 17/17 全绿。
-- **状态**：第一条人工审核规则入库；会议安排与报价对比候选待时间实体/actionType 补充后重新评审。
-- affects: §2.2,§6.6 | bench:na(new-param) 理由：R13 入库与严格匹配机制，无 PARAM 变更
-
-### 2026-08-13（Phase 3：LLM 规则提案 E42）
-
-- **变更**：新增 `src/agent/llm-rule-proposer.ts`：给定人工修正后的 case，让 LLM 直接提出 match/route/confidenceBoost，校验枚举后生成候选；LLM 不可用、输出非法或候选已被现有规则覆盖时回退到确定性生成/丢弃；新增 `data/rule-review-status.md` 登记已入库 R13 与挂起中的 RC-2/RC-3 及入库条件。
-- **测试**：新增 llm-rule-proposer 2 条单测（合法 JSON / 非法回退）；单测 155/155 + 集成 17/17 全绿。
-- **状态**：RC-2/RC-3 继续挂起（缺时间实体字段 / compare 动作或 vendor_db 来源）；LLM 提案器待接入校准脚本后形成“LLM 提议 → 人工审核 → 入库”闭环。
-- affects: §6.6,§12.3 | bench:na(new-param) 理由：LLM 规则提案与评审状态登记，路由表/PARAM 未变更
-
-### 2026-08-13（LLM 提案接入校准脚本 E43）
-
-- **变更**：`scripts/route-calibrate.ts` 支持 `--llm`：新 case 先走 `proposeRuleWithLLM`（LLM 提议，覆盖检查、非法/无 Key 回退确定性生成），默认仍为确定性模式；修复 LLM 覆盖判定方向（现有规则 match 必须是新提案的子集才算已被覆盖），LLM 提案不再把 `hasImage=false/hasDocument=false` 写入 match。
-- **测试**：新增“已被现有规则覆盖时丢弃”单测；单测 156/156 + 集成 17/17 全绿。
-- **状态**：“LLM 提议 → 人工审核 → 入库”闭环已可用（`npm run route:calibrate -- --llm`）；RC-2/RC-3 继续挂起。
-- affects: §6.6,§12.3 | bench:na(new-param) 理由：LLM 提案接入校准脚本，路由表/PARAM 未变更
-
-### 2026-08-13（校准闭环收口 E44）
-
-- **变更**：`route-import-review` 现在会把 accept/reject 评审结论回写到 `route-cases.jsonl`，供阈值校准与经验闭环使用；新增 `src/agent/apply-calibration.ts`（样本 <10 拒绝回写，≥10 给出可写回 PARAM 的 low/high 阈值）与 `npm run route:apply-calibration` 脚本；`calibrateThresholds` 参数放宽为最小结构，便于测试与脚本共用。
-- **测试**：新增 apply-calibration 2 条单测；单测 158/158 + 集成 17/17 全绿。
-- **状态**：当前样本 4/10，`route:apply-calibration` 正确拒绝回写；累计 10 条 accept/reject 反馈后即可生成 `calibration-proposal.json` 供确认。
-- affects: §5,§6.6,§12.3 | bench:na(new-param) 理由：校准回写带样本门槛，PARAM 值未自动变更
-
-### 2026-08-13（交互式审核器 E45）
-
-- **变更**：新增 `npm run route:review`：终端逐条展示候选（query/当前决策/置信度/建议 match/路由），按 `a/r/s/q` 打分，accept 时补 1-5 分与备注，结束自动写入 `data/rule-candidates.review.scored.csv`，随后可直接 `npm run route:import-review`。
-- **验证**：`route:review` 空输入/quit 冒烟通过；单测 158/158 + 集成 17/17 全绿。
-- **状态**：人工审核支持 CSV 与终端交互两种方式；RC-2/RC-3 继续挂起。
-- affects: §6.6,§12.3 | bench:na(new-param) 理由：审核交互工具，路由表/PARAM 未变更
-
-### 2026-08-13（case 审计看板 E46）
-
-- **变更**：新增 `src/agent/route-case-audit.ts` 与 `npm run route:cases`：统计 case 总量/反馈数/来源/决策/反馈分布、校准进度（accept+reject ≥10），并检查重复 id、缺失 features/candidates、reject/correct 缺 correctedRoute、有 correctedRoute 缺 feedback 等质量问题；当前 6 条 seed case、0 issues、校准样本 4/10。
-- **测试**：新增 route-case-audit 2 条单测；单测 160/160 + 集成 17/17 全绿。
-- **状态**：50+ 收集进度可随时查看；继续真实使用积累 pipeline case。
-- affects: §6.6,§12.3 | bench:na(new-param) 理由：case 审计看板，路由表/PARAM 未变更
-
-### 2026-08-13（补丁生成与操作手册 E47）
-
-- **变更**：新增 `npm run route:apply-rules`：读取 `rule-accepted.json`，自动跳过已被现有规则覆盖的条目（如已入库的 R13），为剩余接受项生成 `data/routing-patch.ts`；新增 `docs/route-evolution-workflow.md` 操作手册，串起 收集 → 生成候选 → 审核 → 导入 → 补丁 → 校准 全流程。
-- **验证**：`route:apply-rules` 对已覆盖的 R13 正确跳过；单测 160/160 + 集成 17/17 全绿。
-- **状态**：规则进化闭环的工具链全部就绪，剩下靠真实 case 与人工审核驱动。
-- affects: §6.6,§12.3 | bench:na(new-param) 理由：补丁生成工具与操作手册，路由表/PARAM 未变更
-
-### 2026-08-13（RC-2/RC-3 意图层收窄 E48）
-
-- **变更**：按评审意见落地意图层（不碰执行器）：`ACTION_TYPES` 新增 `schedule / compare`；`SearchSourceHint` 新增 `vendor_db`（保留 web_search/internal_db 原值，不做破坏性改名）；`IntentFeature` 新增 `timeExpression / hasTimeExpression`；规则提取把“安排/预约”识别为 `schedule`、把“对比/比较/对照”识别为 `compare`，报价对比自动带 `searchSourceHint=vendor_db`，会议安排抽出 `timeExpression`；候选生成把 `hasTimeExpression` 作为布尔门控字段，避免把原始时间字符串写进 match。
-- **候选重生成**：RC-2 → `secretary/create_calendar`（schedule + schedule + hasTimeExpression），RC-3 → `owner/compare_vendor_quotes`（compare + finance + vendor_db），已写入 `data/rule-candidates.review.csv` 待评审。
-- **测试**：新增会议安排/报价对比提取与候选生成 4 条单测；单测 164/164 + 集成 17/17 全绿。
-- **状态**：RC-2/RC-3 从“挂起”转为“待重审”；执行器仍为占位 stub。
-- affects: §2.2,§6.6 | bench:na(new-param) 理由：意图层枚举/特征扩展与候选重生成，路由表/PARAM 未变更
-
-### 2026-08-13（R14 入库 + 报价对比挂起 E49）
-
-- **变更**：导入本轮评分（RC-1 会议安排 accept / RC-2 报价对比 skip）；修复 `route-import-review` 对 `verdict(accept/reject/skip)` 表头的兼容；`routing-table.ts` 新增 R14（schedule + schedule + hasTimeExpression，strictMatch，executor=calendar_skill stub）；新增会议安排回归测试；报价对比按 skip 挂起，待 vendor_db/报价库接入后重生成。
-- **测试**：单测 165/165 + 集成 17/17 全绿。
-- **状态**：R14 已入库（执行器 stub）；报价对比仍挂起，阈值样本 5/10。
-- affects: §2.2,§6.6 | bench:na(new-param) 理由：R14 入库与评审导入修复，无 PARAM 变更
-
-### 2026-08-13（calendar-skill 执行层 E50）
-
-- **变更**：新增 `src/skills/calendar-skill/`（本地 SQLite 日历：创建日程 + 查询日程，支持 `create_calendar / local_query` 模式），注册进 registry（12 项）；`calendar_skill` 执行器转 `available`；R004（查日程）补 `executor=calendar_skill`，R14（会议安排）执行层由 stub 转可用；`extractTimeExpression` 导出供 Skill 复用；新增 `CALENDAR_DB_PATH` 环境变量。
-- **测试**：新增 calendar-skill 1 条单测，pipeline 日历查询测试改为真实执行；单测 166/166 + 集成 17/17 全绿。
-- **状态**：R14 端到端可创建本地日程；报价对比仍挂起，等待 vendor_db/报价库。
-- affects: §8.2,§12.2 | bench:na(new-param) 理由：本地日历执行层落地，无 §5/§6 参数变更
-
-### 2026-08-13（quote-compare 本地报价库 E51）
-
-- **变更**：新增 `src/skills/quote-compare/`（SQLite `vendor_quotes` 报价库，内置 STM32F103C8T6 / ESP32-C3-MINI-1 示例报价），支持按型号返回供应商对比与最低价；注册进 registry（13 项）；新增 `QUOTES_DB_PATH` 环境变量；`vendor_db` 从空壳转为可用数据源，报价对比候选已重生成（compare + finance + vendor_db → owner/compare_vendor_quotes）待评审。
-- **测试**：新增 quote-compare 1 条单测；单测 167/167 + 集成 17/17 全绿。
-- **状态**：RC-2 复评条件已具备；待老板 accept 后补 R15 路由与回归测试。
-- affects: §8.2,§12.2 | bench:na(new-param) 理由：本地报价库执行层落地，无 §5/§6 参数变更
-
-### 2026-08-13（im-dispatch 消息待发队列 E52）
-
-- **变更**：新增 `src/skills/im-dispatch/`（SQLite `message_outbox` 待发送队列，recipient/content/status=pending），R005（发消息给老张）补 `executor=im_dispatch`；`im_dispatch` 执行器转 `available`；注册进 registry（14 项）；新增 `MESSAGES_DB_PATH` 环境变量；pipeline 发消息测试改为真实执行。
-- **测试**：新增 im-dispatch 1 条单测 + pipeline 发消息测试；单测 169/169 + 集成 17/17 全绿。
-- **状态**：本地可接执行器全部可用；真实 IM 待接（微信/飞书），接入后轮询 outbox 自动发送。
-- affects: §8.2,§12.2 | bench:na(new-param) 理由：消息待发队列执行层落地，无 §5/§6 参数变更
-
-### 2026-08-13（时间规范化 + 报价 CLI E53）
-
-- **变更**：`calendar-skill` 新增 `parseTimeExpression`：把“明天上午十点”归一化为 `start_at` ISO 时间并落库（含旧库 ALTER 迁移）；新增 `npm run quote:compare -- STM32F103C8T6` 报价查询 CLI（读取本地 `vendor_quotes` 输出对比与最低价）。
-- **验证**：`quote:compare` 对 STM32F103C8T6 返回 3 家报价、LCSC 最低；单测 169/169 + 集成 17/17 全绿。
-- **状态**：会议日程开始有结构化时间；报价库可直接 CLI 试用，仍待老板评审后补 R15。
-- affects: §8.2,§12.2 | bench:na(new-param) 理由：执行层时间规范化与报价 CLI，无 §5/§6 参数变更
-
-### 2026-08-13（R15 报价对比入库 E54）
-
-- **变更**：老板 accept 报价对比候选（score 4）；`routing-table.ts` 新增 R15（compare + finance + vendor_db，strictMatch，executor=quote_compare）；`quote_compare` 执行器转 `available`；新增“报价对比 → owner/compare_vendor_quotes 且关闭搜索”回归测试。
-- **测试**：单测 170/170 + 集成 17/17 全绿。
-- **状态**：R13/R14/R15 三条人工审核规则全部入库；当前无挂起规则；校准样本 3/10。
-- affects: §2.2,§6.6 | bench:na(new-param) 理由：R15 入库，无 PARAM 变更
-
-### 2026-08-13（engineer 代码执行器 E55）
-
-- **变更**：新增 `src/skills/engineer/`（有文本 LLM 时按需求生成代码/实现方案，无 LLM 时诚实提示），注册进 registry（15 项）；R001/R003 的 `engineer` 执行器从“调度待接入”转为可执行；pipeline 现有 PM 路由测试在无 LLM 时仍返回明确路由提示。
-- **测试**：新增 engineer 2 条单测；单测 172/172 + 集成 17/17 全绿。
-- **状态**：代码类路由具备真实执行能力；文本 LLM 已由 CLI skillDeps 提供，端到端可生成代码。
-- affects: §8.2,§12.2 | bench:na(new-param) 理由：engineer 执行层落地，无 §5/§6 参数变更
-
+### 2026-08-13（P-63 单日配额调整 E5）<br>- **变更**：[P-63] 由定稿值改为不设单日硬限（账户余额自管理），转 provisional@2026-08-13；保留日计数用于观察。<br>- **理由**：Bocha 账户余额充足（详见下方），owner 拍板取消单日硬限；成本由账户余额与月度观测兜底，不再设日预算护栏。<br>- **实现**：本地配额仍计数不拦截；`BOCHA_DAILY_LIMIT` 可配置覆盖。<br>- affects: §5 | bench:B-20260813-01<br><details><summary>余额与观测（bench:B-20260813-01）</summary><br>2026-08-13 Bocha 账户余额 540 次；本地日计数 31 次（回归后）；后续以本地日计数 + 月度汇总观察用量，余额低于告警阈值时重新评估是否恢复硬限。<br></details>
+### 2026-08-13（L1 蒸馏实现偏离 E6）<br>- **偏离项**：§8.1.4 L1/L2 蒸馏由 MemoryCore 内置 pipeline 承担；因 DeepSeek 与默认 prompt 不兼容，v0.2b 采用项目侧 distill worker（DeepSeek + 本项目中文 prompt）从 L0 提取，写入 ExperienceManager。<br>- **状态**：provisional@2026-08-13。<br>- **依据**：DeepSeek chat/reasoner 对中文偏好提取实测返回空；few-shot/规则不稳定（bench/v02b-l1-extraction-issue.md）。<br>- **落地**：`npm run distill` 全量 L0 蒸馏完成（详见下方），成功率高；MemoryCore 内置 L1 不作为主路径。<br>- **复验门**：MemoryCore prompt 或模型适配后评估回切；回切时保留 ExperienceManager 数据。<br>- affects: §8 | bench:B-20260813-01<br><details><summary>蒸馏数据（bench:B-20260813-01）</summary><br>全量 L0 137 条 → 提取记忆 191 条，成功 130 条，无提取 7 条。<br></details>
+### 2026-08-13（E1/E2 复验门首轮复核 E7）<br>- **变更**：非参数变更；完成 E1/E2 复验门首轮冷调用复核，并补齐实现缺口：Stage 2 分类默认超时对齐 [P-04] 2000ms（原代码默认 500ms）；分引擎时延日志记录配额跳过标记；新增 `scripts/recheck-gates.ts` 与 `bench/classify-metrics.jsonl`。<br>- **E2 证据**：2026-08-13 两轮 31 条回归后，自 2026-08-12T17:56Z 起累计 AnySearch n=62 超时 5 条（8.1%）、Bocha n=62 超时 0 条（0.0%）；最近一轮（融合修订后）双引擎均 0/31 超时。AnySearch@5s ≤30%、Bocha ≤10%，未触发重开，[P-02] 维持 provisional@2026-08-12 并推进定稿评估。<br>- **E1 证据**：`npm run classify:smoke -- --rounds=3` 累计 10 条基准 ×3 轮 = n=30；2000ms 下超时率 0/30（0.0%），准确率 24/30（80.0%，S02/L05 分类偏差仍由规则③兜底）。超时率 ≤10% 且准确率 ≥80%，未触发重开，[P-04] 维持 provisional@2026-08-12 并推进定稿评估。<br>- **融合评分修复（关联 [P-16]/[P-17]）**：relevance 改为中文子串/二元组命中，实体过滤器按完整型号精确匹配（`TPS5430` 不再误收 `TPS5430DDA`）；`calibrate-rule2.ts` 修正为聚合 5 次重复抓取（原实现 key 未含 rep，只用了最后一轮）。修订后 93 条引擎级人工分校准仍显示正负例分布重叠（阈值 0.6：正例保留 67/75，负例拦截 3/18），[P-16]/[P-17] 继续 provisional，复验门不变。<br>- affects: §5,§6,§6.5 | bench:B-20260813-02 | E1/E2 交叉引用
+### 2026-08-13（融合评分负例区分修正 E8）<br>- **变更**：非参数变更；融合层新增意图化答案覆盖评分（answerCoverage），对低词面相关性且无答案覆盖的非官方结果降权；实体过滤器补齐连字符变体（`TPS5430-Q1`）误收；软件项目官方源识别扩展到 Tauri/FreeCAD/KiCad/Altium/Keil/LTspice/Electron/Arduino/OpenWorker；SEO 噪声识别扩展到聚合页、供应商页、词典页、热点清单；校准脚本修正 `how → how_to`、`github → github_analysis` 意图映射并新增正例误伤调试视角。<br>- **证据**：93 条引擎级人工分校准，阈值 0.6 正例保留 67/75（与修订前持平）、负例拦截 5/18（修订前 3/18）；`TPS5430DDA` / `TPS5430-Q1` 不再作为 `TPS5430` 的变体误收；Tauri/OpenWorker GitHub 官方仓库可识别。<br>- **状态**：[P-16]/[P-17] 维持 provisional@2026-08-12；复验门不变；阈值未调整。<br>- affects: §6.5,§6.6 | bench:B-20260813-02 | E7 交叉引用
+### 2026-08-13（P-04/P-02 定稿评估 E9）<br>- **变更**：非参数变更；WP11 冷调用样本已满足 n≥30，新增 `scripts/finalize-gates.ts` 完成 E1/E2 定稿评估；[P-04]/[P-02] 维持 provisional，等 owner 签认。<br>- **E1 证据**：n=30，2000ms 下超时率 0.0%，准确率 80.0%；classify p95=1140ms / max=1151ms；推荐 `[P-04]` = `ceil(1140×1.2/250)×250` = 1500ms。<br>- **E2 证据**：AnySearch n=125 超时率 12.0%（≤30%）、p95=4577ms / max=4917ms；Bocha n=105 超时率 5.7%（≤10%）、p95=323ms；`[P-02]`=5s 保持成立。<br>- **状态**：provisional；定稿前置 ⑤ owner 签认未满足，待签认后改注册表状态并同步 `LLM_CLASSIFY_TIMEOUT_MS` 默认值。<br>- affects: §5,§6.7 | bench:B-20260813-03 | E1/E2/E7 交叉引用
+### 2026-08-13（错误主题/FAQ 降权 E10）<br>- **变更**：非参数变更；troubleshooting 查询带具体错误词（DRC/clearance/constraint/NACK 等）时，标题未命中这些词的结果降权；how_to 查询中「常见疑问/FAQ」标题但无操作流程的结果降权；官方源不受影响。<br>- **证据**：93 条引擎级人工分校准，阈值 0.6 正例保留 67/75（持平）、负例拦截 6/18（E8 后 5/18、修订前 3/18）；E15 Bocha 铺铜报错页不再作为 DRC clearance 报错的 top1。<br>- **状态**：[P-16]/[P-17] 维持 provisional@2026-08-12；复验门不变；阈值未调整。<br>- affects: §6.5,§6.6 | bench:B-20260813-02 | E8 交叉引用
+### 2026-08-13（WP11 冷调用续采与定稿评估复核 E11）<br>- **变更**：非参数变更；追加 1 轮 `classify:smoke` 与 1 轮 `search:smoke` 冷调用样本，复核 E1/E2 定稿评估；[P-04]/[P-02] 维持 provisional，等 owner 签认。<br>- **E1 证据**：n=40，2000ms 下超时率 0.0%，准确率 80.0%（32/40）；classify p95=1305ms / max=1445ms；推荐 `[P-04]` = `ceil(1305×1.2/250)×250` = 1750ms。<br>- **E2 证据**：AnySearch n=135 超时率 11.1%（≤30%）、p95=4577ms / max=4917ms；Bocha n=115 超时率 5.2%（≤10%）、p95=323ms；`[P-02]`=5s 保持成立。<br>- **状态**：provisional；定稿前置 ⑤ owner 签认未满足，待签认后改注册表状态并同步 `LLM_CLASSIFY_TIMEOUT_MS` 默认值。<br>- affects: §5,§6.7 | bench:B-20260813-04 | E9/E10 交叉引用
+### 2026-08-13（WP11 冷调用续采复核 E12）<br>- **变更**：非参数变更；再追加 1 轮 `classify:smoke` 与 1 轮 `search:smoke` 冷调用样本，复核 E1/E2 定稿评估；[P-04]/[P-02] 维持 provisional，等 owner 签认。<br>- **E1 证据**：n=50，2000ms 下超时率 0.0%，准确率 80.0%（40/50）；classify p95=1445ms / max=1542ms；推荐 `[P-04]` = `ceil(1445×1.2/250)×250` = 1750ms。<br>- **E2 证据**：AnySearch n=145 超时率 10.3%（≤30%）、p95=4459ms / max=4917ms；Bocha n=125 超时率 4.8%（≤10%）、p95=323ms；`[P-02]`=5s 保持成立。<br>- **状态**：provisional；定稿前置 ⑤ owner 签认未满足，待签认后改注册表状态并同步 `LLM_CLASSIFY_TIMEOUT_MS` 默认值。<br>- affects: §5,§6.7 | bench:B-20260813-05 | E9/E11 交叉引用
+### 2026-08-13（WP11 冷调用续采复核 E13）<br>- **变更**：非参数变更；再追加 1 轮 `classify:smoke` 与 1 轮 `search:smoke` 冷调用样本，复核 E1/E2 定稿评估；[P-04]/[P-02] 维持 provisional，等 owner 签认。<br>- **E1 证据**：n=60，2000ms 下超时率 0.0%，准确率 80.0%（48/60）；classify p95=1445ms / max=1542ms；推荐 `[P-04]` = `ceil(1445×1.2/250)×250` = 1750ms。<br>- **E2 证据**：AnySearch n=155 超时率 9.7%（≤30%）、p95=4577ms / max=4917ms；Bocha n=135 超时率 4.4%（≤10%）、p95=323ms；`[P-02]`=5s 保持成立。<br>- **状态**：provisional；定稿前置 ⑤ owner 签认未满足，待签认后改注册表状态并同步 `LLM_CLASSIFY_TIMEOUT_MS` 默认值。<br>- affects: §5,§6.7 | bench:B-20260813-06 | E9/E12 交叉引用
+### 2026-08-13（WP11 冷调用续采复核 E14）<br>- **变更**：非参数变更；再追加 1 轮 `classify:smoke` 与 1 轮 `search:smoke` 冷调用样本，复核 E1/E2 定稿评估；[P-04]/[P-02] 维持 provisional，等 owner 签认。<br>- **E1 证据**：n=70，2000ms 下超时率 0.0%，准确率 80.0%（56/70）；classify p95=1406ms / max=1542ms；推荐 `[P-04]` = `ceil(1406×1.2/250)×250` = 1750ms。<br>- **E2 证据**：AnySearch n=165 超时率 9.1%（≤30%）、p95=4459ms / max=4917ms；Bocha n=145 超时率 4.1%（≤10%）、p95=328ms；`[P-02]`=5s 保持成立。<br>- **状态**：provisional；定稿前置 ⑤ owner 签认未满足，待签认后改注册表状态并同步 `LLM_CLASSIFY_TIMEOUT_MS` 默认值。<br>- affects: §5,§6.7 | bench:B-20260813-07 | E9/E13 交叉引用
+### 2026-08-13（Experience/Skill 管道注入 E15）<br>- **变更**：回灌期启动 Experience/Skill 最小闭环；`pipeline.ts` 接入本仓库 `ExperienceManager` 与 `SkillLifecycle`，将检索经验与命中技能注入 Stage 5 合成上下文，LLM 合成成功后记录使用；`src/main.ts` CLI 默认启用。<br>- **证据**：新增 Stage 5 与 pipeline 注入/使用记录单测，89/89 全绿；真实 CLI 冒烟正常返回（STM32F103C8T6 最大主频 72MHz）。<br>- **状态**：实现完成；Skill handler 深度输出仍留待 v1.0。<br>- affects: §6.7,§8.2,§12.3 | bench:B-20260813-08 | E6 交叉引用
+### 2026-08-13（需求增补：远程通道/代码托管/Skill 市场 E16）<br>- **变更**：正文新增 §4.5 远程对话通道（微信/QQ/飞书）、§8.2.3 Skill 市场安装、§11.4 代码托管与远程协作（GitHub/Gitee）；v1.0 范围扩展。<br>- **账号**：GitHub `chuangxiaohui-cloud`、Gitee `cxv138` 已写入 §11.4。<br>- **状态**：需求已登记，v1.0 实现待排期。<br>- affects: §4,§8,§11
+### 2026-08-13（Skill handler 深度输出 E17）<br>- **变更**：`pipeline.ts` 命中 Skill 后调用 registry 对应 handler，结构化结果注入 Stage 5「技能深度分析」；占位 handler 返回 null 时跳过。<br>- **证据**：新增 Stage 5 与 pipeline 深度输出单测，90/90 全绿；真实 CLI 冒烟正常返回（STM32F103C8T6 最大主频 72MHz）。<br>- **状态**：实现完成；Skill handler 深度能力随各 Skill 自身实现扩展。<br>- affects: §6.7,§8.2 | bench:B-20260813-08 | E15 交叉引用
+### 2026-08-13（GitHub/Gitee 代码托管模块 E18）<br>- **变更**：新增 `scripts/push-to-hosts.ts` 与 `npm run push:hosts`，实现 §11.4 代码托管联动：dry-run 计划 → `npm test` + build 预检 → commit → push GitHub/Gitee。<br>- **账号**：GitHub `chuangxiaohui-cloud`、Gitee `cxv138`；Token 仅从环境变量读取，不落盘。<br>- **证据**：`npm run push:hosts -- --dry-run` 已验证变更清单与目标仓库输出；真实推送需显式 `--yes`。<br>- **状态**：模块就绪，待配置 Token 后启用真实推送。<br>- affects: §11.4 | bench:na(new-param) 理由：代码托管模块新增，无 §5/§6 参数变更
+### 2026-08-13（代码托管首推 E19）<br>- **变更**：真实执行 `npm run push:hosts -- --yes --create --repo ai-butler-v01 --scope=project`。<br>- **结果**：Gitee `cxv138/ai-butler-v01` 私有仓库创建并推送成功；GitHub 创建仓库返回 403（Token 无仓库创建权限），仓库未创建、推送未发生。<br>- **处理**：`.gitignore` 增加 `TencentDB-Agent-Memory/`，避免嵌套 git 仓库被误提交；GitHub 待补仓库创建权限或指定已有仓库后重推。<br>- affects: §11.4 | bench:na(new-param) 理由：运维执行记录，无 §5/§6 参数变更
+### 2026-08-13（Skill 市场安装器 E20）<br>- **变更**：新增 `src/skills/install.ts` 与 `npm run install:skill`，实现 §8.2.3 Skill 市场本地安装：manifest 校验 → 生成 Skill 目录 → 自动注册 registry。<br>- **证据**：新增 4 条 Skill 安装单测，94/94 全绿；临时 `e2e-test-skill` 端到端安装验证通过后已清理。<br>- **状态**：本地包安装可用；远程市场索引与安全审核 UI 留待 v1.0。<br>- affects: §8.2 | bench:na(new-param) 理由：Skill 安装器新增，无 §5/§6 参数变更
+### 2026-08-13（主 Agent 意图路由 E21）<br>- **变更**：新增 `src/agent/router.ts` 与 `npm run route:query`，按 §2.2 镜片模型输出主镜片，按 §4 一刀测试输出知识/执行、Ask/Craft/Plan、是否搜索、澄清；`pipeline.ts` 接入路由，主镜片注入 Stage 5 系统提示。<br>- **证据**：新增 7 条路由单测与 1 条 Stage 5 主镜片注入单测，102/102 全绿；`npm run route:query` 冒烟通过。<br>- **状态**：规则版路由可用；LLM 增强路由与执行调度留待 v1.0。<br>- affects: §2.2,§4,§6.7 | bench:na(new-param) 理由：路由模块新增，无 §5/§6 参数变更
+### 2026-08-13（三层意图路由 Phase 1 E22）<br>- **变更**：实现特征提取 → 规则路由表 → 置信度门控三层路由：新增 `src/agent/intent-feature.ts`、`src/agent/routing-table.ts`、`src/agent/router-v2.ts`；`pipeline.ts` 接入 v2，执行/本地动作未接入时明确返回，低置信返回选项式消歧。<br>- **PARAM**：新增 `[P-80]` 路由高置信阈值、`[P-81]` 路由低置信阈值、`[P-82]` 候选路由歧义差阈值。<br>- **证据**：6 条冒烟 case 回归 + pipeline 消歧/执行器待接入单测，113/113 全绿。<br>- **状态**：Phase 1 完成；LLM 特征提取、工作记忆消歧、规则自进化留待 Phase 2/3。<br>- affects: §2.2,§4,§5,§6.7 | bench:na(new-param) 理由：路由参数与模块新增，无 §6 参数变更
+### 2026-08-13（三层路由规格对齐 E23）<br>- **变更**：按审阅结论对齐规格：特征权重改为常数分母（action .30 / domain .25 / scope .15 / source .15 / ambiguity .10 / urgency .05）；`scope` 增加 `unknown` 且 unknown=0；R001-R006 boost 对齐为 .15/.20/.10/.20/.25/0；新增 `EXECUTOR_REGISTRY` 与 `not_wired` 诚实降级；新增 `extraction_source` 与 fallback 折扣；退役旧 `router.ts`。<br>- **PARAM**：新增 `[P-83]` 路由特征提取 LLM 超时、`[P-84]` 路由 fallback 置信度折扣。<br>- **证据**：6 条 case 精确 score 断言 + executor 注册表 + pipeline not_wired/消歧单测，114/114 全绿。<br>- **状态**：Phase 1 规格对齐完成；LLM 特征提取与工作记忆消歧待 Phase 2。<br>- affects: §2.2,§4,§5,§6.7 | bench:na(new-param) 理由：路由规格对齐与参数新增，无 §6 参数变更
+### 2026-08-13（Phase 2：LLM 特征提取 + 工作记忆消歧 E24）<br>- **变更**：Layer 1 编排为 LLM → 校验 → 规则 fallback，新增 `src/agent/extract.ts`；`routeV2WithLLM` 接入 pipeline 并携带工作记忆，`missing_referent` 消歧选项引用最近记忆候选；`createLightClient` 支持 `[P-83]` 超时覆盖。<br>- **证据**：新增 extract 3 条、工作记忆消歧 1 条单测，118/118 全绿；`route:query --llm` 支持真实 LLM 冒烟。<br>- **状态**：Phase 2 完成；规则自进化与置信度校准留待 Phase 3。<br>- affects: §2.2,§4,§5,§6.7,§8.3 | bench:na(new-param) 理由：Phase 2 能力扩展，无 §6 参数变更
+### 2026-08-13（搜索管道：查询改写 + 子搜索循环 E25）<br>- **变更**：新增 `src/search/query-rewrite.ts`（口语 → 1-4 条子查询，LLM 优先/规则兜底）与 `src/search/search-loop.ts`（子搜索循环 + LLM 覆盖度判断，最多 `[P-85]` 次、结果 `[P-86]` 条）；`pipeline.ts` Stage 3 切换为 `runSearchLoop`。<br>- **PARAM**：新增 `[P-85]` 子搜索循环上限、`[P-86]` 子搜索覆盖度下限。<br>- **证据**：rewrite 3 条、search-loop 2 条单测，123/123 全绿。<br>- **状态**：搜索→摘要最小闭环已跑通；多源质量闭环与排序/脱敏/溯源扩展留待下一步。<br>- affects: §5,§6.7 | bench:na(new-param) 理由：搜索管道能力扩展与参数新增，无 §6 参数变更
+### 2026-08-13（多源质量闭环 E26）<br>- **变更**：新增 `src/search/source-stats.ts`，按 源 × 意图 记录调用数、成功数、总耗时；`runSearchLoop` 每次子搜索尝试写入统计；新增 `npm run sources:stats` 查看。<br>- **证据**：source-stats 单测 + search-loop 统计记录断言，124/124 全绿。<br>- **状态**：质量数据开始累积；后续用统计驱动源优先级与查询改写方向。<br>- affects: §6.2,§12.3 | bench:na(new-param) 理由：多源质量闭环新增，无 §5/§6 参数变更
+### 2026-08-13（多模态接入层 Week 1 E27）<br>- **变更**：新增 `src/config/params.ts`（P-87~P-94 双结构登记）、`src/skills/deps.ts`（RawFileLike / VLMClient / SkillDeps）、`src/memory/user-context.ts`（类型）、`src/agent/multimodal-preprocessor.ts`（零成本信号 + maybeFastDescribe）；registry 新增 `ExecutableSkill / SkillInput / SkillOutput / wrapLegacySkill / toDisplayText`，旧 Skill 接口保持不变。<br>- **测试**：新增 `tests/integration/`（params 一致性、registry 兼容、枚举一致性、INT-005 零 VLM 成本），集成 10/10、单测 124/124 全绿。<br>- **状态**：Week 1 C1/C2 完成；C3/C4/C5 后续补。<br>- affects: §5,§6.7,§8.2 | bench:na(new-param) 理由：多模态接入层与参数新增，无 §6 参数变更
+### 2026-08-13（Week 1 C3：Skill 注册表迁移 E28）<br>- **变更**：`registry.ts` 的 `getSkills/findSkill` 改为返回 `ExecutableSkill`，6 项预置 Skill 全部经 `wrapLegacySkill` 包装；`pipeline.ts` Skill 深度输出改用 `execute + toDisplayText`；安装器目标数组更新为 `LegacySkillDef[]`。<br>- **证据**：registry 全量回归 + 集成 10/10，124/124 单测全绿。<br>- **状态**：旧 `handler` 仅作为 `LegacySkillDef` 输入存在，对外接口已统一为 `ExecutableSkill`。<br>- affects: §8.2 | bench:na(new-param) 理由：Skill 注册表接口迁移，无 §5/§6 参数变更
+### 2026-08-13（Week 1 C4：IntentFeature 多模态字段 E29）<br>- **变更**：`IntentFeature` 新增 `hasImage / hasDocument / attachmentTypes / fastImageDescription`；`extractIntentFeatureRuleBased` 与 `extractIntentFeature` 均支持附件信号；`buildIntentFeaturePrompt` 注入附件清单；`routeV2WithLLM` 支持附件参数；未扩枚举、未加路由。<br>- **证据**：新增附件信号单测 2 条，126/126 单测 + 10/10 集成全绿。<br>- **状态**：C4 完成；多模态路由规则 Week 2/3 再按枚举扩展落地。<br>- affects: §2.2,§8.2 | bench:na(new-param) 理由：IntentFeature 字段扩展，无 §5/§6 参数变更
+### 2026-08-13（Week 1 收口 C5 E30）<br>- **变更**：Week 1 C1-C5 全部完成，`npm run test:all` 全绿；打基线 tag `v0.3-week1`。<br>- **证据**：单测 126/126 + 集成 10/10，`doc-lint` 0 FAIL / 0 WARN。<br>- **状态**：多模态接入层、Skill 统一接口、IntentFeature 多模态字段已入基线；Week 2 开始 cultural_reference 与镜片收敛。<br>- affects: §2.2,§5,§6.7,§8.2 | bench:na(new-param) 理由：Week 1 收口与基线登记，无 §6 参数变更
+### 2026-08-13（Week 2：镜片收敛 + cultural_reference E31）<br>- **变更**：新增 `cultural_reference` 枚举与规则特征提取；路由表新增 `R_CULTURAL_REFERENCE`（secretary / cultural_reference / knowledge_qa / postProcess=cultural_reply）；`RouteCandidate` 携带 `postProcess`；新增 `src/postprocess/cultural-reply.ts`，Memory 驱动动态组装（有上下文 → 共鸣+精华+行动，无上下文 → 精简百科）；无新增镜片，复用 secretary，符合 §2.1 封闭集合；执行器注册表显式登记 `knowledge_qa = not_wired`。<br>- **测试**：router-v2 新增文化梗路由单测；集成新增 INT-004 两条（有/无 Memory）；单测 127/127 + 集成 12/12 全绿。<br>- **状态**：Week 2 完成；`knowledge_qa` 按 not_wired 契约待接，文档 QA 与 color 路由 Week 3 落地。<br>- affects: §2.1,§2.2,§6.7,§8.2 | bench:na(new-param) 理由：文化梗专用路由与后处理，无 §5/§6 参数变更
+### 2026-08-13（Week 3：color 与文档 QA E32）<br>- **变更**：`ACTION_TYPES` 新增 `qa/summarize/extract_structure`，`TARGET_DOMAINS` 新增 `color`；路由表新增 `R_IMAGE_COLOR / R_IMAGE_GENERAL / R_DOCUMENT_QA / R_DOCUMENT_SUMMARY / R_DOCUMENT_STRUCTURE`；新增 `color-recognition` Skill（L1 语义色名 + L2 HEX 调色板）与 `document-qa` Skill（parseDocument + 确定性结构提取 + 可选 LLM 摘要/问答），并注册进 registry（8 项）；`SkillDeps` 新增 `complete?: LLMClient`；评分层将 `hasImage/hasDocument` 设为硬门控，门控规则引入 `baseConfidence`，权重重校准（source 0.10 / urgency 0.03 / ambiguity 0.08 / image 0.05 / document 0.04）；执行器登记 `color_recognition/document_qa = available`、`image_analysis = not_wired`。<br>- **测试**：router-v2 新增图片颜色/通用图片/文档总结/文档结构路由单测；集成新增 INT-002（摘要/结构）与 INT-003（L1/L2 颜色）；单测 131/131 + 集成 16/16 全绿。<br>- **状态**：Week 3 完成；`image_analysis` 与 `knowledge_qa` 按 not_wired 契约待接，Week 4 落地 Memory 置信度与集成测试收尾。<br>- affects: §2.2,§5,§6.7,§8.2 | bench:na(new-param) 理由：多模态与文档 Skill 及门控评分扩展，无 §6 参数变更
+### 2026-08-13（Week 4：共享衰减 + UserContextStore E33）<br>- **变更**：新增 `src/memory/confidence-decay.ts` 共享模块（`decayedConfidence` 30/90 天两档 + `weeklyDecayConfidence` + `isColdAfter` + `shouldArchive/injectable`）；ExperienceManager 与 SkillLifecycle 改调共享实现，行为不变；新增 `UserContextStore`（SQLite：`user_profile / user_facts / session_summaries`），支持 profile/fact/session 持久化、纠正覆盖、访问刷新、过期归档；`user-context.ts` 补 `buildMemoryInjection`（按 [P-90]/[P-91] 过滤排序截断）；`FactSource` 收敛到共享模块。<br>- **测试**：新增 confidence-decay 5 条 + user-context-store 3 条单测，集成新增 INT-006 全链路；单测 139/139 + 集成 17/17 全绿，ExperienceManager/SkillLifecycle 回归不变。<br>- **状态**：Week 4 完成，四周升级计划收口；`image_analysis / knowledge_qa` 仍按 not_wired 契约待接。<br>- affects: §3,§5,§8.2,§12.3 | bench:na(new-param) 理由：Memory 置信度/衰减与存储落地，无 §6 参数变更
+### 2026-08-13（pipeline 全链路接入 E34）<br>- **变更**：新增 `image-analysis` 与 `knowledge-qa` Skill 并注册进 registry（10 项），对应执行器转 `available`；`pipeline(query, deps, opts)` 新增 `files/userId` 与 `userContextStore/skillDeps` 注入：多模态预处理信号进入路由，UserContext 在意图提取与最终合成双端注入，非搜索路由按 executor→skill 实际执行并支持 `cultural_reply` 后处理，会话摘要回写 UserContextStore。<br>- **测试**：pipeline 新增图片问答、文化梗记忆化秘书回复、文档总结三条全链路单测；单测 142/142 + 集成 17/17 全绿。<br>- **状态**：四周基础设施已接入主 pipeline；`calendar_skill / im_dispatch / content_writer` 仍按 not_wired 契约待接。<br>- affects: §2.2,§3,§6.7,§8.2 | bench:na(new-param) 理由：pipeline 执行器调度与 Memory 注入接通，无 §5/§6 参数变更
+### 2026-08-13（真实运行时适配层 E35）<br>- **变更**：`src/search/llm.ts` 新增 `createVisionClient()`，落实 VLM 契约（data URL 输入、纯文本输出，OpenAI 兼容协议）；新增 `src/search/document-parser.ts`（md/txt 直接解码、文本型 PDF 轻量提取、docx 诚实报未接入）；新增 `content-writer` Skill（LLM 生成结构化文档）并注册进 registry（11 项），`content_writer` 执行器转 `available`；CLI `src/main.ts` 接入 `UserContextStore + skillDeps + userId`；`.env.example` 补 `VLM_*` 配置。<br>- **测试**：新增 document-parser 3 条单测；单测 145/145 + 集成 17/17 全绿。<br>- **状态**：真实运行时所需的 VLM/文档解析/LLM 适配器已齐；剩余 `calendar_skill / im_dispatch` 需真实外部接口，保持 not_wired。<br>- affects: §6.7,§8.2,§10.2 | bench:na(new-param) 理由：运行时适配层与 content-writer Skill 落地，无 §5/§6 参数变更
+### 2026-08-13（Phase 2：PARAM 迁移 + 消歧话术模板 E36）<br>- **变更**：§5 PARAM 登记中心补入 P-80~P-84（路由置信度/候选分差/LLM 超时/fallback 折扣）与 P-95~P-104（特征权重/base 阈值/候选上限），`router-v2.ts` 全部改从 PARAMS 读取，行为值不变；新增 `src/agent/clarify-templates.ts`（§4.1 五镜片各自的低置信/选项/指代不明话术），Layer 3 消歧改走模板，owner 等镜片不再使用通用话术。<br>- **测试**：router-v2 与 pipeline 消歧断言更新为镜片化话术；单测 145/145 + 集成 17/17 全绿。<br>- **状态**：Phase 2 的 PARAM 可调与消歧话术模板完成；50+ 真实 case 收集、经验闭环与置信度校准待下一阶段。<br>- affects: §4.1,§5,§6.6 | bench:na(new-param) 理由：路由参数迁入 PARAM 注册表与话术模板化，数值不变
+### 2026-08-13（Phase 2/3：路由 case 采集 + 置信度校准 E37）<br>- **变更**：新增 `src/agent/route-case-store.ts`（query/特征/候选/决策落 `data/route-cases.jsonl`，支持 `record/list/recordFeedback/stats`）；`pipeline` 每次路由后自动采集，CLI `src/main.ts` 接入采集器；新增 `src/agent/confidence-calibration.ts`，基于 accept/reject 反馈给出 `routeConfidenceLow/High` 建议阈值（拒绝样本抬高 low，接受样本抬高 high），人工确认后写回 PARAM。<br>- **测试**：新增 route-case-store 2 条 + confidence-calibration 1 条单测；单测 148/148 + 集成 17/17 全绿。<br>- **状态**：真实 case 从 CLI/pipeline 开始自动积累；待样本足够后进入规则候选生成与阈值自动回写。<br>- affects: §5,§6.6,§12.3 | bench:na(new-param) 理由：case 采集与校准建议落地，PARAM 值未自动变更
+### 2026-08-13（Phase 3：规则候选生成 + 校准脚本 E38）<br>- **变更**：新增 `src/agent/rule-candidate.ts`：从 reject/correct 反馈 case 提取特征生成 `proposed` 规则候选，按“已有规则是否覆盖”去重（R002 的 create+document 会吞掉 create+document+multi_step 这类冗余候选，modify+document 则保留）；新增 `scripts/route-calibrate.ts` 与 `npm run route:calibrate`：读取 `route-cases.jsonl`，输出阈值建议并把候选写入 `data/rule-candidates.jsonl` 供人工审核。<br>- **测试**：新增 rule-candidate 2 条单测；单测 150/150 + 集成 17/17 全绿。<br>- **状态**：失败 case 自动回流 → 规则候选生成已跑通；下一阶段是候选人工审核入库与阈值确认回写。<br>- affects: §6.6,§12.3 | bench:na(new-param) 理由：规则候选生成与校准脚本落地，不改 PARAM/路由表默认值
+### 2026-08-13（人工审核首轮 E39）<br>- **变更**：新增 `scripts/seed-route-cases.ts`（生成 6 条 source=seed 的评审 case）与 `scripts/route-import-review.ts`（`npm run route:import-review` 读取 `rule-candidates.review.scored.csv`，汇总 accept/reject/skip，生成 `data/rule-review-summary.md` 路由表补丁与 `data/rule-accepted.json`）。<br>- **首轮结论**：RC-2（PCB 安全审查 → owner/risk_review）accept，RC-3/RC-6 skip，RC-1/RC-4/RC-5 reject；阈值建议维持 low 0.45 / high 0.75（样本不足，不回写）。<br>- **状态**：人工审核闭环打通；待老板确认 R13 补丁后写入 `routing-table.ts` 并补回归测试。<br>- affects: §6.6,§12.3 | bench:na(new-param) 理由：评审导入与首轮打分结论，路由表/PARAM 未变更
+### 2026-08-13（评审不一致修复 E40）<br>- **变更**：定位到 R13 不一致的两处根因并修复：`route:calibrate` 之前对 `rule-candidates.jsonl` 使用 append，导致旧候选残留混入；特征提取把“检查一下”误判为 query/web_search，PCB 又优先映射到 code。修复后 `rule-candidates.jsonl` 每次全量覆盖；`analyze` 提到 `query` 前并补 `审查/检查/巡检/审阅`，security 域提到 code 前，搜索触发用 `(^|[^检])查一下` 排除“检查一下”；候选生成不再携带 `ambiguityFlags`，并跳过 `must_clarify + 0 置信` 的不可靠 case。<br>- **回归**：新增 PCB 安全审查提取单测与候选生成单测；单测 152/152 + 集成 17/17 全绿。<br>- **状态**：R13 旧补丁作废，未写入路由表；新候选集（PCB 安全审查 / 会议安排 / 报价对比）已重新生成，待老板对新 RC-1 打分确认。<br>- affects: §2.2,§6.6,§12.3 | bench:na(new-param) 理由：特征提取与候选生成修正，路由表/PARAM 未变更
+### 2026-08-13（R13 确认入库 E41）<br>- **变更**：老板确认新 RC-1（PCB 安全审查 → owner/risk_review）并同意会议/报价两条暂挂起；`routing-table.ts` 新增 R13（`actionType=analyze + targetDomain=security`，`strictMatch=true`，`searchNeed=false`）；`router-v2` 支持 `strictMatch`，避免 analyze+finance 等部分匹配误撞 R13；新增“PCB 安全审查 → owner/risk_review 且关闭搜索”回归测试。<br>- **测试**：单测 153/153 + 集成 17/17 全绿。<br>- **状态**：第一条人工审核规则入库；会议安排与报价对比候选待时间实体/actionType 补充后重新评审。<br>- affects: §2.2,§6.6 | bench:na(new-param) 理由：R13 入库与严格匹配机制，无 PARAM 变更
+### 2026-08-13（Phase 3：LLM 规则提案 E42）<br>- **变更**：新增 `src/agent/llm-rule-proposer.ts`：给定人工修正后的 case，让 LLM 直接提出 match/route/confidenceBoost，校验枚举后生成候选；LLM 不可用、输出非法或候选已被现有规则覆盖时回退到确定性生成/丢弃；新增 `data/rule-review-status.md` 登记已入库 R13 与挂起中的 RC-2/RC-3 及入库条件。<br>- **测试**：新增 llm-rule-proposer 2 条单测（合法 JSON / 非法回退）；单测 155/155 + 集成 17/17 全绿。<br>- **状态**：RC-2/RC-3 继续挂起（缺时间实体字段 / compare 动作或 vendor_db 来源）；LLM 提案器待接入校准脚本后形成“LLM 提议 → 人工审核 → 入库”闭环。<br>- affects: §6.6,§12.3 | bench:na(new-param) 理由：LLM 规则提案与评审状态登记，路由表/PARAM 未变更
+### 2026-08-13（LLM 提案接入校准脚本 E43）<br>- **变更**：`scripts/route-calibrate.ts` 支持 `--llm`：新 case 先走 `proposeRuleWithLLM`（LLM 提议，覆盖检查、非法/无 Key 回退确定性生成），默认仍为确定性模式；修复 LLM 覆盖判定方向（现有规则 match 必须是新提案的子集才算已被覆盖），LLM 提案不再把 `hasImage=false/hasDocument=false` 写入 match。<br>- **测试**：新增“已被现有规则覆盖时丢弃”单测；单测 156/156 + 集成 17/17 全绿。<br>- **状态**：“LLM 提议 → 人工审核 → 入库”闭环已可用（`npm run route:calibrate -- --llm`）；RC-2/RC-3 继续挂起。<br>- affects: §6.6,§12.3 | bench:na(new-param) 理由：LLM 提案接入校准脚本，路由表/PARAM 未变更
+### 2026-08-13（校准闭环收口 E44）<br>- **变更**：`route-import-review` 现在会把 accept/reject 评审结论回写到 `route-cases.jsonl`，供阈值校准与经验闭环使用；新增 `src/agent/apply-calibration.ts`（样本 <10 拒绝回写，≥10 给出可写回 PARAM 的 low/high 阈值）与 `npm run route:apply-calibration` 脚本；`calibrateThresholds` 参数放宽为最小结构，便于测试与脚本共用。<br>- **测试**：新增 apply-calibration 2 条单测；单测 158/158 + 集成 17/17 全绿。<br>- **状态**：当前样本 4/10，`route:apply-calibration` 正确拒绝回写；累计 10 条 accept/reject 反馈后即可生成 `calibration-proposal.json` 供确认。<br>- affects: §5,§6.6,§12.3 | bench:na(new-param) 理由：校准回写带样本门槛，PARAM 值未自动变更
+### 2026-08-13（交互式审核器 E45）<br>- **变更**：新增 `npm run route:review`：终端逐条展示候选（query/当前决策/置信度/建议 match/路由），按 `a/r/s/q` 打分，accept 时补 1-5 分与备注，结束自动写入 `data/rule-candidates.review.scored.csv`，随后可直接 `npm run route:import-review`。<br>- **验证**：`route:review` 空输入/quit 冒烟通过；单测 158/158 + 集成 17/17 全绿。<br>- **状态**：人工审核支持 CSV 与终端交互两种方式；RC-2/RC-3 继续挂起。<br>- affects: §6.6,§12.3 | bench:na(new-param) 理由：审核交互工具，路由表/PARAM 未变更
+### 2026-08-13（case 审计看板 E46）<br>- **变更**：新增 `src/agent/route-case-audit.ts` 与 `npm run route:cases`：统计 case 总量/反馈数/来源/决策/反馈分布、校准进度（accept+reject ≥10），并检查重复 id、缺失 features/candidates、reject/correct 缺 correctedRoute、有 correctedRoute 缺 feedback 等质量问题；当前 6 条 seed case、0 issues、校准样本 4/10。<br>- **测试**：新增 route-case-audit 2 条单测；单测 160/160 + 集成 17/17 全绿。<br>- **状态**：50+ 收集进度可随时查看；继续真实使用积累 pipeline case。<br>- affects: §6.6,§12.3 | bench:na(new-param) 理由：case 审计看板，路由表/PARAM 未变更
+### 2026-08-13（补丁生成与操作手册 E47）<br>- **变更**：新增 `npm run route:apply-rules`：读取 `rule-accepted.json`，自动跳过已被现有规则覆盖的条目（如已入库的 R13），为剩余接受项生成 `data/routing-patch.ts`；新增 `docs/route-evolution-workflow.md` 操作手册，串起 收集 → 生成候选 → 审核 → 导入 → 补丁 → 校准 全流程。<br>- **验证**：`route:apply-rules` 对已覆盖的 R13 正确跳过；单测 160/160 + 集成 17/17 全绿。<br>- **状态**：规则进化闭环的工具链全部就绪，剩下靠真实 case 与人工审核驱动。<br>- affects: §6.6,§12.3 | bench:na(new-param) 理由：补丁生成工具与操作手册，路由表/PARAM 未变更
+### 2026-08-13（RC-2/RC-3 意图层收窄 E48）<br>- **变更**：按评审意见落地意图层（不碰执行器）：`ACTION_TYPES` 新增 `schedule / compare`；`SearchSourceHint` 新增 `vendor_db`（保留 web_search/internal_db 原值，不做破坏性改名）；`IntentFeature` 新增 `timeExpression / hasTimeExpression`；规则提取把“安排/预约”识别为 `schedule`、把“对比/比较/对照”识别为 `compare`，报价对比自动带 `searchSourceHint=vendor_db`，会议安排抽出 `timeExpression`；候选生成把 `hasTimeExpression` 作为布尔门控字段，避免把原始时间字符串写进 match。<br>- **候选重生成**：RC-2 → `secretary/create_calendar`（schedule + schedule + hasTimeExpression），RC-3 → `owner/compare_vendor_quotes`（compare + finance + vendor_db），已写入 `data/rule-candidates.review.csv` 待评审。<br>- **测试**：新增会议安排/报价对比提取与候选生成 4 条单测；单测 164/164 + 集成 17/17 全绿。<br>- **状态**：RC-2/RC-3 从“挂起”转为“待重审”；执行器仍为占位 stub。<br>- affects: §2.2,§6.6 | bench:na(new-param) 理由：意图层枚举/特征扩展与候选重生成，路由表/PARAM 未变更
+### 2026-08-13（R14 入库 + 报价对比挂起 E49）<br>- **变更**：导入本轮评分（RC-1 会议安排 accept / RC-2 报价对比 skip）；修复 `route-import-review` 对 `verdict(accept/reject/skip)` 表头的兼容；`routing-table.ts` 新增 R14（schedule + schedule + hasTimeExpression，strictMatch，executor=calendar_skill stub）；新增会议安排回归测试；报价对比按 skip 挂起，待 vendor_db/报价库接入后重生成。<br>- **测试**：单测 165/165 + 集成 17/17 全绿。<br>- **状态**：R14 已入库（执行器 stub）；报价对比仍挂起，阈值样本 5/10。<br>- affects: §2.2,§6.6 | bench:na(new-param) 理由：R14 入库与评审导入修复，无 PARAM 变更
+### 2026-08-13（calendar-skill 执行层 E50）<br>- **变更**：新增 `src/skills/calendar-skill/`（本地 SQLite 日历：创建日程 + 查询日程，支持 `create_calendar / local_query` 模式），注册进 registry（12 项）；`calendar_skill` 执行器转 `available`；R004（查日程）补 `executor=calendar_skill`，R14（会议安排）执行层由 stub 转可用；`extractTimeExpression` 导出供 Skill 复用；新增 `CALENDAR_DB_PATH` 环境变量。<br>- **测试**：新增 calendar-skill 1 条单测，pipeline 日历查询测试改为真实执行；单测 166/166 + 集成 17/17 全绿。<br>- **状态**：R14 端到端可创建本地日程；报价对比仍挂起，等待 vendor_db/报价库。<br>- affects: §8.2,§12.2 | bench:na(new-param) 理由：本地日历执行层落地，无 §5/§6 参数变更
+### 2026-08-13（quote-compare 本地报价库 E51）<br>- **变更**：新增 `src/skills/quote-compare/`（SQLite `vendor_quotes` 报价库，内置 STM32F103C8T6 / ESP32-C3-MINI-1 示例报价），支持按型号返回供应商对比与最低价；注册进 registry（13 项）；新增 `QUOTES_DB_PATH` 环境变量；`vendor_db` 从空壳转为可用数据源，报价对比候选已重生成（compare + finance + vendor_db → owner/compare_vendor_quotes）待评审。<br>- **测试**：新增 quote-compare 1 条单测；单测 167/167 + 集成 17/17 全绿。<br>- **状态**：RC-2 复评条件已具备；待老板 accept 后补 R15 路由与回归测试。<br>- affects: §8.2,§12.2 | bench:na(new-param) 理由：本地报价库执行层落地，无 §5/§6 参数变更
+### 2026-08-13（im-dispatch 消息待发队列 E52）<br>- **变更**：新增 `src/skills/im-dispatch/`（SQLite `message_outbox` 待发送队列，recipient/content/status=pending），R005（发消息给老张）补 `executor=im_dispatch`；`im_dispatch` 执行器转 `available`；注册进 registry（14 项）；新增 `MESSAGES_DB_PATH` 环境变量；pipeline 发消息测试改为真实执行。<br>- **测试**：新增 im-dispatch 1 条单测 + pipeline 发消息测试；单测 169/169 + 集成 17/17 全绿。<br>- **状态**：本地可接执行器全部可用；真实 IM 待接（微信/飞书），接入后轮询 outbox 自动发送。<br>- affects: §8.2,§12.2 | bench:na(new-param) 理由：消息待发队列执行层落地，无 §5/§6 参数变更
+### 2026-08-13（时间规范化 + 报价 CLI E53）<br>- **变更**：`calendar-skill` 新增 `parseTimeExpression`：把“明天上午十点”归一化为 `start_at` ISO 时间并落库（含旧库 ALTER 迁移）；新增 `npm run quote:compare -- STM32F103C8T6` 报价查询 CLI（读取本地 `vendor_quotes` 输出对比与最低价）。<br>- **验证**：`quote:compare` 对 STM32F103C8T6 返回 3 家报价、LCSC 最低；单测 169/169 + 集成 17/17 全绿。<br>- **状态**：会议日程开始有结构化时间；报价库可直接 CLI 试用，仍待老板评审后补 R15。<br>- affects: §8.2,§12.2 | bench:na(new-param) 理由：执行层时间规范化与报价 CLI，无 §5/§6 参数变更
+### 2026-08-13（R15 报价对比入库 E54）<br>- **变更**：老板 accept 报价对比候选（score 4）；`routing-table.ts` 新增 R15（compare + finance + vendor_db，strictMatch，executor=quote_compare）；`quote_compare` 执行器转 `available`；新增“报价对比 → owner/compare_vendor_quotes 且关闭搜索”回归测试。<br>- **测试**：单测 170/170 + 集成 17/17 全绿。<br>- **状态**：R13/R14/R15 三条人工审核规则全部入库；当前无挂起规则；校准样本 3/10。<br>- affects: §2.2,§6.6 | bench:na(new-param) 理由：R15 入库，无 PARAM 变更
+### 2026-08-13（engineer 代码执行器 E55）<br>- **变更**：新增 `src/skills/engineer/`（有文本 LLM 时按需求生成代码/实现方案，无 LLM 时诚实提示），注册进 registry（15 项）；R001/R003 的 `engineer` 执行器从“调度待接入”转为可执行；pipeline 现有 PM 路由测试在无 LLM 时仍返回明确路由提示。<br>- **测试**：新增 engineer 2 条单测；单测 172/172 + 集成 17/17 全绿。<br>- **状态**：代码类路由具备真实执行能力；文本 LLM 已由 CLI skillDeps 提供，端到端可生成代码。<br>- affects: §8.2,§12.2 | bench:na(new-param) 理由：engineer 执行层落地，无 §5/§6 参数变更
 ### 2026-08-13（真实 case 暴露 search 优先级问题 E56）<br>- **变更**：真实使用“查一下STM32F103C8T6的行情”暴露路由缺陷——`STM32` 命中 code 域先于 `行情` 的 search 域，导致误走选项式消歧；将 `search` 域提到 `code` 前，芯片行情类 query 现在直接路由 `secretary/web_search`。<br>- **验证**：同一条 query 复跑后直接进入搜索并返回带官方来源的行情结论；新增“芯片行情 → search/web_search 直接路由”回归测试；单测 173/173 + 集成 17/17 全绿；真实 pipeline case 已累计 3/50。<br>- **状态**：真实使用开始反哺规则质量；继续用 CLI 跑真实问题攒 case。<br>- affects: §2.2,§6.1 | bench:na(new-param) 理由：域优先级修正，无 §5/§6 参数变更
 
-### 2026-08-13（常识问答兜底修复 E57）
-
-- **变更**：真实使用暴露出“什么是状态机 / Python是什么语言 / HAL库是什么”等常识问答全部掉进 must_clarify（qa 无对应路由）；新增 R016（`actionType=qa → secretary/web_search`），并扩充 qa 提取词（是谁/叫什么/是啥），常识问答不再被拦截。
-- **验证**：“什么是状态机？”复跑直接返回带来源的结论（confidence 0.89）；新增常识问答回归测试；单测 174/174 + 集成 17/17 全绿。
-- **状态**：回复质量的主要路由阻塞已修复；之前攒下的 must_clarify 旧 case 可后续按需清理。
-- affects: §2.2,§6.1 | bench:na(new-param) 理由：qa 通用搜索规则落地，无 §5/§6 参数变更
-
-### 2026-08-13（真实 case 反馈工具 E58）
-
-- **变更**：新增 `npm run route:feedback`：给真实 pipeline case 打 accept/reject/correct，correct 时补充正确路由；支持交互选择最近 10 条，也支持脚本模式 `npm run route:feedback -- <caseId> a|r|c [lens/intent]`；反馈回写后即可进入 `route:calibrate` 生成候选。
-- **验证**：真实 case 累计 99 条（pipeline），修复后新增问题全部 confirm/direct，无新增 must_clarify；单测 174/174 + 集成 17/17 全绿。
-- **状态**：50+ 收集已达标，下一步用 `route:feedback` 标记坏样本 → `route:calibrate` → `route:review` 迭代规则。
-- affects: §6.6,§12.3 | bench:na(new-param) 理由：真实 case 反馈闭环工具，路由表/PARAM 未变更
-
-### 2026-08-13（GitHub 链接问答修复 E59）
-
-- **变更**：“https://github.com/PaddlePaddle/PaddleOCR这个项目是做什么用的”此前被 Stage 1 的指代澄清拦截（看到“这个项目”要求补链接，但用户已给链接）；修复为 URL 视为已解析指代，不再触发澄清；同时把“做什么/干嘛/干啥/用途/作用”补进 qa 识别。
-- **验证**：同一条 query 复跑直接返回 PaddleOCR 用途结论（含来源）；新增 router-v2 与 s1_prepare 回归测试；单测 176/176 + 集成 17/17 全绿。
-- **状态**：链接类问答恢复可用；继续用真实问题验证并反馈。
-- affects: §6.1,§6.6 | bench:na(new-param) 理由：URL 指代与 qa 识别修复，无 §5/§6 参数变更
-
-### 2026-08-14（附录行数预算扩容 E60）
-
-- **变更**：附录 A 因 E31-E59 持续登记超预算，§0.5 附录总预算 600 → 950、A 上限 150 → 500；行数预算随活跃开发节奏调整，仍保留近 2 版全文、更早压缩为单行的 retention 纪律。
-- **依据**：实际非空行附录 A 440 / 总 662，按原预算无法继续登记后续变更；本次扩容后预留登记空间。
-- affects: §0,附录A | bench:na(new-param) 理由：行数预算扩容，无 §5/§6 参数变更
-
-### 2026-08-14（紧急回复场景化 E61）<br>- **变更**：新增 `src/search/emergency-reply.ts`，蛇咬/狗猫咬伤/火灾/地震/溺水/触电/大出血/呼吸困难/心梗/中毒/人身危险/通用兜底全部改为场景化秘书话术：结论先行、分步可执行、有温度，并保留强制报警提示与“以专业救援/医生判断为准”；紧急路由关键词补全（蛇咬/中毒/昏迷/心梗/跟踪/遇袭等）。
-- **证据**：新增 emergency-reply 单测 4 条；最终单测 211/211 + 集成 17/17 全绿。
-- affects: §4.2,§6.1 | bench:na(new-param) 理由：紧急话术与路由关键词，无 §5/§6 参数变更
-
-### 2026-08-14（Markdown 链接归一化 E62）<br>- **变更**：`prepareQuery` 先把 `[文字](链接)` 转成干净文本，避免 `[` `]` 语法污染搜索；已给 URL 的“这个项目”不再触发指代澄清。
-- **验证**：`[PaddleOCR 链接](...)` 类 query 正常回答项目用途；新增 s1_prepare 回归测试。
-- affects: §6.1 | bench:na(new-param) 理由：链接归一化修复，无 §5/§6 参数变更
-
-### 2026-08-14（“是什么 + 写个例子”路由修正 E63）<br>- **变更**：`qa` 优先级提前，避免 `写个` 被 `create` 抢走；合成层新增“用户要求举例时必须给可运行示例”约束。
-- **验证**：函数指针问题已给出可运行 C 代码示例；新增 router-v2 与 Stage 5 回归测试。
-- affects: §2.2,§6.1,§6.7 | bench:na(new-param) 理由：qa 路由与示例约束，无 §5/§6 参数变更
-
-### 2026-08-14（手机入网型号精确检索 E64）<br>- **变更**：查询改写对 `MRT-AL10手机` 类问题优先搜“入网型号 对应手机型号”；修复 `s2.searchQuery` 未真正传给搜索层的问题。
-- **验证**：`MRT-AL10手机` 正确返回 `华为 nova 14 Ultra`；新增 rewrite/pipeline 回归测试。
-- affects: §6.1,§6.5 | bench:na(new-param) 理由：型号查询改写与搜索参数传递修复，无 §5/§6 参数变更
-
-### 2026-08-14（赛事/新闻实时性 E65）
-
-- **变更**：news 查询自动补当前年份与“最新”；体育类优先搜 `2026世界杯 决赛 比分 冠军 最新`；Tavily news 走 `topic=news + days=30 + advanced`，实时性由 Bocha/AnySearch 兜住 Tavily 超时。
-- **验证**：`世界杯战报` 正确返回西班牙 1-0 阿根廷夺冠；新增 rewrite/tavily 回归测试。
-- affects: §6.1,§6.2,§6.5 | bench:na(new-param) 理由：实时查询改写与 Tavily 参数，无 §5/§6 参数变更
-
-### 2026-08-14（软件最新版本查询 E66）
-
-- **变更**：路由修复同目标候选合并（R008/R012 不再重复澄清）；版本查询固定走 `factual + 官方优先`；查询改写优先 `<项目> GitHub release latest version` 与 `<项目> npm latest version`；融合层用实际检索子词算相关性，GitHub 官方 Release 不再被教程页挤出；OpenClaw 官方源登记。
-- **验证**：`openclaw最新版本号是多少` 返回 `v2026.7.1`，confidence 0.996，gate none，证据 [hard]；新增 rewrite/fusion 回归测试。
-- affects: §6.1,§6.5,§6.6,§6.7 | bench:na(new-param) 理由：版本查询路由/改写/融合修复，无 §5/§6 参数变更
-
-### 2026-08-14（agent-skills → delivery-workflow E67）
-
-- **变更**：新增 `src/skills/delivery-workflow/`，将 agent-skills 的 11 条工程流程（需求访谈/规格先行/任务拆解/TDD/增量实现/代码审查/安全/性能/调试/上线/权威来源）蒸馏为可注入 LLM 的“原则+步骤+质量门禁”，注册进 Skill 生命周期；`engineer` 生成代码与 `content-writer` 生成文档时自动注入；同步新增 `docs/borrowed-designs.md` 借鉴设计登记。
-- **证据**：新增 delivery-workflow 3 条、engineer 1 条、content-writer 2 条单测；最终单测 211/211 + 集成 17/17 全绿。
-- affects: §8.2,§12.2 | bench:na(new-param) 理由：工程工作流 Skill 落地，无 §5/§6 参数变更
-
+### 2026-08-13（常识问答兜底修复 E57）<br>- **变更**：真实使用暴露出“什么是状态机 / Python是什么语言 / HAL库是什么”等常识问答全部掉进 must_clarify（qa 无对应路由）；新增 R016（`actionType=qa → secretary/web_search`），并扩充 qa 提取词（是谁/叫什么/是啥），常识问答不再被拦截。<br>- **验证**：“什么是状态机？”复跑直接返回带来源的结论（confidence 0.89）；新增常识问答回归测试；单测 174/174 + 集成 17/17 全绿。<br>- **状态**：回复质量的主要路由阻塞已修复；之前攒下的 must_clarify 旧 case 可后续按需清理。<br>- affects: §2.2,§6.1 | bench:na(new-param) 理由：qa 通用搜索规则落地，无 §5/§6 参数变更
+### 2026-08-13（真实 case 反馈工具 E58）<br>- **变更**：新增 `npm run route:feedback`：给真实 pipeline case 打 accept/reject/correct，correct 时补充正确路由；支持交互选择最近 10 条，也支持脚本模式 `npm run route:feedback -- <caseId> a|r|c [lens/intent]`；反馈回写后即可进入 `route:calibrate` 生成候选。<br>- **验证**：真实 case 累计 99 条（pipeline），修复后新增问题全部 confirm/direct，无新增 must_clarify；单测 174/174 + 集成 17/17 全绿。<br>- **状态**：50+ 收集已达标，下一步用 `route:feedback` 标记坏样本 → `route:calibrate` → `route:review` 迭代规则。<br>- affects: §6.6,§12.3 | bench:na(new-param) 理由：真实 case 反馈闭环工具，路由表/PARAM 未变更
+### 2026-08-13（GitHub 链接问答修复 E59）<br>- **变更**：“https://github.com/PaddlePaddle/PaddleOCR这个项目是做什么用的”此前被 Stage 1 的指代澄清拦截（看到“这个项目”要求补链接，但用户已给链接）；修复为 URL 视为已解析指代，不再触发澄清；同时把“做什么/干嘛/干啥/用途/作用”补进 qa 识别。<br>- **验证**：同一条 query 复跑直接返回 PaddleOCR 用途结论（含来源）；新增 router-v2 与 s1_prepare 回归测试；单测 176/176 + 集成 17/17 全绿。<br>- **状态**：链接类问答恢复可用；继续用真实问题验证并反馈。<br>- affects: §6.1,§6.6 | bench:na(new-param) 理由：URL 指代与 qa 识别修复，无 §5/§6 参数变更
+### 2026-08-14（附录行数预算扩容 E60）<br>- **变更**：附录 A 因 E31-E59 持续登记超预算，§0.5 附录总预算 600 → 950、A 上限 150 → 500；行数预算随活跃开发节奏调整，仍保留近 2 版全文、更早压缩为单行的 retention 纪律。<br>- **依据**：实际非空行附录 A 440 / 总 662，按原预算无法继续登记后续变更；本次扩容后预留登记空间。<br>- affects: §0,附录A | bench:na(new-param) 理由：行数预算扩容，无 §5/§6 参数变更
+### 2026-08-14（紧急回复场景化 E61）<br>- **变更**：新增 `src/search/emergency-reply.ts`，蛇咬/狗猫咬伤/火灾/地震/溺水/触电/大出血/呼吸困难/心梗/中毒/人身危险/通用兜底全部改为场景化秘书话术：结论先行、分步可执行、有温度，并保留强制报警提示与“以专业救援/医生判断为准”；紧急路由关键词补全（蛇咬/中毒/昏迷/心梗/跟踪/遇袭等）。<br>- **证据**：新增 emergency-reply 单测 4 条；最终单测 211/211 + 集成 17/17 全绿。<br>- affects: §4.2,§6.1 | bench:na(new-param) 理由：紧急话术与路由关键词，无 §5/§6 参数变更
+### 2026-08-14（Markdown 链接归一化 E62）<br>- **变更**：`prepareQuery` 先把 `[文字](链接)` 转成干净文本，避免 `[` `]` 语法污染搜索；已给 URL 的“这个项目”不再触发指代澄清。<br>- **验证**：`[PaddleOCR 链接](...)` 类 query 正常回答项目用途；新增 s1_prepare 回归测试。<br>- affects: §6.1 | bench:na(new-param) 理由：链接归一化修复，无 §5/§6 参数变更
+### 2026-08-14（“是什么 + 写个例子”路由修正 E63）<br>- **变更**：`qa` 优先级提前，避免 `写个` 被 `create` 抢走；合成层新增“用户要求举例时必须给可运行示例”约束。<br>- **验证**：函数指针问题已给出可运行 C 代码示例；新增 router-v2 与 Stage 5 回归测试。<br>- affects: §2.2,§6.1,§6.7 | bench:na(new-param) 理由：qa 路由与示例约束，无 §5/§6 参数变更
+### 2026-08-14（手机入网型号精确检索 E64）<br>- **变更**：查询改写对 `MRT-AL10手机` 类问题优先搜“入网型号 对应手机型号”；修复 `s2.searchQuery` 未真正传给搜索层的问题。<br>- **验证**：`MRT-AL10手机` 正确返回 `华为 nova 14 Ultra`；新增 rewrite/pipeline 回归测试。<br>- affects: §6.1,§6.5 | bench:na(new-param) 理由：型号查询改写与搜索参数传递修复，无 §5/§6 参数变更
+### 2026-08-14（赛事/新闻实时性 E65）<br>- **变更**：news 查询自动补当前年份与“最新”；体育类优先搜 `2026世界杯 决赛 比分 冠军 最新`；Tavily news 走 `topic=news + days=30 + advanced`，实时性由 Bocha/AnySearch 兜住 Tavily 超时。<br>- **验证**：`世界杯战报` 正确返回西班牙 1-0 阿根廷夺冠；新增 rewrite/tavily 回归测试。<br>- affects: §6.1,§6.2,§6.5 | bench:na(new-param) 理由：实时查询改写与 Tavily 参数，无 §5/§6 参数变更
+### 2026-08-14（软件最新版本查询 E66）<br>- **变更**：路由修复同目标候选合并（R008/R012 不再重复澄清）；版本查询固定走 `factual + 官方优先`；查询改写优先 `<项目> GitHub release latest version` 与 `<项目> npm latest version`；融合层用实际检索子词算相关性，GitHub 官方 Release 不再被教程页挤出；OpenClaw 官方源登记。<br>- **验证**：`openclaw最新版本号是多少` 返回 `v2026.7.1`，confidence 0.996，gate none，证据 [hard]；新增 rewrite/fusion 回归测试。<br>- affects: §6.1,§6.5,§6.6,§6.7 | bench:na(new-param) 理由：版本查询路由/改写/融合修复，无 §5/§6 参数变更
+### 2026-08-14（agent-skills → delivery-workflow E67）<br>- **变更**：新增 `src/skills/delivery-workflow/`，将 agent-skills 的 11 条工程流程（需求访谈/规格先行/任务拆解/TDD/增量实现/代码审查/安全/性能/调试/上线/权威来源）蒸馏为可注入 LLM 的“原则+步骤+质量门禁”，注册进 Skill 生命周期；`engineer` 生成代码与 `content-writer` 生成文档时自动注入；同步新增 `docs/borrowed-designs.md` 借鉴设计登记。<br>- **证据**：新增 delivery-workflow 3 条、engineer 1 条、content-writer 2 条单测；最终单测 211/211 + 集成 17/17 全绿。<br>- affects: §8.2,§12.2 | bench:na(new-param) 理由：工程工作流 Skill 落地，无 §5/§6 参数变更
 ### 2026-08-14（deepseek-harness → TrajectoryLog E68）<br>- **变更**：新增 `src/trajectory/trajectory-log.ts`，对齐 deepseek-harness 的 append-only 事件流设计，默认写 `data/trajectory.jsonl`；`pipeline.ts` 记录 `route/skill/search/synthesize/answer` 五类事件，路由澄清分支也会落盘；CLI `src/main.ts` 自动接入。<br>- **证据**：新增 trajectory-log 单测 1 条 + pipeline 统一轨迹回归 1 条；最终单测 211/211 + 集成 17/17 全绿。<br>- affects: §6.7,§8.2 | bench:na(new-param) 理由：轨迹日志落地，无 §5/§6 参数变更
 
 ### 2026-08-14（deepseek-harness → plan-validation E69）<br>- **变更**：新增 `src/skills/plan-validation/`，借鉴 deepseek-harness 的“计划编译校验”思想：任务必须有验收标准/验证步骤/依赖/文件范围，文件超过 5 个提示拆细，缺关键字段判 `invalid`；支持自然语言经 LLM 解析，也支持直接 JSON 输入。<br>- **证据**：新增 plan-validation 单测 7 条；最终单测 211/211 + 集成 17/17 全绿。<br>- affects: §8.2,§12.2 | bench:na(new-param) 理由：计划校验 Skill 落地，无 §5/§6 参数变更
@@ -2165,340 +1766,61 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 
 ### 2026-08-14（官方源主动检索与权威度降权 E72）<br>- **变更**：新增 `officialSourceHintForQuery`，把器件型号前缀映射到原厂域（STM32→st.com、ESP32→espressif.com、TPS→ti.com、IRF→infineon.com、LT→analog.com）；查询改写自动追加 `site:原厂域 datasheet` 与 `原厂域 官方 数据手册`；融合层让 `domainAuthority` 参与非官方来源评分（`0.9 + 0.1 × authority`），官方源仍保留 1.2 倍乘数；搜索循环检测到器件查询且结果无官方源时，用 Tavily `include_domains` 做官方域兜底搜索。<br>- **验证**：`STM32F103C8T6 最大主频是多少` 复测证据变为 `community.st.com / www.st.com / estore.st.com`，答案 72MHz，confidence 0.888；新增 authority/rewrite/fusion/tavily/search-loop 单测，单测 217/217 + 集成 17/17 全绿。<br>- affects: §6.1,§6.5,§6.7 | bench:B-20260814-03
 
-### 2026-08-14（国内资料站兜底 E73）
-
-- **变更**：查询改写对器件型号追加 `site:szlcsc.com datasheet` 与 `site:xcc.com datasheet` 子查询；`domainAuthority` 登记立创商城 0.8、芯查查 0.75、alldatasheet 0.7；搜索循环把“原厂域或国内资料站命中”视为高可信覆盖，未覆盖时才用 Tavily 兜底原厂域与国内资料站，避免券商/贴吧/淘宝等聚合页抢答。
-- **理由**：官网慢、需登录或验证时，人类会去立创商城、芯查查直接查 datasheet；Agent 通过国内可直连资料站模拟该路径，不依赖自动登录。
-- **验证**：新增 authority/rewrite/search-loop 单测；单测 221/221 + 集成 17/17 全绿。
-- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：来源权威表与兜底策略，无 §5/§6 参数变更
-
-### 2026-08-14（浏览器会话继承 E74）
-
-- **变更**：新增 `src/browser/session.ts`（`BrowserSessionManager`），用独立持久化 Chromium profile（`data/browser-session/`）保存 Session/Cookie，首次用可视窗口登录一次，之后 Agent 通过 `browser-session` Skill 或 CLI 带会话抓取网页正文；新增 `npm run browser:open / browser:fetch / browser:status`；复用本机 Playwright Chromium 或 Chrome/Edge，不读取正在运行的浏览器锁定配置。
-- **落点**：落实 §1.2“联网时你的电脑网络能访问什么，她就能访问什么”——登录态由用户本人完成一次，验证码/短信等强验证不交给 Agent 自动处理。
-- **验证**：新增 browser/session 单测 2 条 + browser-session skill 单测 2 条；真实抓取 `example.com` 成功；技能注册数 17 → 18；单测 225/225 + 集成 17/17 全绿。
-- affects: §1.2,§4.1.2,§8.2 | bench:na(new-param) 理由：浏览器会话能力新增，无 §5/§6 参数变更
-
-### 2026-08-14（CDP 直连复用日常浏览器 E75）
-
-- **变更**：`BrowserSessionManager` 新增 `connectCdp(port)`，通过 Chrome DevTools Protocol 连接用户正在运行的 QQ浏览器/Thorium/Chrome 等日常浏览器，直接复用其已登录会话，不需要独立 profile 重新登录；新增 `npm run browser:cdp -- <port>` 与 `npm run browser:launch -- thorium|qq`（以 `--remote-debugging-port` 启动，检测到浏览器在运行会提示先关闭）。
-- **边界**：Chromium 系浏览器同一 profile 只能被一个实例锁定，因此复用日常浏览器会话需先完全关闭该浏览器、再用调试端口启动；验证码/短信/主密码等强验证仍由用户本人完成。
-- **验证**：新增 CDP 连接单测 1 条；真实 CDP 冒烟：临时 Chromium 开调试端口 → `connectCdp` 连接成功 → 带会话抓取 `example.com` 成功；单测 226/226 + 集成 17/17 全绿。
-- affects: §1.2,§4.1.2,§8.2 | bench:na(new-param) 理由：CDP 直连复用会话，无 §5/§6 参数变更
-
-### 2026-08-14（浏览器会话自动兜底 E76）
-
-- **变更**：`search-loop` 新增 `browserSession` 兜底：器件型号查询且结果无高可信源（原厂域或立创/芯查查）时，用浏览器会话抓取搜索结果前 2 个候选 URL 的正文作为新证据；抓取后覆盖高可信源则跳过 Tavily（省配额），抓取失败或未覆盖则继续走 Tavily 兜底；`main.ts` 默认接入 `browserSession` 单例，已连接 CDP 时自动复用 QQ浏览器/Thorium 登录态。
-- **验证**：新增 search-loop 单测 2 条（浏览器兜底成功跳过 Tavily、浏览器失败仍走 Tavily）；单测 228/228 + 集成 17/17 全绿；真实 CLI 冒烟 STM32F103C8T6 主频正常。
-- affects: §1.2,§6.5,§6.7 | bench:na(new-param) 理由：浏览器会话兜底接入搜索循环，无 §5/§6 参数变更
-
-### 2026-08-15（CDP 端口持久化自动复用 E77）
-
-- **变更**：`browser:cdp` 连接后把调试端口写入 `data/browser-session-cdp.json`；Agent 每次启动自动读取并连接已保存端口，不再要求连接与问答在同一进程；新增 `browser:cdp-off` 解除关联；浏览器未运行时自动清除状态并回退独立浏览器，不阻塞问答。
-- **验证**：新增单测 1 条（端口持久化 + 新实例自动复用）；真实端到端：临时 Chromium 开调试端口 → `browser:cdp` 保存 → 新进程 `browser:fetch example.com` 通过自动连接成功；单测 229/229 + 集成 17/17 全绿。
-- affects: §1.2,§8.2 | bench:na(new-param) 理由：CDP 端口持久化，无 §5/§6 参数变更
-
-### 2026-08-15（推进计划文档流程 E78）
-
-- **变更**：新增 `docs/plans/` 目录与模板 `_template.md`，约定每次推进先写“目标 / 计划 / 执行过程 / 结果”，完成后在当日 `progress-handoff.md` 登记链接；与每日交接、附录 A 变更台账、机器轨迹日志分层，保证任何修改都有计划、执行、结果三段记录。
-- **验证**：`docs/plans/README.md` 与 `_template.md` 已入库；doc-lint 0 FAIL/0 WARN。
-- affects: 附录A | bench:na(new-param) 理由：计划文档流程约定，无 §5/§6 参数变更
-
-### 2026-08-15（datasheet 下载与证据补强 E79）
-
-- **变更**：`BrowserSessionManager` 支持 PDF 链接提取（含可选等待异步渲染）与 `downloadFile`（带登录会话下载）；新增 `npm run datasheet -- "URL" [型号]`，从立创商城/芯查查商品页自动提取 datasheet PDF 下载到 `data/datasheets/`；`search-loop` 浏览器兜底扩展为“无高可信源**或**证据不足”时触发，抓高可信候选 URL 正文补证。
-- **验证**：真实冒烟 `TPS5430` 立创商品页自动挑中 TI 官方 datasheet 并下载 2.48MB PDF；`GD32F103C8T6 数据手册` 置信度 0.414 → 0.505、证据含立创资料页与兆易创新选型指南；新增 session/search-loop 单测；单测 231/231 + 集成 17/17 全绿。
-- affects: §6.5,§6.7,§8.2 | bench:na(new-param) 理由：资料下载能力与补证策略，无 §5/§6 参数变更
-
-### 2026-08-15（low_confidence 二次取证 E80）
-
-- **变更**：新增 `src/search/second-pass.ts`，融合后仍 `low_confidence` 且查询含器件型号时，用浏览器会话抓高可信 HTML 页正文（或下载并解析高可信 PDF）后重新融合；浏览器二次取证的高可信页不再被 SEO 降权误伤；CLI 问答收尾关闭浏览器会话，避免进程挂起。
-- **验证**：`GD32F103C8T6 数据手册` confidence 0.505 → 0.652，gate `low_confidence` → `none`，证据为二次取证抓取的立创完整页面；新增 second-pass 单测 4 条 + fusion 单测 1 条；单测 236/236 + 集成 17/17 全绿。
-- affects: §6.5,§6.6,§6.7 | bench:na(new-param) 理由：二次取证提升证据质量，无 §5/§6 参数变更
-
-### 2026-08-15（强时效查询旧闻防护 E81）
-
-- **变更**：新增 `src/search/recency.ts` 时效敏感判定；`s2_classify` 对“今天/今日/实时/最新/行情/在轨/驻留/现状/现在有/目前有/当前有”等强状态词规则优先归为 `news + ≤24h + 新闻源`；`fusion` 对强时效查询切换 news 权重、90 天时效窗口、缺失日期降权；`s5_synthesize` 注入今天日期、证据发布日期与“旧闻只能作背景，没有足够新证据时明确截至今天暂无可靠更新”的时效红线。
-- **验证**：`中国空间站现在有哪几个航天员在太空` 复测不再引用 2025-04-26 神舟十九/二十号旧闻，改为“截至今天暂无可靠更新”，证据为 2026-06-17 腾讯新闻，gate `low_confidence`；新增 recency/fusion/s2/s5 单测 6 条；单测 242/242 + 集成 17/17 全绿。
-- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：时效敏感查询分类、融合权重与合成红线，无 §5/§6 参数变更
-
-### 2026-08-15（Datasheet PDF 全文解析 E82）
-
-- **变更**：新增 `scripts/pdf_text.py`（PyMuPDF rawdict 逐字符重建文本，解决 Identity-H/CID 字体下 `get_text` 返回字形编号的问题；stdout 强制 UTF-8）；`document-parser.ts` PDF 分支优先调 Python/PyMuPDF，失败回退 FlateDecode + Tj/TJ 提取；无文本层明确报“扫描件暂不支持 OCR”；新增 `npm run pdf:text -- <路径> [关键词]` 验证脚本。
-- **验证**：`TPS5430.pdf` 提取 48,622 字符，命中 `TPS5430`/`500kHz`；新增 document-parser 单测 2 条；单测 244/244 + 集成 17/17 全绿。
-- affects: §7,§6.7 | bench:na(new-param) 理由：PDF 解析管道增强，无 §5/§6 参数变更
-
-### 2026-08-15（datasheet 下载内容校验 E83）
-
-- **变更**：新增 `src/search/datasheet-verify.ts`（型号归一化 + 最长前缀匹配，ST 家族手册用 `STM32F103` 前缀也能通过）；`scripts/datasheet.ts` 改为候选 PDF 逐个下载 → 解析 → 校验，不匹配删除误存文件并换下一个，全部不匹配明确报错并附尝试列表。
-- **验证**：`item.szlcsc.com/9243.html + STM32F103C8T6` 下载校验通过（179,070 字符）；`515651.html + STM32F103C8T6`（TPS5430DDA 页）拒绝误存并列出 6 次不匹配尝试，ISO/IEC 认证证书也被拦截；新增 datasheet-verify 单测 6 条；单测 250/250 + 集成 17/17 全绿。
-- affects: §7 | bench:na(new-param) 理由：datasheet 下载内容校验，无 §5/§6 参数变更
-
-### 2026-08-15（扫描件 OCR E84）
-
-- **变更**：`scripts/pdf_text.py` 对“有图片但无文本层”的页面用 PyMuPDF 渲染 2x 页图并调用 RapidOCR（ONNX）识别，识别文本并入返回；返回 `ocr/ocrAvailable/ocrError`；`document-parser.ts` 在 OCR 引擎缺失时给出 `pip install rapidocr_onnxruntime` 安装指引。
-- **依据**：本机未安装 PaddleOCR，且清华镜像缺包；改用官方 PyPI 可安装的 RapidOCR ONNX 轻量引擎，落实 §7.3“PDF 扫描件 OCR”能力。
-- **验证**：TPS5430 第一页渲染成纯图片 PDF，OCR 提取 1,299 字符并命中 `TPS5430`/`5.5V`/`500kHz`；`PDF_OCR=0` 时返回安装指引；单测 250/250 + 集成 17/17 全绿。
-- affects: §7 | bench:na(new-param) 理由：扫描件 OCR 引擎接入，无 §5/§6 参数变更
-
-### 2026-08-15（航天状态权威源 E85）
-
-- **变更**：`authority.ts` 登记航天官方域名（`cmse.gov.cn`/`cnsa.gov.cn` 权威 1.0，`people.com.cn`/`news.cn` 0.9），`isOfficialForQuery` 对航天员/空间站/在轨类查询识别官方源；`query-rewrite.ts` 对航天状态问题（news/factual）自动追加 `site:cmse.gov.cn`、`site:cnsa.gov.cn` 与“载人航天小喇叭”子查询。
-- **验证**：复测“中国空间站现在有哪几个航天员在太空”，证据变为 `www.cmse.gov.cn`（[hard]）3 条，回答仍诚实为“截至今天暂无可靠更新”；新增 authority/rewrite 单测 4 条；单测 254/254 + 集成 17/17 全绿。
-- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：官方源登记与查询改写，无 §5/§6 参数变更
-
-### 2026-08-15（校准按决策类型细分 E86）
-
-- **变更**：`confidence-calibration.ts` 的 `calibrateThresholds` 现在按 reject 的决策类型区分：只有 `direct/confirm`（或缺少修正路由）的 reject 才参与抬高 `routeConfidenceLow`；`must_clarify/option_clarify + correctedRoute` 的 reject（该直答却澄清）不再抬高澄清阈值。`CalibrationRecord` 扩展 `decision.type` 与 `correctedRoute`。
-- **验证**：10/10 校准样本重跑 `route:apply-calibration`，提案从 low=0.65 修正为 low=0.45/high=0.75（与现值一致，不误伤 0.6 搜索）；新增单测 1 条；单测 255/255 + 集成 17/17 全绿。
-- affects: §12.3 | bench:na(new-param) 理由：校准算法修正，PARAM 值未变更
-
-### 2026-08-15（QQ浏览器 CDP 登录态验证 E87）
-
-- **变更**：`browser-launch.ts` 自动选择最新版 QQ浏览器（不再硬编码旧版本），进程检测改用 PowerShell `Get-Process`（避免受限环境 `tasklist` 拒绝访问误判未运行），`spawn` 加 `detached + unref` 让浏览器在命令退出后继续监听调试端口。
-- **验证**：`browser:launch -- qq` 后 9222 LISTENING；`browser:cdp -- 9222` 持久化端口；新进程 `browser:fetch` 自动复用 QQ 会话，sessionDomains 含 szlcsc/xcc/taobao/jd/github 等大量登录域；单测 255/255 + 集成 17/17 全绿。
-- affects: §1.2,§8.2 | bench:na(new-param) 理由：浏览器 CDP 启动与登录态复用，无 §5/§6 参数变更
-
-### 2026-08-15（扫描件 OCR 页数上限 E88）
-
-- **变更**：`scripts/pdf_text.py` 增加 `PDF_OCR_MAX_PAGES`（默认 8，`0` 关闭 OCR），超过上限的扫描页跳过并计为 `ocrSkippedPages`；返回 JSON 增加 `ocrMaxPages / ocrSkippedPages`；`document-parser.ts` 的 `PdfTextResult` 同步补字段。
-- **验证**：3 页扫描 PDF + `PDF_OCR_MAX_PAGES=2` 只 OCR 前 2 页，`ocrSkippedPages=1`；单测 255/255 + 集成 17/17 全绿。
-- affects: §7 | bench:na(new-param) 理由：OCR 页数上限，无 §5/§6 参数变更
-
-### 2026-08-15（扫描件 OCR 单页缓存 E89）
-
-- **变更**：`scripts/pdf_text.py` OCR 前渲染页图并计算 SHA-256，命中 `data/ocr-cache/` 缓存直接返回文本；未命中则 OCR 后写缓存，缓存键含引擎版本前缀 `v1-`。
-- **验证**：单页扫描 PDF 第一次 OCR 约 17.9s 并生成 1 个缓存文件，第二次约 2.0s 命中缓存，返回相同 1,299 字符；单测 255/255 + 集成 17/17 全绿。
-- affects: §7 | bench:na(new-param) 理由：OCR 缓存，无 §5/§6 参数变更
-
-### 2026-08-15（OCR 缓存清理策略 E90）
-
-- **变更**：`scripts/pdf_text.py` 新增 `PDF_OCR_CACHE_MAX_FILES`（默认 200），写缓存后按 mtime 自动淘汰最旧文件，避免 `data/ocr-cache/` 长期堆积。
-- **验证**：临时缓存目录预置 2 个旧缓存 + 上限 2，OCR 后只保留 2 个文件（新缓存 + 较新旧缓存），最旧被淘汰；单测 255/255 + 集成 17/17 全绿。
-- affects: §7 | bench:na(new-param) 理由：OCR 缓存清理，无 §5/§6 参数变更
-
-### 2026-08-15（三站登录态重测 E91）
-
-- **变更**：`browser:fetch` 支持可选等待参数 `waitMs`（用法 `npm run browser:fetch -- "URL" 5000`），JS 渲染后再取页面；`browser-launch.ts` 进程检测去掉 `.exe` 后缀再传给 `Get-Process -Name`，修复 QQ 普通模式实例漏检导致调试端口未拉起的问题。
-- **验证**：QQ CDP 会话带 5 秒等待复测三站：立创会员中心显示“账户信息-立创商城”及已登录账户信息；半导小芯首页显示“退出登录/我的样品”；芯查查首页本地存储含 `PCuserInfo`、`PCtoken`、`SaasFrontToken` 用户凭据，无公开会员中心 URL，后续以“存在用户凭据”判登录态；单测 255/255 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-logged-in-sites-retest.md`。
-- affects: §1.2,§8.2 | bench:na(new-param) 理由：浏览器会话与登录态复用，无 §5/§6 参数变更
-
-### 2026-08-15（登录态完整链路 E2E 与国内资料站增强 E92）
-
-- **变更**：`DOMESTIC_DATASHEET_DOMAINS` 增加 `semiee.com`（权威度 0.75）；查询改写对器件型号同时生成“立创商城/芯查查/半导小芯 数据手册”自然词子查询与 `site:` 子查询；Tavily 国内资料站兜底查询补“半导小芯”。
-- **验证**：QQ CDP 9222 会话下真实查询 `STM32F103C8T6 数据手册` 返回 ST 官方证据（confidence 0.888）；`npm run datasheet -- "https://item.szlcsc.com/9243.html" STM32F103C8T6` 从立创商城下载 2.08MB PDF 且型号校验通过（179,070 字符）；authority/rewrite 单测更新，单测 255/255 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-logged-in-chain-e2e.md`。
-- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：国内资料站域名与查询改写，无 §5/§6 参数变更
-
-### 2026-08-15（push:hosts 整链演练与参数解析修复 E93）
-
-- **变更**：`scripts/push-to-hosts.ts` 新增 `argValue()`，`--message/--repo/--scope` 同时支持 `--name=value` 与 `--name value` 两种写法；完成一次真实整链演练（npm test + build → add/commit → GitHub/Gitee 双 push）。
-- **验证**：dry-run 确认双 token 已配置；`push:hosts --yes` 双端 push 成功，`data/hosting-events.jsonl` 出现 github.com 与 gitee.com 各一条 `ok: true`；修复后 dry-run 能正确显示自定义提交信息；单测 255/255 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-push-hosts-rehearsal.md`。
-- affects: §11.4 | bench:na(new-param) 理由：发布脚本参数解析与整链演练，无 §5/§6 参数变更
-
-### 2026-08-15（半导小芯站内搜索兜底 E94）
-
-- **变更**：`search-loop` 在用户原始问题点名半导小芯且结果无 `semiee.com` 时，用浏览器会话直达 `https://www.semiee.com/search?searchModel=<型号>` 补证据；`runSearchLoop` 新增 `originalQuery`，避免 LLM 查询改写丢掉站点点名；融合层对“点名国内资料站”的查询至少保留一条该站证据，不再被 top3/阈值截断。
-- **验证**：真实查询 `STM32F103C8T6 半导小芯 数据手册` evidence 含 `www.semiee.com/search?searchModel=STM32F103C8T6`；新增 search-loop/fusion 单测，单测 257/257 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-semiee-index-verify.md`。
-- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：国内资料站站内搜索兜底，无 §5/§6 参数变更
-
-### 2026-08-15（立创/芯查查站内直达 E95）
-
-- **变更**：`authority.ts` 新增 `DOMESTIC_DATASHEET_SITES` 站点→站内搜索映射（立创 `so.szlcsc.com/global.html?k=<型号>`、芯查查 `www.xcc.com/chip/material/search?title=<型号>`、半导小芯 `searchModel`）；`search-loop` 用映射循环替代 E94 单站硬编码，任意点名的国内站未命中时都用浏览器会话直达站内搜索补证据。
-- **验证**：真实查询 `STM32F103C8T6 芯查查 数据手册` evidence 含 `www.xcc.com/chip/material/search?title=STM32F103C8T6`；`STM32F103C8T6 立创商城 数据手册` evidence 含 `so.szlcsc.com/global.html?k=STM32F103C8T6`；新增 search-loop 单测 2 条，单测 259/259 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-domestic-site-direct-search.md`。
-- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：国内资料站站内直达扩展，无 §5/§6 参数变更
-
-### 2026-08-15（source-stats SQLite WAL 并发修复 E96）
-
-- **变更**：`SearchSourceStats` 连接后启用 `journal_mode=WAL`、`busy_timeout=5000`、`synchronous=NORMAL`，避免多条 CLI 并发写 `source-stats.db` 时报 `database is locked`。
-- **验证**：两条 `npm run dev` 并发冒烟均正常返回，无锁错误；新增多实例写同一库单测 1 条，单测 260/260 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-sqlite-wal.md`。
-- affects: §12.3 | bench:na(new-param) 理由：统计库并发写修复，无 §5/§6 参数变更
-
-### 2026-08-15（PaddleOCR 精度对比 E97）
-
-- **变更**：`scripts/pdf_text.py` 支持 `PDF_OCR_ENGINE=rapid|paddle`，缓存键带引擎前缀，Paddle 初始化自动关闭默认 MKLDNN（`PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT=False`）；新增 `scripts/ocr_benchmark.py` 与 `npm run ocr:benchmark`；`document-parser` 错误提示补充 PaddleOCR 安装说明。
-- **验证**：TPS5430 扫描样本第 1 页冷启动对比：RapidOCR 17.16s / 1299 字符，PaddleOCR 117.74s / 1224 字符，两者均命中 `TPS5430/5.5V/500kHz`；默认引擎保持 RapidOCR，PaddleOCR 作为高质量慢速备选；单测 260/260 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-paddle-ocr-compare.md`。
-- affects: §7 | bench:na(new-param) 理由：OCR 引擎可切换与基准，无 §5/§6 参数变更
-
-### 2026-08-15（v1.0 三栏 UI 原型 E98）
-
-- **变更**：新增独立前端工程 `ui/prototype`（Vite + React + lucide-react），实现 §4.1 三栏布局（工程开发/知识咨询/生活助手）与 Ask/Craft/Plan 正交、工程开发三列布局、内置终端/浏览器、§9 证据链（[hard]/[soft]）与轻量反馈。
-- **验证**：`npm run build` 通过；按参考截图重排为深色 AI 工作台风格（近黑面板 + 蓝色强调），提问框左下新增 `+` 上传菜单（图片/文件/工程文件夹）与 Ask/Craft/Plan，聊天输入框支持直接粘贴图片，提问框右下角提供 DeepSeek/MiniMax/智谱 模型切换器；模型名已按官方文档核对；Playwright 检查工程/知识/移动三个视口无横向溢出、控制台 0 错误；开发服务器 `http://127.0.0.1:5173/`；详见 `docs/plans/2026-08-15-three-column-ui-prototype.md`。
-- affects: §4.1,§9 | bench:na(new-param) 理由：三栏 UI 原型落地，无 §5/§6 参数变更
-
-### 2026-08-15（魔鬼训练 v2.5 全量跑分 E99）
-
-- **变更**：新增 `scripts/bench-devil-v25.ts` 与 `npm run bench:devil-v25`，读取 `AI-Agent_魔鬼训练_v2.5_整理版`（122 条）批量跑 pipeline，增量落盘 `bench/devil-v25/results.jsonl`，输出报告/人工评分表/参考分模板；完成整理版 122 条全量基线。
-- **验证**：122 条全部返回，0 超时，总耗时约 647s；owner 独立评分定稿（`AI-Agent_魔鬼训练_v2.5_AI独立评分表.xlsx`）：均分 1.28，≥2 分 58 条，0 分 43 条；分卷 ET 1.55、SM 1.06、EC 1.16、P 1.00、C 1.10、E 2.00；0 分大量为系统级故障（missing_time/create 排期选项/溺水救援误匹配），P 卷黑话/记忆/Skill 调用最弱；仍存在路由误判、紧急模板误触、记忆污染；详见 `docs/plans/2026-08-15-devil-training-v25-review.md`。
-- affects: §3.1,§5,§6 | bench:B-20260815-01 | E99 新增 122 条魔鬼训练评测基线，暴露路由与安全规则缺口
-
-### 2026-08-16（魔鬼训练最小修复包 E100）
-
-- **变更**：`toDisplayText` 增加 JSON 泄露净化；calendar/content-writer/im-dispatch 改为纯文本输出契约；`scoreRule` 增加 actionType 硬门，`qa` 优先于 `create/send/schedule`；新增 `illegal_request`/`property_emergency` 意图与 `safety_refusal`/财产止损分支；`bench:devil-v25` 注入与 CLI 同款依赖（记忆/技能/浏览器/LLM）。
-- **验证**：`npm run test:all` 单测 276/276 + 集成 17/17 全绿；新增 11 条路由负样本回归 + 破解 WiFi 拒绝 + 手机进水财产止损 + 净化器单测；35 条 Bug 中 24 路由类大部分转正、7 JSON 泄露堵住、4 安全误匹配三分；全量重跑待下一轮；详见 `docs/plans/2026-08-16-devil-minimal-fix.md`。
-- affects: §5,§6 | bench:B-20260816-01 | E100 修复路由/安全/JSON 泄露三类核心故障
-
-### 2026-08-16（第二轮修复与全量验证 E101）
-
-- **变更**：新增 rewrite/pack 意图与管道分支、`hasGithubLink` 特征与 R017、compare+code/通用 compare 规则、create/modify 单文件直接执行与缺信息澄清、qa/query/modify 词表补漏、周末休市规则、R017-R021 strictMatch。
-- **验证**：`npm run test:all` 全绿；122 条全量重跑对比原始基线：路由选项 25→0、JSON 泄漏 7→0、35 条系统级 Bug 35/35 修复、8 条能力项 5/8 有进展；剩余为搜索质量、执行器运行时与多意图问题；详见 `docs/plans/2026-08-16-devil-fix-verify.md`。
-- affects: §5,§6 | bench:B-20260816-02 | E101 第二轮路由/搜索/执行器修复与全量验证
-
-### 2026-08-16（收尾修复 E102）
-
-- **变更**：LLM 重模型默认超时 8s→30s；新增 `project-packager` Skill（Windows Compress-Archive，排除 .git/node_modules/build）；`github-reader` 占位转真（抓 raw.githubusercontent README）；天气+芯片多意图在 s5 无证据时拆分引导；s1 指代澄清增加动作词豁免；注册 19 项 Skill。
-- **验证**：C02/E39 CLI 实测生成完整代码；C05 无路径澄清、C06 抓取 README/仓库链接兜底；P03 多意图拆分；全量测试通过，122 条基线路由选项 0、JSON 0、35/35 系统 Bug 修复。
-- affects: §5,§6 | bench:B-20260816-03 | E102 执行器运行时、打包/GitHub Skill、多意图与指代豁免
-
-### 2026-08-16（OpenSquilla 借鉴审阅 E103）
-
-- **变更**：审阅本地 `opensquilla/` v0.5.3 源码与文档，形成「可直接借鉴 / 需裁剪 / 不建议照搬」清单并登记 `docs/borrowed-designs.md`；确定下阶段优先借鉴 Provider Registry + 便宜优先模型路由、单一共享 TurnLoop、路由/模型决策数据飞轮闭环、记忆双通道召回、分层沙箱 + 拒绝账本、工具结果压缩/上下文预算、Skill 按需过滤。
-- **验证**：`npm run build` + `npm run test:all` 通过；doc-lint 通过；未改动 `opensquilla/` 外部仓库；详见 `docs/plans/2026-08-16-opensquilla-review.md`。
-- affects: §4.1,§8,§10,§13 | bench:na(new-param) 理由：外部设计审阅登记，无 §5/§6 参数或行为变更
-
-### 2026-08-16（Provider Registry + 模型分档路由 E104）
-
-- **变更**：`OpenAiCompatibleClient` 拆到 `src/search/llm-client.ts`；新增 `llm-registry.ts`（DeepSeek/MiniMax/智谱三厂 OpenAI 兼容抽象，`LLM_PROVIDER_ORDER` 控制便宜优先顺序，primary 失败自动 fallback，链上限 [P-107]）；新增 `model-router.ts`（重档 execute/write_doc/github_analysis/rewrite/pack_project/plan/文档摘要结构，默认中档 [P-105]，轻档置信门 [P-106]）；Stage 5 合成按档选模型，旧 `LLM_PRIMARY_*` 单家配置行为不变；新增 `npm run bench:provider-router` 与 `.env.example` 三厂配置。
-- **验证**：`npm run build` 通过；`npm run test:all` 单测 308/308 + 集成 17/17 全绿（新增 registry fallback 与分档 11 条）；`npm run bench:provider-router` 产出 `bench:B-20260816-04`；doc-lint 通过；详见 `docs/plans/2026-08-16-provider-registry.md`。
-- affects: §5,§6,§13 | bench:B-20260816-04 | E104 Provider Registry + 模型分档路由落地，Stage 5 按任务难度选模型
-
-### 2026-08-16（模型路由数据飞轮 + UI 目录接入 E105）
-
-- **变更**：客户端暴露 model/baseUrl，`FallbackLLMClient` 记录最后使用 provider 与 fallback 序列；trajectory 新增 `model_route` 事件；route-case 新增 `modelRoute` 字段与 `attachModelRoute`，audit 统计 `withModelRoute`；pipeline 在 Stage 5 合成成功后写轨迹并回写 case；新增 `scripts/export-model-catalog.ts` 与 `npm run model:export`，UI 模型切换器优先读 `ui/prototype/public/model-providers.json`，缺失回落静态列表。
-- **验证**：主项目 `npm run build` 通过；`npm run test:all` 单测 310/310 + 集成 17/17 全绿；UI 构建通过；`npm run model:export` 产出 8 项模型目录；doc-lint 通过；详见 `docs/plans/2026-08-16-model-data-flywheel.md`。
-- affects: §13 | bench:na(new-param) 理由：模型路由观测与 UI 目录导出，无 §5/§6 参数或行为变更
-
-### 2026-08-16（单一共享 TurnLoop Gateway E106）
-
-- **变更**：新增 Express gateway（`src/gateway/app.ts` + `server.ts` + `npm run gateway`），`POST /api/ask` 走同一 `answer(query)` 契约，空 query 400 且不泄露原始错误；`GET /api/model-providers` 返回共享模型目录；UI `send()` 优先调 gateway，失败回落本地草稿；`PipelineOptions.modelSelection` 支持 UI 模型 id（`<provider>:<role>`）覆盖 Stage 5 档位/provider；`src/config/model-catalog.ts` 统一目录生成。
-- **验证**：主项目 `npm run build` 通过；`npm run test:all` 单测 316/316 + 集成 17/17 全绿；UI 构建通过；doc-lint 通过；gateway 启动于 `http://127.0.0.1:8787`；详见 `docs/plans/2026-08-16-shared-turnloop-gateway.md`。
-- affects: §13 | bench:na(new-param) 理由：gateway 与 UI 接线，无 §5/§6 参数或行为变更
-
-### 2026-08-16（Gateway 附件接口 + UI 上传 E107）
-
-- **变更**：`/api/ask` 接收 `attachments[]`（base64 data URL），`src/gateway/attachments.ts` 解码为 `RawFileLike` 后进 pipeline，与 CLI 同链路；JSON body 上限提到 25MB；UI `+` 菜单接图片/文件上传，粘贴图片继续可用，`send()` 携带附件，失败回落本地草稿。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 319/319 + 集成 17/17 全绿（新增附件解码与图片附件走 VLM Skill）；doc-lint 通过；详见 `docs/plans/2026-08-16-gateway-attachments.md`。
-- affects: §13 | bench:na(new-param) 理由：附件接口与 UI 上传，无 §5/§6 参数或行为变更
-
-### 2026-08-16（输入框用量图 + 模式收缩 E108）
-
-- **变更**：聊天输入框右下角新增上下文用量环（按当前会话消息长度估算，6% 起封顶 100%）；Ask/Craft/Plan 从常驻三按钮改为可收缩单按钮 + 弹出层，选择后自动收起。
-- **验证**：UI `npm run build` 通过；Playwright 检查 1280px 无横向溢出、模式按钮数为 1、用量图位于工具行右下角，弹出层含 3 项且选择后收起；详见 `docs/plans/2026-08-16-composer-refine.md`。
-- affects: §4.1 | bench:na(new-param) 理由：UI 布局与交互调整，无 §5/§6 参数或行为变更
-
-### 2026-08-16（UI v2 外壳 + mode/submode 契约 E109）
-
-- **变更**：按《AI-Agent-v2.5_3》重构 UI 外壳：L0/L1 侧边栏、右侧产物栏（文件/浏览器/终端）、终端抽屉、设置双栏（服务商/安全/路由校准/技能/记忆/Token 用量）、对话区顶部胶囊模式标签 + 子模式徽标；新增 `src/agent/mode-mapper.ts`，`/api/ask` 响应附加 `mode` / `submode`，四字段核心契约不变。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 321/321 + 集成 17/17 全绿（新增 mode-mapper 2 条、gateway mode 断言）；doc-lint 通过；详见 `docs/plans/2026-08-16-ui-v2-shell.md`。
-- affects: §6.3,§13 | bench:na(new-param) 理由：UI 外壳与路由元数据扩展，无 §5/§6 参数或行为变更
-
-### 2026-08-16（路由校准设置面板接真实数据 E110）
-
-- **变更**：gateway 新增 `GET /api/routing/cases`、`POST /api/routing/batch-mark`、`POST /api/routing/export`（CSV/JSON），读取/标记/导出 `data/route-cases.jsonl`；`GatewayOptions` 支持注入 `RouteCaseStore`；UI 路由校准表格改为拉取真实 case，支持标记正确、刷新、导出 CSV。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 322/322 + 集成 17/17 全绿（新增 cases/batch-mark/export 集成测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-routing-calibration-api.md`。
-- affects: §13 | bench:na(new-param) 理由：路由校准读写 API 与 UI 接线，无 §5/§6 参数或行为变更
-
-### 2026-08-16（服务商设置接真实数据 E111）
-
-- **变更**：新增 `src/config/provider-order.ts` 持久化默认 provider 顺序；registry 支持 `order()/setOrder()/listStatuses()`；gateway 新增 `GET /api/providers`、`POST /api/providers/default`、`POST /api/providers/test`；UI 服务商设置显示真实配置状态，支持测试连接、设为默认。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 323/323 + 集成 17/17 全绿（新增 providers 状态与安全失败测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-provider-settings-api.md`。
-- affects: §13 | bench:na(new-param) 理由：服务商读写 API 与 UI 接线，无 §5/§6 参数或行为变更
-
-### 2026-08-16（技能库设置接真实数据 E112）
-
-- **变更**：新增 `src/config/skills-config.ts` 持久化禁用 Skill 列表；registry 新增 `isSkillEnabled()/listSkillMetadata()`；pipeline 直接 Skill 执行与 `findBest` 注入跳过禁用项；gateway 新增 `GET /api/skills`、`POST /api/skills/sync`；UI 技能库显示真实 19 项与触发词，支持启用/禁用、类别筛选。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 325/325 + 集成 17/17 全绿（新增 skills-config 与 skills 目录测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-skills-settings-api.md`。
-- affects: §13 | bench:na(new-param) 理由：技能库读写 API 与 UI 接线，无 §5/§6 参数或行为变更
-
-### 2026-08-16（Token 计量真实数据 E113）
-
-- **变更**：新增 `src/usage/usage-store.ts` 与 `src/config/usage-budget.ts`；OpenAI 兼容客户端解析响应 `usage` 自动记账到 `data/usage.jsonl`；gateway 新增 `GET /api/usage/stats`、`POST /api/usage/budget`；UI Token 用量页展示真实今日/近7天/本月 Tokens、模型占比与预算设置。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 328/328 + 集成 17/17 全绿（新增 usage-store/usage-budget 与 usage stats 测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-usage-metering-api.md`。
-- affects: §13 | bench:na(new-param) 理由：Token 计量读写 API 与 UI 接线，无 §5/§6 参数或行为变更
-
-### 2026-08-16（记忆管理设置接真实数据 E114）
-
-- **变更**：`UserContextStore` 与 `ExperienceManager` 增加公开读取/删除方法；gateway 新增 `GET /api/memory`、`POST /api/memory/forget`，注入现有存储实例；UI 记忆管理页展示 L1/L2 合并视图，支持筛选、搜索、遗忘。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 329/329 + 集成 17/17 全绿（新增 memory 读取与遗忘集成测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-memory-settings-api.md`。
-- affects: §13 | bench:na(new-param) 理由：记忆读写 API 与 UI 接线，无 §5/§6 参数或行为变更
-
-### 2026-08-16（安全中心真实配置 + 终端执行通道 E115）
-
-- **变更**：新增 `src/config/security-config.ts` 持久化安全策略；新增 `src/gateway/terminal.ts` 执行通道；gateway 新增 `GET /api/security`、`POST /api/security/persist`、`POST /api/terminal/exec`（Shell 默认关闭返回 403）；UI 安全中心改为真实开关，终端命令经 gateway 执行并回显 stdout/stderr/exitCode。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 332/332 + 集成 17/17 全绿（新增 security-config/terminal 与 403 门控测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-security-terminal-channel.md`。
-- affects: §13 | bench:na(new-param) 理由：安全配置与终端执行 API 接线，无 §5/§6 参数或行为变更
-
-### 2026-08-16（产物文件列表接真实数据 E116）
-
-- **变更**：新增 `src/gateway/files.ts` 扫描沙箱允许根目录；gateway 新增 `GET /api/files`；UI 右侧文件 Tab 显示真实路径/类型/大小，打开与问答后自动刷新。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 334/334 + 集成 17/17 全绿（新增 files 扫描与形状测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-artifact-files-api.md`。
-- affects: §13 | bench:na(new-param) 理由：产物文件读写 API 与 UI 接线，无 §5/§6 参数或行为变更
-
-### 2026-08-16（终端命令白名单细化 E117）
-
-- **变更**：`SecurityConfig` 新增 `allowedCommandPrefixes`（默认空 = 允许任意）；gateway `/api/security/persist` 支持写入前缀，`/api/terminal/exec` 执行前校验，未授权前缀返回 403；UI 安全中心增加命令前缀输入框。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 335/335 + 集成 17/17 全绿（新增白名单 403 测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-terminal-allowlist.md`。
-- affects: §13 | bench:na(new-param) 理由：终端白名单配置与校验，无 §5/§6 参数或行为变更
-
-### 2026-08-16（Artifact 事件流 E118）
-
-- **变更**：新增 `src/gateway/artifact-bus.ts` 内存事件总线；gateway 新增 `GET /api/events` SSE 端点，`/api/ask` 完成后广播 `files_changed`；UI 右侧栏打开时连接 EventSource 自动刷新文件列表。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 337/337 + 集成 17/17 全绿（新增 artifact-bus 与 ask 事件断言）；doc-lint 通过；详见 `docs/plans/2026-08-16-artifact-event-stream.md`。
-- affects: §13 | bench:na(new-param) 理由：SSE 事件流与 UI 接线，无 §5/§6 参数或行为变更
-
-### 2026-08-16（Pipeline 进度事件 + HTML 预览自动弹出 E119）
-
-- **变更**：`PipelineOptions` 增加 `onProgress(stage)`，Stage1-6 关键节点回调；gateway `/api/ask` 发布 SSE `progress` 事件；`files.ts` 将 `.html/.htm` 归为 `HTML 预览`；UI EventSource 常驻监听进度并在 HTML 产物出现时自动展开浏览器 Tab。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 338/338 + 集成 17/17 全绿（新增 onProgress/progress 事件/HTML 分类测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-pipeline-progress-html-preview.md`。
-- affects: §13 | bench:na(new-param) 理由：进度事件与 HTML 预览接线，无 §5/§6 参数或行为变更
-
-### 2026-08-16（Skill 级“生成中”状态 E120）
-
-- **变更**：`PipelineOptions` 增加 `onArtifact`（generating/done/failed + path）；pipeline 直接 Skill 路径执行前发 `generating`、完成后解析产物路径发 `done`、失败发 `failed`；gateway `/api/ask` 发布 SSE `artifact` 事件；UI 文件列表顶部实时显示“生成中”Skill 行并在完成/失败后移除。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 339/339 + 集成 17/17 全绿（新增 onArtifact 与 artifact 事件断言）；doc-lint 通过；详见 `docs/plans/2026-08-16-skill-artifact-status.md`。
-- affects: §13 | bench:na(new-param) 理由：Skill 级产物状态事件与 UI 接线，无 §5/§6 参数或行为变更
-
-### 2026-08-16（Electron 桌面壳 E121）
-
-- **变更**：选型 Electron（复用 Node/TS 栈与 gateway，首版最快落地；Tauri 留作后续瘦身迁移）；gateway 增加静态 UI 同源托管（`GET /` 返回 `ui/prototype/dist`，非 `/api/*` GET 回退 `index.html`）；新增 `desktop/` Electron 主进程，自动拉起 gateway、健康检查后打开 1440×900 窗口，关闭时回收子进程；根 package 增加 `desktop` / `desktop:smoke` 脚本。
-- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 340/340 + 集成 17/17 全绿（新增静态 UI 同源托管与 API 不回退测试）；`desktop:smoke` 实测拉起 gateway、加载窗口并自动退出，端口无残留；doc-lint 通过；详见 `docs/plans/2026-08-16-desktop-shell.md`。
-- affects: §13 | bench:na(new-param) 理由：桌面壳与静态托管新增，无 §5/§6 参数或行为变更
-
-### 2026-08-16（桌面安装包 E122）
-
-- **变更**：electron-builder 产出 Windows NSIS 安装版与便携版；新增 `desktop/scripts/prepare-resources.mjs` 在构建前把 `dist/`、`ui/prototype/dist`、`node_modules/`、`.env`、`node.exe` 复制到 `desktop/resources/gateway`；`main.mjs` 增加 `app.isPackaged` 分支，从 `process.resourcesPath/gateway` 用内置 Node 启动编译后的 gateway，cwd 用 Electron userData 保证数据可写；`.gitignore` 排除打包产物。
-- **验证**：`electron-builder --dir` 后打包 exe 的 `--smoke` 实测通过（内置 gateway 启动 + UI 加载 + 退出码 0）；`npm run dist` 产出 NSIS Setup（129.3 MB）与便携版（129.0 MB）；主项目与 UI build、`npm run test:all` 单测 340/340 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-16-desktop-installer.md`。
-- affects: §13 | bench:na(new-param) 理由：安装包资源准备与打包分支新增，无 §5/§6 参数或行为变更
-
-### 2026-08-16（应用图标 E123）
-
-- **变更**：新增 `desktop/scripts/make-icon.ps1` 用 System.Drawing 生成 512×512 应用图标（深色圆角底 + 青蓝渐变聊天气泡 + 三圆点 + 火花）；生成 `desktop/build/icon.png`、`icon-256.png` 与标准 `icon.ico`；`win.icon` 指向 `build/icon.ico`。
-- **验证**：重新执行 `npm run dist`，打包日志不再出现默认图标警告，NSIS 与便携版重新产出；打包后 exe smoke 实测通过（退出码 0，`DESKTOP_READY`）；主项目与 UI build、`npm run test:all` 单测 340/340 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-16-app-icon.md`。
-- affects: §13 | bench:na(new-param) 理由：应用图标资源与打包配置新增，无 §5/§6 参数或行为变更
-
-### 2026-08-16（Tauri 瘦身迁移 E124）
-
-- **变更**：新增 `desktop/src-tauri`（Tauri v2 + Rust）：Rust 后端拉起 gateway、健康检查后创建 WebView2 窗口、退出时回收子进程；支持 dev/packaged 双模式（打包模式用内置 node.exe + 编译后 gateway，`\\?\` 长路径归一化）；新增 `tauri` / `tauri:dev` / `tauri:build` 脚本与 NSIS 打包配置。
-- **验证**：`cargo check` 通过；`--smoke` 实测打包资源分支拉起 gateway、加载 UI、打印 `TAURI_READY` 后退出码 0；`npm run tauri:build` 产出 `一人公司AI-Agent_0.1.0_x64-setup.exe`；主项目与 UI build、`npm run test:all` 单测 340/340 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-16-tauri-migration.md`。
-- affects: §13 | bench:na(new-param) 理由：Tauri 桌面壳新增，Electron 保留回退，无 §5/§6 参数或行为变更
-
-### 2026-08-17（搜索空结果兜底链 E125）
-
-- **变更**：`runSearchLoop` 子搜索全空时依次原句重试、简化句重试、Bing/Baidu 浏览器搜索兜底；`BrowserSessionManager` 新增 `searchWeb` 解析结果页；`PRESENT_STATE_RE` 去掉裸 `实时` 修复技术问题误判 news；`pickSecondPassTargets` 融合全空时按相关度抓 HTML 原文，二次融合 `minScore=0.3` 放宽阈值。
-- **验证**：单测 348/348 + 集成 17/17 全绿；`searchWeb` 真实验证可解析 Bing；ET20/SM18/SM31/C08 四条基准重跑全部从“我暂时无法确认”变成带证据的真实回答（ET20 conf 0.52/3 证据，SM31 conf 0.39/3 证据）；doc-lint 通过；详见 `docs/plans/2026-08-17-search-fallback-chain.md`。
-- affects: §6,§13 | bench:na(new-param) 理由：搜索兜底链与融合阈值微调，无 §5 参数登记变更
-
-### 2026-08-17（新基线全量重跑与重打分 E126）
-
-- **变更**：保留旧评分表作参照，清空结果后全量重跑 122 条魔鬼训练；新增 `scripts/export-devil-baseline.ts` 与 `npm run baseline:devil-v25`，导出新基线自动评分 CSV 与聚合摘要，供 A/B 套评测拆分使用。
-- **验证**：全量重跑完成；平均自动分 1.59 → 1.73，0 分 17 → 12，“我暂时无法确认” 10 → 6；35 条系统级 Bug 修复 35/35，8 条能力项 6/8 有进展；主项目 build、单测 348/348 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-17-rescore-new-baseline.md`。
-- affects: §13,附录A | bench:na(new-param) 理由：新基线导出工具与评测流程新增，无 §5/§6 参数变更
-
-### 2026-08-17（35条Bug状态与回归用例 + C05打包链路 E127）
-
-- **变更**：新增 `bench/devil-v25/bug-regression-status.md` 逐条登记 35 条 Bug 状态与回归用例；router-v2 补 5 条路由回归、emergency-reply 补 `rm -rf` 拒绝、github-reader 补 mock fetch 成功与兜底；project-packager 测试断言 zip 排除 `.git/node_modules/build`；pipeline 移除 `pack_project` 提前返回，本地打包 Skill 改用原始 query 保留 Windows 路径。
-- **验证**：主项目 build；单测 357/357 + 集成 17/17 全绿；CLI 实测 `打包 M:\202608111\src\wiki` 成功产出 zip；C06 raw.githubusercontent 不可达时稳定返回仓库链接兜底；doc-lint 通过；详见 `docs/plans/2026-08-17-bug-regression-status.md`。
-- affects: §13 | bench:na(new-param) 理由：Bug 状态台账与回归用例补全、C05 打包执行链路修复，无 §5/§6 参数变更
-
+### 2026-08-14（国内资料站兜底 E73）<br>- **变更**：查询改写对器件型号追加 `site:szlcsc.com datasheet` 与 `site:xcc.com datasheet` 子查询；`domainAuthority` 登记立创商城 0.8、芯查查 0.75、alldatasheet 0.7；搜索循环把“原厂域或国内资料站命中”视为高可信覆盖，未覆盖时才用 Tavily 兜底原厂域与国内资料站，避免券商/贴吧/淘宝等聚合页抢答。<br>- **理由**：官网慢、需登录或验证时，人类会去立创商城、芯查查直接查 datasheet；Agent 通过国内可直连资料站模拟该路径，不依赖自动登录。<br>- **验证**：新增 authority/rewrite/search-loop 单测；单测 221/221 + 集成 17/17 全绿。<br>- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：来源权威表与兜底策略，无 §5/§6 参数变更
+### 2026-08-14（浏览器会话继承 E74）<br>- **变更**：新增 `src/browser/session.ts`（`BrowserSessionManager`），用独立持久化 Chromium profile（`data/browser-session/`）保存 Session/Cookie，首次用可视窗口登录一次，之后 Agent 通过 `browser-session` Skill 或 CLI 带会话抓取网页正文；新增 `npm run browser:open / browser:fetch / browser:status`；复用本机 Playwright Chromium 或 Chrome/Edge，不读取正在运行的浏览器锁定配置。<br>- **落点**：落实 §1.2“联网时你的电脑网络能访问什么，她就能访问什么”——登录态由用户本人完成一次，验证码/短信等强验证不交给 Agent 自动处理。<br>- **验证**：新增 browser/session 单测 2 条 + browser-session skill 单测 2 条；真实抓取 `example.com` 成功；技能注册数 17 → 18；单测 225/225 + 集成 17/17 全绿。<br>- affects: §1.2,§4.1.2,§8.2 | bench:na(new-param) 理由：浏览器会话能力新增，无 §5/§6 参数变更
+### 2026-08-14（CDP 直连复用日常浏览器 E75）<br>- **变更**：`BrowserSessionManager` 新增 `connectCdp(port)`，通过 Chrome DevTools Protocol 连接用户正在运行的 QQ浏览器/Thorium/Chrome 等日常浏览器，直接复用其已登录会话，不需要独立 profile 重新登录；新增 `npm run browser:cdp -- <port>` 与 `npm run browser:launch -- thorium|qq`（以 `--remote-debugging-port` 启动，检测到浏览器在运行会提示先关闭）。<br>- **边界**：Chromium 系浏览器同一 profile 只能被一个实例锁定，因此复用日常浏览器会话需先完全关闭该浏览器、再用调试端口启动；验证码/短信/主密码等强验证仍由用户本人完成。<br>- **验证**：新增 CDP 连接单测 1 条；真实 CDP 冒烟：临时 Chromium 开调试端口 → `connectCdp` 连接成功 → 带会话抓取 `example.com` 成功；单测 226/226 + 集成 17/17 全绿。<br>- affects: §1.2,§4.1.2,§8.2 | bench:na(new-param) 理由：CDP 直连复用会话，无 §5/§6 参数变更
+### 2026-08-14（浏览器会话自动兜底 E76）<br>- **变更**：`search-loop` 新增 `browserSession` 兜底：器件型号查询且结果无高可信源（原厂域或立创/芯查查）时，用浏览器会话抓取搜索结果前 2 个候选 URL 的正文作为新证据；抓取后覆盖高可信源则跳过 Tavily（省配额），抓取失败或未覆盖则继续走 Tavily 兜底；`main.ts` 默认接入 `browserSession` 单例，已连接 CDP 时自动复用 QQ浏览器/Thorium 登录态。<br>- **验证**：新增 search-loop 单测 2 条（浏览器兜底成功跳过 Tavily、浏览器失败仍走 Tavily）；单测 228/228 + 集成 17/17 全绿；真实 CLI 冒烟 STM32F103C8T6 主频正常。<br>- affects: §1.2,§6.5,§6.7 | bench:na(new-param) 理由：浏览器会话兜底接入搜索循环，无 §5/§6 参数变更
+### 2026-08-15（CDP 端口持久化自动复用 E77）<br>- **变更**：`browser:cdp` 连接后把调试端口写入 `data/browser-session-cdp.json`；Agent 每次启动自动读取并连接已保存端口，不再要求连接与问答在同一进程；新增 `browser:cdp-off` 解除关联；浏览器未运行时自动清除状态并回退独立浏览器，不阻塞问答。<br>- **验证**：新增单测 1 条（端口持久化 + 新实例自动复用）；真实端到端：临时 Chromium 开调试端口 → `browser:cdp` 保存 → 新进程 `browser:fetch example.com` 通过自动连接成功；单测 229/229 + 集成 17/17 全绿。<br>- affects: §1.2,§8.2 | bench:na(new-param) 理由：CDP 端口持久化，无 §5/§6 参数变更
+### 2026-08-15（推进计划文档流程 E78）<br>- **变更**：新增 `docs/plans/` 目录与模板 `_template.md`，约定每次推进先写“目标 / 计划 / 执行过程 / 结果”，完成后在当日 `progress-handoff.md` 登记链接；与每日交接、附录 A 变更台账、机器轨迹日志分层，保证任何修改都有计划、执行、结果三段记录。<br>- **验证**：`docs/plans/README.md` 与 `_template.md` 已入库；doc-lint 0 FAIL/0 WARN。<br>- affects: 附录A | bench:na(new-param) 理由：计划文档流程约定，无 §5/§6 参数变更
+### 2026-08-15（datasheet 下载与证据补强 E79）<br>- **变更**：`BrowserSessionManager` 支持 PDF 链接提取（含可选等待异步渲染）与 `downloadFile`（带登录会话下载）；新增 `npm run datasheet -- "URL" [型号]`，从立创商城/芯查查商品页自动提取 datasheet PDF 下载到 `data/datasheets/`；`search-loop` 浏览器兜底扩展为“无高可信源**或**证据不足”时触发，抓高可信候选 URL 正文补证。<br>- **验证**：真实冒烟 `TPS5430` 立创商品页自动挑中 TI 官方 datasheet 并下载 2.48MB PDF；`GD32F103C8T6 数据手册` 置信度 0.414 → 0.505、证据含立创资料页与兆易创新选型指南；新增 session/search-loop 单测；单测 231/231 + 集成 17/17 全绿。<br>- affects: §6.5,§6.7,§8.2 | bench:na(new-param) 理由：资料下载能力与补证策略，无 §5/§6 参数变更
+### 2026-08-15（low_confidence 二次取证 E80）<br>- **变更**：新增 `src/search/second-pass.ts`，融合后仍 `low_confidence` 且查询含器件型号时，用浏览器会话抓高可信 HTML 页正文（或下载并解析高可信 PDF）后重新融合；浏览器二次取证的高可信页不再被 SEO 降权误伤；CLI 问答收尾关闭浏览器会话，避免进程挂起。<br>- **验证**：`GD32F103C8T6 数据手册` confidence 0.505 → 0.652，gate `low_confidence` → `none`，证据为二次取证抓取的立创完整页面；新增 second-pass 单测 4 条 + fusion 单测 1 条；单测 236/236 + 集成 17/17 全绿。<br>- affects: §6.5,§6.6,§6.7 | bench:na(new-param) 理由：二次取证提升证据质量，无 §5/§6 参数变更
+### 2026-08-15（强时效查询旧闻防护 E81）<br>- **变更**：新增 `src/search/recency.ts` 时效敏感判定；`s2_classify` 对“今天/今日/实时/最新/行情/在轨/驻留/现状/现在有/目前有/当前有”等强状态词规则优先归为 `news + ≤24h + 新闻源`；`fusion` 对强时效查询切换 news 权重、90 天时效窗口、缺失日期降权；`s5_synthesize` 注入今天日期、证据发布日期与“旧闻只能作背景，没有足够新证据时明确截至今天暂无可靠更新”的时效红线。<br>- **验证**：`中国空间站现在有哪几个航天员在太空` 复测不再引用 2025-04-26 神舟十九/二十号旧闻，改为“截至今天暂无可靠更新”，证据为 2026-06-17 腾讯新闻，gate `low_confidence`；新增 recency/fusion/s2/s5 单测 6 条；单测 242/242 + 集成 17/17 全绿。<br>- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：时效敏感查询分类、融合权重与合成红线，无 §5/§6 参数变更
+### 2026-08-15（Datasheet PDF 全文解析 E82）<br>- **变更**：新增 `scripts/pdf_text.py`（PyMuPDF rawdict 逐字符重建文本，解决 Identity-H/CID 字体下 `get_text` 返回字形编号的问题；stdout 强制 UTF-8）；`document-parser.ts` PDF 分支优先调 Python/PyMuPDF，失败回退 FlateDecode + Tj/TJ 提取；无文本层明确报“扫描件暂不支持 OCR”；新增 `npm run pdf:text -- <路径> [关键词]` 验证脚本。<br>- **验证**：`TPS5430.pdf` 提取 48,622 字符，命中 `TPS5430`/`500kHz`；新增 document-parser 单测 2 条；单测 244/244 + 集成 17/17 全绿。<br>- affects: §7,§6.7 | bench:na(new-param) 理由：PDF 解析管道增强，无 §5/§6 参数变更
+### 2026-08-15（datasheet 下载内容校验 E83）<br>- **变更**：新增 `src/search/datasheet-verify.ts`（型号归一化 + 最长前缀匹配，ST 家族手册用 `STM32F103` 前缀也能通过）；`scripts/datasheet.ts` 改为候选 PDF 逐个下载 → 解析 → 校验，不匹配删除误存文件并换下一个，全部不匹配明确报错并附尝试列表。<br>- **验证**：`item.szlcsc.com/9243.html + STM32F103C8T6` 下载校验通过（179,070 字符）；`515651.html + STM32F103C8T6`（TPS5430DDA 页）拒绝误存并列出 6 次不匹配尝试，ISO/IEC 认证证书也被拦截；新增 datasheet-verify 单测 6 条；单测 250/250 + 集成 17/17 全绿。<br>- affects: §7 | bench:na(new-param) 理由：datasheet 下载内容校验，无 §5/§6 参数变更
+### 2026-08-15（扫描件 OCR E84）<br>- **变更**：`scripts/pdf_text.py` 对“有图片但无文本层”的页面用 PyMuPDF 渲染 2x 页图并调用 RapidOCR（ONNX）识别，识别文本并入返回；返回 `ocr/ocrAvailable/ocrError`；`document-parser.ts` 在 OCR 引擎缺失时给出 `pip install rapidocr_onnxruntime` 安装指引。<br>- **依据**：本机未安装 PaddleOCR，且清华镜像缺包；改用官方 PyPI 可安装的 RapidOCR ONNX 轻量引擎，落实 §7.3“PDF 扫描件 OCR”能力。<br>- **验证**：TPS5430 第一页渲染成纯图片 PDF，OCR 提取 1,299 字符并命中 `TPS5430`/`5.5V`/`500kHz`；`PDF_OCR=0` 时返回安装指引；单测 250/250 + 集成 17/17 全绿。<br>- affects: §7 | bench:na(new-param) 理由：扫描件 OCR 引擎接入，无 §5/§6 参数变更
+### 2026-08-15（航天状态权威源 E85）<br>- **变更**：`authority.ts` 登记航天官方域名（`cmse.gov.cn`/`cnsa.gov.cn` 权威 1.0，`people.com.cn`/`news.cn` 0.9），`isOfficialForQuery` 对航天员/空间站/在轨类查询识别官方源；`query-rewrite.ts` 对航天状态问题（news/factual）自动追加 `site:cmse.gov.cn`、`site:cnsa.gov.cn` 与“载人航天小喇叭”子查询。<br>- **验证**：复测“中国空间站现在有哪几个航天员在太空”，证据变为 `www.cmse.gov.cn`（[hard]）3 条，回答仍诚实为“截至今天暂无可靠更新”；新增 authority/rewrite 单测 4 条；单测 254/254 + 集成 17/17 全绿。<br>- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：官方源登记与查询改写，无 §5/§6 参数变更
+### 2026-08-15（校准按决策类型细分 E86）<br>- **变更**：`confidence-calibration.ts` 的 `calibrateThresholds` 现在按 reject 的决策类型区分：只有 `direct/confirm`（或缺少修正路由）的 reject 才参与抬高 `routeConfidenceLow`；`must_clarify/option_clarify + correctedRoute` 的 reject（该直答却澄清）不再抬高澄清阈值。`CalibrationRecord` 扩展 `decision.type` 与 `correctedRoute`。<br>- **验证**：10/10 校准样本重跑 `route:apply-calibration`，提案从 low=0.65 修正为 low=0.45/high=0.75（与现值一致，不误伤 0.6 搜索）；新增单测 1 条；单测 255/255 + 集成 17/17 全绿。<br>- affects: §12.3 | bench:na(new-param) 理由：校准算法修正，PARAM 值未变更
+### 2026-08-15（QQ浏览器 CDP 登录态验证 E87）<br>- **变更**：`browser-launch.ts` 自动选择最新版 QQ浏览器（不再硬编码旧版本），进程检测改用 PowerShell `Get-Process`（避免受限环境 `tasklist` 拒绝访问误判未运行），`spawn` 加 `detached + unref` 让浏览器在命令退出后继续监听调试端口。<br>- **验证**：`browser:launch -- qq` 后 9222 LISTENING；`browser:cdp -- 9222` 持久化端口；新进程 `browser:fetch` 自动复用 QQ 会话，sessionDomains 含 szlcsc/xcc/taobao/jd/github 等大量登录域；单测 255/255 + 集成 17/17 全绿。<br>- affects: §1.2,§8.2 | bench:na(new-param) 理由：浏览器 CDP 启动与登录态复用，无 §5/§6 参数变更
+### 2026-08-15（扫描件 OCR 页数上限 E88）<br>- **变更**：`scripts/pdf_text.py` 增加 `PDF_OCR_MAX_PAGES`（默认 8，`0` 关闭 OCR），超过上限的扫描页跳过并计为 `ocrSkippedPages`；返回 JSON 增加 `ocrMaxPages / ocrSkippedPages`；`document-parser.ts` 的 `PdfTextResult` 同步补字段。<br>- **验证**：3 页扫描 PDF + `PDF_OCR_MAX_PAGES=2` 只 OCR 前 2 页，`ocrSkippedPages=1`；单测 255/255 + 集成 17/17 全绿。<br>- affects: §7 | bench:na(new-param) 理由：OCR 页数上限，无 §5/§6 参数变更
+### 2026-08-15（扫描件 OCR 单页缓存 E89）<br>- **变更**：`scripts/pdf_text.py` OCR 前渲染页图并计算 SHA-256，命中 `data/ocr-cache/` 缓存直接返回文本；未命中则 OCR 后写缓存，缓存键含引擎版本前缀 `v1-`。<br>- **验证**：单页扫描 PDF 第一次 OCR 约 17.9s 并生成 1 个缓存文件，第二次约 2.0s 命中缓存，返回相同 1,299 字符；单测 255/255 + 集成 17/17 全绿。<br>- affects: §7 | bench:na(new-param) 理由：OCR 缓存，无 §5/§6 参数变更
+### 2026-08-15（OCR 缓存清理策略 E90）<br>- **变更**：`scripts/pdf_text.py` 新增 `PDF_OCR_CACHE_MAX_FILES`（默认 200），写缓存后按 mtime 自动淘汰最旧文件，避免 `data/ocr-cache/` 长期堆积。<br>- **验证**：临时缓存目录预置 2 个旧缓存 + 上限 2，OCR 后只保留 2 个文件（新缓存 + 较新旧缓存），最旧被淘汰；单测 255/255 + 集成 17/17 全绿。<br>- affects: §7 | bench:na(new-param) 理由：OCR 缓存清理，无 §5/§6 参数变更
+### 2026-08-15（三站登录态重测 E91）<br>- **变更**：`browser:fetch` 支持可选等待参数 `waitMs`（用法 `npm run browser:fetch -- "URL" 5000`），JS 渲染后再取页面；`browser-launch.ts` 进程检测去掉 `.exe` 后缀再传给 `Get-Process -Name`，修复 QQ 普通模式实例漏检导致调试端口未拉起的问题。<br>- **验证**：QQ CDP 会话带 5 秒等待复测三站：立创会员中心显示“账户信息-立创商城”及已登录账户信息；半导小芯首页显示“退出登录/我的样品”；芯查查首页本地存储含 `PCuserInfo`、`PCtoken`、`SaasFrontToken` 用户凭据，无公开会员中心 URL，后续以“存在用户凭据”判登录态；单测 255/255 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-logged-in-sites-retest.md`。<br>- affects: §1.2,§8.2 | bench:na(new-param) 理由：浏览器会话与登录态复用，无 §5/§6 参数变更
+### 2026-08-15（登录态完整链路 E2E 与国内资料站增强 E92）<br>- **变更**：`DOMESTIC_DATASHEET_DOMAINS` 增加 `semiee.com`（权威度 0.75）；查询改写对器件型号同时生成“立创商城/芯查查/半导小芯 数据手册”自然词子查询与 `site:` 子查询；Tavily 国内资料站兜底查询补“半导小芯”。<br>- **验证**：QQ CDP 9222 会话下真实查询 `STM32F103C8T6 数据手册` 返回 ST 官方证据（confidence 0.888）；`npm run datasheet -- "https://item.szlcsc.com/9243.html" STM32F103C8T6` 从立创商城下载 2.08MB PDF 且型号校验通过（179,070 字符）；authority/rewrite 单测更新，单测 255/255 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-logged-in-chain-e2e.md`。<br>- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：国内资料站域名与查询改写，无 §5/§6 参数变更
+### 2026-08-15（push:hosts 整链演练与参数解析修复 E93）<br>- **变更**：`scripts/push-to-hosts.ts` 新增 `argValue()`，`--message/--repo/--scope` 同时支持 `--name=value` 与 `--name value` 两种写法；完成一次真实整链演练（npm test + build → add/commit → GitHub/Gitee 双 push）。<br>- **验证**：dry-run 确认双 token 已配置；`push:hosts --yes` 双端 push 成功，`data/hosting-events.jsonl` 出现 github.com 与 gitee.com 各一条 `ok: true`；修复后 dry-run 能正确显示自定义提交信息；单测 255/255 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-push-hosts-rehearsal.md`。<br>- affects: §11.4 | bench:na(new-param) 理由：发布脚本参数解析与整链演练，无 §5/§6 参数变更
+### 2026-08-15（半导小芯站内搜索兜底 E94）<br>- **变更**：`search-loop` 在用户原始问题点名半导小芯且结果无 `semiee.com` 时，用浏览器会话直达 `https://www.semiee.com/search?searchModel=<型号>` 补证据；`runSearchLoop` 新增 `originalQuery`，避免 LLM 查询改写丢掉站点点名；融合层对“点名国内资料站”的查询至少保留一条该站证据，不再被 top3/阈值截断。<br>- **验证**：真实查询 `STM32F103C8T6 半导小芯 数据手册` evidence 含 `www.semiee.com/search?searchModel=STM32F103C8T6`；新增 search-loop/fusion 单测，单测 257/257 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-semiee-index-verify.md`。<br>- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：国内资料站站内搜索兜底，无 §5/§6 参数变更
+### 2026-08-15（立创/芯查查站内直达 E95）<br>- **变更**：`authority.ts` 新增 `DOMESTIC_DATASHEET_SITES` 站点→站内搜索映射（立创 `so.szlcsc.com/global.html?k=<型号>`、芯查查 `www.xcc.com/chip/material/search?title=<型号>`、半导小芯 `searchModel`）；`search-loop` 用映射循环替代 E94 单站硬编码，任意点名的国内站未命中时都用浏览器会话直达站内搜索补证据。<br>- **验证**：真实查询 `STM32F103C8T6 芯查查 数据手册` evidence 含 `www.xcc.com/chip/material/search?title=STM32F103C8T6`；`STM32F103C8T6 立创商城 数据手册` evidence 含 `so.szlcsc.com/global.html?k=STM32F103C8T6`；新增 search-loop 单测 2 条，单测 259/259 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-domestic-site-direct-search.md`。<br>- affects: §6.1,§6.5,§6.7 | bench:na(new-param) 理由：国内资料站站内直达扩展，无 §5/§6 参数变更
+### 2026-08-15（source-stats SQLite WAL 并发修复 E96）<br>- **变更**：`SearchSourceStats` 连接后启用 `journal_mode=WAL`、`busy_timeout=5000`、`synchronous=NORMAL`，避免多条 CLI 并发写 `source-stats.db` 时报 `database is locked`。<br>- **验证**：两条 `npm run dev` 并发冒烟均正常返回，无锁错误；新增多实例写同一库单测 1 条，单测 260/260 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-sqlite-wal.md`。<br>- affects: §12.3 | bench:na(new-param) 理由：统计库并发写修复，无 §5/§6 参数变更
+### 2026-08-15（PaddleOCR 精度对比 E97）<br>- **变更**：`scripts/pdf_text.py` 支持 `PDF_OCR_ENGINE=rapid|paddle`，缓存键带引擎前缀，Paddle 初始化自动关闭默认 MKLDNN（`PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT=False`）；新增 `scripts/ocr_benchmark.py` 与 `npm run ocr:benchmark`；`document-parser` 错误提示补充 PaddleOCR 安装说明。<br>- **验证**：TPS5430 扫描样本第 1 页冷启动对比：RapidOCR 17.16s / 1299 字符，PaddleOCR 117.74s / 1224 字符，两者均命中 `TPS5430/5.5V/500kHz`；默认引擎保持 RapidOCR，PaddleOCR 作为高质量慢速备选；单测 260/260 + 集成 17/17 全绿；详见 `docs/plans/2026-08-15-paddle-ocr-compare.md`。<br>- affects: §7 | bench:na(new-param) 理由：OCR 引擎可切换与基准，无 §5/§6 参数变更
+### 2026-08-15（v1.0 三栏 UI 原型 E98）<br>- **变更**：新增独立前端工程 `ui/prototype`（Vite + React + lucide-react），实现 §4.1 三栏布局（工程开发/知识咨询/生活助手）与 Ask/Craft/Plan 正交、工程开发三列布局、内置终端/浏览器、§9 证据链（[hard]/[soft]）与轻量反馈。<br>- **验证**：`npm run build` 通过；按参考截图重排为深色 AI 工作台风格（近黑面板 + 蓝色强调），提问框左下新增 `+` 上传菜单（图片/文件/工程文件夹）与 Ask/Craft/Plan，聊天输入框支持直接粘贴图片，提问框右下角提供 DeepSeek/MiniMax/智谱 模型切换器；模型名已按官方文档核对；Playwright 检查工程/知识/移动三个视口无横向溢出、控制台 0 错误；开发服务器 `http://127.0.0.1:5173/`；详见 `docs/plans/2026-08-15-three-column-ui-prototype.md`。<br>- affects: §4.1,§9 | bench:na(new-param) 理由：三栏 UI 原型落地，无 §5/§6 参数变更
+### 2026-08-15（魔鬼训练 v2.5 全量跑分 E99）<br>- **变更**：新增 `scripts/bench-devil-v25.ts` 与 `npm run bench:devil-v25`，读取 `AI-Agent_魔鬼训练_v2.5_整理版`（122 条）批量跑 pipeline，增量落盘 `bench/devil-v25/results.jsonl`，输出报告/人工评分表/参考分模板；完成整理版 122 条全量基线。<br>- **验证**：122 条全部返回，0 超时，总耗时约 647s；owner 独立评分定稿（`AI-Agent_魔鬼训练_v2.5_AI独立评分表.xlsx`）：均分 1.28，≥2 分 58 条，0 分 43 条；分卷 ET 1.55、SM 1.06、EC 1.16、P 1.00、C 1.10、E 2.00；0 分大量为系统级故障（missing_time/create 排期选项/溺水救援误匹配），P 卷黑话/记忆/Skill 调用最弱；仍存在路由误判、紧急模板误触、记忆污染；详见 `docs/plans/2026-08-15-devil-training-v25-review.md`。<br>- affects: §3.1,§5,§6 | bench:B-20260815-01 | E99 新增 122 条魔鬼训练评测基线，暴露路由与安全规则缺口
+### 2026-08-16（魔鬼训练最小修复包 E100）<br>- **变更**：`toDisplayText` 增加 JSON 泄露净化；calendar/content-writer/im-dispatch 改为纯文本输出契约；`scoreRule` 增加 actionType 硬门，`qa` 优先于 `create/send/schedule`；新增 `illegal_request`/`property_emergency` 意图与 `safety_refusal`/财产止损分支；`bench:devil-v25` 注入与 CLI 同款依赖（记忆/技能/浏览器/LLM）。<br>- **验证**：`npm run test:all` 单测 276/276 + 集成 17/17 全绿；新增 11 条路由负样本回归 + 破解 WiFi 拒绝 + 手机进水财产止损 + 净化器单测；35 条 Bug 中 24 路由类大部分转正、7 JSON 泄露堵住、4 安全误匹配三分；全量重跑待下一轮；详见 `docs/plans/2026-08-16-devil-minimal-fix.md`。<br>- affects: §5,§6 | bench:B-20260816-01 | E100 修复路由/安全/JSON 泄露三类核心故障
+### 2026-08-16（第二轮修复与全量验证 E101）<br>- **变更**：新增 rewrite/pack 意图与管道分支、`hasGithubLink` 特征与 R017、compare+code/通用 compare 规则、create/modify 单文件直接执行与缺信息澄清、qa/query/modify 词表补漏、周末休市规则、R017-R021 strictMatch。<br>- **验证**：`npm run test:all` 全绿；122 条全量重跑对比原始基线：路由选项 25→0、JSON 泄漏 7→0、35 条系统级 Bug 35/35 修复、8 条能力项 5/8 有进展；剩余为搜索质量、执行器运行时与多意图问题；详见 `docs/plans/2026-08-16-devil-fix-verify.md`。<br>- affects: §5,§6 | bench:B-20260816-02 | E101 第二轮路由/搜索/执行器修复与全量验证
+### 2026-08-16（收尾修复 E102）<br>- **变更**：LLM 重模型默认超时 8s→30s；新增 `project-packager` Skill（Windows Compress-Archive，排除 .git/node_modules/build）；`github-reader` 占位转真（抓 raw.githubusercontent README）；天气+芯片多意图在 s5 无证据时拆分引导；s1 指代澄清增加动作词豁免；注册 19 项 Skill。<br>- **验证**：C02/E39 CLI 实测生成完整代码；C05 无路径澄清、C06 抓取 README/仓库链接兜底；P03 多意图拆分；全量测试通过，122 条基线路由选项 0、JSON 0、35/35 系统 Bug 修复。<br>- affects: §5,§6 | bench:B-20260816-03 | E102 执行器运行时、打包/GitHub Skill、多意图与指代豁免
+### 2026-08-16（OpenSquilla 借鉴审阅 E103）<br>- **变更**：审阅本地 `opensquilla/` v0.5.3 源码与文档，形成「可直接借鉴 / 需裁剪 / 不建议照搬」清单并登记 `docs/borrowed-designs.md`；确定下阶段优先借鉴 Provider Registry + 便宜优先模型路由、单一共享 TurnLoop、路由/模型决策数据飞轮闭环、记忆双通道召回、分层沙箱 + 拒绝账本、工具结果压缩/上下文预算、Skill 按需过滤。<br>- **验证**：`npm run build` + `npm run test:all` 通过；doc-lint 通过；未改动 `opensquilla/` 外部仓库；详见 `docs/plans/2026-08-16-opensquilla-review.md`。<br>- affects: §4.1,§8,§10,§13 | bench:na(new-param) 理由：外部设计审阅登记，无 §5/§6 参数或行为变更
+### 2026-08-16（Provider Registry + 模型分档路由 E104）<br>- **变更**：`OpenAiCompatibleClient` 拆到 `src/search/llm-client.ts`；新增 `llm-registry.ts`（DeepSeek/MiniMax/智谱三厂 OpenAI 兼容抽象，`LLM_PROVIDER_ORDER` 控制便宜优先顺序，primary 失败自动 fallback，链上限 [P-107]）；新增 `model-router.ts`（重档 execute/write_doc/github_analysis/rewrite/pack_project/plan/文档摘要结构，默认中档 [P-105]，轻档置信门 [P-106]）；Stage 5 合成按档选模型，旧 `LLM_PRIMARY_*` 单家配置行为不变；新增 `npm run bench:provider-router` 与 `.env.example` 三厂配置。<br>- **验证**：`npm run build` 通过；`npm run test:all` 单测 308/308 + 集成 17/17 全绿（新增 registry fallback 与分档 11 条）；`npm run bench:provider-router` 产出 `bench:B-20260816-04`；doc-lint 通过；详见 `docs/plans/2026-08-16-provider-registry.md`。<br>- affects: §5,§6,§13 | bench:B-20260816-04 | E104 Provider Registry + 模型分档路由落地，Stage 5 按任务难度选模型
+### 2026-08-16（模型路由数据飞轮 + UI 目录接入 E105）<br>- **变更**：客户端暴露 model/baseUrl，`FallbackLLMClient` 记录最后使用 provider 与 fallback 序列；trajectory 新增 `model_route` 事件；route-case 新增 `modelRoute` 字段与 `attachModelRoute`，audit 统计 `withModelRoute`；pipeline 在 Stage 5 合成成功后写轨迹并回写 case；新增 `scripts/export-model-catalog.ts` 与 `npm run model:export`，UI 模型切换器优先读 `ui/prototype/public/model-providers.json`，缺失回落静态列表。<br>- **验证**：主项目 `npm run build` 通过；`npm run test:all` 单测 310/310 + 集成 17/17 全绿；UI 构建通过；`npm run model:export` 产出 8 项模型目录；doc-lint 通过；详见 `docs/plans/2026-08-16-model-data-flywheel.md`。<br>- affects: §13 | bench:na(new-param) 理由：模型路由观测与 UI 目录导出，无 §5/§6 参数或行为变更
+### 2026-08-16（单一共享 TurnLoop Gateway E106）<br>- **变更**：新增 Express gateway（`src/gateway/app.ts` + `server.ts` + `npm run gateway`），`POST /api/ask` 走同一 `answer(query)` 契约，空 query 400 且不泄露原始错误；`GET /api/model-providers` 返回共享模型目录；UI `send()` 优先调 gateway，失败回落本地草稿；`PipelineOptions.modelSelection` 支持 UI 模型 id（`<provider>:<role>`）覆盖 Stage 5 档位/provider；`src/config/model-catalog.ts` 统一目录生成。<br>- **验证**：主项目 `npm run build` 通过；`npm run test:all` 单测 316/316 + 集成 17/17 全绿；UI 构建通过；doc-lint 通过；gateway 启动于 `http://127.0.0.1:8787`；详见 `docs/plans/2026-08-16-shared-turnloop-gateway.md`。<br>- affects: §13 | bench:na(new-param) 理由：gateway 与 UI 接线，无 §5/§6 参数或行为变更
+### 2026-08-16（Gateway 附件接口 + UI 上传 E107）<br>- **变更**：`/api/ask` 接收 `attachments[]`（base64 data URL），`src/gateway/attachments.ts` 解码为 `RawFileLike` 后进 pipeline，与 CLI 同链路；JSON body 上限提到 25MB；UI `+` 菜单接图片/文件上传，粘贴图片继续可用，`send()` 携带附件，失败回落本地草稿。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 319/319 + 集成 17/17 全绿（新增附件解码与图片附件走 VLM Skill）；doc-lint 通过；详见 `docs/plans/2026-08-16-gateway-attachments.md`。<br>- affects: §13 | bench:na(new-param) 理由：附件接口与 UI 上传，无 §5/§6 参数或行为变更
+### 2026-08-16（输入框用量图 + 模式收缩 E108）<br>- **变更**：聊天输入框右下角新增上下文用量环（按当前会话消息长度估算，6% 起封顶 100%）；Ask/Craft/Plan 从常驻三按钮改为可收缩单按钮 + 弹出层，选择后自动收起。<br>- **验证**：UI `npm run build` 通过；Playwright 检查 1280px 无横向溢出、模式按钮数为 1、用量图位于工具行右下角，弹出层含 3 项且选择后收起；详见 `docs/plans/2026-08-16-composer-refine.md`。<br>- affects: §4.1 | bench:na(new-param) 理由：UI 布局与交互调整，无 §5/§6 参数或行为变更
+### 2026-08-16（UI v2 外壳 + mode/submode 契约 E109）<br>- **变更**：按《AI-Agent-v2.5_3》重构 UI 外壳：L0/L1 侧边栏、右侧产物栏（文件/浏览器/终端）、终端抽屉、设置双栏（服务商/安全/路由校准/技能/记忆/Token 用量）、对话区顶部胶囊模式标签 + 子模式徽标；新增 `src/agent/mode-mapper.ts`，`/api/ask` 响应附加 `mode` / `submode`，四字段核心契约不变。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 321/321 + 集成 17/17 全绿（新增 mode-mapper 2 条、gateway mode 断言）；doc-lint 通过；详见 `docs/plans/2026-08-16-ui-v2-shell.md`。<br>- affects: §6.3,§13 | bench:na(new-param) 理由：UI 外壳与路由元数据扩展，无 §5/§6 参数或行为变更
+### 2026-08-16（路由校准设置面板接真实数据 E110）<br>- **变更**：gateway 新增 `GET /api/routing/cases`、`POST /api/routing/batch-mark`、`POST /api/routing/export`（CSV/JSON），读取/标记/导出 `data/route-cases.jsonl`；`GatewayOptions` 支持注入 `RouteCaseStore`；UI 路由校准表格改为拉取真实 case，支持标记正确、刷新、导出 CSV。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 322/322 + 集成 17/17 全绿（新增 cases/batch-mark/export 集成测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-routing-calibration-api.md`。<br>- affects: §13 | bench:na(new-param) 理由：路由校准读写 API 与 UI 接线，无 §5/§6 参数或行为变更
+### 2026-08-16（服务商设置接真实数据 E111）<br>- **变更**：新增 `src/config/provider-order.ts` 持久化默认 provider 顺序；registry 支持 `order()/setOrder()/listStatuses()`；gateway 新增 `GET /api/providers`、`POST /api/providers/default`、`POST /api/providers/test`；UI 服务商设置显示真实配置状态，支持测试连接、设为默认。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 323/323 + 集成 17/17 全绿（新增 providers 状态与安全失败测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-provider-settings-api.md`。<br>- affects: §13 | bench:na(new-param) 理由：服务商读写 API 与 UI 接线，无 §5/§6 参数或行为变更
+### 2026-08-16（技能库设置接真实数据 E112）<br>- **变更**：新增 `src/config/skills-config.ts` 持久化禁用 Skill 列表；registry 新增 `isSkillEnabled()/listSkillMetadata()`；pipeline 直接 Skill 执行与 `findBest` 注入跳过禁用项；gateway 新增 `GET /api/skills`、`POST /api/skills/sync`；UI 技能库显示真实 19 项与触发词，支持启用/禁用、类别筛选。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 325/325 + 集成 17/17 全绿（新增 skills-config 与 skills 目录测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-skills-settings-api.md`。<br>- affects: §13 | bench:na(new-param) 理由：技能库读写 API 与 UI 接线，无 §5/§6 参数或行为变更
+### 2026-08-16（Token 计量真实数据 E113）<br>- **变更**：新增 `src/usage/usage-store.ts` 与 `src/config/usage-budget.ts`；OpenAI 兼容客户端解析响应 `usage` 自动记账到 `data/usage.jsonl`；gateway 新增 `GET /api/usage/stats`、`POST /api/usage/budget`；UI Token 用量页展示真实今日/近7天/本月 Tokens、模型占比与预算设置。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 328/328 + 集成 17/17 全绿（新增 usage-store/usage-budget 与 usage stats 测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-usage-metering-api.md`。<br>- affects: §13 | bench:na(new-param) 理由：Token 计量读写 API 与 UI 接线，无 §5/§6 参数或行为变更
+### 2026-08-16（记忆管理设置接真实数据 E114）<br>- **变更**：`UserContextStore` 与 `ExperienceManager` 增加公开读取/删除方法；gateway 新增 `GET /api/memory`、`POST /api/memory/forget`，注入现有存储实例；UI 记忆管理页展示 L1/L2 合并视图，支持筛选、搜索、遗忘。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 329/329 + 集成 17/17 全绿（新增 memory 读取与遗忘集成测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-memory-settings-api.md`。<br>- affects: §13 | bench:na(new-param) 理由：记忆读写 API 与 UI 接线，无 §5/§6 参数或行为变更
+### 2026-08-16（安全中心真实配置 + 终端执行通道 E115）<br>- **变更**：新增 `src/config/security-config.ts` 持久化安全策略；新增 `src/gateway/terminal.ts` 执行通道；gateway 新增 `GET /api/security`、`POST /api/security/persist`、`POST /api/terminal/exec`（Shell 默认关闭返回 403）；UI 安全中心改为真实开关，终端命令经 gateway 执行并回显 stdout/stderr/exitCode。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 332/332 + 集成 17/17 全绿（新增 security-config/terminal 与 403 门控测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-security-terminal-channel.md`。<br>- affects: §13 | bench:na(new-param) 理由：安全配置与终端执行 API 接线，无 §5/§6 参数或行为变更
+### 2026-08-16（产物文件列表接真实数据 E116）<br>- **变更**：新增 `src/gateway/files.ts` 扫描沙箱允许根目录；gateway 新增 `GET /api/files`；UI 右侧文件 Tab 显示真实路径/类型/大小，打开与问答后自动刷新。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 334/334 + 集成 17/17 全绿（新增 files 扫描与形状测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-artifact-files-api.md`。<br>- affects: §13 | bench:na(new-param) 理由：产物文件读写 API 与 UI 接线，无 §5/§6 参数或行为变更
+### 2026-08-16（终端命令白名单细化 E117）<br>- **变更**：`SecurityConfig` 新增 `allowedCommandPrefixes`（默认空 = 允许任意）；gateway `/api/security/persist` 支持写入前缀，`/api/terminal/exec` 执行前校验，未授权前缀返回 403；UI 安全中心增加命令前缀输入框。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 335/335 + 集成 17/17 全绿（新增白名单 403 测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-terminal-allowlist.md`。<br>- affects: §13 | bench:na(new-param) 理由：终端白名单配置与校验，无 §5/§6 参数或行为变更
+### 2026-08-16（Artifact 事件流 E118）<br>- **变更**：新增 `src/gateway/artifact-bus.ts` 内存事件总线；gateway 新增 `GET /api/events` SSE 端点，`/api/ask` 完成后广播 `files_changed`；UI 右侧栏打开时连接 EventSource 自动刷新文件列表。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 337/337 + 集成 17/17 全绿（新增 artifact-bus 与 ask 事件断言）；doc-lint 通过；详见 `docs/plans/2026-08-16-artifact-event-stream.md`。<br>- affects: §13 | bench:na(new-param) 理由：SSE 事件流与 UI 接线，无 §5/§6 参数或行为变更
+### 2026-08-16（Pipeline 进度事件 + HTML 预览自动弹出 E119）<br>- **变更**：`PipelineOptions` 增加 `onProgress(stage)`，Stage1-6 关键节点回调；gateway `/api/ask` 发布 SSE `progress` 事件；`files.ts` 将 `.html/.htm` 归为 `HTML 预览`；UI EventSource 常驻监听进度并在 HTML 产物出现时自动展开浏览器 Tab。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 338/338 + 集成 17/17 全绿（新增 onProgress/progress 事件/HTML 分类测试）；doc-lint 通过；详见 `docs/plans/2026-08-16-pipeline-progress-html-preview.md`。<br>- affects: §13 | bench:na(new-param) 理由：进度事件与 HTML 预览接线，无 §5/§6 参数或行为变更
+### 2026-08-16（Skill 级“生成中”状态 E120）<br>- **变更**：`PipelineOptions` 增加 `onArtifact`（generating/done/failed + path）；pipeline 直接 Skill 路径执行前发 `generating`、完成后解析产物路径发 `done`、失败发 `failed`；gateway `/api/ask` 发布 SSE `artifact` 事件；UI 文件列表顶部实时显示“生成中”Skill 行并在完成/失败后移除。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 339/339 + 集成 17/17 全绿（新增 onArtifact 与 artifact 事件断言）；doc-lint 通过；详见 `docs/plans/2026-08-16-skill-artifact-status.md`。<br>- affects: §13 | bench:na(new-param) 理由：Skill 级产物状态事件与 UI 接线，无 §5/§6 参数或行为变更
+### 2026-08-16（Electron 桌面壳 E121）<br>- **变更**：选型 Electron（复用 Node/TS 栈与 gateway，首版最快落地；Tauri 留作后续瘦身迁移）；gateway 增加静态 UI 同源托管（`GET /` 返回 `ui/prototype/dist`，非 `/api/*` GET 回退 `index.html`）；新增 `desktop/` Electron 主进程，自动拉起 gateway、健康检查后打开 1440×900 窗口，关闭时回收子进程；根 package 增加 `desktop` / `desktop:smoke` 脚本。<br>- **验证**：主项目与 UI `npm run build` 通过；`npm run test:all` 单测 340/340 + 集成 17/17 全绿（新增静态 UI 同源托管与 API 不回退测试）；`desktop:smoke` 实测拉起 gateway、加载窗口并自动退出，端口无残留；doc-lint 通过；详见 `docs/plans/2026-08-16-desktop-shell.md`。<br>- affects: §13 | bench:na(new-param) 理由：桌面壳与静态托管新增，无 §5/§6 参数或行为变更
+### 2026-08-16（桌面安装包 E122）<br>- **变更**：electron-builder 产出 Windows NSIS 安装版与便携版；新增 `desktop/scripts/prepare-resources.mjs` 在构建前把 `dist/`、`ui/prototype/dist`、`node_modules/`、`.env`、`node.exe` 复制到 `desktop/resources/gateway`；`main.mjs` 增加 `app.isPackaged` 分支，从 `process.resourcesPath/gateway` 用内置 Node 启动编译后的 gateway，cwd 用 Electron userData 保证数据可写；`.gitignore` 排除打包产物。<br>- **验证**：`electron-builder --dir` 后打包 exe 的 `--smoke` 实测通过（内置 gateway 启动 + UI 加载 + 退出码 0）；`npm run dist` 产出 NSIS Setup（129.3 MB）与便携版（129.0 MB）；主项目与 UI build、`npm run test:all` 单测 340/340 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-16-desktop-installer.md`。<br>- affects: §13 | bench:na(new-param) 理由：安装包资源准备与打包分支新增，无 §5/§6 参数或行为变更
+### 2026-08-16（应用图标 E123）<br>- **变更**：新增 `desktop/scripts/make-icon.ps1` 用 System.Drawing 生成 512×512 应用图标（深色圆角底 + 青蓝渐变聊天气泡 + 三圆点 + 火花）；生成 `desktop/build/icon.png`、`icon-256.png` 与标准 `icon.ico`；`win.icon` 指向 `build/icon.ico`。<br>- **验证**：重新执行 `npm run dist`，打包日志不再出现默认图标警告，NSIS 与便携版重新产出；打包后 exe smoke 实测通过（退出码 0，`DESKTOP_READY`）；主项目与 UI build、`npm run test:all` 单测 340/340 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-16-app-icon.md`。<br>- affects: §13 | bench:na(new-param) 理由：应用图标资源与打包配置新增，无 §5/§6 参数或行为变更
+### 2026-08-16（Tauri 瘦身迁移 E124）<br>- **变更**：新增 `desktop/src-tauri`（Tauri v2 + Rust）：Rust 后端拉起 gateway、健康检查后创建 WebView2 窗口、退出时回收子进程；支持 dev/packaged 双模式（打包模式用内置 node.exe + 编译后 gateway，`\\?\` 长路径归一化）；新增 `tauri` / `tauri:dev` / `tauri:build` 脚本与 NSIS 打包配置。<br>- **验证**：`cargo check` 通过；`--smoke` 实测打包资源分支拉起 gateway、加载 UI、打印 `TAURI_READY` 后退出码 0；`npm run tauri:build` 产出 `一人公司AI-Agent_0.1.0_x64-setup.exe`；主项目与 UI build、`npm run test:all` 单测 340/340 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-16-tauri-migration.md`。<br>- affects: §13 | bench:na(new-param) 理由：Tauri 桌面壳新增，Electron 保留回退，无 §5/§6 参数或行为变更
+### 2026-08-17（搜索空结果兜底链 E125）<br>- **变更**：`runSearchLoop` 子搜索全空时依次原句重试、简化句重试、Bing/Baidu 浏览器搜索兜底；`BrowserSessionManager` 新增 `searchWeb` 解析结果页；`PRESENT_STATE_RE` 去掉裸 `实时` 修复技术问题误判 news；`pickSecondPassTargets` 融合全空时按相关度抓 HTML 原文，二次融合 `minScore=0.3` 放宽阈值。<br>- **验证**：单测 348/348 + 集成 17/17 全绿；`searchWeb` 真实验证可解析 Bing；ET20/SM18/SM31/C08 四条基准重跑全部从“我暂时无法确认”变成带证据的真实回答（ET20 conf 0.52/3 证据，SM31 conf 0.39/3 证据）；doc-lint 通过；详见 `docs/plans/2026-08-17-search-fallback-chain.md`。<br>- affects: §6,§13 | bench:na(new-param) 理由：搜索兜底链与融合阈值微调，无 §5 参数登记变更
+### 2026-08-17（新基线全量重跑与重打分 E126）<br>- **变更**：保留旧评分表作参照，清空结果后全量重跑 122 条魔鬼训练；新增 `scripts/export-devil-baseline.ts` 与 `npm run baseline:devil-v25`，导出新基线自动评分 CSV 与聚合摘要，供 A/B 套评测拆分使用。<br>- **验证**：全量重跑完成；平均自动分 1.59 → 1.73，0 分 17 → 12，“我暂时无法确认” 10 → 6；35 条系统级 Bug 修复 35/35，8 条能力项 6/8 有进展；主项目 build、单测 348/348 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-17-rescore-new-baseline.md`。<br>- affects: §13,附录A | bench:na(new-param) 理由：新基线导出工具与评测流程新增，无 §5/§6 参数变更
+### 2026-08-17（35条Bug状态与回归用例 + C05打包链路 E127）<br>- **变更**：新增 `bench/devil-v25/bug-regression-status.md` 逐条登记 35 条 Bug 状态与回归用例；router-v2 补 5 条路由回归、emergency-reply 补 `rm -rf` 拒绝、github-reader 补 mock fetch 成功与兜底；project-packager 测试断言 zip 排除 `.git/node_modules/build`；pipeline 移除 `pack_project` 提前返回，本地打包 Skill 改用原始 query 保留 Windows 路径。<br>- **验证**：主项目 build；单测 357/357 + 集成 17/17 全绿；CLI 实测 `打包 M:\202608111\src\wiki` 成功产出 zip；C06 raw.githubusercontent 不可达时稳定返回仓库链接兜底；doc-lint 通过；详见 `docs/plans/2026-08-17-bug-regression-status.md`。<br>- affects: §13 | bench:na(new-param) 理由：Bug 状态台账与回归用例补全、C05 打包执行链路修复，无 §5/§6 参数变更
 ### 2026-08-18/19（官方源子查询与视频结果 E128/E146）<br>- **变更**：`ruleBasedRewrite` 对 STM32/ADC/看门狗/PWM/RTOS/BUCK/Altium/SPICE 自动生成官方域子查询；`authority` 新增技术题官方域映射与 `e2e.ti.com` / `community.st.com` / `freertos.org` 官方标记；`search-loop` 空结果回退候选与 Tavily 兜底覆盖技术官方域；搜索证据含 B站/YouTube/抖音视频时，结果返回 `videos` 字段并追加“相关视频教程”区块。**验证**：主项目 build；单测 435/435 + 集成 17/17 全绿；CLI 真跑 ET20/ET24/ET26/C01/E37/E38，5 条搜索类全部带回官方/专业站证据；视频结果单测通过；doc-lint 通过；详见 `docs/plans/2026-08-18-official-source-subquery.md` 与 `docs/plans/2026-08-19-video-results.md`；affects: §6,§13 | bench:B-20260818-01 理由：查询改写、官方源兜底与视频结果行为变更，登记 spot 基准。
 
 ### 2026-08-18（A/B 套评测拆分 E129）<br>- **变更**：新增 `scripts/split-devil-ab.ts` 与 `npm run split:devil-ab`，122 条拆为 A 套 108 条单发评测与 B 套 14 条记忆/上下文/多轮依赖题；`bench-devil-v25.ts` 支持 `--set=a|b`；新增 `scripts/bench-devil-b.ts` 与 `npm run bench:devil-b` 跑 B 套多轮会话评测。**验证**：A/B 集合无重复无遗漏；A 套平均参考分 1.84、B 套 0.86；B 套 14 场景多轮全部落盘，P10/P07/C01/C05 等上下文链路生效；单测 376/376 + 集成 17/17 全绿；doc-lint 通过；详见 `docs/plans/2026-08-18-ab-split.md` 与 `docs/plans/2026-08-18-b-multiturn.md`；affects: §13,附录A | bench:na(new-param) 理由：评测集拆分工具与流程，无 §5/§6 行为变更。
@@ -2603,6 +1925,7 @@ E1 交叉引用：[P-04] 2000ms provisional 的复验门见 E1 条目。
 ### 2026-08-23（架构审计中期批·第十批 B2+B3 E217）<br>- **变更**：B2：confidence-calibration 分位改 nearest-rank（ceil(p*n)-1，小样本 n=4 p=0.75 不再取最大值）；去掉 Math.max 棘轮——建议阈值按样本分位双向收敛（clamp 仍限定安全范围）；新增 [P-119] 30 天时间窗，只取窗口内样本（早期误标不再把 Low 永久钉死在 clamp 上限，无时间戳旧样本视为窗口内兼容导入）；B3：llm-rule-proposer 的 LLM confidenceBoost 夹到 [0, [P-120] 0.25]，与确定性路径取值域对称，不再允许 0.9/负值支配排序。<br>- **证据**：新增单测 7 条（confidence-calibration 分位/双向收敛/时间窗/accept 分位/样本不足 5 条 + proposer boost 超界/负值 2 条）；既有 apply-calibration/route-case-store 校准用例改用近期时间戳回归；全量单测 671/672（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。<br>- **状态**：中期批第十批收口；B2/B3 完成，剩余 S1-S3（SSRF/CDP/弱 key 安全项）。<br>- affects: §5,§6 | bench:na(new-param) 理由：新增 [P-119]/[P-120] 校准窗口与 boost 上限，校准回路行为收敛无旧值可基准
 ### 2026-08-23（架构审计安全批收尾 S1+S2+S3 E218）<br>- **变更**：S1 新增 `src/security/url-safety.ts`——fetchPage/downloadFile 只允许 http/https，拒绝回环（127.0.0.0/8、::1、localhost、IPv4-mapped 含十六进制归一化）/未指定/链路本地/ULA 地址（RFC1918 局域网保留放行，嵌入式内网 datasheet 场景），防网页提示注入驱动带登录态浏览器 SSRF 访问 sidecar（127.0.0.1:8420）；S2 CDP 状态新增 [P-121] 10 分钟过期（超时或旧版无 expiresAt 状态一律清理，不再无限期自动重连），连接与 launch 脚本输出风险提示 + 提醒 `browser:cdp-off`；S3 MemoryCore 客户端拒绝弱默认 key `local-dev-key` 启动（构造即校验，env 或显式参数均可），sidecar 配置 `configs/tdai-gateway.local.yaml` 改 `${TDAI_GATEWAY_API_KEY}` 环境注入，`.env.example` 补充说明。<br>- **证据**：新增单测 9 条（url-safety 回环/协议/放行/assert 4 条 + memorycore 弱 key 拒绝 1 条 + browser session S1 拒绝 2 条 + S2 TTL/旧版状态 2 条）；全量单测 680/681（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。<br>- **状态**：架构审计批次全部收口（安全 H1-H4/H10 + 数据 H5 + 正确性 H9/B1/B4/H8 + 决策 H6/D1-D5 + 中期 P1-P17 + 校准 B2/B3 + 安全 S1-S3）。<br>- affects: §5,§6,§10.2 | bench:na(new-param) 理由：新增 [P-121] CDP 过期时间，安全行为收敛无旧值可基准
 
+### 2026-08-23（附录 A retention 压缩 E219）<br>- **变更**：按 §0.5 retention 纪律压缩附录 A 旧段——08-12~08-17 的 120 条多行 E 条目（原 554 非空行）压为单行 `<br>` 打包格式，与 08-18+ 新条目格式一致；内容无损（标题/变更/证据/affects 全保留），版本段维持「近 2 版全文、更早每版一行」。<br>- **证据**：doc-lint 0 FAIL 0 WARN（附录 509/950、附录 A 291/500，均回预算内）；E 编号与 bench ID 全保留，交叉引用可解析。<br>- **状态**：完成；附录 A 725 → 291 行，腾出 434 行为后续 E 条目与 v1.0 切片保留余量。<br>- affects: 附录A | bench:na(new-param) 理由：附录 retention 压缩，无 §5/§6 参数变更
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
