@@ -48,6 +48,6 @@
 - 验证：`npm run deep:bench` 真跑 3 轮 **3/3 source=llm、0 timedOut**（31030/33359/38990ms）；
   doc-lint 0 FAIL 0 WARN（附录 527/950，约束 14+45=59<=59 通过）
 - 测试：单测 791/792（1 skip）+ 集成 15/15（deep-report 并行 1 + llm 2 新增）
-- 提交：主体 `<hash>` · handoff `<hash>`
+- 提交：`17a9676`（E231 主体）+ `2f2924e`（handoff 登记）
 - 遗留事项：[P-13] 维持 provisional（n=3<15）；owner 真跑 `npm run deep:bench -- --samples 15`
   补 n≥15 样本后按 E197 复验门评估晋升。
