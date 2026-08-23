@@ -1,9 +1,10 @@
 # 进度交接 2026-08-23（v0.2b 续作）
 
-> 当前分支：`v0.2b`｜E199-E219 + SEV-1.1~1.4 安全批已提交（E199-E201 `ba41dbb`、E202 `8857b47`、
+> 当前分支：`v0.2b`｜E199-E220 + SEV-1.1~1.4 安全批已提交（E199-E201 `ba41dbb`、E202 `8857b47`、
 > E203 `7cb6f3c`、SEV `24399d6`、E204 `4b7e34e`、E205 `a05e9fc`、E206 `fe5f067`、架构审计安全/数据/正确性批
 > `60b419d`、决策批 E207 `615bb62`、中期批 1-7 E208-E214 `109021b`、P17 E215 `0cbde9b`、
-> P1/P2/P10 E216 `ce1abf8`、B2/B3 E217 `f575040`、S1-S3 E218 `3fb4cc6`、附录 retention E219 `e3513f7`）。
+> P1/P2/P10 E216 `ce1abf8`、B2/B3 E217 `f575040`、S1-S3 E218 `3fb4cc6`、附录 retention E219 `e3513f7`、
+> v1.0 S1 深度报告 E220 `09e89bc`）。
 > 上一份交接见 `docs/2026-08-22-progress-handoff.md`。
 
 ## 今日已收口
@@ -199,11 +200,19 @@
     doc-lint 0 FAIL 0 WARN（C1-C8 全过）。计划见
     `docs/plans/2026-08-23-appendix-retention.md`。
 
+25. **v1.0 切片·首切片深度报告（E220）**：v1.0 切片启动（§4.2 里程碑 + §4.3.2 长任务首实例）——
+    路由新增 `deep_report` actionType + 规则 R002d（直接路由、searchNeed=true）；新模块
+    `src/search/deep-report.ts` 分阶段生成（大纲→分节→证据附录），共享 [P-13] 13s 预算
+    （超时/失败降级规则组装），AbortSignal 取消；pipeline 深度报告路径接线，`PipelineOptions.signal`
+    透传；params.ts 落 [P-13] `deepReportBudgetMs=13s`（C8 36 key）。新增单测 9 条；
+    全量单测 689/690（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。计划见
+    `docs/plans/2026-08-23-v1-slicing.md`。
+
 ## 待提交（本批次）
 
-- 架构审计全部批次 + 附录 retention E219 已提交：安全/数据/正确性批 `60b419d`、决策批 E207 `615bb62`、
+- 架构审计全部批次 + E219/E220 已提交：安全/数据/正确性批 `60b419d`、决策批 E207 `615bb62`、
   中期批 1-7 E208-E214 `109021b`、P17 E215 `0cbde9b`、P1/P2/P10 E216 `ce1abf8`、
-  B2/B3 E217 `f575040`、S1-S3 E218 `3fb4cc6`、E219 `e3513f7`；待提交清单已清空。
+  B2/B3 E217 `f575040`、S1-S3 E218 `3fb4cc6`、E219 `e3513f7`、v1.0 S1 深度报告 E220 `09e89bc`；待提交清单已清空。
 - `bench/search-metrics.jsonl` 与根目录临时文件/`docs/2026-08-23-architecture-code-audit.md`
   不在任何批次，未混入提交（审计文档保留为只读第三方输入）。
 
@@ -218,15 +227,18 @@
    `data/tavily-monthly.json`；owner 已决策等下月重置，9 月重置后跑 `npm run tavily:smoke` 复核，
    并评估 [P-64] 口径复算（本地计数 vs 远端 credits）。
 3. **附录 A 行数预算**：E219 已按 retention 压缩 08-12~08-17 旧条目（附录 948 → 515/950、附录 A 
-   725 → 291/500），余量充足；v0.2b 里程碑验收已随 E206 正式收口，下一里程碑动作为 v1.0 切片
-   （深度报告等），附录随切持续按 retention 维护。
+   725 → 291/500），余量充足；v0.2b 里程碑验收已随 E206 正式收口，v1.0 首切片（深度报告 E220）
+   已落地，附录随切持续按 retention 维护。
 4. **架构审计后续批**：安全批 H1-H4/H10、数据 H5、短期正确性 H9/B1/B4/H8、
    短期决策 H6/D1-D5、中期第一批 H7+P4、中期第二批 P3+P5、中期第三批 P6+P8、
    中期第四批 P7+P11、中期第五批 P9+P15、中期第六批 P12+P16、中期第七批 P13+P14 均已
    收口 → 架构审计全部批次完成（安全 H1-H4/H10 + 数据 H5 + 正确性 H9/B1/B4/H8 + 决策
    H6/D1-D5 + 中期 P1-P17 + 校准 B2/B3 + 安全 S1-S3）；审计文档归档为只读输入。后续
    回到 OCR 备忘 / Tavily 月度复核 / 附录行数 retention 等常规项。
-   `docs/plans/YYYY-MM-DD-<主题>.md` 三段式。
+5. **v1.0 后续切片（S2-S8）**：S1 深度报告已落地（E220）；剩余 S2 证据链 UI、S3 MCP 子 Agent、
+   S4 安全模型补齐、S5 远程对话通道、S6 代码托管联动、S7 Skill 市场远程化、S8 LLM 增强路由 + 
+   fast description + MemoryCoreStore 切换；深度报告「取消/恢复」的恢复（状态持久化）留待 S2 后补；
+   [P-13] 保持 provisional，待真实使用实测按 E197 口径复测。`docs/plans/YYYY-MM-DD-<主题>.md` 三段式。
 
 ## 常用命令
 
