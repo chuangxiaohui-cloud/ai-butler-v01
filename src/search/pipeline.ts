@@ -33,6 +33,7 @@ import {
   generateDeepReport,
 } from './deep-report.js';
 import { DeepReportStore, type DeepReportStoreLike } from './deep-report-store.js';
+import { sanitizeSearchQuery } from '../security/query-sanitize.js';
 import { pickSecondPassTargets, shouldSecondPass } from './second-pass.js';
 import { applyRule3 } from './rule3.js';
 import { shouldTriggerTavily } from './tavily-trigger.js';
@@ -119,6 +120,8 @@ export interface PipelineDeps {
   browserSession?: BrowserFetcher;
   /** v1.0 S2：深度报告任务状态存储（取消恢复；测试可注入内存实现） */
   deepReportStore?: DeepReportStoreLike;
+  /** §10.3 搜索脱敏开关（默认开；工程开发栏显式携带项目上下文时可关） */
+  querySanitizeEnabled?: boolean;
 }
 
 export interface PipelineOptions {
@@ -721,7 +724,12 @@ export async function pipeline(
     ? shouldTriggerTavily(prepared.cleanQuery, classified.intent, rule3.serious)
     : null;
   const searchQuery = classified.searchQuery || prepared.cleanQuery;
-  const search = await runSearchLoop(searchQuery, {
+  // §10.3 搜索脱敏：剥离路径/密钥/内网地址后再发出，避免项目敏感信息泄露给搜索引擎
+  const sanitized = sanitizeSearchQuery(searchQuery, deps.querySanitizeEnabled ?? true);
+  if (sanitized.warnings.length > 0) {
+    safeProgress('sanitize-warning');
+  }
+  const search = await runSearchLoop(sanitized.query || '（已脱敏查询）', {
     originalQuery: prepared.cleanQuery,
     intent: classified.intent,
     cacheKey: prepared.cacheKey,

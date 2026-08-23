@@ -28,6 +28,7 @@
 | `src/search/` | `deep-report.ts` | 深度报告分阶段生成（v1.0 S1，§4.3.2，[P-13] 预算，E220） | ✅ |
 | `src/search/` | `deep-report-store.ts` | 深度报告任务状态存储（取消恢复，JSONL 落盘，v1.0 S2，§4.3.2，E221） | ✅ |
 | `src/mcp/` | `types.ts`、`registry.ts`、`client.ts`、`dispatcher.ts`、`safety.ts` | MCP 子 Agent：注册表/stdio 客户端/调度器（重试·退避·降级）/工具白名单与 untrusted 域（v1.0 S3，§4.1.2 + §10 + §11.1，E222） | ✅ |
+| `src/security/` | `command-whitelist.ts`、`query-sanitize.ts` | 命令白名单（允许集合+硬编码拒绝+超时 kind）与搜索脱敏（路径/密钥/内网剥离，v1.0 S4，§10.2/§10.3，E223） | ✅ |
 | `src/search/stages/` | `s1_prepare.ts`、`s2_classify.ts`、`s3_search.ts`、`s5_synthesize.ts`、`s6_post.ts` | 六阶段独立实现 | ✅ |
 | `src/search/providers/` | `types.ts`、`bocha.ts`、`anysearch.ts`、`tavily.ts` | 搜索适配器，统一 `SearchProvider` | ✅ |
 | `src/search/` | `fusion.ts`、`rule1.ts`、`rule3.ts`、`authority.ts` | 融合、事实一致性、安全阀、权威度 | ✅ |

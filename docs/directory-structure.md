@@ -63,6 +63,7 @@ CLI (src/main.ts)  UI (ui/prototype)  桌面壳 (desktop)
 | `src/log/` | JSONL 追加/轮转（.1 归档）/缓存读 | `jsonl.ts` |
 | `src/usage/` | Token 计量与聚合 | `usage-store.ts` |
 | `src/security/` | 沙箱路径白名单、审计、Agent 操作日志与回滚、浏览器抓取 URL 安全 | `sandbox.ts`、`operation-log.ts`、`url-safety.ts` |
+| `src/security/` | 命令白名单 + 搜索脱敏（v1.0 S4，§10.2/§10.3） | `command-whitelist.ts`、`query-sanitize.ts` |
 | `src/postprocess/` | 输出后处理（文化回复等） | `cultural-reply.ts` |
 | `src/wiki/` | 冷启动知识种子 | `index.ts` |
 
