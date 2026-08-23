@@ -43,9 +43,11 @@
 
 ## 结果
 
-- 验证：`npm run deep:bench -- --dry-run` 自检通过（3 轮 fallback 0ms、3 节、无 LLM 调用）；
-  doc-lint 0 FAIL 0 WARN（附录 525/950）
-- 测试：单测 788/789（1 skip）+ 集成 15/15（无新增单测，脚本 dry-run 自检覆盖）
-- 提交：`471c414`（E229 主体）+ `284636e`（handoff 登记）
-- 遗留事项：[P-13] 维持 provisional；owner 真跑 `npm run deep:bench -- --samples 15`
-  （LLM 模式，需网络 + token）补 n≥15 样本后按 E197 复验门评估晋升。
+- 验证：dry-run 自检通过；owner 批准后 LLM 真跑 3 轮（E230，bench:B-20260824-03）：
+  12008/13003/13015ms，3/3 fallback 降级、2/3 超 13s；延迟探针单次 heavy 8.5-9.4s（含 <think>），
+  4 次顺序调用结构性需 ~34-38s ≫ 13s；doc-lint 0 FAIL 0 WARN（附录 526/950）
+- 测试：单测 788/789（1 skip）+ 集成 15/15（无新增单测）
+- 提交：`471c414`（E229 主体）+ `284636e`（E229 handoff）+ E230 批 `<hash>`
+- 遗留事项：[P-13] 维持 provisional（n=3<15）；初步实测显示 13s 结构性不足，
+  待 owner 三选一（A 上调预算+改约束 / B 并行或换快模型 / C 维持降级），
+  决策后补 n≥15 样本按 E197 复验门评估晋升。
