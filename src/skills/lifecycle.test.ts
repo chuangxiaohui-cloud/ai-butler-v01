@@ -78,3 +78,38 @@ test('skill-lifecycle: 90 天未用标记 cold', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('skill-lifecycle: 市场安装 Skill 进入统计且幂等（§8.2.3 成熟度）', () => {
+  const { path, dir } = tempDb();
+  const lc = new SkillLifecycle(path);
+  try {
+    const now = Date.now();
+    lc.ensureRegistered(now);
+    lc.ensureMarketSkillsRegistered([{ name: 'pcb-helper', version: '0.1.0' }], now);
+    lc.ensureMarketSkillsRegistered([{ name: 'pcb-helper', version: '0.1.0' }], now);
+    const list = lc.list(now);
+    assert.equal(list.length, 24);
+    const stat = list.find((s) => s.name === 'pcb-helper');
+    assert.equal(stat?.version, '0.1.0');
+    assert.equal(stat?.usageCount, 0);
+    assert.equal(list.filter((s) => s.name === 'pcb-helper').length, 1, '幂等不重复插入');
+  } finally {
+    lc.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('skill-lifecycle: 市场 Skill 记录使用与预置一致', () => {
+  const { path, dir } = tempDb();
+  const lc = new SkillLifecycle(path);
+  try {
+    const now = Date.now();
+    lc.ensureMarketSkillsRegistered([{ name: 'pcb-helper', version: '0.1.0' }], now);
+    lc.recordUse('pcb-helper', now);
+    const stat = lc.list(now).find((s) => s.name === 'pcb-helper');
+    assert.equal(stat?.usageCount, 1);
+  } finally {
+    lc.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

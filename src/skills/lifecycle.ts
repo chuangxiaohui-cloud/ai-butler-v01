@@ -55,17 +55,27 @@ export class SkillLifecycle {
 
   ensureRegistered(now = Date.now()): void {
     for (const skill of getSkills()) {
-      const existing = this.db.prepare('SELECT name FROM skill_stats WHERE name = ?').get(skill.name);
-      if (!existing) {
-        this.db
-          .prepare(
-            `INSERT INTO skill_stats (name, version, usage_count, thumbs_down_count, consecutive_down,
-              confidence, last_used_at, created_at, needs_review)
-             VALUES (?, ?, 0, 0, 0, 0.6, NULL, ?, 0)`,
-          )
-          .run(skill.name, skill.version, now);
-      }
+      this.insertStat(skill.name, skill.version, now);
     }
+  }
+
+  /** 市场安装 Skill 进入生命周期统计（§8.2.3 成熟度：覆盖度与复用率统计），幂等 */
+  ensureMarketSkillsRegistered(installed: Array<{ name: string; version: string }>, now = Date.now()): void {
+    for (const skill of installed) {
+      this.insertStat(skill.name, skill.version, now);
+    }
+  }
+
+  private insertStat(name: string, version: string, now: number): void {
+    const existing = this.db.prepare('SELECT name FROM skill_stats WHERE name = ?').get(name);
+    if (existing) return;
+    this.db
+      .prepare(
+        `INSERT INTO skill_stats (name, version, usage_count, thumbs_down_count, consecutive_down,
+          confidence, last_used_at, created_at, needs_review)
+         VALUES (?, ?, 0, 0, 0, 0.6, NULL, ?, 0)`,
+      )
+      .run(name, version, now);
   }
 
   recordUse(name: string, now = Date.now()): void {
