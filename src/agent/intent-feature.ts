@@ -29,6 +29,7 @@ export const ACTION_TYPES = [
   'office_daily',
   'learn_video',
   'deep_report',
+  'operate',
   'unknown',
 ] as const;
 
@@ -43,6 +44,7 @@ export const TARGET_DOMAINS = [
   'finance',
   'security',
   'color',
+  'system',
   'unknown',
 ] as const;
 
@@ -126,6 +128,8 @@ const ACTION_RE: Array<[ActionType, RegExp]> = [
   ['modify', /修改|改下|更新|重构|修复|不对|改成|换成|我要的是|修正|调整/],
   // v1.0 S1：深度报告（§4.3.2 长任务首实例），须置于 create 之前防止「写一份…报告」被 create 抢走
   ['deep_report', /深度报告|调研报告|研究报告|深度分析|出一份.*报告|写一份.*报告|做一份.*报告|整理成.*报告|做个.*(调研|报告)|报告.*(调研|分析)/],
+  // E240（S3 真实接入）：系统/桌面控制操作，置于 create 之前防「打开/启动」被 create 抢走
+  ['operate', /列出.*(进程|应用|窗口)|进程.*(列表|状态|查看)|切换.*窗口|关闭.*(应用|程序|进程)|打开.*(应用|程序|软件|记事本|浏览器)|启动.*(程序|软件)|系统工具|桌面控制|windows\./],
   ['create', /创建|生成|写个|写一个|做个|做一个|开发|搭建|实现|写一份|帮我写|设计|画/],
 ];
 
@@ -138,6 +142,7 @@ const DOMAIN_RE: Array<[TargetDomain, RegExp]> = [
   ['finance', /(?<!时间)(?<!学习)(?<!人力)成本|预算|收益|报价|值不值|ROI|利润/],
   ['document', /PRD|文档|方案|报告|需求文档|说明|总结|BOM|物料清单|元器件清单|元件清单|原理图/],
   ['color', /颜色|配色|色号|色彩|主色|取色/],
+  ['system', /进程|窗口|桌面|系统工具|应用列表|windows\./],
 ];
 
 export function validateIntentFeature(input: unknown): IntentFeature {

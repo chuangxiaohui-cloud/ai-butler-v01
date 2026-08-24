@@ -36,4 +36,11 @@ export interface SkillDeps {
   now?: () => number; // 衰减逻辑可测时间
   experienceManager?: Pick<ExperienceManager, 'add'>; // 视频学习等 Skill 回写经验库
   browserSession?: BrowserFetcher; // B站等浏览器会话兜底
+  /** E240（S3 真实接入）：MCP 子 Agent 调度（真实 stdio server 经 dispatcher 调用） */
+  subAgent?: {
+    dispatch(
+      task: string,
+      options?: import('../mcp/dispatcher.js').DispatchOptions,
+    ): Promise<import('../mcp/dispatcher.js').DispatchResult>;
+  };
 }

@@ -1,0 +1,11 @@
+{
+  "agents": [
+    {
+      "id": "windows",
+      "command": ["C:\\path\\to\\windows-mcp.exe", "serve"],
+      "allowedTools": ["Process"],
+      "toolMap": {},
+      "defaultTool": "windows.Process"
+    }
+  ]
+}

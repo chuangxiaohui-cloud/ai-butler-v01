@@ -22,6 +22,7 @@ export const EXECUTOR_REGISTRY: Record<string, { status: ExecutorStatus }> = {
   schematic_bom: { status: 'available' },
   office_daily: { status: 'available' },
   video_learner: { status: 'available' },
+  mcp_agent: { status: 'available' }, // E240：MCP 子 Agent（无可用 server 时 skill 内诚实提示）
 };
 
 export function executorStatus(name: string | undefined): ExecutorStatus {

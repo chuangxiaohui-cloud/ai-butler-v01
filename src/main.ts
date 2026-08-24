@@ -13,6 +13,8 @@ import type { SkillDeps } from './skills/deps.js';
 import { TrajectoryLog } from './trajectory/trajectory-log.js';
 import { browserSession } from './browser/session.js';
 import { bochaBalanceWarning, queryBochaBalance } from './search/balance.js';
+import { closeMcpAgents, createMcpAgents } from './mcp/config.js';
+import { SubAgentDispatcher } from './mcp/dispatcher.js';
 
 const arg = process.argv[2];
 
@@ -35,13 +37,17 @@ const trajectoryLog = new TrajectoryLog();
 const sessionContext = new SessionContextStore();
 // CLI 会话 ID：让 CLI 问答也进入 E193 上下文管理，/context 与 /compact 才能看到轮次。
 const CLI_CONVERSATION_ID = 'cli';
+const mcpAgents = createMcpAgents();
+const mcpDispatcher = new SubAgentDispatcher(mcpAgents.metas, mcpAgents.clients);
 const skillDeps: SkillDeps = {
   callVLM: async (input, opts) => createVisionClient()(input, opts),
   complete: {
     complete: async (messages, opts) => (createSkillHeavyClient() ?? createHeavyClient()).complete(messages, opts),
   },
   parseDocument: parseDocumentFile,
+  subAgent: { dispatch: (task, options) => mcpDispatcher.dispatch(task, options) },
 };
+process.on('exit', () => closeMcpAgents(mcpAgents.clients));
 try {
   skillLifecycle.ensureRegistered();
 } catch {
@@ -102,4 +108,6 @@ prelude
     userContextStore.close();
     trajectoryLog.close(); // P15：关闭 JSONL 句柄
     browserSession.close();
+    // E240：MCP 子进程 stdio pipe 会阻止事件循环退出，必须在流程结束主动 close
+    closeMcpAgents(mcpAgents.clients);
   });

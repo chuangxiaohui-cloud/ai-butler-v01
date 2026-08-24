@@ -10,6 +10,7 @@ import { PARAMS } from '../config/params.js';
 import type { McpClient } from './types.js';
 import type { SubAgentCategory, SubAgentMeta } from './types.js';
 import { validateMcpCall } from './safety.js';
+import { resolveRealToolName } from './types.js';
 
 export type McpOpKind = 'compile' | 'flash' | 'filegen' | 'tool';
 
@@ -85,13 +86,21 @@ export class SubAgentDispatcher {
       const meta = candidates[index];
       const client = this.clients.get(meta.id);
       if (!client) continue;
-      // 降级时若请求工具名不属于该 agent 前缀，回退到其默认 run 工具
+      // 降级时若请求工具名不属于该 agent 前缀，回退到默认工具（E240：defaultTool 或 run）
       const requested = options.toolName;
-      const toolName =
-        requested && requested.startsWith(meta.toolPrefix) ? requested : `${meta.toolPrefix}run`;
-      const validation = validateMcpCall(meta, toolName, options.args ?? {});
+      const internalToolName =
+        requested && requested.startsWith(meta.toolPrefix)
+          ? requested
+          : (meta.defaultTool ?? `${meta.toolPrefix}run`);
+      const validation = validateMcpCall(meta, internalToolName, options.args ?? {});
       if (!validation.ok) {
         lastError = validation.reason ?? '白名单校验失败';
+        continue;
+      }
+      // E240：内部名 → 真实 MCP 工具名（allowedTools 白名单在 validateMcpCall 内已校验）
+      const realToolName = resolveRealToolName(meta, internalToolName);
+      if (!realToolName) {
+        lastError = `工具 ${internalToolName} 无真实工具名映射`;
         continue;
       }
       const maxAttempts = 1 + retryCount;
@@ -110,7 +119,11 @@ export class SubAgentDispatcher {
         }
         attempts++;
         try {
-          const result = await client.callTool(toolName, options.args ?? {}, timeoutMs);
+          const callArgs =
+            options.args && Object.keys(options.args).length > 0
+              ? options.args
+              : (meta.defaultArgs ?? {});
+          const result = await client.callTool(realToolName, callArgs, timeoutMs);
           if (result.ok) {
             return {
               ok: true,

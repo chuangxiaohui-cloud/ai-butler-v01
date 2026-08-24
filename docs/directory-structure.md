@@ -50,7 +50,7 @@ CLI (src/main.ts)  UI (ui/prototype)  桌面壳 (desktop)
 | 模块 | 职责 | 关键文件 |
 |------|------|----------|
 | `src/search/` | Stage 1-6 搜索问答管道、搜索 provider、融合、兜底链 | `pipeline.ts`、`stages/`、`providers/`、`fusion.ts`、`rule1.ts`、`rule3.ts`、`second-pass.ts`、`second-pass-fetch.ts`、`deep-report.ts`、`deep-report-store.ts` |
-| `src/mcp/` | MCP 子 Agent 骨架（注册表/stdio 客户端/调度器/安全白名单，v1.0 S3） | `registry.ts`、`client.ts`、`dispatcher.ts`、`safety.ts` |
+| `src/mcp/` | MCP 子 Agent（注册表/stdio 客户端/调度器/安全白名单/真实 server 配置装配，v1.0 S3 E222 + E240） | `registry.ts`、`client.ts`、`dispatcher.ts`、`safety.ts`、`types.ts`、`config.ts` |
 | `src/im/` | 远程对话通道骨架（授权开关/会话隔离/输出适配，v1.0 S5） | `gate.ts`、`session.ts`、`format.ts`、`service.ts` |
 | `src/repo/` | 代码托管联动库骨架（仓库白名单/预检门禁/commit+push/审计 JSONL，v1.0 S6） | `repo-whitelist.ts`、`push-audit.ts`、`push-service.ts` |
 | `src/skills/market/` | Skill 市场远程化骨架（索引/校验/权限门禁/安装记录 JSONL，v1.0 S7） | `index-client.ts`、`manifest.ts`、`installer.ts`、`store.ts` |

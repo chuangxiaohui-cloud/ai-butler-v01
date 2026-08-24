@@ -44,7 +44,8 @@ export class StdioMcpClient implements McpClient {
   /** MCP 握手（initialize）：等待 protocolVersion/capabilities，启动超时 [P-57] */
   async initialize(): Promise<void> {
     if (this.initialized) return;
-    await this.request('initialize', { protocolVersion: '2025-03-26', capabilities: {} }, this.startTimeout());
+    // E240：MCP 规范 initialize 必填 clientInfo（真实 server 如 windows-mcp 用 pydantic 严格校验，缺字段直接拒绝）
+    await this.request('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'ai-butler', version: '0.1.0' } }, this.startTimeout());
     this.initialized = true;
   }
 

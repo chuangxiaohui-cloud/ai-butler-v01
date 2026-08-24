@@ -56,3 +56,7 @@ preview_*
 
 # Codex 会话临时调试文件（不提交）
 .codex-*
+
+# 本地 MCP 子 Agent 运行配置（含本机命令路径，不提交）
+configs/mcp-agents.json
+

@@ -349,6 +349,17 @@ export const ROUTING_TABLE: RoutingRule[] = [
     strictMatch: true,
   },
   {
+    id: 'R023',
+    match: { actionType: 'operate', targetDomain: 'system' },
+    primaryLens: 'project_manager',
+    intent: 'execute',
+    tags: ['mcp', 'system'],
+    searchNeed: false,
+    executor: 'mcp_agent',
+    confidenceBoost: 0.2,
+    strictMatch: true,
+  },
+  {
     id: 'R_BOM',
     match: { actionType: 'generate_bom', hasDocument: true },
     primaryLens: 'secretary',

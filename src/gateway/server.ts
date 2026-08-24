@@ -21,6 +21,8 @@ import { createGatewayApp } from './app.js';
 import { publishArtifactEvent } from './artifact-bus.js';
 import { ReminderStore } from '../reminder/reminder-store.js';
 import { bochaBalanceWarning, describeBochaBalance, queryBochaBalance } from '../search/balance.js';
+import { closeMcpAgents, createMcpAgents } from '../mcp/config.js';
+import { SubAgentDispatcher } from '../mcp/dispatcher.js';
 
 const HOST = process.env.GATEWAY_HOST ?? '127.0.0.1';
 const PORT = Number(process.env.GATEWAY_PORT ?? '8787');
@@ -33,13 +35,17 @@ const userContextStore = new UserContextStore();
 const sessionContext = new SessionContextStore();
 const routeCaseStore = new RouteCaseStore();
 const trajectoryLog = new TrajectoryLog();
+const mcpAgents = createMcpAgents();
+const mcpDispatcher = new SubAgentDispatcher(mcpAgents.metas, mcpAgents.clients);
 const skillDeps: SkillDeps = {
   callVLM: async (input, opts) => createVisionClient()(input, opts),
   complete: {
     complete: async (messages, opts) => (createSkillHeavyClient() ?? createHeavyClient()).complete(messages, opts),
   },
   parseDocument: parseDocumentFile,
+  subAgent: { dispatch: (task, options) => mcpDispatcher.dispatch(task, options) },
 };
+process.on('exit', () => closeMcpAgents(mcpAgents.clients));
 
 try {
   skillLifecycle.ensureRegistered();

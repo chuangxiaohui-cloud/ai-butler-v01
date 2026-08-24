@@ -26,6 +26,7 @@ import { createProjectWriterSkill } from './project-writer/index.js';
 import { createSchematicBomSkill } from './schematic-bom/index.js';
 import { createOfficeDailySkill } from './office-daily/index.js';
 import { createVideoLearnerSkill } from './video-learner/index.js';
+import { createMcpAgentSkill } from './mcp-agent/index.js';
 import { PARAMS } from '../config/params.js';
 import { readDisabledSkills } from '../config/skills-config.js';
 import type { AttachmentSignal } from '../agent/multimodal-preprocessor.js';
@@ -60,6 +61,7 @@ const EXECUTABLE_SKILLS = [
   createSchematicBomSkill(),
   createOfficeDailySkill(),
   createVideoLearnerSkill(),
+  createMcpAgentSkill(),
 ];
 
 export function getSkills(): ExecutableSkill[] {

@@ -81,6 +81,7 @@ npm exec tsx scripts/doc-lint.ts   # 需求文档全量验收（唯一验收口�
 | `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏 |
 | `src/slash/` | 斜杠命令层（/compact、/context，E193 手动入口） |
 | `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API、限速/并发闸门（P16） |
+| `src/mcp/` | MCP 子 Agent 注册/stdio 客户端/调度器/工具白名单与真实 server 配置装配（S3） |
 | `src/browser/` | 浏览器会话、CDP 持久化、页面抓取 |
 | `src/config/` | PARAM、Provider Registry、模型目录、安全/用量/Skill 配置 |
 | `src/trajectory/` | append-only 轨迹日志（落盘 `data/trajectory.jsonl`） |
