@@ -40,6 +40,8 @@
    历史计划 E144/E165-E168/E172/E184/E200-201/E204/E228/E229/E231 补提交记录；
    `2026-08-19-spreadsheet-formats.md` 结果段「待补」补全。附录 A E235（bench:na(new-param)）。
 
+9. **v1.0 切片后魔鬼训练 v2.5 主回归（E237）+ 回归修复（E238/E239）**：122 条全量重跑并对比旧基线——**35/35 系统级 Bug 已修复、8 条能力项 6 条有进展**（ET05/ET06/ET30/EC06/EC23/P03；残留兜底 ET20+ET14、SM02、SM31 为 Tavily 本月额度耗尽/瞬态 429 余额不足，9 月重置后复核）；低置信兜底话术 8→7；定位并修复两处切片回归：**E238**——[P-116]=12s 截断 engineer/content-writer 长文生成（实测 37-53s），新增 `createSkillHeavyClient()`（per-call [P-122]=90s）接线 main/gateway/bench + `stripThinkBlock()` 剥离 `<think>` 块 + engineer/content-writer `maxTokens` 1500/1200→4000（5 条生成条目重跑全部带正文、0 think 泄漏）；**E239**——`extractPartNumber` 把 IBIS/ULINK/ST-L 纯字母误判为器件型号，datasheet 子查询挤出原查询 [P-85] 预算，`datasheetPart()` 无数字不放行 + 原查询最先搜索。§5 新增 [P-122]=90s 定稿。附录 A E237/E238/E239（bench:B-20260824-06）；全量单测 799/800（1 skip）+ 集成 15/15；doc-lint 0 FAIL 0 WARN。计划文档 `docs/plans/2026-08-24-devil-v25-regression.md` 已收口。
+
 ## 明日继续（按优先级）
 
 1. **Tavily 9 月复核（备忘）**：9 月重置后跑 `npm run tavily:smoke`，确认远端 `/usage` 归零、
