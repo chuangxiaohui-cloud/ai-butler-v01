@@ -170,8 +170,10 @@ export async function runSearchLoop(
   const maxSubSearches = opts.maxSubSearches ?? DEFAULT_MAX_SUB_SEARCHES;
   const minResults = opts.minResults ?? DEFAULT_MIN_RESULTS;
   const rewritten = await rewriteQuery(query, opts.intent, opts.llm);
-  const queue = [...rewritten.queries];
-  const seenQueries = new Set<string>(rewritten.queries);
+  // E239 修正：规则改写可能生成大量 datasheet 子查询把原查询挤出 [P-85] 5 次预算，
+  // 原查询最先搜索（最忠实于用户问题的子查询），官方/专业站子查询在 judge 判定不足时继续追加。
+  const queue = [query, ...rewritten.queries.filter((q) => q !== query)];
+  const seenQueries = new Set<string>(queue);
   let results: SearchResultItem[] = [];
   const attempts: SearchStageResult['attempts'] = [];
   const notices: string[] = [];

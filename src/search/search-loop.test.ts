@@ -123,12 +123,24 @@ class FakeLLM implements LLMClient {
     if (this.judgeCalls === 1) {
       return JSON.stringify({ enough: false, moreQueries: ['q3'] });
     }
-    if (this.judgeCalls === 2) {
+    if (this.judgeCalls === 2 || this.judgeCalls === 3) {
       return JSON.stringify({ enough: false });
     }
     return JSON.stringify({ enough: true });
   }
 }
+
+test('search-loop: 原查询排在规则 datasheet 子查询之前（E239 防挤出 [P-85] 预算）', async () => {
+  const r = await runSearchLoop('STM32F103C8T6 数据手册', {
+    intent: 'factual',
+    providers: [new FakeProvider()],
+    quota: new FakeQuota(),
+    maxSubSearches: 5,
+    minResults: 1,
+  });
+  assert.equal(r.subQueries[0], 'STM32F103C8T6 数据手册');
+  assert.ok(r.results.length >= 1);
+});
 
 test('search-loop: 无 LLM 时单次子搜索', async () => {
   const r = await runSearchLoop('q', {
@@ -219,7 +231,7 @@ test('search-loop: LLM 追加子查询直到覆盖足够', async () => {
     quota: new FakeQuota(),
     llm: new FakeLLM(),
     minResults: 3,
-    maxSubSearches: 4,
+    maxSubSearches: 5,
     sourceStats: {
       record(source, intent, ok, latencyMs) {
         records.push({ source, intent, ok, latencyMs });

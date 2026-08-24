@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { createDeepReportHeavyClient, createOptionalHeavyClient } from './llm.js';
+import { createDeepReportHeavyClient, createOptionalHeavyClient, createSkillHeavyClient } from './llm.js';
 
 const KEY_ENVS = ['DEEPSEEK_API_KEY', 'LLM_PRIMARY_API_KEY', 'MINIMAX_API_KEY', 'ZHIPU_API_KEY'];
 
@@ -57,6 +57,28 @@ test('llm: 已配置 Provider 时 createDeepReportHeavyClient 返回可 complete
   process.env.DEEPSEEK_API_KEY = 'sk-test-deep-report';
   try {
     const client = createDeepReportHeavyClient();
+    assert.ok(client, '已配置 Provider 应返回客户端');
+    assert.equal(typeof client.complete, 'function');
+  } finally {
+    restoreKeys(saved);
+  }
+});
+
+test('llm: 未配置 Provider 时 createSkillHeavyClient 返回 undefined', () => {
+  const saved = saveKeys();
+  for (const key of KEY_ENVS) process.env[key] = '';
+  try {
+    assert.equal(createSkillHeavyClient(), undefined);
+  } finally {
+    restoreKeys(saved);
+  }
+});
+
+test('llm: 已配置 Provider 时 createSkillHeavyClient 返回可 complete 的客户端（per-call 预算=[P-122]）', () => {
+  const saved = saveKeys();
+  process.env.DEEPSEEK_API_KEY = 'sk-test-skill-gen';
+  try {
+    const client = createSkillHeavyClient();
     assert.ok(client, '已配置 Provider 应返回客户端');
     assert.equal(typeof client.complete, 'function');
   } finally {

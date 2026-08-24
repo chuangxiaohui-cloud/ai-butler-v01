@@ -29,6 +29,15 @@ export interface OpenAiCompatibleClientOptions {
   provider?: string;
 }
 
+/**
+ * deepseek-v4-pro 思考模式会把 <think>…</think> 推理块混入 content；展示层不应透出推理过程。
+ * 仅剥离 think 块本身，内容为空（模型只返回推理）时保留原文避免空答案。
+ */
+export function stripThinkBlock(content: string): string {
+  const stripped = content.replace(/<think>[\s\S]*?<\/think>\s*/gi, '').trim();
+  return stripped || content.trim();
+}
+
 export class OpenAiCompatibleClient implements LLMClient {
   constructor(private readonly opts: OpenAiCompatibleClientOptions) {}
 
@@ -88,7 +97,7 @@ export class OpenAiCompatibleClient implements LLMClient {
           // 记账失败不阻塞回复
         }
       }
-      return content;
+      return stripThinkBlock(content);
     } finally {
       clearTimeout(timer);
       opts.signal?.removeEventListener('abort', onExternalAbort);

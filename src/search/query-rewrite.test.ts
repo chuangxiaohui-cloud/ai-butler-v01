@@ -128,3 +128,18 @@ test('rewrite: 无 LLM 时手机型号仍走精确改写', async () => {
   assert.equal(r.source, 'rule');
   assert.equal(r.queries[0], 'MRT-AL10 入网型号 对应手机型号');
 });
+
+test('rewrite: 纯字母缩写/品牌名不生成 datasheet 子查询（E239，IBIS/ULINK/ST-L 精确性修正）', () => {
+  for (const q of ['怎样从 TI 官网下载某个芯片的 IBIS 模型？需要注册吗？', 'Keil ULINKplus 功耗测量 同步记录电流电压波形', '用 OpenOCD 0.12 + ST-Link V2 调试 STM32F103 板子，怎么排查？']) {
+    const queries = ruleBasedRewrite(q, 'factual');
+    assert.ok(!queries.some((x) => x.includes('立创商城') || x.includes('site:szlcsc.com')), String(q) + ' 应不含 datasheet 子查询');
+    assert.ok(queries.includes(q), '原查询应保留');
+  }
+});
+
+test('rewrite: 含数字的器件型号仍生成 datasheet 子查询（E239 不误伤）', () => {
+  const queries = ruleBasedRewrite('STM32F103C8T6 最大主频是多少', 'factual');
+  assert.ok(queries.some((q) => q.includes('STM32F103C8T6 立创商城 数据手册')));
+  assert.ok(queries.some((q) => q.includes('site:xcc.com')));
+  assert.ok(queries.includes('STM32F103C8T6 最大主频是多少'));
+});

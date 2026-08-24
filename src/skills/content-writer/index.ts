@@ -32,7 +32,7 @@ export function createContentWriterSkill(): ExecutableSkill {
               `要求：${input.query}`,
           },
           ],
-          { temperature: 0.4, maxTokens: 1200 },
+          { temperature: 0.4, maxTokens: 4000 },
         );
         return {
           result: content.trim(),

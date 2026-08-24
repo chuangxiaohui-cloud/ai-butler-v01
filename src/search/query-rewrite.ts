@@ -32,6 +32,17 @@ const DOMESTIC_SITE_NAMES: Record<string, string> = {
   'semiee.com': '半导小芯',
 };
 
+/**
+ * E239 精确性修正：extractPartNumber 会把 IBIS/ULINK/ST-L/BUCK 等纯字母缩写/品牌名
+ * 误判为器件型号，导致 datasheet 子查询把原查询挤出 [P-85] 预算。真实器件型号几乎都含数字，
+ * 仅字母的 token 不进入 datasheet 分支（官方域/专业站子查询不受影响）。
+ */
+function datasheetPart(query: string): string | null {
+  const part = extractPartNumber(query);
+  if (!part || !/[0-9]/.test(part)) return null;
+  return part;
+}
+
 function coreTechQuery(query: string): string {
   return query
     .replace(/[（(][^）)]*[)）]/g, ' ')
@@ -90,7 +101,7 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
       query,
     ]);
   }
-  const part = extractPartNumber(query);
+  const part = datasheetPart(query);
   const officialHint = officialSourceHintForQuery(query);
   const techQueries = techOfficialQueries(query);
   if (part && officialHint) {

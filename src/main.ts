@@ -5,7 +5,7 @@ import { SkillLifecycle } from './skills/lifecycle.js';
 import { SearchSourceStats } from './search/source-stats.js';
 import { UserContextStore } from './memory/user-context-store.js';
 import { RouteCaseStore } from './agent/route-case-store.js';
-import { createHeavyClient, createOptionalHeavyClient, createVisionClient } from './search/llm.js';
+import { createHeavyClient, createOptionalHeavyClient, createSkillHeavyClient, createVisionClient } from './search/llm.js';
 import { SessionContextStore } from './memory/session-context.js';
 import { handleSlashCommand, parseSlashCommand } from './slash/slash-commands.js';
 import { parseDocumentFile } from './search/document-parser.js';
@@ -38,7 +38,7 @@ const CLI_CONVERSATION_ID = 'cli';
 const skillDeps: SkillDeps = {
   callVLM: async (input, opts) => createVisionClient()(input, opts),
   complete: {
-    complete: async (messages, opts) => createHeavyClient().complete(messages, opts),
+    complete: async (messages, opts) => (createSkillHeavyClient() ?? createHeavyClient()).complete(messages, opts),
   },
   parseDocument: parseDocumentFile,
 };

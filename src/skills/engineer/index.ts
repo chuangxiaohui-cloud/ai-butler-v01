@@ -33,7 +33,7 @@ export function createEngineerSkill(): ExecutableSkill {
               `需求：\n${input.query}`,
           },
           ],
-          { temperature: 0.3, maxTokens: 1500 },
+          { temperature: 0.3, maxTokens: 4000 },
         );
         return {
           result: { answer: content.trim() },

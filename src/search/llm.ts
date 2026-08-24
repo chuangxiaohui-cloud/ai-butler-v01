@@ -65,6 +65,19 @@ export function createDeepReportHeavyClient(): LLMClient | undefined {
 }
 
 /**
+ * Skill 生成专用 heavy 客户端（E238）：per-call fallback 预算放开到 [P-122]，
+ * 避免 engineer/content-writer 长文生成被 P-116（对齐 Stage 5 的 12s）提前截断；
+ * 未配置 Provider 返回 undefined。
+ */
+export function createSkillHeavyClient(): LLMClient | undefined {
+  try {
+    return createClientForRole('heavy', { totalBudgetMs: PARAMS.skillGenerationBudgetMs });
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * 视觉模型适配器（Week 3 契约落地）
  * VLMClient：image 必须是 data URL；返回纯文本。
  */

@@ -1,7 +1,19 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { OpenAiCompatibleClient } from './llm-client.js';
+import { OpenAiCompatibleClient, stripThinkBlock } from './llm-client.js';
+
+describe('llm-client: stripThinkBlock（deepseek 思考块剥离，E238）', () => {
+  it('剥离前导 <think> 推理块', () => {
+    assert.equal(stripThinkBlock('<think>推理过程</think>\n\n最终答案'), '最终答案');
+  });
+  it('无 think 块时原样返回', () => {
+    assert.equal(stripThinkBlock('普通答案'), '普通答案');
+  });
+  it('只有 think 块时保留原文避免空答案', () => {
+    assert.equal(stripThinkBlock('<think>只有推理</think>'), '<think>只有推理</think>');
+  });
+});
 
 describe('llm-client: 外部取消信号（P17 总预算透传）', () => {
   const makeClient = () =>

@@ -29,7 +29,7 @@ import { SkillLifecycle } from '../src/skills/lifecycle.js';
 import { SearchSourceStats } from '../src/search/source-stats.js';
 import { UserContextStore } from '../src/memory/user-context-store.js';
 import { RouteCaseStore } from '../src/agent/route-case-store.js';
-import { createHeavyClient, createVisionClient } from '../src/search/llm.js';
+import { createHeavyClient, createSkillHeavyClient, createVisionClient } from '../src/search/llm.js';
 import { parseDocumentFile } from '../src/search/document-parser.js';
 import type { SkillDeps } from '../src/skills/deps.js';
 import { TrajectoryLog } from '../src/trajectory/trajectory-log.js';
@@ -362,7 +362,7 @@ async function main(): Promise<void> {
   const skillDeps: SkillDeps = {
     callVLM: async (input, opts) => createVisionClient()(input, opts),
     complete: {
-      complete: async (messages, opts) => createHeavyClient().complete(messages, opts),
+      complete: async (messages, opts) => (createSkillHeavyClient() ?? createHeavyClient()).complete(messages, opts),
     },
     parseDocument: parseDocumentFile,
   };

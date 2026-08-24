@@ -12,7 +12,7 @@ import { ExperienceManager } from '../memory/experience.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { SessionContextStore } from '../memory/session-context.js';
 import { parseDocumentFile } from '../search/document-parser.js';
-import { createHeavyClient, createOptionalHeavyClient, createVisionClient } from '../search/llm.js';
+import { createHeavyClient, createOptionalHeavyClient, createSkillHeavyClient, createVisionClient } from '../search/llm.js';
 import { SearchSourceStats } from '../search/source-stats.js';
 import { SkillLifecycle } from '../skills/lifecycle.js';
 import type { SkillDeps } from '../skills/deps.js';
@@ -36,7 +36,7 @@ const trajectoryLog = new TrajectoryLog();
 const skillDeps: SkillDeps = {
   callVLM: async (input, opts) => createVisionClient()(input, opts),
   complete: {
-    complete: async (messages, opts) => createHeavyClient().complete(messages, opts),
+    complete: async (messages, opts) => (createSkillHeavyClient() ?? createHeavyClient()).complete(messages, opts),
   },
   parseDocument: parseDocumentFile,
 };
