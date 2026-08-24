@@ -44,5 +44,5 @@
 
 - 验证：`npm run build` 通过；office-daily 定向 34 通过 + 1 条 fitz 门控跳过；`npm run test` 491/491 + 1 跳过；`npm run test:integration` 17/17；`doc-lint` 0 FAIL 0 WARN。
 - 测试：单测 491/491 + 1 门控跳过 + 集成 17/17
-- 提交：待提交（用户手动 git add + commit）
+- 提交：5ff1547（E167 多图批量 OCR）
 - 遗留事项：表格结构识别、真实日历/邮件服务接入评估、UI 集成新能力。

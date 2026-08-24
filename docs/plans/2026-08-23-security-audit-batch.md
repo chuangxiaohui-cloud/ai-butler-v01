@@ -80,7 +80,7 @@ SMTP 明文发送 AUTH 凭据（H4）、yt-dlp 参数注入（H10）。与已收
 - 验证：`npm run build` 通过；`npm exec tsx scripts/doc-lint.ts` 0 FAIL 0 WARN
   （正文 1185/1800，附录 939/950）；`npm run test:all` 单测 612/613（1 skip）+ 集成 17/17。
 - 测试：单测 612 pass + 集成 17 pass，0 fail。
-- 提交：待提交（E 编号：不涉及 §5/§6 变更，无 E-NN；按 SEV 批惯例作为安全批提交）
+- 提交：60b419d（安全/数据/正确性批，H1-H4/H10，无 E-NN）
 - 遗留事项：
   - 审计「立即（数据）」H5（SessionContextStore 单实例 + 原子写）未在本批处置，建议下批。
   - 审计「短期」H9/B1/B4/H8 与 H6/D1-D5 决策项按优先级排队。

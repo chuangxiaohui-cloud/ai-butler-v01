@@ -64,5 +64,5 @@
   apply-calibration 2 + route-case-store 12）；`npm run test:all` 全量单测 671/672（1 skip）
   + 集成 15/15；`doc-lint` 0 FAIL 0 WARN（PARAM 110、C8 34 key、附录 946/950）。
 - 测试：新增 7 条全绿；既有校准回路用例更新后回归通过。
-- 提交：待提交（与安全/正确性/决策/中期第一~九批同批）。
+- 提交：f575040（E217 B2/B3）
 - 遗留事项：B2/B3 完成，剩余 S1-S3（SSRF 内网黑名单 / CDP 显式关闭 / sidecar 弱 key）。

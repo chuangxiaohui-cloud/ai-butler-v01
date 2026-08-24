@@ -62,5 +62,5 @@ fallback 链 3 家 × 30s 串行无总预算，最坏 90s——Stage5 降级时�
   `npm run test:all` 全量单测 656/657（1 skip）+ 集成 15/15；`doc-lint` 0 FAIL 0 WARN
   （PARAM 106、C8 30 key、附录 944/950）。
 - 测试：新增 3 条全绿；既有 llm-registry provider 选择/fallback 回归通过。
-- 提交：待提交（与安全/正确性/决策/中期第一~七批同批）。
+- 提交：0cbde9b（E215 P17）
 - 遗留事项：中期批剩余 P1/P2/P10 + B2/B3 + S1-S3。

@@ -47,5 +47,5 @@
 
 - 验证：`npm run build` 通过；定向 `node --test dist/agent/time-expression.test.js dist/skills/calendar-skill/index.test.js dist/skills/office-daily/index.test.js` 45 通过 + 1 条 fitz 门控用例按环境跳过；`npm run test` 488/488 + 1 跳过；`npm run test:integration` 17/17；`doc-lint` 0 FAIL 0 WARN。
 - 测试：单测 488/488 + 1 门控跳过 + 集成 17/17
-- 提交：待提交（用户手动 git add + commit）
+- 提交：73a931c（E166 重复日程）
 - 遗留事项：取消日程/取消日程提醒可复用 E163 cancel；真实日历/邮件服务接入评估。

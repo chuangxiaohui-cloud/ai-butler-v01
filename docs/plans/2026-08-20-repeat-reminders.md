@@ -45,5 +45,5 @@
 
 - 验证：`npm run build` 通过；定向 `node --test dist/agent/time-expression.test.js dist/reminder/reminder-store.test.js dist/skills/office-daily/index.test.js` 41 通过 + 1 条 fitz 门控用例按环境跳过；`npm run test` 482/482 + 1 跳过；`npm run test:integration` 17/17；`doc-lint` 0 FAIL 0 WARN。
 - 测试：单测 482/482 + 1 门控跳过 + 集成 17/17
-- 提交：待提交（用户手动 git add + commit）
+- 提交：edcf224（E165 重复提醒）
 - 遗留事项：重复日程/取消提醒可复用同一 repeat 机制；UI 事件流透出重复提醒周期标识。

@@ -47,5 +47,5 @@
 - 验证：`npm run build` 通过；表格识别定向 2/2；office-daily 全文件 36 通过 + 1 条 fitz 门控跳过；
   `npm run test` 493/493 + 1 跳过；`npm run test:integration` 17/17；`doc-lint` 0 FAIL 0 WARN。
 - 测试：单测 493/493 + 1 门控跳过 + 集成 17/17
-- 提交：待提交（用户手动 git add + commit）
+- 提交：d4bea06（E168 图片表格结构识别）
 - 遗留事项：复杂表头/合并单元格的表格重建增强、真实日历/邮件服务接入评估、UI 集成新能力。

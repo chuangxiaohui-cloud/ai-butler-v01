@@ -53,7 +53,7 @@ CLI main.ts 同样双实例）+ `persist` 非原子写 → 并发读改写丢整
 - 验证：`npm run build` 通过；`npm exec tsx scripts/doc-lint.ts` 0 FAIL 0 WARN；
   `npm run test:all` 单测 615/616（1 skip）+ 集成 17/17。
 - 测试：session-context 17/17（含 3 条 H5 新增）；gateway/pipeline/slash 67/67。
-- 提交：待提交（并入架构审计后续批，无 E-NN——不涉及 §5/§6 变更）
+- 提交：60b419d（安全/数据/正确性批，H5）
 - 遗留事项：
   - 跨进程锁的「双活写者」语义由锁文件保证；极端场景（锁持有进程卡死 >10s）会被
     夺锁，属可接受的单机桌面权衡。

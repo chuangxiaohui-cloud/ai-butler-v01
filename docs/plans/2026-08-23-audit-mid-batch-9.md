@@ -69,5 +69,5 @@
   multimodal 9）；`npm run test:all` 全量单测 664/665（1 skip）+ 集成 15/15；`doc-lint`
   0 FAIL 0 WARN（PARAM 108、C8 32 key、附录 945/950）。
 - 测试：新增 8 条全绿；既有 pipeline/multimodal 回归通过。
-- 提交：待提交（与安全/正确性/决策/中期第一~八批同批）。
+- 提交：ce1abf8（E216 P1/P2/P10）
 - 遗留事项：中期批 P1-P17 全部收口，剩余 B2/B3 校准回路 + S1-S3。

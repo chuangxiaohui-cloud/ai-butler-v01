@@ -70,5 +70,5 @@
   `npm run test:all` 全量单测 648/649（1 skip）+ 集成 15/15；`doc-lint` 0 FAIL 0 WARN
   （PARAM 105、C8 29 key）。
 - 测试：新增 7 条全绿（rate-limit 4 + experience 3）；既有 gateway/experience 回归通过。
-- 提交：待提交（与安全/正确性/决策/中期第一~五批同批）。
+- 提交：109021b（E208-E214 中期批 1-7）
 - 遗留事项：中期批剩余 P1/P2/P10/P13/P14/P17 + B2/B3 + S1-S3。

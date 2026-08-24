@@ -1,6 +1,6 @@
 # 推进计划：架构审计中期批·第二批（P3 + P5）
 
-> 日期：2026-08-23 · 分支：v0.2b · 状态：已收口
+> 日期：2026-08-23 · 分支：v0.2b · 状态：已完成
 
 ## 目标
 
@@ -76,5 +76,5 @@ P3 `src/config/provider-order.ts`：
 - 验证：`npm run build` 通过；本批相关单测 `node --test dist/search/quota.test.js dist/config/provider-order.test.js dist/search/llm-registry.test.js` 18/18；全量单测 `npm run test` 630/631（1 skip，0 fail）；集成 `npm run test:integration` 15/15；`npm exec tsx scripts/doc-lint.ts` 0 FAIL 0 WARN。
 - 测试：新增单测 6 条（quota 并发 2、provider-order 缓存 3、defaultRegistry 单例 1）。
 - 文档：附录 A E209 已登记（affects §6，bench:na(new-param)）；附录 941/950 行数安全。
-- 提交：待提交（与安全/正确性/决策/中期第一批同批，见当日 handoff「待提交」段）。
+- 提交：109021b（E208-E214 中期批 1-7）
 - 遗留事项：中期批剩余 P1/P2/P6-P17 + B2/B3 + S1-S3。

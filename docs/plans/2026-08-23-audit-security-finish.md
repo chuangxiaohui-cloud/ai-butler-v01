@@ -70,6 +70,6 @@ S3 `configs/tdai-gateway.local.yaml` + `memorycore-store.ts` 双双弱默认 key
   其他回归）；`npm run test:all` 全量单测 680/681（1 skip）+ 集成 15/15；`doc-lint`
   0 FAIL 0 WARN（PARAM 111、C8 35 key、附录 947/950）。
 - 测试：新增 9 条全绿；既有 browser/memorycore 回归通过。
-- 提交：待提交（与安全/正确性/决策/中期第一~十批同批）。
+- 提交：3fb4cc6（E218 安全收尾 S1-S3）
 - 遗留事项：架构审计批次（H1-H4/H10、H5、H9/B1/B4/H8、H6/D1-D5、P1-P17、B2/B3、S1-S3）
   全部收口。
