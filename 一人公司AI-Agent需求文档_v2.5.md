@@ -91,7 +91,7 @@
 **引用可带名不带值**：`[P-20 Stage1]` ✔ / `[P-20 0.1s]` ✘。lint C4 扩展：正则 `\[[Pp]-\d+\s+\d+(\.\d+)?(%|s|ms|元|条)\]` → fail("引用携带数值副本")。
 
 **检查**：
-1. 数值扫描：§5/附录C/`<details>` 块外出现带单位数值与裸小数 → fail；白名单：版本号/章节号/日期/代码注释，脚本内可配置。注册表 §5.5 内部的 numeric 行的值不受 lint C1 FAIL 模式扫描（注册表是数值权威，不是消费方）。
+1. 数值扫描：§5/附录A/附录C/`<details>` 块外出现带单位数值与裸小数 → fail（附录 A 为变更与证据台账，实测数值属台账本质内容，与附录 C 同理豁免 C1）；白名单：版本号/章节号/日期/代码注释，脚本内可配置。注册表 §5.5 内部的 numeric 行的值不受 lint C1 FAIL 模式扫描（注册表是数值权威，不是消费方）。
 2. 废弃格式：裸"废弃"字样或非 0.2.7 格式 → fail。
 3. 行数：超 0.5 表 → fail。
 4. 引用解析：所有 `[P-NN]` 可在 §5 注册表解析；所有废弃去向 §a.b 存在；0.2.3 接口契约锚点串精确匹配数 == 1（0=悬空 fail，>1=副本漂移 fail）；引用携带数值副本 → fail。lint 解析 [P-NN] 时查注册表 type：numeric→提取数值代入 constraint 求值；conditional/placeholder→跳过 constraint，但检查 constraint 列为空（非空则 fail）。
@@ -816,7 +816,7 @@ Query 改写用轻模型（同模型低温参数，≤[P-33] tokens / 次，≤[
 
 > **warmup 策略**：应用启动时发一个 `query: "test"` 预热请求，消除首轮冷启动延迟（[P-36]）。warmup 消耗 1 次月配额，可忽略。
 
-> **AI Answer 的不可替代性**：E17"今天 A 股行情"三引擎搜索全失败（首条命中率 0%），但 Tavily AI Answer 直接给出答案——**搜索失败但答案成功**。AI Answer 注入 §12.12.0 resolveFact 步骤作为"高置信软事实候选"，是 Bocha 和 AnySearch 都不具备的能力（案例见附录C）。
+> **AI Answer 的不可替代性**：E17"今天 A 股行情"三引擎搜索全失败（首条均未命中），但 Tavily AI Answer 直接给出答案——**搜索失败但答案成功**。AI Answer 注入 §12.12.0 resolveFact 步骤作为"高置信软事实候选"，是 Bocha 和 AnySearch 都不具备的能力（案例见附录C）。
 
 #### 6.2.2 三路心跳健康检查
 
@@ -909,7 +909,7 @@ final_score = w_relevance * relevance([P-22])
 
 </details>
 
-> **权重语义**：fact_consistency 在 factual / comparison 意图下权重最高，因为这些意图最依赖数值准确性。news 意图下 timeliness 占 0.5（旧新闻无价值）。how_to 意图下 usability 占 0.4（步骤是否可操作最重要）。
+> **权重语义**：fact_consistency 在 factual / comparison 意图下权重最高，因为这些意图最依赖数值准确性。news 意图下 timeliness 占权重一半（旧新闻无价值）。how_to 意图下 usability 占权重四成（步骤是否可操作最重要）。
 
 #### 6.5.3 来源权威注入（部署在搜索入口，Stage 3）
 
@@ -1253,7 +1253,7 @@ memories(id, kind, content, confidence, source, created_at, updated_at, ttl, met
 
 ```
 ┌─ 审查报告 ──────────────────────────────────┐
-│ 结论：✅ 通过（置信度 92%）                   │
+│ 结论：✅ 通过（置信度 92）                   │
 │                                                │
 │ 证据列表：                                     │
 │ ① [file] src/motor.c:45-52  ←点击可跳转       │
@@ -2014,6 +2014,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 ### 2026-08-26（市场 Skill 安全输入通道 E251）<br>- **变更**：让带参高频场景可固化为市场 Skill——manifest 新增 `input:'query'` 声明（`MarketSkillManifest.input`，`validateMarketManifest` 校验非法声明即拒绝）：声明后 `MarketSkillRunner.run(name, { input })` 把用户查询（有界 4KB）写入沙箱 `input.txt`，steps/verify 中的字面量 `@input` 替换为该文件绝对路径——用户文本永不进入命令行（无注入面，保持 §10.2 白名单先行 + shell:false 语义）；pipeline 直连执行改为 `run(name, { input: prepared.cleanQuery })`；CLI `skill:market:run -- <name> --query "<文本>"`（`scripts/market-run.ts`）；首个带参精选包 `configs/market-skills/route-query`（意图路由判题：`npm run route:query:file -- @input`，`scripts/route-query-file.ts` 读文件 → routeV2 JSON）已安装并冒烟；沙箱目录 `sandbox/` 入 `.gitignore`（input.txt 等运行产物不提交）。<br>- **证据**：新增单测 4 条（runner 输入写入/未传不写/未声明不写/4KB 截断）+ manifest 2 条（query 通过/非法拒绝）+ pipeline 1 条（查询作为 input 传入）；集成 1 条（INT-MARKET-005 安装 input 技能 → 真实 git 执行 @input 成功、输出不含用户文本）；真实冒烟 route-query 带参执行全 ok；全量单测 896/897（1 skip）+ 集成 31/31；doc-lint 0 FAIL 0 WARN。<br>- **状态**：完成；带参 Skill 通道可用，datasheet/BOM/文档类高频场景可直接沉淀。<br>- affects: §8.2.3,§10.2,附录A | bench:na(new-param) 理由：复用既有白名单/沙箱/JSONL 的输入文件通道（无 §5/§6 参数变更）
 ### 2026-08-26（Agent 浏览器操作需求增补 E252）<br>- **变更**：v2.5 需求新增「浏览器操作（读 + 交互双模）」能力（§4.1.5）——在只读浏览器会话（E74-E79/E182）基础上，Agent 可像 Codex/browser-use 一样操作浏览器：`goto`/`click`/`type`/`select`/`scroll`/`hover`/`wait`/`download`，观察 = DOM 快照 + 截图回传，全程动作日志、可中止；落地形态 = **受限的浏览器操作 Skill（非通用 agent）**：域名白名单（manifest `domains`，未授权域名一律拒绝、授权本地持久化可撤销）+ 动作白名单（可再收窄）+ 用户确认（§8.2.3 `browser` 权限）；安全边界对齐 §10：动作白名单（§10.2 增「浏览器操作」类别）+ 高风险审批双闸（表单提交/下载/跨域导航/写操作）+ SSRF 黑名单复用（§10.3）+ 页面观察归 untrusted_data（§10.5）；新增参数 [P-124] 单任务动作上限 / [P-125] 单步超时 / [P-126] DOM 快照上限（§5，均 provisional@2026-08-26）；§10.4 安全 TDD 增浏览器操作用例；附录 E 新术语「浏览器操作」；参考 browser-use 的 4 点全部落地：① DOM 观察策略（AX 树 + 可交互元素编号 + 视口/iframe 有界，§4.1.5 观察与寻址）；② 动作白名单（§10.2 增「浏览器操作」类别）；③ 消息/token 管理（长任务计划拆解 + §8.3 压缩窗口摘要化）；④ 验收基准（真实网页任务样例集，对齐 [P-10] 验收门，随实现登记附录 C）；借思想不借底座，登记 `docs/borrowed-designs.md`。<br>- **状态**：已实现（2026-08-27 代码批）——安全用例 A1-A13 全绿：新模块 `src/security/browser-actions.ts`（动作白名单 + SSRF + 高风险标记）、`src/security/domain-auth.ts`（域名授权持久化可撤销）、`src/browser/dom-observe.ts`（AX 快照 [P-126] 有界 + untrusted_data）、`src/browser/operations.ts`（DSL + [P-124]/[P-125] 有界执行 + 审批双闸）、`src/browser/driver.ts`（真实 CDP 驱动）；manifest 增 `domains`/`actions` 校验（browser 权限必带非空 domains、与 command 互斥、动作子集收窄）；`MarketSkillRunner.runBrowser` 异步执行链 + `npm run browser:auth`（授权/撤销 CLI）；示例 Skill `configs/market-skills/datasheet-fetch`（szlcsc/xcc/semiee/st 域名白名单 + goto/click/download 子集）安装并真实浏览器冒烟通过（goto 2.7s + click 1.5s，AX 快照定位 PDF 链接）；[P-124]/[P-125]/[P-126] 实测生效（超限中止、单步超时、快照截断），定稿待真实任务样本（[P-10] 验收门）；证据：新增单测 40 条（browser-actions 9 + domain-auth 4 + dom-observe 5 + operations 12 + manifest 5 + runner 5）+ 集成 INT-MARKET-006；全量单测 936/937（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN；`maturity:check` 用户累积 Skill 5→6。（2026-08-27 续）download 选择器路径落地：`driver.resolveHref` 运行期解析页面内链接（[P-125] 有界），解析结果仍过域名白名单/SSRF/审批后置门；示例 Skill datasheet-fetch v0.1.5 增 wait + download 选择器步骤；样例集初步登记附录 C.5（2 正例 + 1 反例，真实下载 ST 官网 datasheet，反例 LM358 解析出站外域名被拦截）；[P-124]/[P-125]/[P-126] 已定稿（owner 2026-08-27 签认，定稿记录见下条）。<br>- affects: §4,§5,§8,§10,附录A | bench:na(new-param) 理由：需求增补 + 新参数（provisional，无 §6 变更；§4/§8/§10 联动）
 ### 2026-08-27（[P-124]/[P-125]/[P-126] 定稿签认 E252）<br>- **变更**：非参数变更（三参数数值不变）；[P-124] 浏览器操作单任务最大动作数 / [P-125] 单步执行超时 / [P-126] 每步 DOM 快照上限 按 §0.3 状态机 provisional→定稿——owner（老张）2026-08-27 签认；五条件逐条对照：① 附录 A 变更记录含 PARAM ID（本条目）；② 引附录 C 证据 ID（C.5 B1/B2 正例 + B3 反例，真实下载 ST 官网 datasheet、站外域名白名单拦截）；③ 样本 n≥阈值（n=3，阈值未另设，必要非充分由 owner 签认行使；后续按 §4.1.5 场景继续扩充样例集）；④ 附录 C 无相反证据（B1-B3 全链成立、安全边界未绕过）；⑤ owner 2026-08-27 签认。<br>- **证据**：真实冒烟（本机 Edge + 联网）复验 B1（STM32F103C8T6 → stm32f103cb.pdf，字节头 %PDF- 校验）+ B3（LM358 → www.goodworksemi.com 白名单拦截，exit 非零）；安全用例 A1-A13 全绿 + 单测 940/941（1 skip）+ 集成 32/32 + doc-lint 0 FAIL 0 WARN（C8 49 key）。<br>- **状态**：三参数已定稿（§5 注册表状态列同步更新）；浏览器操作受限 Skill 验收证据齐备（安全门禁 + 动态下载解析 + 真实样例集）。<br>- affects: §4,§5,§10,附录A,附录C | bench:na(new-param) 理由：PARAM 数值不变，仅 provisional→定稿 状态迁移（无 §6 变更，不新增基准）
+### 2026-08-27（doc-lint C1 扫描恢复与附录 A 台账豁免 E253）<br>- **变更**：修复 `isInDetailsBlock` 误判——旧实现把文档顶部 §0 行内代码（反引号）里的details 字面量当真实折叠标记，向上扫描时全文被判入折叠块，C1 数值扫描在 §0 示例引入后静默失效（约 401 处积压违规未被执法）；修复后逐行剥离反引号代码段再计数。C1 恢复执法后清理积压：① 附录 A 为变更与证据台账，实测数值属台账本质内容，C1 数值扫描豁免（与附录 C 同理；C2/C4/C7 仍扫描附录 A，§0.1 规则文字同步）；② §6 正文两处清理（E17「首条命中率 0%」→「首条均未命中」；news/how_to 权重「0.5/0.4」→「一半/四成」）；③ §9 代码围栏内 UI mock「置信度 92%」去百分号（围栏内 WARN 清零）。<br>- **证据**：修复后 doc-lint 0 FAIL 0 WARN（修复前同文档 401 FAIL + 1 WARN，证明 C1 恢复真实执法）；脚本无既有单测，以需求文档全量回归为验收（正文新增裸数值会被 C1 拦下）；src 零改动，单测/集成不受影响。<br>- **状态**：完成；C1 自此恢复真实执法，正文裸数值回归受控。<br>- affects: §0,§6,§9,附录A | bench:na(typo) 理由：doc-lint 工具修复 + 两处正文措辞清理，无 §5/§6 参数或行为变更
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
