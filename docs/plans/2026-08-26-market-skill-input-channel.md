@@ -46,4 +46,4 @@
   `skill:market:run -- route-query --query "帮我查一下 STM32F103C8T6 的主频"` → routeV2 JSON 正确、
   查询来自 `input.txt`、步骤输出不含用户文本；verify `git status --short` 通过。
 - 文档：附录 A 登记 E251；累积路径 Phase 1 补「带参 Skill 可用」；code-directory/directory-structure/AGENTS 同步。
-- 提交：E251 代码批 = `待回填`、文档批 = `待回填`。
+- 提交：E251 代码批 = `3383c5c`、E251 文档批 = `0bfa36b`、交接批 = 本次提交回填。
