@@ -1693,3 +1693,33 @@
 {"ts":"2026-08-22T11:48:38.961Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
 {"ts":"2026-08-22T11:48:38.965Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
 {"ts":"2026-08-22T11:48:38.970Z","query":"STM32F103C8T6 立创商城 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-26T11:28:25.100Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-26T11:28:25.103Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-26T11:28:25.103Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-26T11:28:25.104Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-26T11:28:25.105Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-26T11:32:33.395Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-26T11:32:33.399Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-26T11:32:33.400Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-26T11:32:33.401Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-26T11:32:33.402Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-08-26T11:36:54.821Z","query":"STM32F103C8T6 最大主频是多少","bocha_ms":395,"bocha_ok":true,"anysearch_ms":1234,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:36:56.004Z","query":"TPS5430 输入电压范围","bocha_ms":152,"bocha_ok":true,"anysearch_ms":1175,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:36:57.307Z","query":"STM32F103 ADC 多通道采集 踩坑 经验","bocha_ms":157,"bocha_ok":true,"anysearch_ms":1297,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:36:58.508Z","query":"MOSFET 栅极驱动电阻 选型 注意事项","bocha_ms":141,"bocha_ok":true,"anysearch_ms":1194,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:36:59.352Z","query":"KiCad 和 Altium Designer 对比 优缺点","bocha_ms":169,"bocha_ok":true,"anysearch_ms":838,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:37:00.552Z","query":"Keil MDK JTAG 配置 步骤","bocha_ms":167,"bocha_ok":true,"anysearch_ms":1194,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:37:01.421Z","query":"STM32 HAL_UART_Transmit 阻塞 卡死","bocha_ms":142,"bocha_ok":true,"anysearch_ms":863,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:37:02.469Z","query":"高血压 用药注意事项 禁忌","bocha_ms":171,"bocha_ok":true,"anysearch_ms":1043,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:37:03.270Z","query":"个人所得税 专项附加扣除 怎么申报","bocha_ms":208,"bocha_ok":true,"anysearch_ms":796,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:37:04.749Z","query":"ESP32 I2C 通信失败 无应答","bocha_ms":153,"bocha_ok":true,"anysearch_ms":1473,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:39:57.144Z","query":"STM32F103C8T6 最大主频","bocha_ms":310,"bocha_ok":true,"anysearch_ms":1277,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:40:04.534Z","query":"TPS5430 输入电压范围","bocha_ms":255,"bocha_ok":true,"anysearch_ms":1095,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:40:11.522Z","query":"STM32F103 ADC 多通道采集 踩坑 经验","bocha_ms":224,"bocha_ok":true,"anysearch_ms":1229,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:40:25.879Z","query":"MOSFET 栅极驱动电阻 选型 经验 注意事项","bocha_ms":308,"bocha_ok":true,"anysearch_ms":781,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:40:42.559Z","query":"KiCad 和 Altium Designer 对比 优缺点","bocha_ms":240,"bocha_ok":true,"anysearch_ms":1013,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:40:52.731Z","query":"Keil MDK JTAG 配置 步骤","bocha_ms":248,"bocha_ok":true,"anysearch_ms":1260,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:41:09.811Z","query":"STM32 HAL_UART_Transmit 阻塞 卡死","bocha_ms":230,"bocha_ok":true,"anysearch_ms":1411,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:41:22.222Z","query":"高血压 用药注意事项 禁忌","bocha_ms":233,"bocha_ok":true,"anysearch_ms":965,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:41:33.767Z","query":"个人所得税专项附加扣除申报流程","bocha_ms":273,"bocha_ok":true,"anysearch_ms":1450,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
+{"ts":"2026-08-26T11:41:47.700Z","query":"ESP32 I2C 通信失败 无应答","bocha_ms":257,"bocha_ok":true,"anysearch_ms":1870,"anysearch_ok":true,"timeout":false,"degraded":false,"cacheEngines":"both"}
