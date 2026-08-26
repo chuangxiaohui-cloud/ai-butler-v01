@@ -73,10 +73,11 @@
 7. runner.ts：runBrowser 异步链 + isBrowserSkill + 同步 run() 对 browser Skill 提示走 CLI/桌面入口。
 8. 示例 Skill datasheet-fetch + INT-MARKET-006（安装校验 → 未授权拒绝 → 授权+确认执行 → 撤销恢复拒绝）。
 9. 真实冒烟（本机 Edge + 联网）：datasheet-fetch --yes 全链通过（goto 2.7s + click 1.5s，AX 快照定位 PDF 链接）；[P-125] 单步超时与 [P-126] 快照截断实测生效。
+9b. （续 2026-08-27）download 选择器路径：`driver.resolveHref`（CDP evaluate 解析页面内 href）+ operations 对非 http(s) 的 download 目标先解析再走统一域名/SSRF/审批后置门；单测新增 4 条（解析成功链 / 域名后置门 / SSRF 后置门 / 解析失败与超时）。
 10. 全量验证：单测 936/937（1 skip）+ 集成 32/32 + doc-lint 0 FAIL 0 WARN（C8 49 key）+ maturity L1（用户累积 Skill 5→6）。
 11. 文档收口：附录 A E252 状态更新、code-directory/directory-structure/AGENTS.md 地图、docs/2026-08-27-progress-handoff.md。
 
 ## 结果
 
 - 单测 936/937（1 skip，含新增 40 条）｜集成 32/32（含 INT-MARKET-006）｜doc-lint 0 FAIL 0 WARN｜真实冒烟通过（datasheet-fetch）。
-- 遗留：下载 URL 动态提取待交互模式；[P-124]/[P-125]/[P-126] 定稿待真实任务样本（附录 C，[P-10] 验收门）。
+- 遗留：[P-124]/[P-125]/[P-126] 定稿待 [P-10] 验收门（owner 签认 + 样本阈值，必要非充分）；样例集已登记附录 C.5（2 正例 + 1 反例，n=3 为初步证据，按 §4.1.5 场景继续扩充：器件参数对比 / 表格填写）。
