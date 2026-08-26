@@ -8,7 +8,7 @@
 
 | 判据 | 目标 | 当前 | 缺口 | 观测点 |
 |------|------|------|------|--------|
-| 用户累积 Skill | 50+ | **4**（E250 首批：doc-lint/build-check/skill-inventory/git-status；源包 `configs/market-skills/` 已 git 跟踪） | 46 | `npm run skill:market:run -- --list` + `data/experience.db#skill_stats` + `npm run maturity:check` |
+| 用户累积 Skill | 50+ | **5**（E250 首批 4 个 + E251 route-query 带参；源包 `configs/market-skills/` 已 git 跟踪） | 45 | `npm run skill:market:run -- --list` + `data/experience.db#skill_stats` + `npm run maturity:check` |
 | 验收通过率 | 80%+ | **73.9%**（17 accept / 6 reject，n=23，pipeline-only，正式判定需 n≥30） | +6pct（≈9 个 accept 无新 reject） | `npm run route:cases` / `route:feedback` |
 | 复用率 | 60%+ | **16.6%**（118 Skill / 709 回答事件，E249 校准口径：direct+market_trigger 派发/回答事件，injected 不计入） | 待定 | `npm run maturity:check`（读 `data/trajectory.jsonl`） |
 
