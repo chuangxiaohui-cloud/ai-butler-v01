@@ -333,3 +333,169 @@ test('market-runner: listInstalled 只返回当前 installed 记录', () => {
     teardown(h.dir, h.storePath);
   }
 });
+// ============ E252 浏览器操作 Skill 执行链 ============
+
+import type { BrowserActionName } from '../../security/browser-actions.js';
+import { DomainAuthStore } from '../../security/domain-auth.js';
+import type { BrowserDriver } from '../../browser/operations.js';
+import type { DomSnapshot } from '../../browser/dom-observe.js';
+
+function fakeBrowserDriver(): BrowserDriver {
+  return {
+    async goto(url) {
+      return { url, title: 'fake' };
+    },
+    async click() {},
+    async type() {},
+    async select() {},
+    async scroll() {},
+    async hover() {},
+    async wait() {},
+    async download(url) {
+      return { path: `x-${url}.pdf` };
+    },
+    async currentUrl() {
+      return 'https://so.szlcsc.com/search';
+    },
+    async observe(): Promise<DomSnapshot> {
+      return {
+        text: '[ref=1] button: 搜索',
+        refs: [{ ref: 1, tag: 'button', text: '搜索' }],
+        elementCount: 1,
+        interactiveCount: 1,
+        truncated: false,
+      };
+    },
+  };
+}
+
+function makeBrowserHarness(overrides: {
+  steps?: string[];
+  domains?: string[];
+  actions?: BrowserActionName[];
+  confirm?: boolean;
+  input?: 'query';
+} = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'market-browser-'));
+  const storePath = join(dir, 'installs.jsonl');
+  const store = new MarketStore(storePath);
+  const installRoot = join(dir, 'market-skills');
+  const workspaceRoot = join(dir, 'ws');
+  mkdirSync(workspaceRoot, { recursive: true });
+  const manifest: MarketSkillManifest = {
+    name: 'fixture-browser',
+    version: '1.0.0',
+    triggers: ['fixture-browser'],
+    description: '浏览器 Skill 单测 fixture',
+    steps: overrides.steps ?? ['goto https://so.szlcsc.com/search?k=@query', 'download https://so.szlcsc.com/a.pdf'],
+    permissions: ['browser'],
+    domains: overrides.domains ?? ['szlcsc.com'],
+    actions: overrides.actions,
+    input: overrides.input,
+  };
+  const skillDir = join(installRoot, manifest.name);
+  mkdirSync(skillDir, { recursive: true });
+  writeFileSync(join(skillDir, 'manifest.json'), JSON.stringify(manifest), 'utf-8');
+  store.record({
+    ts: new Date().toISOString(),
+    name: manifest.name,
+    version: manifest.version,
+    sourceUrl: 'https://example.com/fixture.json',
+    checksum: 'b'.repeat(64),
+    permissions: manifest.permissions,
+    status: 'installed',
+  });
+  const domainAuth = new DomainAuthStore(join(dir, 'domain-auth.jsonl'));
+  const runner = new MarketSkillRunner({
+    store,
+    installRoot,
+    workspaceRoot,
+    domainAuth,
+    driverFactory: () => fakeBrowserDriver(),
+    confirmAction: () => overrides.confirm ?? false,
+  });
+  return { runner, domainAuth, dir, storePath, name: manifest.name, version: manifest.version };
+}
+
+test('market-runner: browser Skill 经同步 run() 拒绝并提示走异步通道', () => {
+  const h = makeBrowserHarness();
+  try {
+    const outcome = h.runner.run(h.name, { input: 'STM32F103' });
+    assert.equal(outcome.ok, false);
+    assert.match(outcome.error ?? '', /交互式用户确认/);
+  } finally {
+    h.domainAuth.close();
+    teardown(h.dir, h.storePath);
+  }
+});
+
+test('market-runner: runBrowser 未授权域名拒绝（A1/A3），授权后高风险未确认拒绝（A7）', async () => {
+  const h = makeBrowserHarness();
+  try {
+    const denied = await h.runner.runBrowser(h.name, { input: 'STM32F103' });
+    assert.equal(denied.ok, false);
+    assert.match(denied.error ?? '', /未获用户授权/);
+
+    h.domainAuth.authorize(h.name, 'szlcsc.com');
+    const unconfirmed = await h.runner.runBrowser(h.name, { input: 'STM32F103' });
+    assert.equal(unconfirmed.ok, false);
+    assert.match(unconfirmed.error ?? '', /未获用户确认/);
+  } finally {
+    h.domainAuth.close();
+    teardown(h.dir, h.storePath);
+  }
+});
+
+test('market-runner: runBrowser 授权 + 确认后执行成功，动作留痕（A8）', async () => {
+  const h = makeBrowserHarness({ confirm: true });
+  try {
+    h.domainAuth.authorize(h.name, 'szlcsc.com');
+    const outcome = await h.runner.runBrowser(h.name, { input: 'STM32F103' });
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.results.length, 2);
+    assert.ok(outcome.results.every((r) => r.ok));
+    assert.ok(outcome.finalSnapshot !== undefined);
+  } finally {
+    h.domainAuth.close();
+    teardown(h.dir, h.storePath);
+  }
+});
+
+test('market-runner: runBrowser 非 browser 权限 / 未声明 domains 防御拒绝', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'market-browser-'));
+  const storePath = join(dir, 'installs.jsonl');
+  const store = new MarketStore(storePath);
+  const installRoot = join(dir, 'market-skills');
+  const workspaceRoot = join(dir, 'ws');
+  mkdirSync(workspaceRoot, { recursive: true });
+  const domainAuth = new DomainAuthStore(join(dir, 'domain-auth.jsonl'));
+  try {
+    // 非 browser 权限
+    const cmdManifest: MarketSkillManifest = {
+      name: 'fixture-cmd',
+      version: '1.0.0',
+      triggers: ['fixture-cmd'],
+      steps: ['git --version'],
+      permissions: ['command'],
+    };
+    const cmdDir = join(installRoot, 'fixture-cmd');
+    mkdirSync(cmdDir, { recursive: true });
+    writeFileSync(join(cmdDir, 'manifest.json'), JSON.stringify(cmdManifest), 'utf-8');
+    store.record({
+      ts: new Date().toISOString(),
+      name: 'fixture-cmd',
+      version: '1.0.0',
+      sourceUrl: 'https://example.com/x.json',
+      checksum: 'c'.repeat(64),
+      permissions: ['command'],
+      status: 'installed',
+    });
+    const runner = new MarketSkillRunner({ store, installRoot, workspaceRoot, domainAuth });
+    const notBrowser = await runner.runBrowser('fixture-cmd');
+    assert.equal(notBrowser.ok, false);
+    assert.match(notBrowser.error ?? '', /未声明 browser 权限/);
+  } finally {
+    domainAuth.close();
+    teardown(dir, storePath);
+  }
+});

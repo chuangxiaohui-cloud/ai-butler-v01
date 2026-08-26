@@ -54,3 +54,92 @@ test('market-manifest: steps/verify/deps 非字符串数组拒绝', () => {
     /deps/,
   );
 });
+
+test('market-manifest: browser 权限必须声明非空 domains（A2/§8.2.3）', () => {
+  assert.throws(
+    () => validateMarketManifest({ name: 'x', version: '1', triggers: ['x'], permissions: ['browser'] }),
+    /domains/,
+  );
+  assert.throws(
+    () => validateMarketManifest({ name: 'x', version: '1', triggers: ['x'], permissions: ['browser'], domains: [] }),
+    /domains/,
+  );
+});
+
+test('market-manifest: browser + domains 通过并归一化为小写', () => {
+  const m = validateMarketManifest({
+    name: 'x',
+    version: '1',
+    triggers: ['x'],
+    permissions: ['browser'],
+    domains: ['SZLCSC.com', 'so.szlcsc.com'],
+    actions: ['goto', 'click', 'download'],
+  });
+  assert.deepEqual(m.domains, ['szlcsc.com', 'so.szlcsc.com']);
+  assert.deepEqual(m.actions, ['goto', 'click', 'download']);
+});
+
+test('market-manifest: 非法域名格式拒绝', () => {
+  assert.throws(
+    () =>
+      validateMarketManifest({
+        name: 'x',
+        version: '1',
+        triggers: ['x'],
+        permissions: ['browser'],
+        domains: ['https://szlcsc.com'],
+      }),
+    /非法域名/,
+  );
+});
+
+test('market-manifest: browser 与 command 权限互斥；command 禁带 domains（A2）', () => {
+  assert.throws(
+    () =>
+      validateMarketManifest({
+        name: 'x',
+        version: '1',
+        triggers: ['x'],
+        permissions: ['browser', 'command'],
+        domains: ['szlcsc.com'],
+      }),
+    /互斥/,
+  );
+  assert.throws(
+    () =>
+      validateMarketManifest({
+        name: 'x',
+        version: '1',
+        triggers: ['x'],
+        permissions: ['command'],
+        domains: ['szlcsc.com'],
+      }),
+    /互斥/,
+  );
+});
+
+test('market-manifest: actions 非法值拒绝；非 browser 权限禁带', () => {
+  assert.throws(
+    () =>
+      validateMarketManifest({
+        name: 'x',
+        version: '1',
+        triggers: ['x'],
+        permissions: ['browser'],
+        domains: ['szlcsc.com'],
+        actions: ['execute_js'],
+      }),
+    /非法动作/,
+  );
+  assert.throws(
+    () =>
+      validateMarketManifest({
+        name: 'x',
+        version: '1',
+        triggers: ['x'],
+        permissions: ['none'],
+        actions: ['goto'],
+      }),
+    /actions 仅在 browser/,
+  );
+});

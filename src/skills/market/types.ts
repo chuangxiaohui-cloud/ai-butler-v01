@@ -4,6 +4,7 @@
  */
 
 import type { SkillManifest } from '../install.js';
+import type { BrowserActionName } from '../../security/browser-actions.js';
 
 /** 权限声明（§8.2.3 安全边界：高风险权限逐项征求用户确认，与 §10 联动） */
 export type SkillPermission = 'none' | 'filesystem' | 'command' | 'network' | 'browser';
@@ -35,6 +36,10 @@ export interface MarketSkillManifest extends SkillManifest {
   permissions: SkillPermission[];
   /** E251：声明接收用户输入（当前仅 'query'——查询经输入文件通道 @input 注入，不进入命令行） */
   input?: 'query';
+  /** E252：浏览器操作域名白名单（browser 权限必带，未声明拒绝；授权本地持久化可撤销，§8.2.3） */
+  domains?: string[];
+  /** E252：浏览器操作动作子集（在全局白名单内再收窄，缺省 = 全局白名单，§4.1.5） */
+  actions?: BrowserActionName[];
 }
 
 export type MarketInstallStatus = 'installed' | 'disabled';

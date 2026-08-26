@@ -16,6 +16,9 @@ import { MarketInstaller } from '../../src/skills/market/installer.js';
 import { MarketSkillRunner } from '../../src/skills/market/runner.js';
 import { MarketStore } from '../../src/skills/market/store.js';
 import type { MarketSkillEntry } from '../../src/skills/market/types.js';
+import type { BrowserDriver } from '../../src/browser/operations.js';
+import type { DomSnapshot } from '../../src/browser/dom-observe.js';
+import { DomainAuthStore } from '../../src/security/domain-auth.js';
 
 function makeEnv() {
   const dir = mkdtempSync(join(tmpdir(), 'market-e2e-'));
@@ -48,6 +51,35 @@ async function installFixture(
     permissions: pkg.permissions as MarketSkillEntry['permissions'],
   };
   return installer.install(entry);
+}
+
+function fakeBrowserDriver(): BrowserDriver {
+  return {
+    async goto(url) {
+      return { url, title: 'fake' };
+    },
+    async click() {},
+    async type() {},
+    async select() {},
+    async scroll() {},
+    async hover() {},
+    async wait() {},
+    async download(url) {
+      return { path: `x-${url}.pdf` };
+    },
+    async currentUrl() {
+      return 'https://so.szlcsc.com/search';
+    },
+    async observe(): Promise<DomSnapshot> {
+      return {
+        text: '[ref=1] button: 搜索',
+        refs: [{ ref: 1, tag: 'button', text: '搜索' }],
+        elementCount: 1,
+        interactiveCount: 1,
+        truncated: false,
+      };
+    },
+  };
 }
 
 test('INT-MARKET-001：安装后真实执行 steps+verify（git 命令 + 沙箱 cwd）', async () => {
@@ -211,6 +243,76 @@ test('INT-MARKET-005：input:query 技能 → input.txt 写入、@input 替换�
     // 步骤 @input 已替换为文件绝对路径，stdout 不含用户文本（无注入面）
     assert.ok(outcome.results[1].step.includes('input.txt'));
     assert.ok(!outcome.results[1].stdout.includes('STM32'));
+  } finally {
+    teardown(env.dir, env.storePath);
+  }
+});
+
+test('INT-MARKET-006：browser 权限 Skill 全链（E252）——安装校验 domains → 未授权拒绝 → 授权+确认执行 → 撤销恢复拒绝', async () => {
+  const env = makeEnv();
+  try {
+    // ① browser 权限未声明 domains → 安装校验拒绝（A2/§8.2.3）
+    const noDomains = {
+      name: 'market-e2e-browser-bad',
+      version: '1.0.0',
+      triggers: ['browser bad'],
+      description: 'E252 集成 fixture（缺 domains）',
+      steps: ['goto https://so.szlcsc.com/'],
+      permissions: ['browser'],
+    };
+    const badInstall = await installFixture(env, noDomains);
+    assert.equal(badInstall.ok, false);
+    assert.match(badInstall.error ?? '', /domains/);
+
+    // ② 合法 browser Skill 安装成功
+    const pkg = {
+      name: 'market-e2e-browser',
+      version: '1.0.0',
+      triggers: ['browser e2e'],
+      description: 'E252 集成 fixture',
+      steps: [
+        'goto https://so.szlcsc.com/search?k=@query',
+        'download https://so.szlcsc.com/a.pdf',
+      ],
+      permissions: ['browser'],
+      domains: ['szlcsc.com'],
+      actions: ['goto', 'click', 'download'],
+      input: 'query',
+    };
+    const installed = await installFixture(env, pkg);
+    assert.equal(installed.ok, true);
+
+    const domainAuth = new DomainAuthStore(join(env.dir, 'domain-auth.jsonl'));
+    const runner = new MarketSkillRunner({
+      store: env.store,
+      installRoot: env.installRoot,
+      workspaceRoot: env.workspaceRoot,
+      domainAuth,
+      driverFactory: () => fakeBrowserDriver(),
+      confirmAction: () => true,
+    });
+    // ③ 未授权域名 → 拒绝执行（A1/A3）
+    const denied = await runner.runBrowser('market-e2e-browser', { input: 'STM32F103' });
+    assert.equal(denied.ok, false);
+    assert.match(denied.error ?? '', /未获用户授权/);
+
+    // ④ 授权后执行成功（A3 授权 + A7 确认 + A8 留痕），@query 已编码注入
+    domainAuth.authorize('market-e2e-browser', 'szlcsc.com');
+    const outcome = await runner.runBrowser('market-e2e-browser', { input: 'STM32F103' });
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.results.length, 2);
+    assert.ok(outcome.results.every((r) => r.ok));
+    // stdout 含解析后 URL（@query 已编码替换，留痕可审计）
+    assert.ok(outcome.results[0].stdout.includes('STM32F103'));
+    assert.ok(outcome.finalSnapshot !== undefined);
+
+    // ⑤ 撤销授权后恢复拒绝（A3 可撤销）
+    domainAuth.revoke('market-e2e-browser', 'szlcsc.com');
+    const revoked = await runner.runBrowser('market-e2e-browser', { input: 'STM32F103' });
+    assert.equal(revoked.ok, false);
+    assert.match(revoked.error ?? '', /未获用户授权/);
+
+    domainAuth.close();
   } finally {
     teardown(env.dir, env.storePath);
   }

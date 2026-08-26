@@ -11,6 +11,9 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { checkCommand, tokenize } from '../../security/command-whitelist.js';
+import { createCdpBrowserDriver } from '../../browser/driver.js';
+import { BrowserOperationRunner, parseBrowserStep, type BrowserDriver, type BrowserOpPolicy, type BrowserOpStep } from '../../browser/operations.js';
+import { DomainAuthStore } from '../../security/domain-auth.js';
 import { validateMarketManifest } from './manifest.js';
 import type { InstalledSkillWithTriggers } from './nl-router.js';
 import { MarketStore } from './store.js';
@@ -50,6 +53,12 @@ export interface MarketRunnerDeps {
   workspaceRoot?: string;
   check?: typeof checkCommand;
   spawn?: StepSpawnFn;
+  /** E252：域名授权存储（测试注入；默认 data/domain-auth.jsonl） */
+  domainAuth?: DomainAuthStore;
+  /** E252：浏览器驱动工厂（测试注入 fake；缺省真实 CDP 驱动） */
+  driverFactory?: () => BrowserDriver;
+  /** E252：高风险动作审批回调（缺省拒绝；CLI --yes 显式放行） */
+  confirmAction?: BrowserOpPolicy['confirm'];
 }
 
 export interface MarketStepResult {
@@ -68,6 +77,8 @@ export interface MarketRunOutcome {
   results: MarketStepResult[];
   error?: string;
   durationMs: number;
+  /** E252：浏览器操作最终页 DOM 快照（有界截断，untrusted_data） */
+  finalSnapshot?: string;
 }
 
 function truncateOutput(text: string | null | undefined): string {
@@ -82,6 +93,9 @@ export class MarketSkillRunner {
   private readonly workspaceRoot: string;
   private readonly check: typeof checkCommand;
   private readonly spawn: StepSpawnFn;
+  private readonly domainAuth: DomainAuthStore;
+  private readonly driverFactory?: () => BrowserDriver;
+  private readonly confirmAction?: BrowserOpPolicy['confirm'];
 
   constructor(deps: MarketRunnerDeps = {}) {
     this.store = deps.store ?? new MarketStore();
@@ -89,6 +103,9 @@ export class MarketSkillRunner {
     this.workspaceRoot = deps.workspaceRoot ?? process.cwd();
     this.check = deps.check ?? checkCommand;
     this.spawn = deps.spawn ?? defaultStepSpawn;
+    this.domainAuth = deps.domainAuth ?? new DomainAuthStore();
+    this.driverFactory = deps.driverFactory;
+    this.confirmAction = deps.confirmAction;
   }
 
   /** 当前已安装（status=installed）的市场 Skill（供 CLI --list） */
@@ -141,6 +158,14 @@ export class MarketSkillRunner {
       return fail(`加载 Skill manifest 失败：${err instanceof Error ? err.message : String(err)}`);
     }
 
+    // E252：浏览器操作 Skill 需交互式用户确认（高风险默认拒绝），走 runBrowser 异步通道
+    if (manifest.permissions.includes('browser')) {
+      return fail(
+        `浏览器操作 Skill 需交互式用户确认，请用 CLI/桌面入口执行：npm run skill:market:run -- ${name}${manifest.input === 'query' ? ' --query "<输入>"' : ''}（高风险动作默认拒绝）`,
+        [],
+        manifest.version,
+      );
+    }
     if (!manifest.permissions.includes('command')) {
       return fail('Skill 未声明 command 权限，拒绝执行任何步骤（§8.2.3 权限门禁）', [], manifest.version);
     }
@@ -207,6 +232,92 @@ export class MarketSkillRunner {
     }
     return { ok: true, name, version: manifest.version, results, durationMs: Date.now() - started };
   }
+
+  /** 当前已安装 Skill 是否为浏览器操作类型（CLI 分支入口；manifest 损坏视为非浏览器） */
+  isBrowserSkill(name: string): boolean {
+    try {
+      const raw = readFileSync(join(this.installRoot, name, 'manifest.json'), 'utf-8');
+      return validateMarketManifest(JSON.parse(raw)).permissions.includes('browser');
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 浏览器操作 Skill 执行链（E252）：manifest steps（DSL）→ 动作白名单/域名白名单/SSRF
+   * → 高风险审批（默认拒绝，A7）→ 有界执行（[P-124]/[P-125]）→ 动作留痕（A8）。
+   * 命令 Skill 走同步 run()；浏览器 Skill 必须经此异步通道（用户确认 + CDP 驱动）。
+   */
+  async runBrowser(name: string, opts: { input?: string } = {}): Promise<MarketRunOutcome> {
+    const started = Date.now();
+    const fail = (error: string, results: MarketStepResult[] = [], version = ''): MarketRunOutcome => ({
+      ok: false,
+      name,
+      version,
+      results,
+      error,
+      durationMs: Date.now() - started,
+    });
+    const status = this.store.statusOf(name);
+    if (status !== 'installed') {
+      return fail(`Skill ${name} 未安装或已卸载（当前状态：${status}），请先安装后执行`);
+    }
+    let manifest: MarketSkillManifest;
+    try {
+      const raw = readFileSync(join(this.installRoot, name, 'manifest.json'), 'utf-8');
+      manifest = validateMarketManifest(JSON.parse(raw));
+    } catch (err) {
+      return fail(`加载 Skill manifest 失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+    if (!manifest.permissions.includes('browser')) {
+      return fail('Skill 未声明 browser 权限，请使用 run() 命令执行通道');
+    }
+    const domains = manifest.domains ?? [];
+    if (domains.length === 0) {
+      return fail('browser 权限 Skill 未声明 domains，拒绝执行（§8.2.3 安装/执行拒绝）');
+    }
+    const parsed = (manifest.steps ?? []).map((line) => parseBrowserStep(line, opts.input));
+    const invalid = parsed.find((r): r is { ok: false; error: string } => !r.ok);
+    if (invalid) return fail(`浏览器步骤解析失败：${invalid.error}`);
+    const steps = parsed.map((r) => (r as { ok: true; step: BrowserOpStep }).step);
+    const policy: BrowserOpPolicy = {
+      skill: name,
+      domains,
+      allowedActions: manifest.actions ? new Set(manifest.actions) : undefined,
+      isAuthorized: (domain) => this.domainAuth.isAuthorized(name, domain),
+      confirm: this.confirmAction,
+    };
+    const driver = this.driverFactory ? this.driverFactory() : createCdpBrowserDriver();
+    const opRunner = new BrowserOperationRunner({ driver });
+    const outcome = await opRunner.run(steps, policy);
+    const results: MarketStepResult[] = outcome.results.map((r) => ({
+      step: r.step.raw,
+      ok: r.ok,
+      status: null,
+      stdout: r.ok ? `${r.step.action} ${describeBrowserStep(r.step)}（${r.durationMs}ms）` : '',
+      stderr: r.error ?? '',
+      ...(r.timedOut ? { timedOut: true } : {}),
+    }));
+    return {
+      ok: outcome.ok,
+      name,
+      version: manifest.version,
+      results,
+      ...(outcome.error !== undefined ? { error: outcome.error } : {}),
+      ...(outcome.finalSnapshot ? { finalSnapshot: outcome.finalSnapshot.text.slice(0, STEP_OUTPUT_MAX_CHARS) } : {}),
+      durationMs: Date.now() - started,
+    };
+  }
+}
+
+/** E252：浏览器步骤执行摘要（goto/download 带解析后 URL，@query 已替换——留痕可审计） */
+function describeBrowserStep(step: BrowserOpStep): string {
+  if (step.action === 'goto' || step.action === 'download') return step.url ?? '';
+  if (step.action === 'type') return `${step.ref ?? ''} "${step.text ?? ''}"`;
+  if (step.action === 'select') return `${step.ref ?? ''} -> ${step.option ?? ''}`;
+  if (step.action === 'scroll') return step.dy === 100_000 ? 'bottom' : `${step.dx ?? 0} ${step.dy ?? 0}`;
+  if (step.action === 'wait') return `${step.ms ?? 0}ms`;
+  return step.ref ?? '';
 }
 
 /** E250：命令串是否可安全经 cmd.exe 执行——仅字母数字、路径/参数分隔符，

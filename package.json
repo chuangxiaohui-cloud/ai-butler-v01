@@ -76,7 +76,8 @@
     "test": "node --test dist/**/*.test.js",
     "test:integration": "node --import tsx --test tests/integration/**/*.test.ts",
     "test:all": "npm run test && npm run test:integration",
-    "maturity:check": "tsx scripts/maturity-check.ts"
+    "maturity:check": "tsx scripts/maturity-check.ts",
+    "browser:auth": "tsx scripts/browser-domain-auth.ts"
   },
   "keywords": [
     "ai-agent",
