@@ -16,6 +16,7 @@ import { MarketStore } from '../src/skills/market/store.js';
 import { getSkills } from '../src/skills/registry.js';
 import {
   computeMaturityMetrics,
+  countReuseEvents,
   type MaturityFeedbackSample,
   type MaturitySkillStat,
 } from '../src/maturity/metrics.js';
@@ -70,17 +71,15 @@ function main(): void {
     }
   }
 
-  let skillEvents = 0;
-  let answerEvents = 0;
+  const trajectoryEvents: Array<{ type?: string; skill?: { kind?: string } }> = [];
   for (const line of readLines(join(root, 'data', 'trajectory.jsonl'))) {
     try {
-      const event = JSON.parse(line) as { type?: string };
-      if (event.type === 'skill') skillEvents += 1;
-      else if (event.type === 'answer') answerEvents += 1;
+      trajectoryEvents.push(JSON.parse(line) as { type?: string; skill?: { kind?: string } });
     } catch {
       // 损坏行跳过
     }
   }
+  const { skillEvents, answerEvents } = countReuseEvents(trajectoryEvents);
 
   const metrics = computeMaturityMetrics({
     presetSkills,

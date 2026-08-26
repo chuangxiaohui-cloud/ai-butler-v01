@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeMaturityMetrics, type MaturityInputs } from './metrics.js';
+import { computeMaturityMetrics, countReuseEvents, type MaturityInputs } from './metrics.js';
 
 function baseInput(overrides: Partial<MaturityInputs> = {}): MaturityInputs {
   return {
@@ -80,6 +80,26 @@ test('computeMaturityMetrics：证据链抽样输入时输出 rate，未抽样�
 
   const without = computeMaturityMetrics(baseInput());
   assert.equal(without.evidenceChain, null);
+});
+
+test('countReuseEvents：只计 direct/market_trigger 派发与 answer，injected 不计入', () => {
+  const obs = countReuseEvents([
+    { type: 'skill', skill: { kind: 'direct' } },
+    { type: 'skill', skill: { kind: 'market_trigger' } },
+    { type: 'skill', skill: { kind: 'injected' } },
+    { type: 'skill', skill: { kind: 'unknown' } },
+    { type: 'skill', skill: undefined },
+    { type: 'answer' },
+    { type: 'route' },
+    { type: 'search' },
+  ]);
+  assert.equal(obs.skillEvents, 2);
+  assert.equal(obs.answerEvents, 1);
+});
+
+test('countReuseEvents：空输入返回零', () => {
+  const obs = countReuseEvents([]);
+  assert.deepEqual(obs, { skillEvents: 0, answerEvents: 0 });
 });
 
 test('computeMaturityMetrics：无预置 Skill 时判定 L0', () => {

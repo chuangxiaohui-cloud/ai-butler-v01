@@ -4,7 +4,7 @@
  * 口径注记：
  * - 用户累积 Skill = 市场安装 Skill（预置不计数，§12.4 不自我夸大）
  * - 验收通过率 = accept / (accept + reject + correct)；n≥30 才做正式判定（对齐 E1 n=60 先例下限）
- * - 复用率观察值 = 直连 Skill 派发事件 / 回答事件（代理口径，待 E243 收口后校准）
+ * - 复用率 = 用户驱动 Skill 派发（direct + market_trigger）/ 回答事件；injected（上下文注入）不计入（E249 校准口径）
  * - 证据链完整度由审查报告抽样输入（未抽样时输出 null，不预设结论）
  */
 
@@ -22,6 +22,30 @@ export interface MaturityFeedbackSample {
 export interface MaturityReuseObs {
   skillEvents: number;
   answerEvents: number;
+}
+
+export interface MaturityReuseObs {
+  skillEvents: number;
+  answerEvents: number;
+}
+
+/** E249 校准口径：复用率只计用户驱动派发（direct/market_trigger），injected 上下文注入不计入 */
+export function countReuseEvents(
+  events: Array<{ type?: string; skill?: { kind?: string } }>,
+): MaturityReuseObs {
+  let skillEvents = 0;
+  let answerEvents = 0;
+  for (const event of events) {
+    if (event.type === 'answer') {
+      answerEvents += 1;
+    } else if (
+      event.type === 'skill' &&
+      (event.skill?.kind === 'direct' || event.skill?.kind === 'market_trigger')
+    ) {
+      skillEvents += 1;
+    }
+  }
+  return { skillEvents, answerEvents };
 }
 
 export interface MaturityEvidenceSample {
@@ -119,7 +143,7 @@ export function computeMaturityMetrics(input: MaturityInputs): MaturityMetrics {
     );
   }
   if (reuseRate !== null && reuseRate < 0.3) {
-    gaps.push(`复用率观察值低于 L1 判据 30%（代理口径，待 E243 收口后校准）`);
+    gaps.push(`复用率观察值低于 L1 判据 30%（口径：direct+market_trigger 派发/回答事件，injected 不计入）`);
   }
   if (evidenceChain && evidenceChain.rate !== null && evidenceChain.rate < 0.5) {
     gaps.push(`证据链完整度 ${(evidenceChain.rate * 100).toFixed(0)}%<50%（抽样审查）`);
