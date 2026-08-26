@@ -97,7 +97,17 @@
 - 参考：https://github.com/browser-use/browser-use（MIT，110.7k star，Python，活跃维护）
 - 借思想：① DOM 观察策略（CDP AX 树 + 增强快照 + 可点击元素检测 + 视口/iframe 限额）→ §4.1.5 只读页面理解增强与交互层观察；② 动作白名单（controller/ActionModel）→ §10.2「浏览器操作」类别同构设计；③ 消息/token 预算（message_manager + TokenCost）→ §8.3 token 预算纪律联动的长任务参考。
 - 不借：Python 底座 / cloud stealth / 代理轮换 / captcha 破解（个人桌面助手走「用户本人登录一次」路线，§1.2）。
-- 落地：需求增补 E252（§4.1.5 + [P-124]/[P-125]/[P-126]），代码实现后续迭代。
+- 落地：需求增补 E252（§4.1.5 + [P-124]/[P-125]/[P-126]），### 2.11 ego-lite → 浏览器操作体验参考（借思想，未借底座）
+
+- 参考：https://github.com/citrolabs/ego-lite（用户所给 ego-lite/ego-lite 404，实为 citrolabs/ego-lite；MIT，13.7k star，JavaScript，macOS-only，Windows/Linux 在 roadmap；主页 https://lite.ego.app）
+- 定位：给 AI agent 用的「自己的浏览器」——agent 在独立 Space 并行工作、默认继承用户登录态；`ego-browser` skill 以 JS 函数（snapshot/fill/click/wait/navigate/capture）暴露能力，代码底座（非 CLI 底座）让 agent 一次输出组合多步，复杂任务快至 2.5×、更省 token。
+- 借思想（并入 E252 实现）：
+  ① 独立 Space + 登录态继承体验 → 复用既有 CDP 持久化会话（用户本人登录一次，§1.2），任务会话与用户浏览互不抢占；
+  ② 代码底座（JS 函数组合）vs CLI 逐条调用 → `operations.ts` 允许一次 Skill 执行内连续多步（观察→动作→校验）后统一返回，减少往返；
+  ③ 语义 + 视觉双工作流 → `dom-observe.ts` AX 树编号（语义）与截图坐标（视觉）双模，对齐 §4.1.5 观察与寻址；
+  ④ 深嵌套 iframe 快照质量 → [P-126] DOM 快照有界的同时逐层展开可观测。
+- 不借：ego-lite 整浏览器底座（macOS-only，AI-Butler 走 CDP 驱动用户既有浏览器，Windows 本机不可用）；`js`/`cdp` 任意求值（与 §10 动作白名单冲突，E252 A5 拒绝 execute_js）；经验累积等 roadmap 功能（等 trajectory 数据积累再评估）。
+- 落地：并入 `docs/plans/2026-08-26-browser-operation-implementation.md`（dom-observe / operations 模块），代码实现后续迭代。
 
 ## 3. 待借入（按优先级）
 
@@ -156,6 +166,7 @@
 - InfoQ 分析：<https://www.sohu.com/a/1062640652_122014422>
 - OpenSquilla：<https://github.com/opensquilla/opensquilla>（本地 `opensquilla/` v0.5.3）
 - OpenSquilla Agentic Routing 技术报告：<https://arxiv.org/abs/2607.11399>
+- ego-lite：<https://github.com/citrolabs/ego-lite>（用户所给 https://github.com/ego-lite/ego-lite 404；主页 https://lite.ego.app）
 
 ### 2.5 POC-C → GitHub 解读契约（2026-08-26 借入登记）
 
