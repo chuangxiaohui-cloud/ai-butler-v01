@@ -392,13 +392,19 @@ UI 设计不需要单独设立"创意设计"栏，按核心分界线（§4 一�
 
 **操作白名单**（与 §10.2 命令白名单同构）：仅允许 `goto`、`click`、`type`、`select`、`scroll`、`hover`、`wait`、`download`；白名单外动作（执行页面内 JS、改 cookie、开 devtools 等）一律拒绝。
 
+**观察与寻址（DOM 观察策略）**：交互层观察复用并增强只读层提取（E182）——采用「可访问性树（AX）+ 可交互元素编号 + 视口/iframe 有界」定位动作目标（对齐 browser-use 的 DOM 快照思路，借思想不借底座）；每步注入 ≤ [P-126] 字符，可点击/可输入元素带编号供动作寻址，避免整页 DOM 全量进上下文。
+
 **高风险动作审批双闸**（对齐 §10.5「一切执行动作过白名单+审批双闸」）：表单提交、下载、跨域导航、写操作（删/改页面内容）执行前必须弹用户确认；用户可随时中止任务，已执行动作留痕。
 
 **有界与成本**：单任务动作数 ≤ [P-124]；单步执行超时 ≤ [P-125]；每步 DOM 快照注入 ≤ [P-126] 字符；动作规划与观察合入既有 token 预算纪律（§8.3）。
 
+**长任务编排**：多步操作先出动作计划（对齐 §4.1.1 Plan 执行方式，用户可批准/调整/中止）；执行中动作历史按 §8.3 压缩窗口策略摘要化（保留「已执行动作 + 当前页状态」），避免多步历史撑爆上下文。
+
 **安全**：URL 过 SSRF 黑名单（§10.3）；登录态域内操作默认放行、非登录态域只读；页面返回内容（DOM 快照/截图）归 untrusted_data，prompt 注入防御适用（§10.5）；安全用例见 §10.4。
 
 **可观测**：每一步动作（动作/URL/结果/耗时）进轨迹日志，UI 实时展示「正在点击…/正在输入…」，用户可回看与中止；操作失败降级回只读层并如实归因。
+
+**验收基准**：实现验收采用真实网页任务样例集（datasheet 下载 / 器件参数对比 / 表格填写等真实场景），安全用例先行（§10.4），样例集与结果随实现登记附录 C，对齐 [P-10] 验收门（样本阈值 + owner 签认）。
 
 ### 4.2 知识问答（含紧急通道）
 
@@ -1998,7 +2004,7 @@ PM 拆解调度子 Agent（含 Keil 编译、KiCad 出图、文件写入等）�
 ### 2026-08-26（复用率口径校准 E249）<br>- **变更**：E243 收口后校准 [P-25] 复用率观察口径——新增 `countReuseEvents` 纯函数（`src/maturity/metrics.ts`）：复用率 = 用户驱动 Skill 派发（direct + market_trigger）/ 回答事件；injected（上下文注入）不计入；`scripts/maturity-check.ts` 改用该函数统计轨迹事件，缺口文案移除「待 E243 收口后校准」注记。<br>- **证据**：新增单测 2 条（direct/market_trigger 计入、injected/未知 kind 排除 + answer 计数；空输入返回零）；全量单测 889/890（1 skip）+ 集成 30/30；doc-lint 0 FAIL 0 WARN。<br>- **状态**：完成；复用率观察自此为校准口径（含 E248 market_trigger 直连）。<br>- affects: §12.4,附录A | bench:na(new-param) 理由：观察口径校准，无 §5/§6 参数变更
 ### 2026-08-26（市场 Skill 累积通道 E250）<br>- **变更**：让 §8.2.3 累积路径在当前平台可执行——① `MarketInstaller.installFromLocalDir(packageDir, confirm?)` 本地安装通道（本地包用户即策展方，无市场条目权限上限；高风险权限仍逐项显式确认；sourceUrl 记 file:///；远程安装保持「市场条目权限上限」不变）+ `npm run skill:market:install -- --source <dir> [--yes]`（`scripts/market-install.ts`）；② E248 生产接线：CLI（`src/main.ts`）与 gateway（`src/gateway/server.ts`）pipeline 注入 `marketSkillRunner`，已装 Skill 触发词直连在真实使用中生效；③ E243 残留修复：Windows 下 npm/pnpm 等 .cmd shim 经 shell:false spawn 会 ENOENT——`defaultStepSpawn` 增加安全守卫 `isCmdSafeCommandLine`（命令串仅含字母数字与路径/参数分隔符、无 cmd 元字符时）改经 `cmd.exe /d /s /c` 执行，保持白名单先行 + 无解释余地的双层语义；④ 首批精选包 `configs/market-skills/{doc-lint,build-check,skill-inventory,git-status}`（真实能力包装、参数无关、steps 过 §10.2 白名单），已安装并 `skill:market:run` 逐个验证。<br>- **证据**：新增单测 4 条（installFromLocalDir 成功/缺省拒绝/缺包或非法 manifest + isCmdSafeCommandLine 守卫 10 断言）+ 集成 1 条（INT-MARKET-004 本地安装 → 真实 npm 步骤执行，覆盖 Windows shim 路径）；真实冒烟 4 个精选 Skill 执行全 ok；累积路径文档 Phase 1.2 改为市场安装通道（原 `install:skill` 为预置注册，错配已修正）；全量单测 889/890（1 skip）+ 集成 30/30；doc-lint 0 FAIL 0 WARN。<br>- **状态**：完成；`npm run maturity:check` 用户累积 Skill 0→4。<br>- affects: §8.2.3,§10.2,§12.4,附录A | bench:na(new-param) 理由：安装/执行通道与生产接线（复用既有白名单/沙箱/JSONL），无 §5/§6 参数变更
 ### 2026-08-26（市场 Skill 安全输入通道 E251）<br>- **变更**：让带参高频场景可固化为市场 Skill——manifest 新增 `input:'query'` 声明（`MarketSkillManifest.input`，`validateMarketManifest` 校验非法声明即拒绝）：声明后 `MarketSkillRunner.run(name, { input })` 把用户查询（有界 4KB）写入沙箱 `input.txt`，steps/verify 中的字面量 `@input` 替换为该文件绝对路径——用户文本永不进入命令行（无注入面，保持 §10.2 白名单先行 + shell:false 语义）；pipeline 直连执行改为 `run(name, { input: prepared.cleanQuery })`；CLI `skill:market:run -- <name> --query "<文本>"`（`scripts/market-run.ts`）；首个带参精选包 `configs/market-skills/route-query`（意图路由判题：`npm run route:query:file -- @input`，`scripts/route-query-file.ts` 读文件 → routeV2 JSON）已安装并冒烟；沙箱目录 `sandbox/` 入 `.gitignore`（input.txt 等运行产物不提交）。<br>- **证据**：新增单测 4 条（runner 输入写入/未传不写/未声明不写/4KB 截断）+ manifest 2 条（query 通过/非法拒绝）+ pipeline 1 条（查询作为 input 传入）；集成 1 条（INT-MARKET-005 安装 input 技能 → 真实 git 执行 @input 成功、输出不含用户文本）；真实冒烟 route-query 带参执行全 ok；全量单测 896/897（1 skip）+ 集成 31/31；doc-lint 0 FAIL 0 WARN。<br>- **状态**：完成；带参 Skill 通道可用，datasheet/BOM/文档类高频场景可直接沉淀。<br>- affects: §8.2.3,§10.2,附录A | bench:na(new-param) 理由：复用既有白名单/沙箱/JSONL 的输入文件通道（无 §5/§6 参数变更）
-### 2026-08-26（Agent 浏览器操作需求增补 E252）<br>- **变更**：v2.5 需求新增「浏览器操作（读 + 交互双模）」能力（§4.1.5）——在只读浏览器会话（E74-E79/E182）基础上，Agent 可像 Codex/browser-use 一样操作浏览器：`goto`/`click`/`type`/`select`/`scroll`/`hover`/`wait`/`download`，观察 = DOM 快照 + 截图回传，全程动作日志、可中止；安全边界对齐 §10：动作白名单（§10.2 增「浏览器操作」类别）+ 高风险审批双闸（表单提交/下载/跨域导航/写操作）+ SSRF 黑名单复用（§10.3）+ 页面观察归 untrusted_data（§10.5）；新增参数 [P-124] 单任务动作上限 / [P-125] 单步超时 / [P-126] DOM 快照上限（§5，均 provisional@2026-08-26）；§10.4 安全 TDD 增浏览器操作用例；附录 E 新术语「浏览器操作」；参考 browser-use 仅借思想（DOM 观察策略、动作白名单、消息/token 预算），登记 `docs/borrowed-designs.md`。<br>- **状态**：需求已落文档，代码实现待后续迭代（按 §10.4 先写安全用例再实现）。<br>- affects: §4,§5,§8,§10,附录A | bench:na(new-param) 理由：需求增补 + 新参数（provisional，无 §6 变更；§4/§8/§10 联动）
+### 2026-08-26（Agent 浏览器操作需求增补 E252）<br>- **变更**：v2.5 需求新增「浏览器操作（读 + 交互双模）」能力（§4.1.5）——在只读浏览器会话（E74-E79/E182）基础上，Agent 可像 Codex/browser-use 一样操作浏览器：`goto`/`click`/`type`/`select`/`scroll`/`hover`/`wait`/`download`，观察 = DOM 快照 + 截图回传，全程动作日志、可中止；安全边界对齐 §10：动作白名单（§10.2 增「浏览器操作」类别）+ 高风险审批双闸（表单提交/下载/跨域导航/写操作）+ SSRF 黑名单复用（§10.3）+ 页面观察归 untrusted_data（§10.5）；新增参数 [P-124] 单任务动作上限 / [P-125] 单步超时 / [P-126] DOM 快照上限（§5，均 provisional@2026-08-26）；§10.4 安全 TDD 增浏览器操作用例；附录 E 新术语「浏览器操作」；参考 browser-use 的 4 点全部落地：① DOM 观察策略（AX 树 + 可交互元素编号 + 视口/iframe 有界，§4.1.5 观察与寻址）；② 动作白名单（§10.2 增「浏览器操作」类别）；③ 消息/token 管理（长任务计划拆解 + §8.3 压缩窗口摘要化）；④ 验收基准（真实网页任务样例集，对齐 [P-10] 验收门，随实现登记附录 C）；借思想不借底座，登记 `docs/borrowed-designs.md`。<br>- **状态**：需求已落文档，代码实现待后续迭代（按 §10.4 先写安全用例再实现）。<br>- affects: §4,§5,§8,§10,附录A | bench:na(new-param) 理由：需求增补 + 新参数（provisional，无 §6 变更；§4/§8/§10 联动）
 ### v2.5（2026-08-12）
 
 - 文档治理重构：§0 文档宪法（权威归属/状态机/行数预算/lint 执法/迁移期规则）
