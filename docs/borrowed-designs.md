@@ -149,3 +149,22 @@
 - InfoQ 分析：<https://www.sohu.com/a/1062640652_122014422>
 - OpenSquilla：<https://github.com/opensquilla/opensquilla>（本地 `opensquilla/` v0.5.3）
 - OpenSquilla Agentic Routing 技术报告：<https://arxiv.org/abs/2607.11399>
+
+### 2.5 POC-C → GitHub 解读契约（2026-08-26 借入登记）
+
+- 来源：`M:\20260804\poc-c\server\pocc_server.py` 的 `run_deep_github_analyze`
+  （POC-C b11，28/28 测试通过，真实冒烟 openworker health=82）。
+- 借入内容：**只借鉴 X.6 产出契约与降级策略**，不借 Python 实现、不引入依赖。
+  - X.6 契约：positioning / architecture / tech_stack / usage / scenarios /
+    health_score(0-100+health_basis) / risks[] / evidence[]（type: api|raw|web, url,
+    accessed_at），字段缺失显式「未获取（原因）」。
+  - L1 数据源与降级链：GitHub API（repos 元数据 + contributors + 近6月 commits +
+    releases）→ raw.githubusercontent（README + manifest）→ releases.atom → 搜索（L2 Phase 2）。
+  - health_score 加权：Star 20 / 近6月提交 25 / 贡献者 15 / Open Issues 10 /
+    Release 20 / 最近推送 10，License 缺失 -5。
+  - 《专业审阅协议 §一》注入：LLM 合成按固定输出顺序 + 「README 级判断」深度分级 +
+    诚实边界 4 条。
+- 落地：`src/skills/github-reader/` 按 `docs/plans/2026-08-26-github-project-analysis.md`
+  用 TypeScript 重写（TS 重写，非拷贝）；完成须补测试与验收。
+- 迁移参考：`docs/2026-08-26-pocc-github-analyze-migration.md`。
+- 状态：计划已定，实现待执行（E-NN 登记见附录 A）。

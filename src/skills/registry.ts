@@ -6,9 +6,9 @@
 import { skill as chipAnalysis } from './chip-analysis/index.js';
 import { skill as circuitTopology } from './circuit-topology/index.js';
 import { skill as datasheetSpeed } from './datasheet-speed/index.js';
-import { skill as githubReader } from './github-reader/index.js';
 import { skill as industryKits } from './industry-kits/index.js';
 import { skill as jargonMap } from './jargon-map/index.js';
+import { createGithubReaderSkill } from './github-reader/index.js';
 import { createColorRecognitionSkill } from './color-recognition/index.js';
 import { createDocumentQaSkill } from './document-qa/index.js';
 import { createImageAnalysisSkill } from './image-analysis/index.js';
@@ -35,7 +35,6 @@ import type { UserContext } from '../memory/user-context.js';
 
 const SKILLS: LegacySkillDef[] = [
   chipAnalysis,
-  githubReader,
   jargonMap,
   datasheetSpeed,
   circuitTopology,
@@ -44,6 +43,7 @@ const SKILLS: LegacySkillDef[] = [
 
 const EXECUTABLE_SKILLS = [
   ...SKILLS.map(wrapLegacySkill),
+  createGithubReaderSkill(),
   createColorRecognitionSkill(),
   createDocumentQaSkill(),
   createImageAnalysisSkill(),

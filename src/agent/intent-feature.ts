@@ -110,6 +110,8 @@ const ACTION_RE: Array<[ActionType, RegExp]> = [
   ['learn_video', /学习这个视频|视频学习|视频总结|总结这个视频/],
   ['compare', /对比|比较|对照|PK/],
   ['analyze', ANALYZE_RE],
+  // E242：GitHub 仓库项目问句（做什么/是什么/怎么用/值不值/怎么样）→ analyze，供 R017 github_analysis
+  ['analyze', /github\.(?:com|io)\S*\s*(?:这|该|这个|那个)?(?:项目|仓库|repo).*(?:做什么|干什么|是什么|怎么用|怎么玩|怎么样|值不值|值不值得|评价|了解|介绍)/],
   ['qa', QA_RE],
   // E169：日历/日程“导出/保存/下载/ics”视为 query，命中 R004 走 calendar_skill，避免偏到 web_search
   ['query', /导(?:出|下载).*(日历|日程)|保存.*(?:日历|日程)|(?:日历|日程).*(导出|保存|下载|\.?ics)/i],
@@ -206,12 +208,14 @@ export function extractIntentFeatureRuleBased(
   attachments: AttachmentSignal[] = [],
 ): IntentFeature {
   const q = query.trim();
+  const hasGithubLink = /github\.com|github\.io|\/github\//i.test(q);
   let actionType: ActionType = 'unknown';
   for (const [type, re] of ACTION_RE) {
     if (!re.test(q)) continue;
     if (
       type === 'analyze' &&
       !COLOR_RE.test(q) &&
+      !hasGithubLink &&
       (GENERIC_QA_RE.test(q) ||
         (METRIC_QA_RE.test(q) && !ANALYZE_EVAL_RE.test(q)))
     ) {
@@ -243,7 +247,6 @@ export function extractIntentFeatureRuleBased(
 
   const hasImplicitContext =
     /(这个|那个|它|他|她|这项目|那项目)/.test(q) || actionType === 'apply_to_project';
-  const hasGithubLink = /github\.com|github\.io|\/github\//i.test(q);
   const requiresExternalSearch =
     /最新|行情|天气|价格|库存|评测|报错|怎么解决|datasheet|github|搜索|(^|[^检])查一下|资料/.test(q) ||
     targetDomain === 'search';

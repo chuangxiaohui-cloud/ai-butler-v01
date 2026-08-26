@@ -203,13 +203,17 @@ test('router-v2: 蛇咬 → emergency 紧急路由', () => {
   }
 });
 
-test('router-v2: GitHub 链接 + 用途问答 → qa/web_search', () => {
+test('router-v2: GitHub 链接 + 用途问答 → github_analysis（E242 改判，v2.5 §6.1.2 API 优先）', () => {
   const r = routeV2('https://github.com/PaddlePaddle/PaddleOCR这个项目是做什么用的');
-  assert.equal(r.features.actionType, 'qa');
-  assert.equal(r.candidates[0].intent, 'web_search');
-  assert.notEqual(r.decision.type, 'must_clarify');
+  assert.equal(r.features.actionType, 'analyze');
+  assert.equal(r.features.hasGithubLink, true);
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'github_analysis');
+    assert.equal(r.decision.selected.skill, 'github-reader');
+  } else {
+    assert.fail('GitHub 链接 + 用途问答应直接路由到 github_analysis');
+  }
 });
-
 test('router-v2: 是什么 + 写个例子 → qa 而非 create 澄清', () => {
   const r = routeV2('函数指针是什么，给我写个简单的代码例子');
   assert.equal(r.features.actionType, 'qa');
@@ -537,6 +541,30 @@ test('router-v2: GitHub 链接分析 → github_analysis skill', () => {
   }
 });
 
+test('router-v2: GitHub 链接 + 项目问句（做什么用/值不值）→ github_analysis skill（E242）', () => {
+  const r1 = routeV2('https://github.com/andrewyng/openworker 这项目是做什么用的？');
+  assert.equal(r1.features.actionType, 'analyze');
+  assert.equal(r1.features.hasGithubLink, true);
+  if (r1.decision.type === 'direct') {
+    assert.equal(r1.decision.selected.intent, 'github_analysis');
+    assert.equal(r1.decision.selected.skill, 'github-reader');
+  } else {
+    assert.fail('应直接路由到 github_analysis');
+  }
+  const r2 = routeV2('https://github.com/andrewyng/openworker 这个项目值不值得用？');
+  if (r2.decision.type === 'direct') {
+    assert.equal(r2.decision.selected.intent, 'github_analysis');
+  } else {
+    assert.fail('值不值得用应直接路由到 github_analysis');
+  }
+  // 非 github.com 的项目问句不受影响，仍走 web_search
+  const r3 = routeV2('https://example.com/foo 这个项目是做什么用的？');
+  if (r3.decision.type === 'direct') {
+    assert.equal(r3.decision.selected.intent, 'web_search');
+  } else {
+    assert.fail('非 github 链接应走 web_search');
+  }
+});
 test('router-v2: 芯片对比 → web_search 而非澄清', () => {
   const r = routeV2('对比 ESP32-S3 和 RP2040 在音频 I2S 应用上的功耗和 PSRAM 性能差异？');
   assert.equal(r.features.actionType, 'compare');
@@ -661,3 +689,5 @@ test('router-v2: 深度报告意图 → project_manager deep_report 且开搜索
     assert.equal(r.decision.selected.primaryLens, 'project_manager');
   }
 });
+
+

@@ -13,7 +13,6 @@ v0.1 冷启动采用 **2 项核心 + 4 项占位** 策略，占位项先建目�
 
 | 目录 | Skill | 计划启用版本 | 占位理由 |
 |------|-------|-------------|---------|
-| `github-reader/` | GitHub 项目解读 | v0.2a | 需要 MCP/浏览器子 Agent |
 | `datasheet-speed/` | Datasheet 速读 | v0.2a | 依赖 Datasheet PDF 解析管道 |
 | `circuit-topology/` | 常见电路拓扑 | v0.2b | 需要 ExperienceManager 积累 |
 | `industry-kits/` | 行业知识包 | v0.2b | 需要 L1/L2 蒸馏后装备 |
@@ -24,6 +23,7 @@ v0.1 冷启动采用 **2 项核心 + 4 项占位** 策略，占位项先建目�
 
 | 目录 | Skill | 作用 | 依赖 |
 |------|-------|------|------|
+| `github-reader/` | GitHub 项目解读 | X.6 契约结构化解读：GitHub API 元数据 + raw README/manifest + Release/提交/贡献者 → health_score(0-100+health_basis) + risks + evidence[] → LLM 按《专业审阅协议 §一》合成（无 LLM 时返回结构化契约 + 诚实提示）；降级链 API → raw → releases.atom/主页 → 显式「未获取（原因）」 | 可选文本 LLM（fetch 直连，无新依赖） |
 | `color-recognition/` | 颜色识别 | L1 语义色名 + L2 主色调 HEX | VLM（DI 注入） |
 | `document-qa/` | 文档解析 | 结构化摘要 / 结构提取 / 全文问答 | parseDocument + 可选文本 LLM |
 | `image-analysis/` | 通用图片描述 | 按需 VLM 描述图片内容/文字 | VLM（DI 注入） |
@@ -47,4 +47,6 @@ v0.1 冷启动采用 **2 项核心 + 4 项占位** 策略，占位项先建目�
 
 > `plan-validation` 让 Agent 在拿到计划后先做“编译式检查”，Critical 不通过
 > 就不进入执行，避免带着残缺计划开工。
+
+
 
