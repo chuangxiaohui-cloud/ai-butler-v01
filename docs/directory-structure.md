@@ -51,7 +51,7 @@ CLI (src/main.ts)  UI (ui/prototype)  桌面壳 (desktop)
 |------|------|----------|
 | `src/search/` | Stage 1-6 搜索问答管道、搜索 provider、融合、兜底链 | `pipeline.ts`、`stages/`、`providers/`、`fusion.ts`、`rule1.ts`、`rule3.ts`、`second-pass.ts`、`second-pass-fetch.ts`、`deep-report.ts`、`deep-report-store.ts` |
 | `src/mcp/` | MCP 子 Agent（注册表/stdio 客户端/调度器/安全白名单/真实 server 配置装配，v1.0 S3 E222 + E240） | `registry.ts`、`client.ts`、`dispatcher.ts`、`safety.ts`、`types.ts`、`config.ts` |
-| `src/im/` | 远程对话通道骨架（授权开关/会话隔离/输出适配，v1.0 S5） | `gate.ts`、`session.ts`、`format.ts`、`service.ts` |
+| `src/im/` | 远程对话通道（授权开关/会话隔离/输出适配/复用 pipeline + ImChannel 抽象 + OneBot 11 真实适配器 + 常驻入口，v1.0 S5，§4.5 E224+E241） | `gate.ts`、`session.ts`、`format.ts`、`service.ts`、`channel.ts`、`config.ts`、`run.ts`、`onebot/` |
 | `src/repo/` | 代码托管联动库骨架（仓库白名单/预检门禁/commit+push/审计 JSONL，v1.0 S6） | `repo-whitelist.ts`、`push-audit.ts`、`push-service.ts` |
 | `src/skills/market/` | Skill 市场远程化骨架（索引/校验/权限门禁/安装记录 JSONL，v1.0 S7） | `index-client.ts`、`manifest.ts`、`installer.ts`、`store.ts` |
 | `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理、rewrite/记住指令、时间表达、路由 case JSONL（追加/轮转） | `router-v2.ts`、`routing-table.ts`、`mode-mapper.ts`、`route-case-store.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` |

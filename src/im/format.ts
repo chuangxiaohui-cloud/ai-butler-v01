@@ -4,13 +4,15 @@
  * 超过 maxLength 截断并标记 truncated + attachmentHint（真实 IM 接入后发文件）。
  */
 
+import { PARAMS } from '../config/params.js';
+
 export interface ImReply {
   text: string;
   truncated?: boolean;
   attachmentHint?: string;
 }
 
-export const DEFAULT_IM_MAX_LENGTH = 500;
+export const DEFAULT_IM_MAX_LENGTH = PARAMS.imMaxLength; // [P-123]
 
 export function adaptReply(
   answer: string,

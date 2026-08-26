@@ -29,7 +29,7 @@
 | `src/search/` | `deep-report-store.ts` | 深度报告任务状态存储（取消恢复，JSONL 落盘，v1.0 S2，§4.3.2，E221） | ✅ |
 | `src/mcp/` | `types.ts`、`registry.ts`、`client.ts`、`dispatcher.ts`、`safety.ts`、`config.ts` | MCP 子 Agent：注册表/stdio 客户端/调度器（重试·退避·降级）/工具白名单与 untrusted 域/真实 server 配置装配（v1.0 S3 E222 + E240 真实接入，§4.1.2 + §10 + §11.1） | ✅ |
 | `src/security/` | `command-whitelist.ts`、`query-sanitize.ts` | 命令白名单（允许集合+硬编码拒绝+超时 kind）与搜索脱敏（路径/密钥/内网剥离，v1.0 S4，§10.2/§10.3，E223） | ✅ |
-| `src/im/` | `gate.ts`、`session.ts`、`format.ts`、`service.ts` | 远程对话通道骨架（授权开关/会话隔离/输出适配/复用 pipeline，v1.0 S5，§4.5，E224） | ✅ |
+| `src/im/` | `gate.ts`、`session.ts`、`format.ts`、`service.ts`、`channel.ts`、`config.ts`、`run.ts`、`onebot/` | 远程对话通道（授权开关/会话隔离/输出适配/复用 pipeline + ImChannel 抽象 + OneBot 11 真实适配器 + 常驻入口，v1.0 S5，§4.5，E224+E241） | ✅ |
 | `src/repo/` | `types.ts`、`repo-whitelist.ts`、`push-audit.ts`、`push-service.ts` | 代码托管联动库骨架（仓库白名单/预检门禁/commit+push/JSONL 审计，v1.0 S6，§11.4，E225） | ✅ |
 | `src/skills/market/` | `types.ts`、`manifest.ts`、`index-client.ts`、`store.ts`、`installer.ts` | Skill 市场远程化骨架（索引/校验/权限门禁/安装记录/生命周期统计，v1.0 S7，§8.2.3，E226） | ✅ |
 | `src/search/stages/` | `s1_prepare.ts`、`s2_classify.ts`、`s3_search.ts`、`s5_synthesize.ts`、`s6_post.ts` | 六阶段独立实现 | ✅ |

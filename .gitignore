@@ -59,4 +59,5 @@ preview_*
 
 # 本地 MCP 子 Agent 运行配置（含本机命令路径，不提交）
 configs/mcp-agents.json
+configs/im-channels.json
 

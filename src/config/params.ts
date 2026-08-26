@@ -78,6 +78,8 @@ export const PARAMS = {
   cdpStateTtlMs: 10 * 60 * 1000,
   /** P-122 Skill 生成 per-call 预算（engineer/content-writer 长文生成，实测 41-53s；长需求 60s 撞线，90s 留余量） */
   skillGenerationBudgetMs: 90_000,
+  /** P-123 IM 输出适配上限（§4.5 短正文优先，超长截断避免刷屏） */
+  imMaxLength: 500,
   /** P-13 深度报告增量预算（生成+证据组装，不含内部搜索调用；对齐 §4.3.2） */
   deepReportBudgetMs: 45_000,
   /** P-38 编译/构建超时（§11.1.3，Keil/gcc/cmake） */
@@ -146,5 +148,6 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   subAgentStartTimeoutMs: 'P-57',
   cdpStateTtlMs: 'P-121',
   skillGenerationBudgetMs: 'P-122',
+  imMaxLength: 'P-123',
   deepReportBudgetMs: 'P-13',
 };
