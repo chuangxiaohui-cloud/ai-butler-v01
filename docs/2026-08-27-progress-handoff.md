@@ -1,6 +1,6 @@
-# 进度交接 2026-08-27（E252 浏览器操作实现——受限 Skill 代码落地 + ego-lite 调研 + 下载动态解析与样例集 + P-124/125/126 定稿签认）
+# 进度交接 2026-08-27（E252 浏览器操作实现——受限 Skill 代码落地 + ego-lite 调研 + 下载动态解析与样例集 + P-124/125/126 定稿签认 + 样例集扩充（器件参数对比/表格填写））
 
-> 当前分支：v0.2b｜本轮收口：E252（Agent 浏览器操作——受限 Skill 实现：安全 TDD A1-A13 全绿 + 域名/动作白名单 + 审批双闸 + 真实浏览器冒烟 + download 选择器动态解析 + 样例集登记附录 C.5）、ego-lite（citrolabs/ego-lite）参考调研登记、[P-124]/[P-125]/[P-126] owner 签认定稿。
+> 当前分支：v0.2b｜本轮收口：E252（Agent 浏览器操作——受限 Skill 实现：安全 TDD A1-A13 全绿 + 域名/动作白名单 + 审批双闸 + 真实浏览器冒烟 + download 选择器动态解析 + 样例集登记附录 C.5）、样例集扩充（器件参数对比 / 表格填写，n=3→7）、ego-lite（citrolabs/ego-lite）参考调研登记、[P-124]/[P-125]/[P-126] owner 签认定稿。
 > 上一份交接见 `docs/2026-08-26-progress-handoff.md`。
 
 ## 今日已收口
@@ -22,6 +22,10 @@
    - 真实冒烟（本机 Edge + 联网）全链通过：STM32F103C8T6（goto 2.7s → click 1.3s → wait → download 5.9s，动态解析出 `https://www.st.com/resource/en/datasheet/stm32f103cb.pdf`，落盘 1.96MB）；STM32F407VGT6（下载 2.79MB）；反例 LM358 解析出 `www.goodworksemi.com` 不在白名单被拦截。
    - 样例集登记附录 C.5（2 正例 + 1 反例，n=3 初步证据）：对齐 §4.1.5 验收基准与 [P-10] 验收门。
 4. **[P-124]/[P-125]/[P-126] 定稿签认**（文档批 `b175459`）：owner（老张）2026-08-27 签认；§5 注册表三行 provisional→定稿；附录 A 新增定稿记录（五条件逐条对照：① PARAM ID ✓；② 引附录 C.5 证据 ID ✓；③ n=3，阈值未另设、必要非充分由 owner 签认行使；④ 附录 C 无相反证据 ✓；⑤ owner 签认 ✓）；doc-lint 0 FAIL 0 WARN。
+5. **样例集扩充（§4.1.5 器件参数对比 / 表格填写，本轮）**：
+   - 新 Skill `part-spec-observe` v0.1.0（只读链 goto → click 商品链接 → wait）：STM32F103C8T6 7.2s、STM32F407VGT6 7.5s 全执行；终态快照停留搜索页（商品详情 target=_blank 新标签，受限 Skill AX 快照仅覆盖当前页，参数表正文属只读层）——诚实边界已在附录 C.5 B4a/B4b 注明。
+   - 新 Skill `lcsc-search-form` v0.1.0（goto → type `#global-seach-input` → click `#search` → wait）：带 `--yes` 审批双闸放行通过（8.7s）；不带 `--yes` 反例被拦截（exit 1「高风险动作未获用户确认（写操作）」）——B5/B6 正反两例。
+   - 附录 C.5 样例 n=3→7（B4a/B4b/B5/B6），覆盖三类真实场景（datasheet 下载 / 器件参数对比 / 表格填写）。
 
 ## 提交
 
@@ -37,5 +41,5 @@
 ## 下一步（按优先级）
 
 1. **P-10 转定稿（条件③ 唯一阻塞）**：成熟度 L2+（当前 L1，L1→L2 ≈35-40%）仍为唯一阻塞；累积路径继续每周 3-5 个 Skill（E250/E251/E252 通道已就绪）；[P-124]/[P-125]/[P-126] 已定稿不再阻塞。
-2. **样例集继续扩充**：附录 C.5 按 §4.1.5 场景补器件参数对比 / 表格填写样例（n 达标后可进一步支撑 P-10 条件③ 中的验收样本维度）。
+2. **P-10 条件③ 样本维度已补强**：附录 C.5 n=7 覆盖三类场景（datasheet 下载 / 器件参数对比 / 表格填写），已对齐 §4.1.5 验收基准；后续可继续增补高风险动作更多反例（表单提交 / 跨域导航 / 下载）；成熟度 L2+ 仍为 P-10 唯一阻塞。
 3. 用户实测：`npm run skill:market:run -- datasheet-fetch --query "<型号>" --yes`（需先 `npm run browser:auth -- authorize datasheet-fetch <域名>`）。

@@ -74,10 +74,11 @@
 8. 示例 Skill datasheet-fetch + INT-MARKET-006（安装校验 → 未授权拒绝 → 授权+确认执行 → 撤销恢复拒绝）。
 9. 真实冒烟（本机 Edge + 联网）：datasheet-fetch --yes 全链通过（goto 2.7s + click 1.5s，AX 快照定位 PDF 链接）；[P-125] 单步超时与 [P-126] 快照截断实测生效。
 9b. （续 2026-08-27）download 选择器路径：`driver.resolveHref`（CDP evaluate 解析页面内 href）+ operations 对非 http(s) 的 download 目标先解析再走统一域名/SSRF/审批后置门；单测新增 4 条（解析成功链 / 域名后置门 / SSRF 后置门 / 解析失败与超时）。
+9c. （续 2026-08-27）样例集按 §4.1.5 场景扩充：新增 `configs/market-skills/part-spec-observe`（v0.1.0，器件参数对比只读链 goto → click a[href*="item.szlcsc.com"] → wait，纯只读无写操作）与 `configs/market-skills/lcsc-search-form`（v0.1.0，表格填写 goto → type #global-seach-input → click #search → wait，type 写操作需 --yes）；两 Skill 已安装 + szlcsc.com 授权；真实冒烟：B4a/B4b 全执行（7.2s / 7.5s），终态快照停留搜索页（商品详情 target=_blank 新标签不在当前 AX 快照，诚实边界登记附录 C.5）；B5 带 --yes 通过（8.7s）；B6 不带 --yes 被拦截（exit 1「高风险动作未获用户确认（写操作）」）；样例集附录 C.5 扩至 n=7。
 10. 全量验证：单测 936/937（1 skip）+ 集成 32/32 + doc-lint 0 FAIL 0 WARN（C8 49 key）+ maturity L1（用户累积 Skill 5→6）。
 11. 文档收口：附录 A E252 状态更新、code-directory/directory-structure/AGENTS.md 地图、docs/2026-08-27-progress-handoff.md。
 
 ## 结果
 
 - 单测 936/937（1 skip，含新增 40 条）｜集成 32/32（含 INT-MARKET-006）｜doc-lint 0 FAIL 0 WARN｜真实冒烟通过（datasheet-fetch）。
-- 遗留：无（[P-124]/[P-125]/[P-126] 已由 owner 2026-08-27 签认定稿，附录 A 有定稿记录）；样例集附录 C.5（2 正例 + 1 反例）继续按 §4.1.5 场景扩充（器件参数对比 / 表格填写）。
+- 遗留：无（[P-124]/[P-125]/[P-126] 已由 owner 2026-08-27 签认定稿，附录 A 有定稿记录）；样例集附录 C.5 扩至 n=7（B1-B6，三类真实场景：datasheet 下载 / 器件参数对比 / 表格填写，登记见 9c）。
