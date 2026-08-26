@@ -45,5 +45,5 @@
 - **实测基线（E247）**：等级 L1；预置 15/24 有使用；用户累积 Skill 0/50+；通过率 73.9%（17/23，n=23，pipeline-only）；复用率观察 16.6%（118 skill / 709 answer 事件）；缺口 4 条即 P-10 条件③ 解锁路径。
 - **E243 收口**：市场 Skill 触发词直连执行生效，未命中/未安装不影响原路由；轨迹记 kind=market_trigger。
 - 验证：`npm run build` 通过；单测 883/884（1 skip）+ 集成 29/29；`npm run maturity:check` 跑通；doc-lint 0 FAIL 0 WARN。
-- 提交：`<hash>` · 推送：待执行（Gitee / GitHub）
+- 提交：E248 = `14cfad2`、E247 = `dd3779a`、文档批 = `ad9c914` · 推送：待执行（Gitee / GitHub）
 - 遗留事项：Phase 1 真实使用累积（见累积路径清单）；复用率口径待 Phase 1 校准。
