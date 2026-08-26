@@ -72,7 +72,8 @@
     "sources:stats": "tsx scripts/source-stats.ts",
     "test": "node --test dist/**/*.test.js",
     "test:integration": "node --import tsx --test tests/integration/**/*.test.ts",
-    "test:all": "npm run test && npm run test:integration"
+    "test:all": "npm run test && npm run test:integration",
+    "maturity:check": "tsx scripts/maturity-check.ts"
   },
   "keywords": [
     "ai-agent",
