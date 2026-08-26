@@ -26,11 +26,13 @@
    - 新 Skill `part-spec-observe` v0.1.0（只读链 goto → click 商品链接 → wait）：STM32F103C8T6 7.2s、STM32F407VGT6 7.5s 全执行；终态快照停留搜索页（商品详情 target=_blank 新标签，受限 Skill AX 快照仅覆盖当前页，参数表正文属只读层）——诚实边界已在附录 C.5 B4a/B4b 注明。
    - 新 Skill `lcsc-search-form` v0.1.0（goto → type `#global-seach-input` → click `#search` → wait）：带 `--yes` 审批双闸放行通过（8.7s）；不带 `--yes` 反例被拦截（exit 1「高风险动作未获用户确认（写操作）」）——B5/B6 正反两例。
    - 附录 C.5 样例 n=3→7（B4a/B4b/B5/B6），覆盖三类真实场景（datasheet 下载 / 器件参数对比 / 表格填写）。
+6. **doc-lint isInDetailsBlock 盲点修复 + C1 恢复执法（E253）**：`isInDetailsBlock` 先剥行内反引号代码段再计数 details 标记（修复前正文反引号内的 `<details>` 字面示例把全文误判入块、C1 形同虚设）；checkC1 增附录 A 台账豁免（实测数值属台账本质，与附录 C 同理）；§6 两处正文措辞清理 + §9 mock 去百分号；修复后 doc-lint 0 FAIL 0 WARN（修复前同文档 401 FAIL）。
 
 ## 提交
 
 - 本轮代码批：`e2ae31f`（样例集扩充：part-spec-observe / lcsc-search-form manifest v0.1.0）
 - 本轮文档批：`369f030`（附录 C.5 扩至 n=7 + 附录 A 续 + 计划 9c + handoff）
+- 修复批：`b159964`（doc-lint isInDetailsBlock 盲点修复 + C1 恢复真实执法 + 附录 A 台账豁免）、`e5212be`（E253 配套：§0.1 规则同步 + §6/§9 措辞清理 + 计划文档）
 - 代码批：`2f5046d`（E252 续：resolveHref + 解析后置门 + datasheet-fetch v0.1.5 + 单测 4 条）
 - 文档批：`b6f44bf`（附录 C.5 样例集 + 附录 A E252 状态续 + 实现计划回填）
 - 定稿批：`b175459`（[P-124]/[P-125]/[P-126] 定稿签认：§5 注册表 + 附录 A 定稿记录 + 附录 C.5/计划回填）
@@ -39,9 +41,10 @@
 ## 全量验证
 
 - 单测 940/941（1 skip，含 E252 续 4 条）｜集成 32/32｜doc-lint 0 FAIL 0 WARN（C8 49 key，附录 559/950）｜maturity L1（用户累积 Skill 6/50+，通过率 73.9% n=23，复用率 16.6%）
+- （样例集扩充后复跑 2026-08-27）单测 940/941（1 skip）｜集成 32/32｜doc-lint 0 FAIL 0 WARN（C8 49 key，附录 564/950）
 
 ## 下一步（按优先级）
 
 1. **P-10 转定稿（条件③ 唯一阻塞）**：成熟度 L2+（当前 L1，L1→L2 ≈35-40%）仍为唯一阻塞；累积路径继续每周 3-5 个 Skill（E250/E251/E252 通道已就绪）；[P-124]/[P-125]/[P-126] 已定稿不再阻塞。
 2. **P-10 条件③ 样本维度已补强**：附录 C.5 n=7 覆盖三类场景（datasheet 下载 / 器件参数对比 / 表格填写），已对齐 §4.1.5 验收基准；后续可继续增补高风险动作更多反例（表单提交 / 跨域导航 / 下载）；成熟度 L2+ 仍为 P-10 唯一阻塞。
-3. 用户实测：`npm run skill:market:run -- datasheet-fetch --query "<型号>" --yes`（需先 `npm run browser:auth -- authorize datasheet-fetch <域名>`）。
+3. **续接入口 / 用户实测**：新样例 Skill 可实测——`npm run skill:market:run -- part-spec-observe --query "STM32F103C8T6"`（只读，无需 --yes）、`npm run skill:market:run -- lcsc-search-form --query "STM32F103C8T6" --yes`（写操作需 --yes）；datasheet-fetch 同前（先 `browser:auth authorize datasheet-fetch <域名>`）。安装/授权记录在 `data/`（git 忽略，换机器需重新 `skill:market:install -- --source configs/market-skills/<name>` + `browser:auth authorize`）。
