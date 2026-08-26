@@ -20,6 +20,8 @@ export interface BrowserDriver {
   hover(ref: string): Promise<void>;
   wait(ms: number): Promise<void>;
   download(url: string): Promise<{ path: string }>;
+  /** E252 续：解析页面内链接的 href（download 选择器路径；结果仍过 SSRF/域名/审批门） */
+  resolveHref(selector: string): Promise<string>;
   currentUrl(): Promise<string>;
   observe(): Promise<DomSnapshot>;
 }
@@ -150,6 +152,23 @@ export class BrowserOperationRunner {
       return { ok: false, results, error, durationMs: Date.now() - started };
     }
     for (const step of steps) {
+      // E252 续：download 选择器路径——先解析真实 URL（[P-125] 有界），再走统一检查/审批/执行
+      if (step.action === 'download' && step.url !== undefined && !isDirectHttpUrl(step.url)) {
+        const resolved = await this.withTimeout(this.driver.resolveHref(step.url), step.raw);
+        if (!resolved.ok) {
+          const result: BrowserOpResult = {
+            step,
+            ok: false,
+            error: resolved.error,
+            timedOut: resolved.timedOut,
+            durationMs: 0,
+          };
+          results.push(result);
+          this.onAction?.(result);
+          return { ok: false, results, error: resolved.error, durationMs: Date.now() - started };
+        }
+        step.url = resolved.value;
+      }
       const check = this.checkStep(step, policy);
       if (!check.allowed) {
         const result: BrowserOpResult = {
@@ -248,23 +267,40 @@ export class BrowserOperationRunner {
 
   private async executeStep(step: BrowserOpStep): Promise<BrowserOpResult> {
     const started = Date.now();
-    const task = this.dispatch(step);
-    const timeout = new Promise<never>((_resolve, reject) => {
-      setTimeout(() => reject(new Error(`单步超时 [P-125] ${this.stepTimeoutMs}ms：${step.raw}`)), this.stepTimeoutMs);
-    });
-    try {
-      await Promise.race([task, timeout]);
-      return { step, ok: true, durationMs: Date.now() - started };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+    const ran = await this.withTimeout(this.dispatch(step), step.raw);
+    if (!ran.ok) {
       return {
         step,
         ok: false,
-        error: message,
-        timedOut: message.includes('[P-125]'),
+        error: ran.error,
+        timedOut: ran.timedOut,
         durationMs: Date.now() - started,
       };
     }
+    return { step, ok: true, durationMs: Date.now() - started };
+  }
+
+  /** [P-125] 单步超时有界执行：超时/异常统一归因，不静默继续 */
+  private withTimeout<T>(
+    task: Promise<T>,
+    raw: string,
+  ): Promise<{ ok: true; value: T } | { ok: false; error: string; timedOut: boolean }> {
+    return new Promise((resolve) => {
+      const timer = setTimeout(
+        () => resolve({ ok: false, error: `单步超时 [P-125] ${this.stepTimeoutMs}ms：${raw}`, timedOut: true }),
+        this.stepTimeoutMs,
+      );
+      task.then(
+        (value) => {
+          clearTimeout(timer);
+          resolve({ ok: true, value });
+        },
+        (err) => {
+          clearTimeout(timer);
+          resolve({ ok: false, error: err instanceof Error ? err.message : String(err), timedOut: false });
+        },
+      );
+    });
   }
 
   private dispatch(step: BrowserOpStep): Promise<unknown> {
@@ -287,6 +323,11 @@ export class BrowserOperationRunner {
         return this.driver.download(step.url ?? '');
     }
   }
+}
+
+/** download 目标：http(s) 直链 vs 页面选择器（选择器在运行期解析为 href，仍过安全检查） */
+function isDirectHttpUrl(raw: string): boolean {
+  return /^https?:\/\//i.test(raw);
 }
 
 function substituteQuery(text: string, query: string | undefined, encode: boolean): string | Error {

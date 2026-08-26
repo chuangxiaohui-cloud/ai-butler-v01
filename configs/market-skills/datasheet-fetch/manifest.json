@@ -1,6 +1,6 @@
 {
   "name": "datasheet-fetch",
-  "version": "0.1.2",
+  "version": "0.1.5",
   "triggers": [
     "datasheet 下载",
     "数据手册下载",
@@ -8,10 +8,12 @@
     "下载数据手册",
     "帮我下数据手册"
   ],
-  "description": "浏览器操作示例 Skill（E252 受限形态）：域名白名单（立创商城/芯查查/得捷/ST 原厂）内按型号搜索并定位 datasheet；动作子集 goto/click/download；型号经 @query 输入（E251 通道）；高风险动作默认拒绝，需 --yes 显式确认；click 选择器已按 2026-08-27 真实页面校准（button:has-text 数据手册），最终 PDF 链接提取留待交互模式（附录 C 样例集）",
+  "description": "浏览器操作示例 Skill（E252 受限形态）：域名白名单（立创商城/芯查查/得捷/ST 原厂）内按型号搜索并定位 datasheet；动作子集 goto/click/download；型号经 @query 输入（E251 通道）；高风险动作默认拒绝，需 --yes 显式确认；click 选择器已按 2026-08-27 真实页面校准（button:has-text 数据手册），下载步骤用选择器动态解析 PDF href（E252 续：resolveHref → SSRF/域名/审批门后置检查）",
   "steps": [
     "goto https://so.szlcsc.com/global.html?k=@query",
-    "click button:has-text(\"数据手册\")"
+    "click button:has-text(\"数据手册\")",
+    "wait 2000",
+    "download a[href$=\".pdf\"]"
   ],
   "verify": [],
   "permissions": [
@@ -26,6 +28,7 @@
   "actions": [
     "goto",
     "click",
+    "wait",
     "download"
   ],
   "input": "query"

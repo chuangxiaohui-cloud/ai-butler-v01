@@ -67,6 +67,9 @@ function fakeBrowserDriver(): BrowserDriver {
     async download(url) {
       return { path: `x-${url}.pdf` };
     },
+    async resolveHref() {
+      return 'https://so.szlcsc.com/ds/a.PDF';
+    },
     async currentUrl() {
       return 'https://so.szlcsc.com/search';
     },

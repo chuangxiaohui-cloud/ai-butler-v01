@@ -130,6 +130,15 @@ export function createCdpBrowserDriver(deps: CdpBrowserDriverDeps = {}): Browser
       const p = await ensurePage();
       await p.waitForTimeout(ms);
     },
+    async resolveHref(selector) {
+      const p = await ensurePage();
+      const href = await p.evaluate((sel) => {
+        const doc = globalThis as unknown as { document?: { querySelector?(sel: string): { href?: string } | null } };
+        return doc.document?.querySelector?.(sel)?.href ?? null;
+      }, selector);
+      if (!href) throw new Error(`页面中未找到选择器 ${selector} 的链接（href 解析失败）`);
+      return href;
+    },
     async download(url) {
       const fileName = basename(new URL(url).pathname) || 'download';
       const destPath = join(downloadDir, `${Date.now()}-${fileName}`);

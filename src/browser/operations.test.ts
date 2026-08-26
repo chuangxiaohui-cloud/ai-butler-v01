@@ -33,6 +33,10 @@ function fakeDriver(overrides: Partial<BrowserDriver> = {}): BrowserDriver & { c
       calls.push(`download ${url}`);
       return { path: 'x.pdf' };
     },
+    async resolveHref(selector) {
+      calls.push(`resolveHref ${selector}`);
+      return 'https://so.szlcsc.com/ds/a.PDF';
+    },
     async currentUrl() {
       return 'https://so.szlcsc.com/search';
     },
@@ -207,4 +211,81 @@ test('operations: 动作留痕（A8 onAction 记录每一步）', async () => {
   assert.deepEqual(trace, ['goto:true', 'wait:true']);
   assert.ok(out.finalSnapshot !== undefined);
   assert.ok(out.finalSnapshot.text.includes('[ref=1]'));
+});
+test('operations: download 选择器路径——解析 href → 域名/SSRF 检查 → 高风险审批 → 下载（E252 续）', async () => {
+  const driver = fakeDriver();
+  const runner = new BrowserOperationRunner({ driver });
+  const seen: string[] = [];
+  const out = await runner.run(
+    [step('download a[href$=".PDF"]')],
+    {
+      ...policy(),
+      confirm: (s, reasons) => {
+        seen.push(`${s.raw} -> ${s.url ?? ''} (${reasons.join('/')})`);
+        return true;
+      },
+    },
+  );
+  assert.equal(out.ok, true);
+  assert.deepEqual(seen, [
+    'download a[href$=".PDF"] -> https://so.szlcsc.com/ds/a.PDF (下载)',
+  ]);
+  assert.equal(driver.calls[0], 'resolveHref a[href$=".PDF"]');
+  assert.equal(driver.calls[1], 'download https://so.szlcsc.com/ds/a.PDF');
+});
+
+test('operations: download 选择器解析出的 URL 不在域名白名单 → 拒绝（A1 后置门）', async () => {
+  let resolved = false;
+  let downloaded = false;
+  const driver = fakeDriver({
+    async resolveHref() {
+      resolved = true;
+      return 'https://evil.com/ds/a.PDF';
+    },
+    async download() {
+      downloaded = true;
+      return { path: 'x.pdf' };
+    },
+  });
+  const runner = new BrowserOperationRunner({ driver });
+  const out = await runner.run([step('download a[href$=".PDF"]')], policy({ confirm: () => true }));
+  assert.equal(out.ok, false);
+  assert.match(out.error ?? '', /不在 Skill 域名白名单/);
+  assert.equal(resolved, true); // 已解析
+  assert.equal(downloaded, false); // 但未下载（域名门后置拦截）
+});
+
+test('operations: download 选择器解析出的 URL 过 SSRF → 拒绝（A9 后置门）', async () => {
+  const driver = fakeDriver({
+    async resolveHref() {
+      return 'http://127.0.0.1:8420/leak';
+    },
+  });
+  const runner = new BrowserOperationRunner({ driver });
+  const out = await runner.run([step('download a[href$=".PDF"]')], policy({ confirm: () => true }));
+  assert.equal(out.ok, false);
+  assert.match(out.error ?? '', /SSRF/);
+});
+
+test('operations: download 选择器解析失败 / 超时 → 步骤失败归因（[P-125]）', async () => {
+  const missing = fakeDriver({
+    async resolveHref() {
+      throw new Error('页面中未找到选择器 a.none 的链接');
+    },
+  });
+  const runnerA = new BrowserOperationRunner({ driver: missing });
+  const failOut = await runnerA.run([step('download a.none')], policy({ confirm: () => true }));
+  assert.equal(failOut.ok, false);
+  assert.match(failOut.error ?? '', /未找到选择器/);
+
+  const slow = fakeDriver({
+    async resolveHref() {
+      return new Promise((resolve) => setTimeout(() => resolve('https://so.szlcsc.com/x.PDF'), 500));
+    },
+  });
+  const runnerB = new BrowserOperationRunner({ driver: slow, stepTimeoutMs: 20 });
+  const timeoutOut = await runnerB.run([step('download a.slow')], policy({ confirm: () => true }));
+  assert.equal(timeoutOut.ok, false);
+  assert.equal(timeoutOut.results[0].timedOut, true);
+  assert.match(timeoutOut.results[0].error ?? '', /\[P-125\]/);
 });
