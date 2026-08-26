@@ -33,6 +33,8 @@ export interface MarketSkillManifest extends SkillManifest {
   deps?: string[];
   /** 显式声明的权限（可为空数组 = 无高风险能力） */
   permissions: SkillPermission[];
+  /** E251：声明接收用户输入（当前仅 'query'——查询经输入文件通道 @input 注入，不进入命令行） */
+  input?: 'query';
 }
 
 export type MarketInstallStatus = 'installed' | 'disabled';

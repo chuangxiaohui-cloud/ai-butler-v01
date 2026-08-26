@@ -1,0 +1,22 @@
+{
+  "name": "route-query",
+  "version": "0.1.0",
+  "triggers": [
+    "路由判题",
+    "意图路由查询",
+    "route-query",
+    "判断意图",
+    "这是什么意图"
+  ],
+  "description": "意图路由判题（routeV2 输出意图/模式/路由分类；查询经 @input 文件通道注入，E251）",
+  "steps": [
+    "npm run route:query:file -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

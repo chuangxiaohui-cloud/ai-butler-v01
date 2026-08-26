@@ -8,7 +8,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { checkCommand, tokenize } from '../../security/command-whitelist.js';
 import { validateMarketManifest } from './manifest.js';
@@ -18,6 +18,8 @@ import type { MarketSkillManifest } from './types.js';
 
 /** 每条步骤 stdout/stderr 有界截断（Skill 内部常量，防止把 10MB 输出拉进上下文） */
 const STEP_OUTPUT_MAX_CHARS = 4 * 1024;
+/** E251：用户输入有界写入（防止把任意长查询写进沙箱） */
+const INPUT_MAX_CHARS = 4 * 1024;
 const STEP_MAX_BUFFER = 1024 * 1024;
 
 export interface StepSpawnResult {
@@ -110,8 +112,12 @@ export class MarketSkillRunner {
       .filter((entry): entry is InstalledSkillWithTriggers => entry !== null);
   }
 
-  /** 真实执行已安装市场 Skill 的 steps + verify（全程 §10 白名单 + 沙箱 cwd） */
-  run(name: string): MarketRunOutcome {
+  /**
+   * 真实执行已安装市场 Skill 的 steps + verify（全程 §10 白名单 + 沙箱 cwd）。
+   * E251 输入通道：manifest 声明 input:'query' 时，把 opts.input（有界 4KB）写入沙箱 input.txt，
+   * 并将步骤中的字面量 @input 替换为该文件绝对路径——用户文本永不进入命令行（无注入面）。
+   */
+  run(name: string, opts: { input?: string } = {}): MarketRunOutcome {
     const started = Date.now();
     const fail = (error: string, results: MarketStepResult[] = [], version = ''): MarketRunOutcome => ({
       ok: false,
@@ -147,9 +153,22 @@ export class MarketSkillRunner {
       return fail(`创建沙箱工作目录失败：${err instanceof Error ? err.message : String(err)}`, [], manifest.version);
     }
 
+    // E251：声明 input:'query' 时把用户输入写入沙箱 input.txt（@input 指向它）
+    let inputPath: string | null = null;
+    if (manifest.input === 'query' && opts.input !== undefined) {
+      inputPath = join(cwd, 'input.txt');
+      try {
+        writeFileSync(inputPath, opts.input.slice(0, INPUT_MAX_CHARS), 'utf-8');
+      } catch (err) {
+        return fail(`写入 Skill 输入文件失败：${err instanceof Error ? err.message : String(err)}`, [], manifest.version);
+      }
+    }
+
     const results: MarketStepResult[] = [];
     const steps = [...(manifest.steps ?? []), ...(manifest.verify ?? [])];
-    for (const step of steps) {
+    for (const rawStep of steps) {
+      // E251：@input 字面量替换为输入文件绝对路径（固定生成路径，无用户文本进命令行）
+      const step = inputPath ? rawStep.replace('@input', inputPath) : rawStep;
       const checked = this.check(step);
       if (!checked.allowed) {
         results.push({

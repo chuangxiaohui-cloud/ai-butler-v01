@@ -657,6 +657,34 @@ test('pipeline: 未安装市场 Skill 时路由不受影响（E243）', async ()
 });
 
 
+
+test('pipeline: 市场 Skill 直连执行时把查询作为 input 传入（E251）', async () => {
+  let receivedInput: string | undefined;
+  const r = await pipeline(
+    '帮我把这两个 BOM 对比一下差异',
+    {
+      ...deps,
+      llm: undefined,
+      marketSkillRunner: {
+        listInstalledWithTriggers: () => [{ name: 'bom-diff', triggers: ['BOM 对比'] }],
+        run: (_name: string, opts?: { input?: string }) => {
+          receivedInput = opts?.input;
+          return {
+            ok: true,
+            name: 'bom-diff',
+            version: '0.1.0',
+            results: [{ step: 'git hash-object @input', ok: true, status: 0, stdout: 'ok', stderr: '' }],
+            durationMs: 5,
+          };
+        },
+      },
+    },
+    { userId: 'u1' },
+  );
+  assert.ok(r.answer.length > 0);
+  assert.equal(receivedInput, '帮我把这两个 BOM 对比一下差异');
+});
+
 test('pipeline: project-writer 从上一轮记忆自动回溯写入', async () => {
   const dir = sandboxTmpDir('pipeline-writer-');
   const oldEnv = process.env.SANDBOX_ALLOWED_DIRS;

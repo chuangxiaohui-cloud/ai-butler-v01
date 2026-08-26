@@ -62,6 +62,7 @@
     "bom:compare": "tsx scripts/bom-compare.ts",
     "ocr:benchmark": "python scripts/ocr_benchmark.py",
     "route:query": "tsx scripts/route-query.ts",
+    "route:query:file": "tsx scripts/route-query-file.ts",
     "route:calibrate": "tsx scripts/route-calibrate.ts",
     "seed:route-cases": "tsx scripts/seed-route-cases.ts",
     "route:import-review": "tsx scripts/route-import-review.ts",

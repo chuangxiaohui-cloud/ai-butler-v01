@@ -7,7 +7,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -174,6 +174,43 @@ test('INT-MARKET-003：未安装/已卸载 → 拒绝执行', async () => {
     const outcome = runner.run('market-e2e-uninstall');
     assert.equal(outcome.ok, false);
     assert.match(outcome.error ?? '', /已卸载/);
+  } finally {
+    teardown(env.dir, env.storePath);
+  }
+});
+test('INT-MARKET-005：input:query 技能 → input.txt 写入、@input 替换、真实 git 执行成功（E251）', async () => {
+  const env = makeEnv();
+  try {
+    const pkg = {
+      name: 'market-e2e-input',
+      version: '1.0.0',
+      triggers: ['带参 e2e'],
+      description: 'E251 集成 fixture',
+      steps: ['git init', 'git hash-object @input'],
+      verify: [],
+      permissions: ['command'],
+      input: 'query',
+    };
+    const installed = await installFixture(env, pkg);
+    assert.equal(installed.ok, true);
+
+    const runner = new MarketSkillRunner({
+      store: env.store,
+      installRoot: env.installRoot,
+      workspaceRoot: env.workspaceRoot,
+    });
+    const userText = 'STM32 的主频是多少';
+    const outcome = runner.run('market-e2e-input', { input: userText });
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.results.length, 2); // git init + git hash-object @input
+    assert.equal(outcome.results[0].status, 0);
+    assert.equal(outcome.results[1].status, 0);
+    // input.txt 内容与用户文本一致
+    const inputPath = join(env.workspaceRoot, 'sandbox', 'market-skills', 'market-e2e-input', 'input.txt');
+    assert.equal(readFileSync(inputPath, 'utf-8'), userText);
+    // 步骤 @input 已替换为文件绝对路径，stdout 不含用户文本（无注入面）
+    assert.ok(outcome.results[1].step.includes('input.txt'));
+    assert.ok(!outcome.results[1].stdout.includes('STM32'));
   } finally {
     teardown(env.dir, env.storePath);
   }

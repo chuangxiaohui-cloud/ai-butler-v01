@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -222,6 +222,85 @@ test('market-runner: 沙箱 cwd 固定在工作区 sandbox/market-skills/<name>'
   try {
     h.runner.run(h.name);
     assert.equal(seenCwd, join(h.workspaceRoot, 'sandbox', 'market-skills', h.name));
+  } finally {
+    teardown(h.dir, h.storePath);
+  }
+});
+
+
+test('market-runner: input:query + opts.input → input.txt 写入且 @input 替换为文件路径（E251）', () => {
+  let seenArgs: string[] = [];
+  const h = makeHarness({
+    manifest: {
+      name: 'fixture-input',
+      version: '1.0.0',
+      input: 'query',
+      steps: ['git hash-object @input'],
+      verify: [],
+      permissions: ['command'],
+    },
+    spawn: (_bin, args) => {
+      seenArgs = args;
+      return { status: 0, stdout: 'ok', stderr: '' };
+    },
+  });
+  try {
+    const outcome = h.runner.run('fixture-input', { input: '帮我对比 BOM 差异' });
+    assert.equal(outcome.ok, true);
+    const expectedInputPath = join(h.workspaceRoot, 'sandbox', 'market-skills', 'fixture-input', 'input.txt');
+    assert.equal(readFileSync(expectedInputPath, 'utf-8'), '帮我对比 BOM 差异');
+    assert.equal(outcome.results[0].step, 'git hash-object ' + expectedInputPath);
+    assert.deepEqual(seenArgs, ['hash-object', expectedInputPath]);
+    assert.ok(!outcome.results[0].step.includes('帮我对比 BOM 差异'));
+  } finally {
+    teardown(h.dir, h.storePath);
+  }
+});
+
+test('market-runner: input:query 未传 opts.input → 不写 input.txt、步骤保持 @input 字面量（E251）', () => {
+  const h = makeHarness({
+    manifest: { input: 'query', steps: ['git hash-object @input'], verify: [] },
+    spawn: () => ({ status: 0, stdout: '', stderr: '' }),
+  });
+  try {
+    const outcome = h.runner.run(h.name);
+    assert.equal(outcome.ok, true);
+    const inputPath = join(h.workspaceRoot, 'sandbox', 'market-skills', h.name, 'input.txt');
+    assert.equal(existsSync(inputPath), false);
+    assert.equal(outcome.results[0].step, 'git hash-object @input');
+  } finally {
+    teardown(h.dir, h.storePath);
+  }
+});
+
+test('market-runner: 未声明 input 却传 opts.input → 不写 input.txt、原样执行（E251）', () => {
+  const h = makeHarness({
+    manifest: { steps: ['git --version'], verify: [] },
+    spawn: () => ({ status: 0, stdout: '', stderr: '' }),
+  });
+  try {
+    const outcome = h.runner.run(h.name, { input: '多余输入' });
+    assert.equal(outcome.ok, true);
+    const inputPath = join(h.workspaceRoot, 'sandbox', 'market-skills', h.name, 'input.txt');
+    assert.equal(existsSync(inputPath), false);
+    assert.equal(outcome.results[0].step, 'git --version');
+  } finally {
+    teardown(h.dir, h.storePath);
+  }
+});
+
+test('market-runner: 输入超过 4KB → 截断写入（E251）', () => {
+  const long = '长'.repeat(10_000);
+  const h = makeHarness({
+    manifest: { input: 'query', steps: ['git hash-object @input'], verify: [] },
+    spawn: () => ({ status: 0, stdout: '', stderr: '' }),
+  });
+  try {
+    const outcome = h.runner.run(h.name, { input: long });
+    assert.equal(outcome.ok, true);
+    const inputPath = join(h.workspaceRoot, 'sandbox', 'market-skills', h.name, 'input.txt');
+    const written = readFileSync(inputPath, 'utf-8');
+    assert.equal(written.length, 4 * 1024);
   } finally {
     teardown(h.dir, h.storePath);
   }

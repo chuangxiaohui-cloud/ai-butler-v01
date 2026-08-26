@@ -32,6 +32,18 @@ test('market-manifest: 非法权限值拒绝', () => {
   );
 });
 
+test('market-manifest: input: query 通过并归一化', () => {
+  const m = validateMarketManifest({ name: 'x', version: '1', triggers: ['x'], permissions: [], input: 'query' });
+  assert.equal(m.input, 'query');
+});
+
+test('market-manifest: 非法 input 声明拒绝（仅支持 query）', () => {
+  assert.throws(
+    () => validateMarketManifest({ name: 'x', version: '1', triggers: ['x'], permissions: [], input: 'args' }),
+    /非法 input/,
+  );
+});
+
 test('market-manifest: steps/verify/deps 非字符串数组拒绝', () => {
   assert.throws(
     () => validateMarketManifest({ name: 'x', version: '1', triggers: ['x'], permissions: [], steps: [1] }),

@@ -22,6 +22,9 @@ export function validateMarketManifest(input: unknown): MarketSkillManifest {
     }
     permissions.push(permission as SkillPermission);
   }
+  if (m.input !== undefined && m.input !== 'query') {
+    throw new Error(`非法 input 声明：${String(m.input)}（仅支持 'query'）`);
+  }
   const stringArray = (field: string): string[] | undefined => {
     if (m[field] === undefined) return undefined;
     if (!Array.isArray(m[field])) throw new Error(`Skill ${field} 必须是数组`);
@@ -38,5 +41,6 @@ export function validateMarketManifest(input: unknown): MarketSkillManifest {
     verify: stringArray('verify'),
     deps: stringArray('deps'),
     permissions,
+    input: m.input === 'query' ? 'query' : undefined,
   };
 }

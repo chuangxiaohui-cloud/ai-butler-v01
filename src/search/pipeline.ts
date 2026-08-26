@@ -120,7 +120,7 @@ export interface PipelineDeps {
   /** E243：市场 Skill 可执行器（命中已安装 Skill 触发词 → 直连执行；测试可注入） */
   marketSkillRunner?: {
     listInstalledWithTriggers(): Array<{ name: string; triggers: string[] }>;
-    run(name: string): MarketRunOutcome;
+    run(name: string, opts?: { input?: string }): MarketRunOutcome;
   };
   trajectory?: TrajectoryLogLike;
   sessionContext?: Pick<SessionContextStore, 'load' | 'append' | 'compactIfNeeded'>;
@@ -517,7 +517,7 @@ export async function pipeline(
     );
     if (skillHit) {
       safeArtifact({ skill: skillHit.skillName, state: 'generating' });
-      const outcome = deps.marketSkillRunner.run(skillHit.skillName);
+      const outcome = deps.marketSkillRunner.run(skillHit.skillName, { input: prepared.cleanQuery });
       if (outcome.ok) {
         const answer = renderMarketSkillAnswer(outcome);
         safeArtifact({ skill: skillHit.skillName, state: 'done' });
