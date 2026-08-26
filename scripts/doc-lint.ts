@@ -263,10 +263,12 @@ function isExemptSection(sectionNum: string): boolean {
 
 function isInDetailsBlock(lineNum: number, lines: string[]): boolean {
   // 向上查找最近的 <details> 或 </details>
+  // 行内反引号代码中的字面量 <details> 不视为真实标记（§0 顶部示例常出现，旧实现误判导致全文被判入块）
   let depth = 0;
   for (let i = lineNum - 1; i >= 0; i--) {
-    if (lines[i].includes('</details>')) depth++;
-    if (lines[i].includes('<details>')) {
+    const stripped = lines[i].replace(/`[^`\n]*`/g, '');
+    if (stripped.includes('</details>')) depth++;
+    if (stripped.includes('<details>')) {
       if (depth === 0) return true;
       depth--;
     }
@@ -338,6 +340,8 @@ function checkC1(lines: string[], sections: SectionInfo[]): CheckResult[] {
 
     // 跳过豁免区
     if (isExemptSection(sectionNum)) continue;
+    // 附录 A 为变更与证据台账：实测数值属台账本质内容，C1 裸数值扫描豁免（与附录 C 同理；C2/C4/C7 仍扫描附录 A）
+    if (sectionNum.startsWith('附录A') || sectionNum.startsWith('附录 A')) continue;
 
     // 跳过 <details> 块内
     if (isInDetailsBlock(lineNum, lines)) continue;
