@@ -78,6 +78,7 @@ npm exec tsx scripts/doc-lint.ts   # 需求文档全量验收（唯一验收口�
 | `src/search/` | Stage 1-6 搜索问答管道、搜索 provider、融合、兜底链 |
 | `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理 |
 | `src/skills/` | Skill 注册、生命周期与预置 Skill |
+| `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标、`maturity:check`，v1.0 P-10 条件③，E247） |
 | `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏 |
 | `src/repo/` | 代码托管联动（仓库白名单/预检门禁/commit+push/审计 + repo:push/repo:whitelist/repo:audit 真实 CLI，v1.0 S6，§11.4） |
 | `src/slash/` | 斜杠命令层（/compact、/context，E193 手动入口） |

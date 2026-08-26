@@ -31,7 +31,7 @@
 | `src/security/` | `command-whitelist.ts`、`query-sanitize.ts` | 命令白名单（允许集合+硬编码拒绝+超时 kind）与搜索脱敏（路径/密钥/内网剥离，v1.0 S4，§10.2/§10.3，E223） | ✅ |
 | `src/im/` | `gate.ts`、`session.ts`、`format.ts`、`service.ts`、`channel.ts`、`config.ts`、`run.ts`、`onebot/` | 远程对话通道（授权开关/会话隔离/输出适配/复用 pipeline + ImChannel 抽象 + OneBot 11 真实适配器 + 常驻入口，v1.0 S5，§4.5，E224+E241） | ✅ |
 | `src/repo/` | `types.ts`、`repo-whitelist.ts`、`push-audit.ts`、`push-service.ts`、`cli.ts` | 代码托管联动（仓库白名单/预检门禁/commit+push/JSONL 审计，v1.0 S6，§11.4，E225）+ 真实推送 CLI 编排（`cli.ts`：repo:push/repo:whitelist/repo:audit，E244） | ✅ |
-| `src/skills/market/` | `types.ts`、`manifest.ts`、`index-client.ts`、`store.ts`、`installer.ts`、`runner.ts` | Skill 市场远程化（索引/校验/权限门禁/安装记录/生命周期统计，v1.0 S7，§8.2.3，E226）+ 可执行 handler（E243：§10 白名单 + 沙箱 cwd 执行 steps/verify，`npm run skill:market:run`） | ✅ |
+| `src/skills/market/` | `types.ts`、`manifest.ts`、`index-client.ts`、`store.ts`、`installer.ts`、`runner.ts`、`nl-router.ts` | Skill 市场远程化（索引/校验/权限门禁/安装记录/生命周期统计，v1.0 S7，§8.2.3，E226）+ 可执行 handler（E243：§10 白名单 + 沙箱 cwd 执行 steps/verify，`npm run skill:market:run`）+ 自然语言触发词直连（E248：nl-router 最长触发词优先，pipeline `marketSkillRunner`） | ✅ |
 | `src/search/stages/` | `s1_prepare.ts`、`s2_classify.ts`、`s3_search.ts`、`s5_synthesize.ts`、`s6_post.ts` | 六阶段独立实现 | ✅ |
 | `src/search/providers/` | `types.ts`、`bocha.ts`、`anysearch.ts`、`tavily.ts` | 搜索适配器，统一 `SearchProvider` | ✅ |
 | `src/search/` | `fusion.ts`、`rule1.ts`、`rule3.ts`、`authority.ts` | 融合、事实一致性、安全阀、权威度 | ✅ |
@@ -45,6 +45,7 @@
 | `src/agent/` | `route-case-store.ts`、`route-case-audit.ts`、`confidence-calibration.ts` | 路由 case 采集、审核、校准闭环（JSONL 追加/轮转 P13） | ✅ |
 | `src/skills/` | `registry.ts`、`lifecycle.ts`、`deps.ts`、`install.ts` | Skill 注册、生命周期、依赖注入、安装 | ✅ |
 | `src/skills/*/` | 23 个 Skill 目录 | 预置能力 | ✅ |
+| `src/maturity/` | `metrics.ts` | 成熟度观测（五维指标纯函数 + L0-L3 判定，v1.0 P-10 条件③，§12.4，E247，`npm run maturity:check`） | ✅ |
 | `src/memory/` | `store.ts`、`memorycore-store.ts`、`schema.sql` | MemoryStore 双实现与冻结 schema（v1.0 S8：`MEMORY_STORE` 配置切换 sqlite/memorycore，E227） | ✅ |
 | `src/memory/` | `experience.ts`、`distill.ts`、`confidence-decay.ts` | 经验、蒸馏、衰减 | ✅ |
 | `src/memory/` | `user-context-store.ts`、`user-context.ts` | 用户画像、长期事实、会话摘要 | ✅ |
