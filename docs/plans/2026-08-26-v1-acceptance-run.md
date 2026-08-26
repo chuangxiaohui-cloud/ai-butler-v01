@@ -39,5 +39,5 @@
 - 验证：doc-lint 0 FAIL 0 WARN；build 通过；单测 866/867（1 skip）+ 集成 29/29；`search:smoke` 10/10；`bench:v01` 10/10；devil-v25 E237 基线 122/122（08-24/25）。
 - 验收结论：P-10 未通过，四条件 ✅（①/②/④/⑤），条件③（成熟度 L2+）未达成；[P-10] 维持 provisional@2026-08-24。
 - 交付：`docs/reports/v1-acceptance-report-2026-08-26.md` + 附录 A E246 登记 + handoff 链接。
-- 提交：`<hash>` · 推送：Gitee / GitHub
+- 提交：`5113ba6`（E246）· 推送：待执行（Gitee / GitHub）
 - 遗留事项：真实使用累积（Skill 50+ / 验收样本 / 复用率）→ 条件③ 达标后按 E197 复验门重跑；P-12 三引擎复跑待 9 月 Tavily 配额重置；[P-04] 重采 classify 样本。

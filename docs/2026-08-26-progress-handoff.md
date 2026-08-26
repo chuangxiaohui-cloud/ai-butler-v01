@@ -56,7 +56,7 @@
 7. **E246 v1.0 全量验收执行**（[P-10] 五条件集，owner 已签认条件⑤）：
    - 判定：条件①/②/④/⑤ ✅、**条件③（成熟度 §12.4 L2+）❌** → P-10 **验收未通过**，注册表维持
      provisional@2026-08-24；条件③ 需真实使用累积（Skill 50+/验收样本/复用率）后按 E197 复验门重跑；
-   - 证据：验收报告 `docs/reports/v1-acceptance-report-2026-08-26.md`、计划
+   - 提交：`5113ba6`（E246）；证据：验收报告 `docs/reports/v1-acceptance-report-2026-08-26.md`、计划
      `docs/plans/2026-08-26-v1-acceptance-run.md`、需求附录 A E246；
    - live 复核注记：今日 `classify:smoke` 1750ms 预算 5/10、5000ms 预算 6/10，为 light 模型（deepseek-chat）
      provider 延迟（1.4-8s/次）触发降级，非代码回归，[P-04] 维持 provisional 待重采样本；
