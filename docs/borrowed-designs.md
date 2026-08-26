@@ -92,6 +92,13 @@
 - 接入：pipeline 在 `opts.conversationId` 显式传入时启用（摘要 + 窗口轮次并入 memoryNotes/recentMemory，
   回答后 append 轮次并异步压缩，失败静默不阻塞主回答）；UI 主聊天发送稳定 conversationId。
 - 状态：E193 已落地，需求文档附录 A 登记；bench:B-20260822-05 真实轻模型压缩冒烟。
+### 2.10 browser-use → 浏览器操作需求（借思想，未借底座）
+
+- 参考：https://github.com/browser-use/browser-use（MIT，110.7k star，Python，活跃维护）
+- 借思想：① DOM 观察策略（CDP AX 树 + 增强快照 + 可点击元素检测 + 视口/iframe 限额）→ §4.1.5 只读页面理解增强与交互层观察；② 动作白名单（controller/ActionModel）→ §10.2「浏览器操作」类别同构设计；③ 消息/token 预算（message_manager + TokenCost）→ §8.3 token 预算纪律联动的长任务参考。
+- 不借：Python 底座 / cloud stealth / 代理轮换 / captcha 破解（个人桌面助手走「用户本人登录一次」路线，§1.2）。
+- 落地：需求增补 E252（§4.1.5 + [P-124]/[P-125]/[P-126]），代码实现后续迭代。
+
 ## 3. 待借入（按优先级）
 
 | 设计 | 来源 | 价值 | 前置条件 |
