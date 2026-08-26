@@ -1,7 +1,7 @@
-# 进度交接 2026-08-26（E241/E242/E243 三连收口——S5 平台适配器 + GitHub 解读 + S7 可执行 handler）
+# 进度交接 2026-08-26（E241-E244 四连收口——S5 平台适配器 + GitHub 解读 + S7 可执行 handler + S6 真实推送 CLI）
 
-> 当前分支：v0.2b｜本轮收口三项：E241（S5 QQ OneBot 11 真实适配器）、E242（GitHub 解读 Skill 升级）、
-> E243（S7 可执行 handler——市场 Skill 执行链）。
+> 当前分支：v0.2b｜本轮收口四项：E241（S5 QQ OneBot 11 真实适配器）、E242（GitHub 解读 Skill 升级）、
+> E243（S7 可执行 handler——市场 Skill 执行链）、E244（S6 真实推送 CLI 装配）。
 > 上一份交接见 `docs/2026-08-25-progress-handoff.md`。
 
 ## 今日已收口
@@ -28,24 +28,36 @@
    - 证据：新增单测 12 条 + 集成 3 条真实 git 命令端到端（INT-MARKET-001~003）；真实冒烟
      `skill:market:run -- smoke-check` 沙箱内执行 git steps+verify 全 ok（冒烟后清理）。
    - 计划文档 `docs/plans/2026-08-26-s7-market-skill-runner.md` 已收口。
-4. 三项均已提交 v0.2b（单一主题分开提交）：E241 = `00b30d3`、E242 = `f23d1f3`、E243 = `ba7694f`；
-   计划文档结果段已同步。
-5. 全量验证（含三项）：单测 852/853（1 skip）+ 集成 25/25；doc-lint 0 FAIL 0 WARN。
+4. **E244 S6 真实推送——CLI 装配 + 库加固**（E225 库级骨架接真实 CLI，按 E240/E241 同款流程）：
+   - `src/repo/cli.ts` 编排：`repo:push`（`--dry-run` 只读计划 / `--yes` 真实推送，参数校验拒绝
+     非法 host/仓库标识/scope）、`repo:whitelist`（authorize/revoke/list）、`repo:audit`（--limit 倒序）；
+   - 薄壳 `scripts/repo-*.ts` + `npm run repo:push|repo:whitelist|repo:audit`；
+   - PushService 加固两处真实边界：`cwd` 可注入 + `git add` 只添加存在的项目前缀（新仓库
+     缺失 pathspec 不再硬失败）；plan 分支名归一（本机 git 实测 `symbolic-ref --short HEAD` 返回
+     `heads/v0.2b`，剥前缀对齐 push-to-hosts）。
+   - 证据：新增单测 14 条 + 集成 4 条真实 git 端到端（INT-REPO-001~004，本地裸仓库远程）；
+     真实冒烟 `repo:push --dry-run` 输出变更清单/分支 v0.2b/未授权提示。
+   - 计划文档 `docs/plans/2026-08-26-v1-s6-push-cli.md` 已收口。
+5. 四项均已提交 v0.2b（单一主题分开提交）：E241 = `00b30d3`、E242 = `f23d1f3`、E243 = `ba7694f`、
+   E244 = `d706062`；计划文档结果段已同步。
+6. 全量验证（含四项）：单测 866/867（1 skip）+ 集成 29/29；doc-lint 0 FAIL 0 WARN。
 
 ## 下一步（按优先级）
 
-1. **v1.0 收口路线**：S6 真实推送（库级骨架 E225 已有，接真实远程/CLI 装配，按 E240/E241 同款流程）
-   → S3-S7 全收口后按 P-10 验收条件集跑 v1.0 全量验收。
+1. **v1.0 收口路线**：S1-S8 切片 + S3/S5/S6/S7 真实接入已全收口（S6 真实推送 = E244），
+   下一步按 P-10 验收条件集跑 v1.0 全量验收（含附录 C 无相反证据 + owner 签认）。
 2. **交付期文档**：v1.0 全量验收 [P-10] 需安全审计/隐私说明/用户手册（documentation-map 第四组）。
 3. **市场 Skill 自然语言路由**（非阻塞，E243 遗留）：命中已安装 Skill 触发词进 pipeline，需扩展意图
    targetDomain（本轮不动意图枚举）。
 4. **GitHub 解读 Phase 2**（非阻塞）：L2 联网补充（Issues/社区口碑）、X.7 记忆/工程栏联动。
 5. **Tavily 9 月复核（备忘）**：9 月重置后跑 `npm run tavily:smoke`，核对 [P-64] 计费口径；
    E237 残留兜底（ET20+ET14、SM02、SM31）届时一并复核。
-6. 用户实测：GitHub 仓库 URL 问答（E242）+ `npm run skill:market:run -- <已装 Skill>`（E243）。
+6. 用户实测：GitHub 仓库 URL 问答（E242）+ `npm run skill:market:run -- <已装 Skill>`（E243）
+   + `npm run repo:push -- --dry-run` / 授权后 `--yes` 真实推送（E244，token 从环境变量注入）。
 
 ## 总进度快照
 
-- v0.2b 里程碑 ≈92%：S3（E240）/S5（E241）/S7（E243）真实接入已收口，剩余 S6 真实推送 +
-  v1.0 全量验收 [P-10] + 交付期文档；GitHub 解读（E242）属 v2.5 既有需求补实现，不影响里程碑口径。
+- v0.2b 里程碑 ≈95%：S1-S8 切片全部落地，S3（E240）/S5（E241）/S6（E244）/S7（E243）真实接入全收口，
+  剩余 v1.0 全量验收 [P-10]（按 P-10 条件集执行 + owner 签认）+ 交付期文档（安全审计/隐私说明/用户手册）；
+  GitHub 解读（E242）属 v2.5 既有需求补实现，不影响里程碑口径。
 - 能力成熟度 L1→L2 ≈35-40%，无变化（需真实使用累积，§12.4 判据）。
