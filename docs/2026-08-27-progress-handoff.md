@@ -19,8 +19,8 @@
 
 ## 提交
 
-- 代码批：`<待回填>`（E252 模块 + 单测 + INT-MARKET-006 + 示例 Skill + browser:auth CLI）
-- 文档批：`<待回填>`（附录 A E252 状态、code-directory/directory-structure/AGENTS.md 地图、08-27 handoff）
+- 代码批：`2b0749e`（E252 模块 + 单测 40 条 + INT-MARKET-006 + 示例 Skill + browser:auth CLI）
+- 文档批：`c721659`（附录 A E252 状态、code-directory/directory-structure/AGENTS.md 地图、实现计划回填、08-27 handoff）
 
 ## 全量验证
 
