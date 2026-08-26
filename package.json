@@ -9,6 +9,7 @@
     "gateway": "tsx src/gateway/server.ts",
     "im:dev": "tsx src/im/run.ts",
     "im:gate": "tsx scripts/im-gate.ts",
+    "skill:market:run": "tsx scripts/market-run.ts",
     "desktop": "npm --prefix desktop start",
     "desktop:smoke": "npm --prefix desktop start -- --smoke",
     "build": "tsc",

@@ -48,5 +48,9 @@ v0.1 冷启动采用 **2 项核心 + 4 项占位** 策略，占位项先建目�
 > `plan-validation` 让 Agent 在拿到计划后先做“编译式检查”，Critical 不通过
 > 就不进入执行，避免带着残缺计划开工。
 
+> 市场安装 Skill 的执行链由 `src/skills/market/runner.ts` 承载（E243）：`steps`/`verify` 逐条过
+> §10.2 命令白名单，在 `sandbox/market-skills/<name>` 沙箱 cwd 内 shell:false 执行；入口
+> `npm run skill:market:run -- <name>|--list`。
+
 
 

@@ -31,7 +31,7 @@
 | `src/security/` | `command-whitelist.ts`、`query-sanitize.ts` | 命令白名单（允许集合+硬编码拒绝+超时 kind）与搜索脱敏（路径/密钥/内网剥离，v1.0 S4，§10.2/§10.3，E223） | ✅ |
 | `src/im/` | `gate.ts`、`session.ts`、`format.ts`、`service.ts`、`channel.ts`、`config.ts`、`run.ts`、`onebot/` | 远程对话通道（授权开关/会话隔离/输出适配/复用 pipeline + ImChannel 抽象 + OneBot 11 真实适配器 + 常驻入口，v1.0 S5，§4.5，E224+E241） | ✅ |
 | `src/repo/` | `types.ts`、`repo-whitelist.ts`、`push-audit.ts`、`push-service.ts` | 代码托管联动库骨架（仓库白名单/预检门禁/commit+push/JSONL 审计，v1.0 S6，§11.4，E225） | ✅ |
-| `src/skills/market/` | `types.ts`、`manifest.ts`、`index-client.ts`、`store.ts`、`installer.ts` | Skill 市场远程化骨架（索引/校验/权限门禁/安装记录/生命周期统计，v1.0 S7，§8.2.3，E226） | ✅ |
+| `src/skills/market/` | `types.ts`、`manifest.ts`、`index-client.ts`、`store.ts`、`installer.ts`、`runner.ts` | Skill 市场远程化（索引/校验/权限门禁/安装记录/生命周期统计，v1.0 S7，§8.2.3，E226）+ 可执行 handler（E243：§10 白名单 + 沙箱 cwd 执行 steps/verify，`npm run skill:market:run`） | ✅ |
 | `src/search/stages/` | `s1_prepare.ts`、`s2_classify.ts`、`s3_search.ts`、`s5_synthesize.ts`、`s6_post.ts` | 六阶段独立实现 | ✅ |
 | `src/search/providers/` | `types.ts`、`bocha.ts`、`anysearch.ts`、`tavily.ts` | 搜索适配器，统一 `SearchProvider` | ✅ |
 | `src/search/` | `fusion.ts`、`rule1.ts`、`rule3.ts`、`authority.ts` | 融合、事实一致性、安全阀、权威度 | ✅ |
@@ -96,6 +96,7 @@
 | `scripts/migrate-to-memorycore.ts` | 历史记忆迁移 | ✅ |
 | `scripts/distill-worker.ts` | L1 蒸馏 worker | ✅ |
 | `scripts/push-to-hosts.ts` | Gitee/GitHub 双端同步 | ✅ |
+| `scripts/market-run.ts` | 市场 Skill 执行 CLI（`npm run skill:market:run`，E243） | ✅ |
 | `tests/integration/` | 跨模块集成测试（当前 17 条） | ✅ |
 
 ## 4. 数据、配置与文档
