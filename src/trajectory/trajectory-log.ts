@@ -21,7 +21,7 @@ export interface TrajectoryRoute {
 export interface TrajectorySkill {
   name: string;
   version: string;
-  kind: 'direct' | 'injected';
+  kind: 'direct' | 'injected' | 'market_trigger';
   outputSnippet: string;
 }
 

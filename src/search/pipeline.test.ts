@@ -585,6 +585,77 @@ test('pipeline: 帮我写个 PID 算法 走 engineer 直接执行', async () => 
   assert.ok(r.answer.includes('PID'));
   assert.equal(r.mode, 'engineering');
 });
+test('pipeline: 命中已安装市场 Skill 触发词 → 直连执行（E243）', async () => {
+  const r = await pipeline(
+    '帮我把这两个 BOM 对比一下差异',
+    {
+      ...deps,
+      llm: undefined,
+      marketSkillRunner: {
+        listInstalledWithTriggers: () => [
+          { name: 'bom-diff', triggers: ['BOM 对比', 'bom 差异'] },
+        ],
+        run: (name: string) =>
+          name === 'bom-diff'
+            ? {
+                ok: true,
+                name: 'bom-diff',
+                version: '0.1.0',
+                results: [
+                  { step: 'diff', ok: true, status: 0, stdout: '差异：R1 由 10k 改为 4.7k', stderr: '' },
+                ],
+                durationMs: 5,
+              }
+            : { ok: false, name, version: '', results: [], error: 'not found', durationMs: 0 },
+      },
+    },
+    { userId: 'u1' },
+  );
+  assert.ok(r.answer.includes('差异：R1'));
+  assert.equal(r.evidence.length, 0);
+});
+
+test('pipeline: 市场 Skill 执行失败如实归因（E243）', async () => {
+  const r = await pipeline(
+    '帮我把这两个 BOM 对比一下差异',
+    {
+      ...deps,
+      llm: undefined,
+      marketSkillRunner: {
+        listInstalledWithTriggers: () => [{ name: 'bom-diff', triggers: ['BOM 对比'] }],
+        run: () => ({
+          ok: false,
+          name: 'bom-diff',
+          version: '0.1.0',
+          results: [],
+          error: '步骤被 §10.2 命令白名单拒绝：denied',
+          durationMs: 3,
+        }),
+      },
+    },
+    { userId: 'u1' },
+  );
+  assert.ok(r.answer.includes('执行失败'));
+  assert.ok(r.answer.includes('denied'));
+});
+
+test('pipeline: 未安装市场 Skill 时路由不受影响（E243）', async () => {
+  const r = await pipeline(
+    'STM32F103C8T6 最大主频是多少',
+    {
+      ...deps,
+      marketSkillRunner: {
+        listInstalledWithTriggers: () => [],
+        run: () => {
+          throw new Error('不应被调用');
+        },
+      },
+    },
+    { userId: 'u1' },
+  );
+  assert.ok(r.answer.length > 0);
+});
+
 
 test('pipeline: project-writer 从上一轮记忆自动回溯写入', async () => {
   const dir = sandboxTmpDir('pipeline-writer-');

@@ -22,6 +22,8 @@ import type { ExperienceEntry } from '../memory/experience.js';
 import type { SearchSourceStats } from './source-stats.js';
 import type { TrajectoryEventBody, TrajectoryLogLike } from '../trajectory/trajectory-log.js';
 import { getSkills, isSkillEnabled, toDisplayText } from '../skills/registry.js';
+import { matchInstalledSkillTrigger, renderMarketSkillAnswer } from '../skills/market/nl-router.js';
+import type { MarketRunOutcome } from '../skills/market/runner.js';
 import type { RawFileLike, SkillDeps } from '../skills/deps.js';
 import { executorStatus } from '../agent/executors.js';
 import { extractPartNumber, getHostname } from './authority.js';
@@ -114,6 +116,11 @@ export interface PipelineDeps {
   skillLifecycle?: {
     findBest(query: string): { name: string } | null;
     recordUse?(name: string): void;
+  };
+  /** E243：市场 Skill 可执行器（命中已安装 Skill 触发词 → 直连执行；测试可注入） */
+  marketSkillRunner?: {
+    listInstalledWithTriggers(): Array<{ name: string; triggers: string[] }>;
+    run(name: string): MarketRunOutcome;
   };
   trajectory?: TrajectoryLogLike;
   sessionContext?: Pick<SessionContextStore, 'load' | 'append' | 'compactIfNeeded'>;
@@ -501,6 +508,86 @@ export async function pipeline(
       mode: 'life',
     };
   }
+  // E243 收口：市场 Skill 自然语言路由（命中已安装 Skill 触发词 → 直连执行，绕开搜索）
+  // 安全/专用意图已在前面短路返回；deep_report 走深度报告专用链路，不拦截。
+  if (deps.marketSkillRunner && routeSelected.intent !== 'deep_report') {
+    const skillHit = matchInstalledSkillTrigger(
+      prepared.cleanQuery,
+      deps.marketSkillRunner.listInstalledWithTriggers(),
+    );
+    if (skillHit) {
+      safeArtifact({ skill: skillHit.skillName, state: 'generating' });
+      const outcome = deps.marketSkillRunner.run(skillHit.skillName);
+      if (outcome.ok) {
+        const answer = renderMarketSkillAnswer(outcome);
+        safeArtifact({ skill: skillHit.skillName, state: 'done' });
+        recordTrajectory({
+          type: 'skill',
+          skill: {
+            name: outcome.name,
+            version: outcome.version,
+            kind: 'market_trigger',
+            outputSnippet: answer.slice(0, 300),
+          },
+        });
+        recordTrajectory({
+          type: 'answer',
+          answer: {
+            answerSnippet: answer.slice(0, 300),
+            confidence: Math.max(0.75, route.confidence),
+            gateTriggered: 'none',
+            elapsedMs: Date.now() - start,
+          },
+        });
+        try {
+          await postProcess(
+            {
+              query,
+              answer,
+              confidence: Math.max(0.75, route.confidence),
+              evidence: [],
+              gateTriggered: 'none',
+              elapsedMs: Date.now() - start,
+              sessionId: memorySessionId,
+            },
+            { store: deps.memoryStore ?? defaultMemoryStore() },
+          );
+          userStore?.addSessionSummary?.(
+            userId,
+            `s-${Date.now()}`,
+            `Q: ${query}\nA: ${answer.slice(0, 200)}`,
+            [routeSelected.intent, ...route.features.rawEntities],
+          );
+        } catch {
+          // 会话摘要写入失败不阻塞回复
+        }
+        return {
+          query,
+          answer,
+          confidence: Math.max(0.75, route.confidence),
+          evidence: [],
+          gate_triggered: 'none',
+          elapsed_ms: Date.now() - start,
+          mode: uiRoute.mode,
+          submode: uiRoute.submode,
+        };
+      }
+      safeArtifact({ skill: skillHit.skillName, state: 'failed' });
+      return {
+        query,
+        answer:
+          `✅ 已命中市场 Skill「${outcome.name} v${outcome.version}」\n` +
+          `⚠️ 执行失败：${outcome.error ?? '未知错误'}。`,
+        confidence: route.confidence,
+        evidence: [],
+        gate_triggered: 'none',
+        elapsed_ms: Date.now() - start,
+        mode: uiRoute.mode,
+        submode: uiRoute.submode,
+      };
+    }
+  }
+
   if (!routeSelected.searchNeed && routeSelected.intent !== 'web_search') {
     const executor = routeSelected.executor ?? 'executor';
     const status = executorStatus(routeSelected.executor);

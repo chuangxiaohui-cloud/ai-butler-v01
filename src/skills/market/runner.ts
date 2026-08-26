@@ -12,6 +12,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { checkCommand, tokenize } from '../../security/command-whitelist.js';
 import { validateMarketManifest } from './manifest.js';
+import type { InstalledSkillWithTriggers } from './nl-router.js';
 import { MarketStore } from './store.js';
 import type { MarketSkillManifest } from './types.js';
 
@@ -91,6 +92,22 @@ export class MarketSkillRunner {
   /** 当前已安装（status=installed）的市场 Skill（供 CLI --list） */
   listInstalled(): Array<{ name: string; version: string }> {
     return this.store.installed().map((record) => ({ name: record.name, version: record.version }));
+  }
+
+  /** 已安装市场 Skill 及其触发词（E243 自然语言路由输入；manifest 损坏的条目跳过） */
+  listInstalledWithTriggers(): InstalledSkillWithTriggers[] {
+    return this.store
+      .installed()
+      .map((record) => {
+        try {
+          const raw = readFileSync(join(this.installRoot, record.name, 'manifest.json'), 'utf-8');
+          const manifest = validateMarketManifest(JSON.parse(raw));
+          return { name: record.name, triggers: manifest.triggers };
+        } catch {
+          return null;
+        }
+      })
+      .filter((entry): entry is InstalledSkillWithTriggers => entry !== null);
   }
 
   /** 真实执行已安装市场 Skill 的 steps + verify（全程 §10 白名单 + 沙箱 cwd） */
