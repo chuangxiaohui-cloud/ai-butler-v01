@@ -44,20 +44,20 @@
 
 | # | 文档 | 生成时机 | 证据来源 |
 |---|------|---------|---------|
-| 1 | 安全审计报告 | v1.0 收口 | `src/security/sandbox.test.ts`、`src/gateway/terminal.test.ts`、需求 §10.4 用例清单 |
-| 2 | 隐私与数据处理说明 | v1.0 收口 | `.env.example`、`data/` 目录约定、需求 §8.1.4/§10.3 |
+| 1 | 安全审计报告 | ✅ 已有 `docs/reports/security-audit-v1.md`（E245） | `src/security/sandbox.test.ts`、`src/gateway/terminal.test.ts`、需求 §10.4 用例清单 |
+| 2 | 隐私与数据处理说明 | ✅ 已有 `docs/reports/privacy-data-processing-v1.md`（E245） | `.env.example`、`data/` 目录约定、需求 §8.1.4/§10.3 |
 | 3 | 测试报告（全量） | 每次发布 | `npm run test:all`、`bench/devil-v25/*`、31 条 v0.2a 基准 |
 | 4 | 性能基准报告 | 每次发布 | `data/search-metrics.jsonl`、`bench/*`、需求 §5 [P-NN] |
 | 5 | 接口契约符合性报告 | 每次发布 | `docs/architecture/interface-contract.md` + 集成测试 |
 | 6 | PARAM 注册表快照 | 每次发布 | 需求 §5 + `src/config/params.ts` + `bench` 关联 |
-| 7 | 架构设计说明书（终版） | v1.0 收口 | `docs/architecture/*` + ADR 整合 |
+| 7 | 架构设计说明书（终版） | ✅ 已有 `docs/reports/architecture-design-final-v1.md`（E245） | `docs/architecture/*` + ADR 整合 |
 | 8 | 代码目录与模块职责表（终版） | 持续更新 | `docs/code-directory.md` |
 | 9 | 部署与运维手册 | 安装包发布 | `desktop/README.md`、`docs/architecture/deployment.md` |
-| 10 | 用户操作手册 | v1.0 收口 | `ui/prototype/README.md`、需求 §4.1/§9 |
+| 10 | 用户操作手册 | ✅ 已有 `docs/reports/user-manual-v1.md`（E245） | `ui/prototype/README.md`、需求 §4.1/§9 |
 | 11 | 数据迁移与备份指南 | 版本升级前 | `scripts/migrate-to-memorycore.ts`、需求 §11.2 |
 | 12 | 依赖清单与许可证 | 发布前 | `package-lock.json`、`desktop/package-lock.json`、`ui/prototype/package-lock.json` |
 | 13 | 已知限制与技术债务清单 | 持续更新 | `docs/plans/` 遗留事项、provisional PARAM、E-NN 偏离登记 |
-| 14 | 成熟度评估报告 | v1.0 收口 | 需求 §12.4 五维指标 |
+| 14 | 成熟度评估报告 | ✅ 已有 `docs/reports/maturity-assessment-v1.md`（E245） | 需求 §12.4 五维指标 |
 | 15 | 文档治理合规报告 | 每次发布 | `npm exec tsx scripts/doc-lint.ts` 结果 |
 | 16 | 架构代码审计报告（2026-08-23 第三方输入） | 已归档 | `docs/2026-08-23-architecture-code-audit.md`（处置批次：H1-H10 `docs/plans/2026-08-23-security-audit-batch.md`、H5 `docs/plans/2026-08-23-session-context-h5.md`、H9/B1/B4/H8 `docs/plans/2026-08-23-audit-correctness-batch.md`、H6/D1-D5 `docs/plans/2026-08-23-audit-decision-batch.md`、H7+P4 `docs/plans/2026-08-23-audit-mid-batch-1.md`、P3+P5 `docs/plans/2026-08-23-audit-mid-batch-2.md`、P6+P8 `docs/plans/2026-08-23-audit-mid-batch-3.md`、P7+P11 `docs/plans/2026-08-23-audit-mid-batch-4.md`、P9+P15 `docs/plans/2026-08-23-audit-mid-batch-5.md`、P12+P16 `docs/plans/2026-08-23-audit-mid-batch-6.md`、P13+P14 `docs/plans/2026-08-23-audit-mid-batch-7.md`） |
 

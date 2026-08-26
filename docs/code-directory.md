@@ -115,6 +115,7 @@
 | `docs/design/` | 搜索、路由、记忆、安全、UI、Skill、PARAM 设计 | ✅ |
 | `docs/engineering/` | API、Schema、环境配置、测试策略 | ✅ |
 | `docs/plans/` | 每次推进的计划与结果 | ✅ |
+| `docs/reports/` | v1.0 交付期快照（安全审计/隐私说明/用户手册/成熟度评估/架构设计说明书终版，E245） | ✅ |
 | `docs/2026-08-XX-progress-handoff.md` | 每日交接 | ✅ |
 
 ## 5. 更新纪律

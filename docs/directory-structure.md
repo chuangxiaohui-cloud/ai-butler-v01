@@ -35,7 +35,7 @@ CLI (src/main.ts)  UI (ui/prototype)  桌面壳 (desktop)
 | `ui/prototype/` | 独立 Vite + React 三栏 UI 原型 |
 | `desktop/` | Electron 主壳 + Tauri 备选壳 |
 | `bench/` | 基准数据与报告（git 跟踪） |
-| `docs/` | 交接、推进计划、ADR、借鉴登记、架构图 |
+| `docs/` | 交接、推进计划、ADR、借鉴登记、架构图、交付期报告快照（`docs/reports/`） |
 | `data/` | 运行时 SQLite、JSONL、缓存（git 忽略） |
 | `dist/` | TypeScript 构建产物（git 忽略） |
 | `configs/` | MemoryCore sidecar 等本地运行配置 |
