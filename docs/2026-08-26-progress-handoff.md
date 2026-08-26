@@ -1,7 +1,7 @@
-# 进度交接 2026-08-26（E241-E244 四连收口——S5 平台适配器 + GitHub 解读 + S7 可执行 handler + S6 真实推送 CLI）
+# 进度交接 2026-08-26（E241-E245 五连收口——S5 平台适配器 + GitHub 解读 + S7 可执行 handler + S6 真实推送 CLI + 交付期文档）
 
-> 当前分支：v0.2b｜本轮收口四项：E241（S5 QQ OneBot 11 真实适配器）、E242（GitHub 解读 Skill 升级）、
-> E243（S7 可执行 handler——市场 Skill 执行链）、E244（S6 真实推送 CLI 装配）。
+> 当前分支：v0.2b｜本轮收口五项：E241（S5 QQ OneBot 11 真实适配器）、E242（GitHub 解读 Skill 升级）、
+> E243（S7 可执行 handler——市场 Skill 执行链）、E244（S6 真实推送 CLI 装配）、E245（v1.0 交付期文档）。
 > 上一份交接见 `docs/2026-08-25-progress-handoff.md`。
 
 ## 今日已收口
@@ -38,15 +38,29 @@
    - 证据：新增单测 14 条 + 集成 4 条真实 git 端到端（INT-REPO-001~004，本地裸仓库远程）；
      真实冒烟 `repo:push --dry-run` 输出变更清单/分支 v0.2b/未授权提示。
    - 计划文档 `docs/plans/2026-08-26-v1-s6-push-cli.md` 已收口。
-5. 四项均已提交 v0.2b（单一主题分开提交）：E241 = `00b30d3`、E242 = `f23d1f3`、E243 = `ba7694f`、
-   E244 = `d706062`；计划文档结果段已同步。
-6. 全量验证（含四项）：单测 866/867（1 skip）+ 集成 29/29；doc-lint 0 FAIL 0 WARN。
+5. **E245 v1.0 交付期文档四件套**（P-10 owner 签认输入物，快照不预置结论）：
+   - `docs/reports/security-audit-v1.md`：§10.4 用例清单 7 项逐条映射（6 项独立测试证据 + 1 项读侧
+     共用证据无独立断言，诚实登记缺口）+ MCP/IM/repo/market 真实接入面安全证据盘点；
+   - `docs/reports/privacy-data-processing-v1.md`：数据分类与本地落盘、外发最小化（§10.3）、token
+     边界、用户控制权（记忆遗忘/仓库授权/反馈）；
+   - `docs/reports/user-manual-v1.md`：CLI/gateway/桌面壳/UI 入口、三栏交互（§4.1）、证据链与反馈
+     （§9）、Skill 与斜杠命令、记忆管理、代码托管与市场 Skill CLI、IM 通道；
+   - `docs/reports/maturity-assessment-v1.md`：§12.4 五维指标客观评分——L1 熟练达成，L2 缺口
+     （用户累积 Skill 0/验收样本无/复用率未达），L1→L2 ≈35-40% 与交接快照一致；
+   - `docs/reports/architecture-design-final-v1.md`：整合 docs/architecture/* + ADR-0001/0002。
+   - 登记：documentation-map 第四组 #1/#2/#7/#10/#14 转 ✅；需求附录 A E245；code-directory/
+     directory-structure 补 `docs/reports/`；计划文档 `docs/plans/2026-08-26-v1-delivery-docs.md`。
+6. 五项均已提交 v0.2b（单一主题分开提交）：E241 = `00b30d3`、E242 = `f23d1f3`、E243 = `ba7694f`、
+   E244 = `d706062`、E245 = `9108935`；计划文档结果段已同步。
+7. 全量验证：单测 866/867（1 skip）+ 集成 29/29；doc-lint 0 FAIL 0 WARN（E245 纯文档批次，
+   E241-E244 代码批次已含 build/test 全绿）。
 
 ## 下一步（按优先级）
 
 1. **v1.0 收口路线**：S1-S8 切片 + S3/S5/S6/S7 真实接入已全收口（S6 真实推送 = E244），
    下一步按 P-10 验收条件集跑 v1.0 全量验收（含附录 C 无相反证据 + owner 签认）。
-2. **交付期文档**：v1.0 全量验收 [P-10] 需安全审计/隐私说明/用户手册（documentation-map 第四组）。
+2. **v1.0 全量验收 [P-10] 执行**：交付期文档已补齐（E245），剩余 P-10 条件⑤附录 C 无相反证据 + owner 签认，
+   签认后跑全量验收并评估 P-10 转定稿（E197 复验门）。
 3. **市场 Skill 自然语言路由**（非阻塞，E243 遗留）：命中已安装 Skill 触发词进 pipeline，需扩展意图
    targetDomain（本轮不动意图枚举）。
 4. **GitHub 解读 Phase 2**（非阻塞）：L2 联网补充（Issues/社区口碑）、X.7 记忆/工程栏联动。
@@ -57,7 +71,7 @@
 
 ## 总进度快照
 
-- v0.2b 里程碑 ≈95%：S1-S8 切片全部落地，S3（E240）/S5（E241）/S6（E244）/S7（E243）真实接入全收口，
-  剩余 v1.0 全量验收 [P-10]（按 P-10 条件集执行 + owner 签认）+ 交付期文档（安全审计/隐私说明/用户手册）；
+- v0.2b 里程碑 ≈96%：S1-S8 切片全部落地，S3（E240）/S5（E241）/S6（E244）/S7（E243）真实接入全收口，
+  交付期文档（E245）已补齐，剩余 v1.0 全量验收 [P-10]（附录 C 复核 + owner 签认 + 条件集执行）；
   GitHub 解读（E242）属 v2.5 既有需求补实现，不影响里程碑口径。
 - 能力成熟度 L1→L2 ≈35-40%，无变化（需真实使用累积，§12.4 判据）。
