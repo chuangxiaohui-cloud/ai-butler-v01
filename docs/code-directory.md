@@ -31,7 +31,7 @@
 | `src/security/` | `command-whitelist.ts`、`query-sanitize.ts` | 命令白名单（允许集合+硬编码拒绝+超时 kind）与搜索脱敏（路径/密钥/内网剥离，v1.0 S4，§10.2/§10.3，E223） | ✅ |
 | `src/im/` | `gate.ts`、`session.ts`、`format.ts`、`service.ts`、`channel.ts`、`config.ts`、`run.ts`、`onebot/` | 远程对话通道（授权开关/会话隔离/输出适配/复用 pipeline + ImChannel 抽象 + OneBot 11 真实适配器 + 常驻入口，v1.0 S5，§4.5，E224+E241） | ✅ |
 | `src/repo/` | `types.ts`、`repo-whitelist.ts`、`push-audit.ts`、`push-service.ts`、`cli.ts` | 代码托管联动（仓库白名单/预检门禁/commit+push/JSONL 审计，v1.0 S6，§11.4，E225）+ 真实推送 CLI 编排（`cli.ts`：repo:push/repo:whitelist/repo:audit，E244） | ✅ |
-| `src/skills/market/` | `types.ts`、`manifest.ts`、`index-client.ts`、`store.ts`、`installer.ts`、`runner.ts`、`nl-router.ts` | Skill 市场远程化（索引/校验/权限门禁/安装记录/生命周期统计，v1.0 S7，§8.2.3，E226）+ 可执行 handler（E243：§10 白名单 + 沙箱 cwd 执行 steps/verify，`npm run skill:market:run`）+ 自然语言触发词直连（E248：nl-router 最长触发词优先，pipeline `marketSkillRunner`）+ 本地安装通道（E250：`installFromLocalDir` + `npm run skill:market:install`）+ Windows .cmd shim 安全执行（E250：`isCmdSafeCommandLine` 守卫） | ✅ |
+| `src/skills/market/` | `types.ts`、`manifest.ts`、`index-client.ts`、`store.ts`、`installer.ts`、`runner.ts`、`nl-router.ts` | Skill 市场远程化（索引/校验/权限门禁/安装记录/生命周期统计，v1.0 S7，§8.2.3，E226）+ 可执行 handler（E243：§10 白名单 + 沙箱 cwd 执行 steps/verify，`npm run skill:market:run`）+ 自然语言触发词直连（E248：nl-router 最长触发词优先，pipeline `marketSkillRunner`）+ 本地安装通道（E250：`installFromLocalDir` + `npm run skill:market:install`）+ Windows .cmd shim 安全执行（E250：`isCmdSafeCommandLine` 守卫）+ 安全输入通道（E251：`input:'query'` → 沙箱 `input.txt`，步骤 `@input` 替换为文件路径，用户文本不进命令行） | ✅ |
 | `src/search/stages/` | `s1_prepare.ts`、`s2_classify.ts`、`s3_search.ts`、`s5_synthesize.ts`、`s6_post.ts` | 六阶段独立实现 | ✅ |
 | `src/search/providers/` | `types.ts`、`bocha.ts`、`anysearch.ts`、`tavily.ts` | 搜索适配器，统一 `SearchProvider` | ✅ |
 | `src/search/` | `fusion.ts`、`rule1.ts`、`rule3.ts`、`authority.ts` | 融合、事实一致性、安全阀、权威度 | ✅ |
@@ -83,7 +83,7 @@
 | 路径 | 职责 | 状态 |
 |------|------|------|
 | `scripts/doc-lint.ts` | 文档宪法七检查 | ✅ |
-| `scripts/market-run.ts` / `scripts/market-install.ts` | 市场 Skill 执行/清单（E243）与本地安装（E250） | ✅ |
+| `scripts/market-run.ts` / `scripts/market-install.ts` / `scripts/route-query-file.ts` | 市场 Skill 执行/清单（E243，E251 `--query` 带参）、本地安装（E250）、意图路由文件入口（E251，`npm run route:query:file`） | ✅ |
 | `scripts/bench-*.ts` | v0.1 / v0.2a / devil-v25 / provider-router 基准 | ✅ |
 | `scripts/gen-devil-*` | 魔鬼训练评分、清单、证据、CSV 导出 | ✅ |
 | `scripts/export-devil-baseline.ts` / `compare-devil-baseline.ts` | 新老基线导出与对比 | ✅ |

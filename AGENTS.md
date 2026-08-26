@@ -46,8 +46,9 @@ npm run browser:launch -- qq       # 启动/复用 QQ 浏览器调试端口
 npm run browser:fetch -- "<URL>" <等待ms>
 
 npm exec tsx scripts/doc-lint.ts   # 需求文档全量验收（唯一验收口径；或 npm run doc-lint）
-npm run skill:market:run -- <name>|--list   # 市场 Skill 执行 / 清单（E243）
+npm run skill:market:run -- <name> [--query "<文本>"]|--list   # 市场 Skill 执行/清单（E243；E251 带参输入）
 npm run skill:market:install -- --source <dir> --yes   # 本地安装市场 Skill（E250）
+npm run route:query:file -- <文件>   # 意图路由判题文件入口（E251，读文件 → routeV2 JSON）
 npm run maturity:check                    # 成熟度轻量自检 L0-L3（[P-25]，E247/E249）
 ```
 
@@ -80,7 +81,7 @@ npm run maturity:check                    # 成熟度轻量自检 L0-L3（[P-25]
 |------|------|
 | `src/search/` | Stage 1-6 搜索问答管道、搜索 provider、融合、兜底链 |
 | `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理 |
-| `src/skills/` | Skill 注册、生命周期与预置 Skill |
+| `src/skills/` | Skill 注册、生命周期与预置 Skill；市场 Skill（E243/E248/E250/E251：可执行 handler、触发词直连、本地安装、`@input` 安全输入通道） |
 | `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标、`maturity:check`，v1.0 P-10 条件③，E247） |
 | `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏 |
 | `src/repo/` | 代码托管联动（仓库白名单/预检门禁/commit+push/审计 + repo:push/repo:whitelist/repo:audit 真实 CLI，v1.0 S6，§11.4） |

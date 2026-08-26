@@ -29,6 +29,7 @@
 ### 2. 每周 Skill 沉淀（喂 Skill 覆盖度）
 - 把重复 3 次以上的任务固化为市场 Skill（E250 通道，注意 `install:skill` 是预置注册、不计入用户累积）：新建 `configs/market-skills/<name>/manifest.json`（声明 triggers/permissions/steps/verify），`npm run skill:market:install -- --source configs/market-skills/<name> --yes` 安装，随后 `npm run skill:market:run -- <name>` 验证可执行；已装 Skill 触发词进 pipeline（E248，CLI/gateway 已接线 E250），安装后即被自然语言直连。
 - 高频可沉淀场景（现成脚本可直接包装）：datasheet 下载/速读/参数对比、BOM 解析/合并/差异、表格 OCR+词典纠正、文档格式互转（docx/pdf/图片）、GitHub 解读细分（架构/路线图/社区口碑）、办公日报/周报模板、日历/提醒管理。
+- E251 带参 Skill 通道已就绪：manifest 声明 `input:'query'`，查询经沙箱 `input.txt` 注入、步骤 `@input` 替换为文件路径（用户文本不进命令行）；datasheet/BOM/文档类等「带参数的高频任务」可直接固化为 Skill（示例 `configs/market-skills/route-query`：`npm run skill:market:run -- route-query --query "<查询>"`）。
 - 目标节奏：每周沉淀 3-5 个 → 50+ 需约 10-16 周；不凑数，只沉淀真实使用中验证过的（§12.4 不自我夸大）。
 - 每安装一个跑一次 `npm run skill:market:run -- --list` 留计数证据。
 
