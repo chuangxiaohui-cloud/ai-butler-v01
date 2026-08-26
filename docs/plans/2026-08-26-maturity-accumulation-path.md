@@ -8,9 +8,9 @@
 
 | 判据 | 目标 | 当前 | 缺口 | 观测点 |
 |------|------|------|------|--------|
-| 用户累积 Skill | 50+ | **0**（`data/market-skills/` 空；skill_stats 24 个均为预置，15 个有真实使用） | 50 | `npm run skill:market:run -- --list` + `data/experience.db#skill_stats` |
-| 验收通过率 | 80%+ | **73%**（19 accept / 7 reject，n=26，`data/route-cases.jsonl`） | +7pct（≈9 个 accept 无新 reject） | `npm run route:cases` / `route:feedback` |
-| 复用率 | 60%+ | **未观测**（无口径脚本；E243 自然语言路由未收口） | 待定 | `data/trajectory.jsonl` + 路由日志 |
+| 用户累积 Skill | 50+ | **4**（E250 首批：doc-lint/build-check/skill-inventory/git-status；源包 `configs/market-skills/` 已 git 跟踪） | 46 | `npm run skill:market:run -- --list` + `data/experience.db#skill_stats` + `npm run maturity:check` |
+| 验收通过率 | 80%+ | **73.9%**（17 accept / 6 reject，n=23，pipeline-only，正式判定需 n≥30） | +6pct（≈9 个 accept 无新 reject） | `npm run route:cases` / `route:feedback` |
+| 复用率 | 60%+ | **16.6%**（118 Skill / 709 回答事件，E249 校准口径：direct+market_trigger 派发/回答事件，injected 不计入） | 待定 | `npm run maturity:check`（读 `data/trajectory.jsonl`） |
 
 ## Phase 0 — 观测基建（先做尺子，1-2 个会话）
 
@@ -27,7 +27,7 @@
 - 目标节奏：每周新增 ≥10 条有反馈的真实样本；当前 73%（19/7）→ 80% 需约 9 个 accept 且无新 reject，预计 1-2 周可达成。
 
 ### 2. 每周 Skill 沉淀（喂 Skill 覆盖度）
-- 把重复 3 次以上的任务固化为市场 Skill：`npm run install:skill -- --name <name> --version 0.1.0 --triggers <触发词>`，安装后走 `npm run skill:market:run -- <name>` 验证可执行。
+- 把重复 3 次以上的任务固化为市场 Skill（E250 通道，注意 `install:skill` 是预置注册、不计入用户累积）：新建 `configs/market-skills/<name>/manifest.json`（声明 triggers/permissions/steps/verify），`npm run skill:market:install -- --source configs/market-skills/<name> --yes` 安装，随后 `npm run skill:market:run -- <name>` 验证可执行；已装 Skill 触发词进 pipeline（E248，CLI/gateway 已接线 E250），安装后即被自然语言直连。
 - 高频可沉淀场景（现成脚本可直接包装）：datasheet 下载/速读/参数对比、BOM 解析/合并/差异、表格 OCR+词典纠正、文档格式互转（docx/pdf/图片）、GitHub 解读细分（架构/路线图/社区口碑）、办公日报/周报模板、日历/提醒管理。
 - 目标节奏：每周沉淀 3-5 个 → 50+ 需约 10-16 周；不凑数，只沉淀真实使用中验证过的（§12.4 不自我夸大）。
 - 每安装一个跑一次 `npm run skill:market:run -- --list` 留计数证据。

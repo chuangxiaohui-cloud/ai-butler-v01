@@ -45,7 +45,10 @@ npm run browser:status             # 浏览器会话状态
 npm run browser:launch -- qq       # 启动/复用 QQ 浏览器调试端口
 npm run browser:fetch -- "<URL>" <等待ms>
 
-npm exec tsx scripts/doc-lint.ts   # 需求文档全量验收（唯一验收口径）
+npm exec tsx scripts/doc-lint.ts   # 需求文档全量验收（唯一验收口径；或 npm run doc-lint）
+npm run skill:market:run -- <name>|--list   # 市场 Skill 执行 / 清单（E243）
+npm run skill:market:install -- --source <dir> --yes   # 本地安装市场 Skill（E250）
+npm run maturity:check                    # 成熟度轻量自检 L0-L3（[P-25]，E247/E249）
 ```
 
 `doc-lint` 默认验收 `一人公司AI-Agent需求文档_v2.5.md`，要求 `0 FAIL 0 WARN`。`--migration` 仅用于迁移期，正常开发不要依赖宽限。
