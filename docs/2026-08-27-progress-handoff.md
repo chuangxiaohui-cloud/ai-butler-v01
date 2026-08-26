@@ -29,6 +29,8 @@
 
 ## 提交
 
+- 本轮代码批：`e2ae31f`（样例集扩充：part-spec-observe / lcsc-search-form manifest v0.1.0）
+- 本轮文档批：`369f030`（附录 C.5 扩至 n=7 + 附录 A 续 + 计划 9c + handoff）
 - 代码批：`2f5046d`（E252 续：resolveHref + 解析后置门 + datasheet-fetch v0.1.5 + 单测 4 条）
 - 文档批：`b6f44bf`（附录 C.5 样例集 + 附录 A E252 状态续 + 实现计划回填）
 - 定稿批：`b175459`（[P-124]/[P-125]/[P-126] 定稿签认：§5 注册表 + 附录 A 定稿记录 + 附录 C.5/计划回填）
