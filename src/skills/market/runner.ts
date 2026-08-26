@@ -190,6 +190,13 @@ export class MarketSkillRunner {
   }
 }
 
+/** E250：命令串是否可安全经 cmd.exe 执行——仅字母数字、路径/参数分隔符，
+ *  无任何 cmd 元字符（&|<>^()%!*?" 等一律拒绝），经 cmd 执行也不会有解释余地，
+ *  保持白名单校验的 shell:false 语义（Windows .cmd shim 支持）。 */
+export function isCmdSafeCommandLine(cmdline: string): boolean {
+  return /^[A-Za-z0-9 _@+./\\:-]+$/.test(cmdline);
+}
+
 function defaultStepSpawn(bin: string, args: string[], opts: StepSpawnOptions): StepSpawnResult {
   const result = spawnSync(bin, args, {
     cwd: opts.cwd,
@@ -198,5 +205,21 @@ function defaultStepSpawn(bin: string, args: string[], opts: StepSpawnOptions): 
     maxBuffer: opts.maxBuffer,
     // shell:false：白名单校验的是完整命令串，argv 由 tokenize 拆分，不做 shell 解释
   });
+  // E250：Windows 下 npm/pnpm 等是 .cmd shim，shell:false 直接 spawn 会 ENOENT；
+  // 仅当命令串通过安全守卫（无 cmd 元字符）时，改经 cmd.exe /d /s /c 执行同一命令串。
+  if (
+    process.platform === 'win32' &&
+    result.error?.message?.includes('ENOENT') &&
+    isCmdSafeCommandLine([bin, ...args].join(' '))
+  ) {
+    const cmdline = [bin, ...args].join(' ');
+    const viaCmd = spawnSync(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', cmdline], {
+      cwd: opts.cwd,
+      encoding: opts.encoding,
+      timeout: opts.timeout,
+      maxBuffer: opts.maxBuffer,
+    });
+    return { status: viaCmd.status, stdout: viaCmd.stdout, stderr: viaCmd.stderr, error: viaCmd.error };
+  }
   return { status: result.status, stdout: result.stdout, stderr: result.stderr, error: result.error };
 }

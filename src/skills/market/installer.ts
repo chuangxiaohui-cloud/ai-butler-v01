@@ -8,11 +8,11 @@
  */
 
 import { createHash } from 'node:crypto';
-import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { validateMarketManifest } from './manifest.js';
 import { MarketStore } from './store.js';
-import { HIGH_RISK_PERMISSIONS, type MarketInstallRecord, type MarketSkillEntry, type SkillPermission } from './types.js';
+import { HIGH_RISK_PERMISSIONS, type MarketInstallRecord, type MarketSkillEntry, type MarketSkillManifest, type SkillPermission } from './types.js';
 
 export type FetchLike = (url: string) => Promise<{ ok: boolean; status: number; text: string }>;
 
@@ -71,12 +71,50 @@ export class MarketInstaller {
     if (manifest.name !== entry.name || manifest.version !== entry.version || unknownPermission !== undefined) {
       return { ok: false, error: '包 manifest 与市场条目不一致（name/version/权限必须匹配）' };
     }
+    return this.confirmAndPersist(manifest, entry, text);
+  }
+
+  /**
+   * 本地安装（E250）：直接读取 packageDir/manifest.json，不经过远程拉取。
+   * 本地包由用户即策展方（configs/market-skills 精选包），无市场条目权限上限；
+   * 高风险权限仍需逐项显式确认（缺省默认拒绝，与远程安装同一门禁）。
+   */
+  async installFromLocalDir(packageDir: string, confirm?: PermissionConfirmer): Promise<InstallOutcome> {
+    let text: string;
+    try {
+      text = readFileSync(join(packageDir, 'manifest.json'), 'utf-8');
+    } catch (err) {
+      return { ok: false, error: `读取本地 Skill 包失败：${err instanceof Error ? err.message : String(err)}` };
+    }
+    let manifest: MarketSkillManifest;
+    try {
+      manifest = validateMarketManifest(JSON.parse(text));
+    } catch (err) {
+      return { ok: false, error: `Skill manifest 校验失败：${err instanceof Error ? err.message : String(err)}` };
+    }
+    const entry: MarketSkillEntry = {
+      name: manifest.name,
+      version: manifest.version,
+      sourceUrl: `file:///${packageDir.replace(/\\/g, '/')}`,
+      permissions: manifest.permissions,
+    };
+    return this.confirmAndPersist(manifest, entry, text, confirm);
+  }
+
+  /** 共享落盘：高风险权限逐项确认 → checksum → 原子写入 → 记录（远程/本地同一实现） */
+  private async confirmAndPersist(
+    manifest: MarketSkillManifest,
+    entry: MarketSkillEntry,
+    packageText: string,
+    confirmOverride?: PermissionConfirmer,
+  ): Promise<InstallOutcome> {
+    const confirm = confirmOverride ?? this.confirm;
     const risky = manifest.permissions.filter((permission) => HIGH_RISK_PERMISSIONS.has(permission));
     const denied: SkillPermission[] = [];
     for (const permission of risky) {
       let accepted = false;
       try {
-        accepted = await this.confirm(permission);
+        accepted = await confirm(permission);
       } catch {
         accepted = false;
       }
@@ -86,11 +124,11 @@ export class MarketInstaller {
       return { ok: false, error: '高风险权限未获用户确认，安装中止', deniedPermissions: denied };
     }
     try {
-      const checksum = sha256(text);
+      const checksum = sha256(packageText);
       const skillDir = join(this.installRoot, manifest.name);
       mkdirSync(skillDir, { recursive: true });
       const target = join(skillDir, 'manifest.json');
-      writeFileSync(`${target}.tmp`, text, 'utf-8');
+      writeFileSync(`${target}.tmp`, packageText, 'utf-8');
       renameSync(`${target}.tmp`, target);
       const record: MarketInstallRecord = {
         ts: new Date().toISOString(),

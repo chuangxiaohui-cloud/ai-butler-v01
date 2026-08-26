@@ -1,0 +1,20 @@
+{
+  "steps": [
+    "npm run doc-lint"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "name": "doc-lint",
+  "triggers": [
+    "文档验收",
+    "doc-lint",
+    "需求文档检查",
+    "文档宪法检查"
+  ],
+  "description": "需求文档宪法验收（doc-lint 0 FAIL 0 WARN，§0 八项检查）",
+  "version": "0.1.0",
+  "permissions": [
+    "command"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "steps": [
+    "git status --short"
+  ],
+  "name": "git-status",
+  "triggers": [
+    "仓库状态",
+    "工作区状态",
+    "git status",
+    "改动清单"
+  ],
+  "description": "仓库工作区状态（git status --short）",
+  "version": "0.1.0",
+  "permissions": [
+    "command"
+  ]
+}

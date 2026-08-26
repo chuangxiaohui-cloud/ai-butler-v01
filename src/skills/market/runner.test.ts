@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { closeJsonl } from '../../log/jsonl.js';
-import { MarketSkillRunner, type StepSpawnFn, type StepSpawnResult } from './runner.js';
+import { MarketSkillRunner, isCmdSafeCommandLine, type StepSpawnFn, type StepSpawnResult } from './runner.js';
 import { MarketStore } from './store.js';
 import type { MarketSkillManifest } from './types.js';
 
@@ -225,6 +225,22 @@ test('market-runner: 沙箱 cwd 固定在工作区 sandbox/market-skills/<name>'
   } finally {
     teardown(h.dir, h.storePath);
   }
+});
+
+test('isCmdSafeCommandLine：常规 npm/git 命令安全，含 cmd 元字符拒绝', () => {
+  assert.equal(isCmdSafeCommandLine('npm run build'), true);
+  assert.equal(isCmdSafeCommandLine('npm run skill:market:run -- --list'), true);
+  assert.equal(isCmdSafeCommandLine('git status --short'), true);
+  assert.equal(isCmdSafeCommandLine('mkdir -p foo/bar'), true);
+  // 元字符一律拒绝（cmd 解释余地）；del 等非白名单命令由 §10.2 另行拦截
+  assert.equal(isCmdSafeCommandLine('git status & calc'), false);
+  assert.equal(isCmdSafeCommandLine('echo %PATH%'), false);
+  assert.equal(isCmdSafeCommandLine('git log -- "a b"'), false);
+  assert.equal(isCmdSafeCommandLine('git status; echo hi'), false);
+  assert.equal(isCmdSafeCommandLine('dir *.ts'), false);
+  assert.equal(isCmdSafeCommandLine('a|b'), false);
+  assert.equal(isCmdSafeCommandLine('a>b'), false);
+  assert.equal(isCmdSafeCommandLine('a^b'), false);
 });
 
 test('market-runner: listInstalled 只返回当前 installed 记录', () => {

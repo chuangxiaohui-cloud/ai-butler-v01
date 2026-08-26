@@ -1,0 +1,21 @@
+{
+  "steps": [
+    "npm run skill:market:run -- --list"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "name": "skill-inventory",
+  "triggers": [
+    "Skill 清单",
+    "已装 Skill",
+    "skill list",
+    "skill-inventory",
+    "市场 Skill 列表"
+  ],
+  "description": "列出已安装市场 Skill（名称 + 版本，E243 --list）",
+  "version": "0.1.0",
+  "permissions": [
+    "command"
+  ]
+}

@@ -8,6 +8,7 @@ import { createServer } from 'node:http';
 
 import { RouteCaseStore } from '../agent/route-case-store.js';
 import { browserSession } from '../browser/session.js';
+import { MarketSkillRunner } from '../skills/market/runner.js';
 import { ExperienceManager } from '../memory/experience.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { SessionContextStore } from '../memory/session-context.js';
@@ -70,6 +71,8 @@ const app = createGatewayApp({
     skillDeps,
     trajectory: trajectoryLog,
     browserSession,
+    // E248 生产接线：市场 Skill 触发词直连执行（CLI 与 gateway 同一口径）
+    marketSkillRunner: new MarketSkillRunner(),
     sessionContext,
   },
 });

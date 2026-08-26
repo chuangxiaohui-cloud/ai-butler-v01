@@ -12,6 +12,7 @@ import { parseDocumentFile } from './search/document-parser.js';
 import type { SkillDeps } from './skills/deps.js';
 import { TrajectoryLog } from './trajectory/trajectory-log.js';
 import { browserSession } from './browser/session.js';
+import { MarketSkillRunner } from './skills/market/runner.js';
 import { bochaBalanceWarning, queryBochaBalance } from './search/balance.js';
 import { closeMcpAgents, createMcpAgents } from './mcp/config.js';
 import { SubAgentDispatcher } from './mcp/dispatcher.js';
@@ -86,6 +87,8 @@ prelude
   skillDeps,
   trajectory: trajectoryLog,
   browserSession,
+  // E248 生产接线：已安装市场 Skill 触发词直连执行（复用率观察自此真实生效）
+  marketSkillRunner: new MarketSkillRunner(),
   // H5：CLI 的 slash 与 pipeline 共用同一会话实例，避免双实例并发丢历史
   sessionContext,
 }, {

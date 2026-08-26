@@ -7,7 +7,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -106,6 +106,46 @@ test('INT-MARKET-002：步骤被 §10.2 白名单拒绝 → 中止并归因（�
     assert.equal(outcome.ok, false);
     assert.match(outcome.error ?? '', /命令白名单拒绝/);
     assert.equal(outcome.results.length, 1);
+  } finally {
+    teardown(env.dir, env.storePath);
+  }
+});
+
+test('INT-MARKET-004：本地安装（installFromLocalDir）→ 真实 npm 步骤执行（Windows .cmd shim 路径）', async () => {
+  const env = makeEnv();
+  try {
+    const pkgDir = join(env.dir, 'pkg');
+    mkdirSync(pkgDir, { recursive: true });
+    writeFileSync(
+      join(pkgDir, 'manifest.json'),
+      JSON.stringify({
+        name: 'market-e2e-local',
+        version: '1.0.0',
+        triggers: ['本地 e2e'],
+        steps: ['npm --version'],
+        permissions: ['command'],
+      }),
+      'utf-8',
+    );
+    const installer = new MarketInstaller({
+      store: env.store,
+      installRoot: env.installRoot,
+      confirm: () => false,
+    });
+    const installed = await installer.installFromLocalDir(pkgDir, () => true);
+    assert.equal(installed.ok, true);
+    assert.equal(installed.record?.sourceUrl.startsWith('file:///'), true);
+
+    const runner = new MarketSkillRunner({
+      store: env.store,
+      installRoot: env.installRoot,
+      workspaceRoot: env.workspaceRoot,
+    });
+    const outcome = runner.run('market-e2e-local');
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.results.length, 1);
+    assert.equal(outcome.results[0].status, 0);
+    assert.match(outcome.results[0].stdout, /\d+\.\d+\.\d+/);
   } finally {
     teardown(env.dir, env.storePath);
   }

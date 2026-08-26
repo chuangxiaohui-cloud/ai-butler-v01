@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -150,6 +150,66 @@ test('market-installer: manifest 非法 JSON 或 name 不一致拒绝', async ()
     assert.match(outcome.error ?? '', /不一致/);
   } finally {
     teardown(mismatch.dir, mismatch.storePath);
+  }
+});
+
+test('market-installer: installFromLocalDir 直接安装本地包（command 权限 confirm 放行 + file:// 记录）', async () => {
+  const h = makeHarness();
+  try {
+    const pkgDir = join(h.dir, 'pkg');
+    mkdirSync(pkgDir, { recursive: true });
+    writeFileSync(
+      join(pkgDir, 'manifest.json'),
+      JSON.stringify({ ...BASE_PACKAGE, permissions: ['command'] }),
+      'utf-8',
+    );
+    const outcome = await h.installer.installFromLocalDir(pkgDir, (permission) => permission === 'command');
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.record?.sourceUrl.startsWith('file:///'), true);
+    assert.equal(outcome.record?.checksum.length, 64);
+    const onDisk = JSON.parse(readFileSync(join(h.installRoot, 'pcb-helper', 'manifest.json'), 'utf-8'));
+    assert.equal(onDisk.name, 'pcb-helper');
+    assert.equal(h.store.statusOf('pcb-helper'), 'installed');
+  } finally {
+    teardown(h.dir, h.storePath);
+  }
+});
+
+test('market-installer: installFromLocalDir 高风险权限缺省默认拒绝（与远程同一门禁）', async () => {
+  const h = makeHarness();
+  try {
+    const pkgDir = join(h.dir, 'pkg');
+    mkdirSync(pkgDir, { recursive: true });
+    writeFileSync(
+      join(pkgDir, 'manifest.json'),
+      JSON.stringify({ ...BASE_PACKAGE, permissions: ['command'] }),
+      'utf-8',
+    );
+    const outcome = await h.installer.installFromLocalDir(pkgDir);
+    assert.equal(outcome.ok, false);
+    assert.deepEqual(outcome.deniedPermissions, ['command']);
+    assert.equal(h.store.statusOf('pcb-helper'), 'unknown');
+  } finally {
+    teardown(h.dir, h.storePath);
+  }
+});
+
+test('market-installer: installFromLocalDir 包目录缺失或 manifest 非法拒绝', async () => {
+  const h = makeHarness();
+  try {
+    const missing = await h.installer.installFromLocalDir(join(h.dir, 'no-such'));
+    assert.equal(missing.ok, false);
+    assert.match(missing.error ?? '', /读取本地 Skill 包失败/);
+
+    const badDir = join(h.dir, 'bad');
+    mkdirSync(badDir, { recursive: true });
+    writeFileSync(join(badDir, 'manifest.json'), 'not-json', 'utf-8');
+    const bad = await h.installer.installFromLocalDir(badDir);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error ?? '', /manifest 校验失败/);
+    assert.equal(h.store.statusOf('pcb-helper'), 'unknown');
+  } finally {
+    teardown(h.dir, h.storePath);
   }
 });
 
