@@ -28,7 +28,7 @@
    - 证据：新增单测 12 条 + 集成 3 条真实 git 命令端到端（INT-MARKET-001~003）；真实冒烟
      `skill:market:run -- smoke-check` 沙箱内执行 git steps+verify 全 ok（冒烟后清理）。
    - 计划文档 `docs/plans/2026-08-26-s7-market-skill-runner.md` 已收口。
-4. 三项均已提交 v0.2b（单一主题分开提交）：E241 = `00b30d3`、E242 = `f23d1f3`、E243 = 见 git log；
+4. 三项均已提交 v0.2b（单一主题分开提交）：E241 = `00b30d3`、E242 = `f23d1f3`、E243 = `ba7694f`；
    计划文档结果段已同步。
 5. 全量验证（含三项）：单测 852/853（1 skip）+ 集成 25/25；doc-lint 0 FAIL 0 WARN。
 
