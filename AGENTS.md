@@ -79,6 +79,7 @@ npm exec tsx scripts/doc-lint.ts   # 需求文档全量验收（唯一验收口�
 | `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理 |
 | `src/skills/` | Skill 注册、生命周期与预置 Skill |
 | `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏 |
+| `src/repo/` | 代码托管联动（仓库白名单/预检门禁/commit+push/审计 + repo:push/repo:whitelist/repo:audit 真实 CLI，v1.0 S6，§11.4） |
 | `src/slash/` | 斜杠命令层（/compact、/context，E193 手动入口） |
 | `src/im/` | 远程对话通道（授权开关/会话隔离/输出适配/复用 pipeline + OneBot 11 真实适配器，v1.0 S5，§4.5，E224+E241） |
 | `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API、限速/并发闸门（P16） |

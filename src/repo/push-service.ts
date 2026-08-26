@@ -8,6 +8,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { checkCommand } from '../security/command-whitelist.js';
 import { logPushEvent } from './push-audit.js';
@@ -53,6 +54,8 @@ export type Preflight = (plan: PushPlan) => Promise<void>;
 export type TokenProvider = (host: RepoHost) => string | undefined;
 
 export interface PushServiceDeps {
+  /** git 工作区与项目前缀存在性判断根（默认 process.cwd()；测试注入临时工作区） */
+  cwd?: string;
   whitelist?: RepoWhitelist;
   runGit?: GitRunner;
   preflight?: Preflight;
@@ -67,6 +70,7 @@ export interface PushOptions {
 }
 
 export class PushService {
+  private readonly cwd: string;
   private readonly whitelist: RepoWhitelist;
   private readonly runGit: GitRunner;
   private readonly preflight: Preflight;
@@ -74,8 +78,9 @@ export class PushService {
   private readonly auditPath: string;
 
   constructor(deps: PushServiceDeps = {}) {
+    this.cwd = deps.cwd ?? process.cwd();
     this.whitelist = deps.whitelist ?? new RepoWhitelist();
-    this.runGit = deps.runGit ?? defaultGitRunner();
+    this.runGit = deps.runGit ?? defaultGitRunner(this.cwd);
     this.preflight = deps.preflight ?? defaultPreflight();
     this.tokenProvider = deps.tokenProvider ?? defaultTokenProvider();
     this.auditPath = deps.auditPath ?? join(process.cwd(), 'data', 'repo-push-events.jsonl');
@@ -83,7 +88,8 @@ export class PushService {
 
   /** 本地变更清单（§11.4 上传流程第一步），只读不写 */
   plan(repo: RepoIdentity, options: PushOptions = {}): PushPlan {
-    const branch = this.tryGit(['symbolic-ref', '--short', 'HEAD']) || 'main';
+    // 部分 git 版本 --short 只剥 refs/（返回 heads/v0.2b），归一为 v0.2b（对齐 push-to-hosts 的 replace）
+    const branch = (this.tryGit(['symbolic-ref', '--short', 'HEAD']) || 'main').replace(/^heads\//, '').replace(/^refs\/heads\//, '');
     const statusOut = this.tryGit(['status', '--porcelain']);
     if (statusOut === null) {
       throw new Error('git status 失败：无法读取本地变更清单');
@@ -155,7 +161,9 @@ export class PushService {
     if ((options.scope ?? 'project') === 'all') {
       run(['add', '-A']);
     } else {
-      run(['add', ...PROJECT_PREFIXES]);
+      // 只 add 实际存在的项目路径，避免新仓库/局部仓库因缺失 pathspec 硬失败
+      const existing = PROJECT_PREFIXES.filter((prefix) => existsSync(join(this.cwd, prefix)));
+      if (existing.length > 0) run(['add', ...existing]);
     }
     const staged = run(['diff', '--cached', '--name-only']);
     if (!staged.trim()) {
@@ -227,9 +235,9 @@ function isConflictError(detail: string): boolean {
   return /non-fast-forward|fetch first|failed to push some refs|rejected/i.test(detail);
 }
 
-function defaultGitRunner(): GitRunner {
+function defaultGitRunner(cwd: string): GitRunner {
   return (args) => {
-    const result = spawnSync('git', args, { encoding: 'utf-8' });
+    const result = spawnSync('git', args, { encoding: 'utf-8', cwd });
     return { stdout: result.stdout ?? '', stderr: result.stderr ?? '', status: result.status ?? 1 };
   };
 }
@@ -253,3 +261,4 @@ function runNpm(args: string[]): void {
 function defaultTokenProvider(): TokenProvider {
   return (host) => (host === 'github.com' ? process.env.GITHUB_TOKEN : process.env.GITEE_TOKEN);
 }
+

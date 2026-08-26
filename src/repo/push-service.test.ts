@@ -231,3 +231,19 @@ test('push-service: 无可提交变更时返回 ok:true 不报错（审计 ok:tr
     teardown(h);
   }
 });
+
+test('push-service: plan 分支名归一（symbolic-ref 返回 heads/ 前缀时剥除，本机 git 实测）', () => {
+  const h = makeService({
+    script: (args) => {
+      if (args[0] === 'symbolic-ref') return ok('heads/v0.2b');
+      if (args[0] === 'status') return ok(' M src/foo.ts');
+      return ok('');
+    },
+  });
+  try {
+    const plan = h.service.plan(REPO);
+    assert.equal(plan.branch, 'v0.2b');
+  } finally {
+    teardown(h);
+  }
+});
