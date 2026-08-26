@@ -85,11 +85,12 @@ npm run maturity:check                    # 成熟度轻量自检 L0-L3（[P-25]
 | `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标、`maturity:check`，v1.0 P-10 条件③，E247） |
 | `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏 |
 | `src/repo/` | 代码托管联动（仓库白名单/预检门禁/commit+push/审计 + repo:push/repo:whitelist/repo:audit 真实 CLI，v1.0 S6，§11.4） |
+| `src/security/` | 命令/URL/动作白名单、沙箱、审计、域名授权（§10，E252 browser-actions/domain-auth） |
 | `src/slash/` | 斜杠命令层（/compact、/context，E193 手动入口） |
 | `src/im/` | 远程对话通道（授权开关/会话隔离/输出适配/复用 pipeline + OneBot 11 真实适配器，v1.0 S5，§4.5，E224+E241） |
 | `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API、限速/并发闸门（P16） |
 | `src/mcp/` | MCP 子 Agent 注册/stdio 客户端/调度器/工具白名单与真实 server 配置装配（S3） |
-| `src/browser/` | 浏览器会话、CDP 持久化、页面抓取 |
+| `src/browser/` | 浏览器会话、CDP 持久化、页面抓取、浏览器操作（观察/交互/驱动，E252 §4.1.5） |
 | `src/config/` | PARAM、Provider Registry、模型目录、安全/用量/Skill 配置 |
 | `src/trajectory/` | append-only 轨迹日志（落盘 `data/trajectory.jsonl`） |
 | `src/log/` | JSONL 追加/轮转/缓存读（P15，trajectory/usage/metrics 共用） |

@@ -1,6 +1,6 @@
 # 推进计划：受限「浏览器操作 Skill」实现（E252 落地）
 
-> 日期：2026-08-26 · 分支：v0.2b · 状态：计划已发布，待执行
+> 日期：2026-08-26 · 分支：v0.2b · 状态：已实现（2026-08-27 代码批，全部依赖序步骤完成）
 > 依据：§4.1.5 浏览器操作（读 + 交互双模，E252）；§10.4 安全 TDD 先行；[P-124]/[P-125]/[P-126]（provisional）。
 > 外部参考：ego-lite（citrolabs/ego-lite）——独立 Space/登录态继承、代码底座组合多步、语义+视觉双工作流、深嵌套 iframe 快照（借思想已登记 borrowed-designs.md §2.11；不借整浏览器底座与 js/cdp 任意求值）。
 > 形态：受限的浏览器操作 Skill——域名白名单（`domains`）+ 动作白名单（可收窄）+ 用户确认，非通用 agent。
@@ -63,8 +63,20 @@
 
 ## 执行
 
-（待执行，按上面依赖序逐项记录）
+按依赖序 1-11 全部完成（2026-08-27）：
+1. 参数登记 P-124/125/126（params.ts + C8 引用经 dom-observe/operations 落地）。
+2. 安全用例 A1-A13：browser-actions（A5/A7/A9）、domain-auth（A1/A3/A4）、dom-observe（A12/A13）、operations（A6/A8/A10/A11）单测全绿（先红后绿）。
+3. manifest：domains/actions 字段 + 校验（A2：browser 必带非空 domains、与 command 互斥、actions 仅 browser 且限白名单）。
+4. browser-actions.ts：动作白名单 + SSRF 复用 url-safety + 高风险标记。
+5. dom-observe.ts：AX 树 + 编号 + iframe 深度有界 + [P-126] 截断 + 文本归一（A13）。
+6. operations.ts：DSL 解析（@query 编码/原样注入）+ [P-124] 计数 + [P-125] 超时 + 审批回调 + onAction 留痕。
+7. runner.ts：runBrowser 异步链 + isBrowserSkill + 同步 run() 对 browser Skill 提示走 CLI/桌面入口。
+8. 示例 Skill datasheet-fetch + INT-MARKET-006（安装校验 → 未授权拒绝 → 授权+确认执行 → 撤销恢复拒绝）。
+9. 真实冒烟（本机 Edge + 联网）：datasheet-fetch --yes 全链通过（goto 2.7s + click 1.5s，AX 快照定位 PDF 链接）；[P-125] 单步超时与 [P-126] 快照截断实测生效。
+10. 全量验证：单测 936/937（1 skip）+ 集成 32/32 + doc-lint 0 FAIL 0 WARN（C8 49 key）+ maturity L1（用户累积 Skill 5→6）。
+11. 文档收口：附录 A E252 状态更新、code-directory/directory-structure/AGENTS.md 地图、docs/2026-08-27-progress-handoff.md。
 
 ## 结果
 
-- 待执行后回填：单测 x/x、集成 x/x、doc-lint、真实冒烟、提交号。
+- 单测 936/937（1 skip，含新增 40 条）｜集成 32/32（含 INT-MARKET-006）｜doc-lint 0 FAIL 0 WARN｜真实冒烟通过（datasheet-fetch）。
+- 遗留：下载 URL 动态提取待交互模式；[P-124]/[P-125]/[P-126] 定稿待真实任务样本（附录 C，[P-10] 验收门）。

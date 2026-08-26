@@ -61,12 +61,12 @@ CLI (src/main.ts)  UI (ui/prototype)  桌面壳 (desktop)
 | `src/slash/` | 斜杠命令层（/compact 手动压缩、/context 会话状态，§8.3 E204） | `slash-commands.ts` |
 | `src/reminder/` | 主动提醒存储 | `reminder-store.ts` |
 | `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API | `app.ts`、`server.ts`、`attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts`、`rate-limit.ts` |
-| `src/browser/` | 浏览器会话、CDP 持久化、页面抓取 | `session.ts` |
+| `src/browser/` | 浏览器会话、CDP 持久化、页面抓取、浏览器操作（E252：AX 树观察 [P-126] 有界 + DSL 交互层 [P-124]/[P-125] + 真实 CDP 驱动） | `session.ts`、`dom-observe.ts`、`operations.ts`、`driver.ts` |
 | `src/config/` | PARAM、Provider Registry、模型目录、安全/用量/Skill 配置 | `params.ts`、`model-catalog.ts`、`provider-order.ts`、`security-config.ts` |
 | `src/trajectory/` | append-only 轨迹日志 | `trajectory-log.ts` |
 | `src/log/` | JSONL 追加/轮转（.1 归档）/缓存读 | `jsonl.ts` |
 | `src/usage/` | Token 计量与聚合 | `usage-store.ts` |
-| `src/security/` | 沙箱路径白名单、审计、Agent 操作日志与回滚、浏览器抓取 URL 安全 | `sandbox.ts`、`operation-log.ts`、`url-safety.ts` |
+| `src/security/` | 沙箱路径白名单、审计、Agent 操作日志与回滚、浏览器抓取 URL 安全、浏览器动作白名单/高风险标记、域名授权持久化（E252） | `sandbox.ts`、`operation-log.ts`、`url-safety.ts`、`browser-actions.ts`、`domain-auth.ts` |
 | `src/security/` | 命令白名单 + 搜索脱敏（v1.0 S4，§10.2/§10.3） | `command-whitelist.ts`、`query-sanitize.ts` |
 | `src/postprocess/` | 输出后处理（文化回复等） | `cultural-reply.ts` |
 | `src/wiki/` | 冷启动知识种子 | `index.ts` |
