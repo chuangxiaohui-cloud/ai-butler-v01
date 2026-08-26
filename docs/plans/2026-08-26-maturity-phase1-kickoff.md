@@ -58,6 +58,6 @@ E250（本地安装通道 + Windows .cmd shim 安全执行 + 生产接线 + 首�
 - 4 个精选 Skill 已安装并 `skill:market:run` 逐个验证 ok:true（doc-lint 0 FAIL 0 WARN、build-check tsc 通过、
   skill-inventory 列出 4 个、git-status 返回工作区状态）。
 - 验证：`npm run build` 通过；单测 889/890（1 skip）+ 集成 30/30；INT-MARKET-004 真实 npm 步骤通过；doc-lint 0 FAIL 0 WARN。
-- 提交：`<hash>` · 推送：待执行（Gitee / GitHub）
+- 提交：E249 = `78c83c2`、E250 = `0df0307`、文档批 = `ed16181`、bench housekeeping = `1103373` · 推送：待执行（Gitee / GitHub）
 - 遗留事项：Phase 1 真实使用累积继续（每日问答 + route:feedback、每周沉淀 3-5 个新 Skill）；
   Windows .cmd shim 守卫暂不支持含空格/引号参数的步骤（后续需要时扩展并补测试）。

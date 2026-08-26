@@ -1,8 +1,8 @@
-# 进度交接 2026-08-26（E241-E246——S5 平台适配器 + GitHub 解读 + S7 可执行 handler + S6 真实推送 CLI + 交付期文档 + v1.0 全量验收执行 + E247/E248 Phase 0 成熟度观测基建）
+# 进度交接 2026-08-26（E241-E246——S5 平台适配器 + GitHub 解读 + S7 可执行 handler + S6 真实推送 CLI + 交付期文档 + v1.0 全量验收执行 + E247-E250 成熟度观测基建与累积通道）
 
 > 当前分支：v0.2b｜本轮收口：E241（S5 QQ OneBot 11 真实适配器）、E242（GitHub 解读 Skill 升级）、
 > E243（S7 可执行 handler——市场 Skill 执行链）、E244（S6 真实推送 CLI 装配）、E245（v1.0 交付期文档）、
-> E246（v1.0 全量验收执行——未通过，条件③ 阻塞）、E247（成熟度观测基建）、E248（市场 Skill 自然语言路由收口）。
+> E246（v1.0 全量验收执行——未通过，条件③ 阻塞）、E247（成熟度观测基建）、E248（市场 Skill 自然语言路由收口）、E249（复用率口径校准）、E250（市场 Skill 累积通道）。
 > 上一份交接见 `docs/2026-08-25-progress-handoff.md`。
 
 ## 今日已收口
@@ -74,11 +74,16 @@
 11. Phase 0 提交（v0.2b 单一主题分开提交）：E248 = `14cfad2`、E247 = `dd3779a`、文档批 = `ad9c914`。
 12. Phase 0 全量验证：单测 883/884（1 skip）+ 集成 29/29；doc-lint 0 FAIL 0 WARN；`npm run maturity:check` 实测 L1。
 
+13. **E249 复用率口径校准**：`countReuseEvents` 纯函数（direct + market_trigger 计入、injected 不计入）；`maturity:check` 改用；缺口文案移除「待 E243 收口后校准」。新增单测 2 条；附录 A 登记 E249。
+14. **E250 市场 Skill 累积通道**（Phase 1 启动）：`installFromLocalDir` 本地安装 + `npm run skill:market:install -- --source <dir> --yes`；E248 生产接线（CLI/gateway 注入 `marketSkillRunner`）；E243 残留修复（Windows .cmd shim 经安全守卫 `isCmdSafeCommandLine` 走 `cmd.exe /d /s /c`）；首批精选包 `configs/market-skills/{doc-lint,build-check,skill-inventory,git-status}` 安装并执行全 ok。新增单测 4 条 + 集成 1 条（INT-MARKET-004）；`maturity:check` 用户累积 Skill 0→4；累积路径 Phase 1.2 改为市场安装通道（修正 `install:skill` 预置注册错配）。
+15. Phase 1 提交：E249 = `78c83c2`、E250 = `0df0307`、文档批 = `ed16181`、bench housekeeping = `1103373`。
+16. Phase 1 全量验证：单测 889/890（1 skip）+ 集成 30/30；doc-lint 0 FAIL 0 WARN；4 个精选 Skill `skill:market:run` 全 ok。
+
 ## 下一步（按优先级）
 
 1. **P-10 转定稿（条件③ 阻塞）**：v1.0 全量验收已执行（E246，owner 已签认条件⑤），条件①/②/④/⑤ ✅，
    唯一阻塞 = 成熟度 §12.4 L2+（当前 L1，L1→L2 ≈35-40%）。
-2. **真实使用累积（解锁条件③）**：可执行清单见 `docs/plans/2026-08-26-maturity-accumulation-path.md`（Phase 0 后基线：用户 Skill 0/50+、通过率 73.9%（17/23，n=23，正式判定需 n≥30）、复用率观察 16.6%（118/709））；观测入口 `npm run maturity:check`（E247）已落地；达标后按 E197 复验门重跑 P-10。
+2. **真实使用累积（解锁条件③）**：可执行清单见 `docs/plans/2026-08-26-maturity-accumulation-path.md`（Phase 1 启动后基线：用户 Skill 4/50+（E250 首批）、通过率 73.9%（17/23，n=23，正式判定需 n≥30）、复用率 16.6%（E249 校准口径））；每周沉淀 3-5 个走 `skill:market:install`（E250 通道已就绪），达标后按 E197 复验门重跑 P-10。
 3. ~~市场 Skill 自然语言路由~~ 已收口（E248：nl-router 触发词直连进 pipeline，未动意图枚举）；复用率观察自此计入直连派发。
 4. **GitHub 解读 Phase 2**（非阻塞）：L2 联网补充（Issues/社区口碑）、X.7 记忆/工程栏联动。
 5. **Tavily 9 月复核（备忘）**：9 月重置后跑 `npm run tavily:smoke`，核对 [P-64] 计费口径；
@@ -93,4 +98,5 @@
   P-10 维持 provisional@2026-08-24，阻塞项 = 真实使用累积；GitHub 解读（E242）属 v2.5 既有需求补实现，
   不影响里程碑口径。
   Phase 0 成熟度观测基建（E247/E248）已收口：`npm run maturity:check` 实测 L1，条件③ 解锁路径 = 真实使用累积节奏（见累积路径清单）。
+  Phase 1 已启动（E249/E250）：复用率口径校准完成；市场 Skill 本地安装通道 + 生产接线就绪，用户累积 Skill 0→4，条件③ 缺口 = 46 个真实 Skill 与真实使用节奏。
 - 能力成熟度 L1→L2 ≈35-40%，无变化（需真实使用累积，§12.4 判据）。
