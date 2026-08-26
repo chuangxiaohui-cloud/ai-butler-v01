@@ -1,0 +1,30 @@
+{
+  "name": "lcsc-search-form",
+  "version": "0.1.0",
+  "triggers": [
+    "表格填写样例",
+    "立创搜索表单",
+    "lcsc-search-form"
+  ],
+  "description": "浏览器操作样例 Skill（E252，§4.1.5 表格填写场景）：立创商城搜索表单 type 填写型号 + 点击搜索按钮提交；type 属写操作（§4.1.5 高风险清单）需 --yes 显式确认（审批双闸演示）；动作子集 goto/type/click/wait；型号经 @query 输入",
+  "steps": [
+    "goto https://so.szlcsc.com/global.html",
+    "type #global-seach-input @query",
+    "click #search",
+    "wait 3000"
+  ],
+  "verify": [],
+  "permissions": [
+    "browser"
+  ],
+  "domains": [
+    "szlcsc.com"
+  ],
+  "actions": [
+    "goto",
+    "type",
+    "click",
+    "wait"
+  ],
+  "input": "query"
+}

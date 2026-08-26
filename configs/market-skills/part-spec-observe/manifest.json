@@ -1,0 +1,29 @@
+{
+  "name": "part-spec-observe",
+  "version": "0.1.0",
+  "triggers": [
+    "器件参数对比",
+    "器件参数查看",
+    "part-spec-observe",
+    "查看器件参数"
+  ],
+  "description": "浏览器操作样例 Skill（E252，§4.1.5 器件参数对比场景）：立创商城域名白名单内按型号搜索并打开首个商品页，AX 快照观察参数表（品牌/封装/CPU最大主频等，供人工/Agent 对比两个型号）；动作子集 goto/click/wait；型号经 @query 输入（E251 通道）；纯只读无写操作，不触发高风险审批",
+  "steps": [
+    "goto https://so.szlcsc.com/global.html?k=@query",
+    "click a[href*=\"item.szlcsc.com\"]",
+    "wait 3000"
+  ],
+  "verify": [],
+  "permissions": [
+    "browser"
+  ],
+  "domains": [
+    "szlcsc.com"
+  ],
+  "actions": [
+    "goto",
+    "click",
+    "wait"
+  ],
+  "input": "query"
+}
