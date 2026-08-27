@@ -13,6 +13,7 @@ export const ACTION_TYPES = [
   'analyze',
   'clarify',
   'emergency',
+  'self_identity',
   'illegal_request',
   'property_emergency',
   'cultural_reference',
@@ -112,6 +113,8 @@ const ACTION_RE: Array<[ActionType, RegExp]> = [
   ['analyze', ANALYZE_RE],
   // E242：GitHub 仓库项目问句（做什么/是什么/怎么用/值不值/怎么样）→ analyze，供 R017 github_analysis
   ['analyze', /github\.(?:com|io)\S*\s*(?:这|该|这个|那个)?(?:项目|仓库|repo).*(?:做什么|干什么|是什么|怎么用|怎么玩|怎么样|值不值|值不值得|评价|了解|介绍)/],
+  // E264：自我身份问答（“你现在是什么模型/你是谁”等 → 直达身份回答，不做搜索）
+  ['self_identity', /你(?:现在|目前|当前|到底)?(?:是|用|基于|由|采用|用的).{0,8}(?:什么|哪|哪个|谁).{0,10}(?:模型|引擎|技术|原理|做的|驱动|公司|团队)|你(?:是|叫)(?:谁|什么)|你是谁|你是什么|你叫什么|介绍(?:一下)?你自己|自我(?:介绍|认知)/],
   ['qa', QA_RE],
   // E169：日历/日程“导出/保存/下载/ics”视为 query，命中 R004 走 calendar_skill，避免偏到 web_search
   ['query', /导(?:出|下载).*(日历|日程)|保存.*(?:日历|日程)|(?:日历|日程).*(导出|保存|下载|\.?ics)/i],

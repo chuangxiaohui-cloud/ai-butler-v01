@@ -561,6 +561,18 @@ test('pipeline: 陪伴聊天走 life 专用回复且不搜索', async () => {
   assert.equal(r.evidence.length, 0);
 });
 
+test('pipeline: 你现在是什么模型 → 身份直达回答不搜索（E264）', async () => {
+  const r = await pipeline(
+    '你现在是什么模型？',
+    { ...deps, llm: undefined },
+    { modelSelection: { provider: 'deepseek', role: 'light' } },
+  );
+  assert.ok(r.answer.includes('AI-Agent'));
+  assert.ok(r.answer.includes('deepseek'), '应包含当前模型 label');
+  assert.equal(r.evidence.length, 0);
+  assert.equal(r.mode, 'knowledge');
+});
+
 test('pipeline: 按你说的加工程返回结构化澄清', async () => {
   const r = await pipeline('行，按你说的在我的工程里加上。', { ...deps, llm: undefined });
   assert.ok(r.answer.includes('工程路径'));

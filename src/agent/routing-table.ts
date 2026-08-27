@@ -188,6 +188,17 @@ export const ROUTING_TABLE: RoutingRule[] = [
     confidenceBoost: 0.5,
   },
   {
+    id: 'R_SELF_IDENTITY',
+    match: { actionType: 'self_identity' },
+    primaryLens: 'secretary',
+    intent: 'self_identity',
+    tags: ['self'],
+    searchNeed: false,
+    executor: 'knowledge_qa',
+    confidenceBoost: 0.25,
+    baseConfidence: 0.65,
+  },
+  {
     id: 'R008',
     match: { actionType: 'query', targetDomain: 'search', searchSourceHint: 'web_search' },
     primaryLens: 'secretary',

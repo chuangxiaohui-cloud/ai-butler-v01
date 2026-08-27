@@ -649,6 +649,16 @@ test('router-v2: 修正指令 → modify/execute 而非排期选项', () => {
   }
 });
 
+test('router-v2: 你现在是什么模型 → secretary self_identity 不搜索（E264）', () => {
+  const r = routeV2('你现在是什么模型？');
+  assert.equal(r.features.actionType, 'self_identity');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'self_identity');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
 test('router-v2: 陪伴聊天 → secretary/companion_chat 不搜索', () => {
   const r = routeV2('今天心情不好，陪我聊聊天。');
   assert.equal(r.features.actionType, 'chat');

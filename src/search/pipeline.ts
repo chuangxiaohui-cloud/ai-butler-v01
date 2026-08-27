@@ -46,9 +46,11 @@ import {
 } from './emergency-reply.js';
 import { weekendMarketReply } from './weekend-market.js';
 import { buildCompanionReply } from './companion-reply.js';
+import { buildSelfIdentityAnswer } from './self-identity.js';
 import { routeV2WithLLM } from '../agent/router-v2.js';
 import { mapRouteToUiMode, type UiMode } from '../agent/mode-mapper.js';
 import { preprocessUserMessage } from '../agent/multimodal-preprocessor.js';
+import { extractIntentFeatureRuleBased } from '../agent/intent-feature.js';
 import { buildMemoryInjection, type UserContext } from '../memory/user-context.js';
 import type { UserContextStore } from '../memory/user-context-store.js';
 import { rewriteWithMemory } from '../agent/rewrite-with-memory.js';
@@ -336,6 +338,31 @@ export async function pipeline(
   }
 
   // 主 Agent 意图路由（三层：特征 → 规则表 → 置信度门控；携带工作记忆做上下文消歧）
+  // E264：身份问答确定性硬规则优先（免 LLM 分类，秒回“你现在是什么模型”等；routeSelected 分支兜底）
+  const ruleFeatures = extractIntentFeatureRuleBased(routeQuery, processed.attachmentSignals);
+  if (ruleFeatures.actionType === 'self_identity') {
+    safeProgress('stage2');
+    const answer = buildSelfIdentityAnswer(opts.modelSelection);
+    await recordSessionTurns(query, answer);
+    recordTrajectory({
+      type: 'answer',
+      answer: {
+        answerSnippet: answer.slice(0, 300),
+        confidence: 0.85,
+        gateTriggered: 'none',
+        elapsedMs: Date.now() - start,
+      },
+    });
+    return {
+      query,
+      answer,
+      confidence: 0.85,
+      evidence: [],
+      gate_triggered: 'none',
+      elapsed_ms: Date.now() - start,
+      mode: 'knowledge',
+    };
+  }
   const route = await routeV2WithLLM(
     routeQuery,
     deps.llm,
@@ -506,6 +533,29 @@ export async function pipeline(
       gate_triggered: 'none',
       elapsed_ms: Date.now() - start,
       mode: 'life',
+    };
+  }
+  if (routeSelected.intent === 'self_identity') {
+    // E264：身份问答直达（“你现在是什么模型”等），不搜索、不调 LLM，秒回当前模型信息
+    const answer = buildSelfIdentityAnswer(opts.modelSelection);
+    await recordSessionTurns(query, answer);
+    recordTrajectory({
+      type: 'answer',
+      answer: {
+        answerSnippet: answer.slice(0, 300),
+        confidence: 0.85,
+        gateTriggered: 'none',
+        elapsedMs: Date.now() - start,
+      },
+    });
+    return {
+      query,
+      answer,
+      confidence: 0.85,
+      evidence: [],
+      gate_triggered: 'none',
+      elapsed_ms: Date.now() - start,
+      mode: uiRoute.mode,
     };
   }
   // E243 收口：市场 Skill 自然语言路由（命中已安装 Skill 触发词 → 直连执行，绕开搜索）

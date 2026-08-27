@@ -156,3 +156,12 @@
 - **证据**：单测 3 条（邀请函结构+四章节+会议/确认字段、公告结构+五章节+时间地点/落款字段、标题日期参数化）；真实冒烟 2 Skill 全链 ok:true——meeting-invitation（「生成产品评审会议邀请函模板」→ 产品评审邀函-模板.docx 落盘，python-docx 复核 11 段落四章节）、notice-announcement（「生成国庆放假通知公告模板」→ 国庆放假-模板.docx 落盘，python-docx 复核 10 段落五章节）；全量单测 1010/1011（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）；`maturity:check` 用户累积 Skill 30→32。
 - **登记**：附录 A E263；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b10.md`。
 - **续接**：`npm run skill:market:run -- meeting-invitation --query "生成<主题>会议邀请函模板"`；`notice-announcement --query "生成<主题>通知公告模板"`；下一批候选：器件规格对比细分（扩展 part-spec-observe 双型号对比，依赖真实浏览器冒烟，需先 `npm run browser:launch`；浏览器会话当前 savedCdpPort=null）或 会议邀请函/通知公告 同类的 请假单/报销单 等表单模板（继续复用 templates 底座）。
+
+## 续推进（2026-08-27 第 11 批）——E264 问答体验：身份问答直达（你现在是什么模型 / 你是谁）
+
+桌面便携版实测反馈修复：问「你现在是什么模型」无回复（实际走完整搜索管道 30s+ 且答非所问，返回 MiniMax 新闻）。
+
+- **能力**：`intent-feature.ts` 新增 `self_identity` 动作类型 + 规则正则（置于 qa 前）；`routing-table.ts` +`R_SELF_IDENTITY`（searchNeed=false，baseConfidence 0.65）；新增 `src/search/self-identity.ts::buildSelfIdentityAnswer`（modelSelection → 模型目录 provider/label/档位，未选走 defaultTier）；`pipeline.ts` routeV2WithLLM 前置规则短路（免 LLM 分类）+ routeSelected 分支兜底。
+- **证据**：单测 4 条（router-v2 路由不搜索 / self-identity 2 条 / pipeline 直达）；真实端到端「你现在是什么模型」44ms、「你是谁」12ms，evidence 0，modelId=light/heavy 分别驱动 flash/pro label 正确；全量单测 1014/1015（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）。
+- **登记**：附录 A E264；计划文档 `docs/plans/2026-08-27-question-answering-identity-reply.md`。
+- **续接**：便携版需重新打包才会包含本修复；下一批候选：普通知识问答 30s 耗时的搜索管道调优（并行 provider / 超时档位，涉及 §5 [P-NN] 需登记 bench）或继续市场 Skill 沉淀。
