@@ -1343,6 +1343,14 @@ button {
   flex: 1;
 }
 
+.statusbar-v2 .status-notice {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--amber, #d97706);
+}
+
 .statusbar-v2 > button {
   display: inline-flex;
   align-items: center;
@@ -2453,3 +2461,4 @@ button {
     font-size: 9px;
   }
 }
+

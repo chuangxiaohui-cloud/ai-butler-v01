@@ -36,7 +36,7 @@ import {
 } from './deep-report.js';
 import { DeepReportStore, type DeepReportStoreLike } from './deep-report-store.js';
 import { sanitizeSearchQuery } from '../security/query-sanitize.js';
-import { pickSecondPassTargets, shouldSecondPass } from './second-pass.js';
+import { pickKnowledgeContentTargets, pickSecondPassTargets, shouldSecondPass } from './second-pass.js';
 import { applyRule3 } from './rule3.js';
 import { shouldTriggerTavily } from './tavily-trigger.js';
 import {
@@ -60,6 +60,7 @@ import { culturalReplyPostProcess } from '../postprocess/cultural-reply.js';
 import type { RouteCaseStore } from '../agent/route-case-store.js';
 import { prepareQuery } from './stages/s1_prepare.js';
 import { classifyQuery } from './stages/s2_classify.js';
+import type { IntentKey } from './stages/s2_classify.js';
 import { runSearchLoop, type BrowserFetcher } from './search-loop.js';
 import { createClientForRole } from './llm.js';
 import { synthesizeAnswer } from './stages/s5_synthesize.js';
@@ -73,9 +74,30 @@ import { resolveModelTier } from './model-router.js';
 import type { ModelRouteInfo } from './model-router.js';
 import type { ModelSelection } from './model-id.js';
 
-/** 聊天可见搜索预警：过滤 Tavily 月配额噪音（配额监控走 tavily:smoke，不打扰用户） */
-export function filterChatSearchNotices(notices: string[]): string[] {
-  return [...new Set(notices)].filter((notice) => !notice.includes('Tavily 计划用量已超限'));
+/** 知识/资讯类意图：P0 四步链路强制抓正文直接作答 */
+const CONTENT_READING_INTENTS = new Set<IntentKey>([
+  'factual',
+  'news',
+  'comparison',
+  'how_to',
+  'experience',
+  'troubleshooting',
+]);
+
+/** 工具配额/API 告警特征：这类提示只进状态栏/日志，不污染对话气泡（P3） */
+const TOOL_ALERT_RE = /Tavily 计划用量已超限|余额已耗尽|余额不足|配额|限流|额度|API Key|API 密钥/;
+
+/** 搜索预警拆分：chatNotices 为用户可见提示（如联网暂时不可用）；toolNotices 为工具告警（P1/P3） */
+export function splitSearchNotices(
+  notices: string[],
+): { chatNotices: string[]; toolNotices: string[] } {
+  const chatNotices: string[] = [];
+  const toolNotices: string[] = [];
+  for (const notice of new Set(notices)) {
+    if (TOOL_ALERT_RE.test(notice)) toolNotices.push(notice);
+    else chatNotices.push(notice);
+  }
+  return { chatNotices, toolNotices };
 }
 
 export interface Evidence {
@@ -97,6 +119,8 @@ export interface AnswerResult {
   submode?: string;
   videos?: VideoResult[];
   notice?: string;
+  /** P3：工具配额/API 告警（进状态栏/日志，不污染对话气泡） */
+  toolNotice?: string;
 }
 
 export interface PipelineDeps {
@@ -899,7 +923,12 @@ export async function pipeline(
   });
 
   // Tavily 月配额超限提示只对运维/监控有用，聊天场景静默（Bocha/AnySearch 正常时纯噪音）
-  const searchNotices = filterChatSearchNotices(search.notices ?? []);
+  // P1/P3：工具告警（配额/API）拆分到状态栏/日志，聊天只保留用户可见提示；
+  // 全部引擎都失败时，明确提示“联网暂时不可用”，仍尽力作答
+  const { chatNotices, toolNotices } = splitSearchNotices(search.notices ?? []);
+  if (search.results.length === 0 && chatNotices.length === 0) {
+    chatNotices.push('联网暂时不可用，以下为模型内置知识回答（可能非最新）');
+  }
 
   // Stage 4：四过滤器 + 加权评分 + 规则① + 来源权威注入
   const relevanceQuery = search.subQueries[0] ?? searchQuery;
@@ -979,6 +1008,50 @@ export async function pipeline(
     }
   }
 
+  // P0（四步链路）：知识/资讯类查询强制「检索→抓正文→LLM 抽取作答」。
+  // 抓取融合 Top HTML 页正文直接进 pageContents 喂合成，并追加到证据列表；
+  // 器件查询（shouldSecondPass）仍走上面的低置信二次取证（含 PDF 解析），不重复抓。
+  const pageContents: Array<{ title: string; url: string; text: string }> = [];
+  if (
+    CONTENT_READING_INTENTS.has(classified.intent) &&
+    search.results.length > 0 &&
+    deps.browserSession &&
+    !shouldSecondPass(prepared.cleanQuery)
+  ) {
+    // 低置信二次取证已抓的 browser 证据直接并入 pageContents（不重复抓）
+    for (const item of search.results.filter((r) => r.provider === 'browser')) {
+      if (!pageContents.some((p) => p.url === item.url)) {
+        pageContents.push({ title: item.title, url: item.url, text: item.content });
+      }
+    }
+    const alreadyFetched = new Set(pageContents.map((p) => p.url));
+    const targets = pickKnowledgeContentTargets(
+      fused.items,
+      search.results,
+      prepared.cleanQuery,
+      3,
+    ).filter((t) => !alreadyFetched.has(t.url));
+    const fetched = await fetchSecondPassTargets(
+      targets,
+      prepared.cleanQuery,
+      deps.browserSession,
+      PARAMS.secondPassBudgetMs,
+    );
+    for (const { target, text } of fetched) {
+      const content = text.slice(0, PARAMS.knowledgePageFetchChars);
+      pageContents.push({ title: target.title, url: target.url, text: content });
+      if (!evidence.some((e) => e.url === target.url)) {
+        evidence.push({
+          title: target.title,
+          url: target.url,
+          domain: getHostname(target.url),
+          score: 0.7,
+          type: '[soft]',
+        });
+      }
+    }
+  }
+
   const videoResults = collectVideoResults(evidence);
   const videoBlock = buildVideoBlock(videoResults);
 
@@ -1007,6 +1080,7 @@ export async function pipeline(
     experienceNotes,
     skillHints,
     skillOutputs,
+    pageContents,
     primaryLens: routeSelected.primaryLens,
     modelTier: opts.modelSelection?.role ?? routeModelTier,
     preferredProvider: opts.modelSelection?.provider,
@@ -1117,7 +1191,8 @@ export async function pipeline(
     mode: uiRoute.mode,
     submode: uiRoute.submode,
     videos: videoResults.length > 0 ? videoResults : undefined,
-    ...(searchNotices.length > 0 ? { notice: searchNotices[0] } : {}),
+    ...(chatNotices.length > 0 ? { notice: chatNotices[0] } : {}),
+    ...(toolNotices.length > 0 ? { toolNotice: toolNotices[0] } : {}),
   };
 }
 

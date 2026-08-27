@@ -5,7 +5,7 @@
  */
 
 const RECENCY_SENSITIVE_RE =
-  /现在|当前|目前|当下|今天|今日|实时|最新|截至|进展|更新|行情|在轨|驻留|在位|现役|现任|在任|在役|现状/;
+  /现在|当前|目前|当下|今天|今日|实时|最新|截至|进展|更新|行情|市值|估值|排名|排行|榜单|价格|股价|汇率|在轨|驻留|在位|现役|现任|在任|在役|现状/;
 
 export function isRecencySensitiveQuery(query: string): boolean {
   return RECENCY_SENSITIVE_RE.test(query);

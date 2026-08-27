@@ -34,7 +34,23 @@ const DOMAIN_RULES: DomainRule[] = [
   { pattern: /(^|\.)(tencent|aliyun)\.(com|cn)$/, authority: 0.7 },
   { pattern: /(^|\.)elecfans\.com$/, authority: 0.6 },
   { pattern: /jingyan\.baidu\.com$/, authority: 0.5 },
+  // 金融/市值类权威源（P2，E270）：交易所与行情/榜单源，市值/排名问题不再平权
+  { pattern: /(^|\.)sse\.com\.cn$/, authority: 1.0, official: true },
+  { pattern: /(^|\.)szse\.cn$/, authority: 1.0, official: true },
+  { pattern: /(^|\.)hkex\.com\.hk$/, authority: 0.9, official: true },
+  { pattern: /(^|\.)eastmoney\.com$/, authority: 0.85 },
+  { pattern: /(^|\.)cninfo\.com\.cn$/, authority: 0.85 },
+  { pattern: /(^|\.)forbes\.com$/, authority: 0.8 },
+  { pattern: /(^|\.)hurun\.net$/, authority: 0.8 },
 ];
+
+/** 金融/市值类查询权威源（P2，E270）：交易所/行情/榜单源参与权威度评分 */
+const FINANCE_MARKET_RE =
+  /市值|估值|股价|股票|上市公司|A股|港股|美股|行情|排名|榜单|富豪榜|福布斯|胡润/;
+
+export function isFinanceMarketQuery(query: string): boolean {
+  return FINANCE_MARKET_RE.test(query);
+}
 
 const VENDOR_DOMAIN_MAP: Array<{ prefix: string; domain: string }> = [
   { prefix: 'STM32', domain: 'st.com' },

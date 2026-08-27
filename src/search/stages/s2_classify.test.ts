@@ -132,3 +132,10 @@ test('s2: WP1 10 条基准 query 分类解析链路 100% 命中', async () => {
   }
   assert.equal(correct, queries.length);
 });
+
+test('s2: 市值/排名类强时效问题规则优先为 news（E270）', async () => {
+  const r = await classifyQuery('中国AI大模型公司中市值较高的是哪几家', fakeOk);
+  assert.equal(r.intent, 'news');
+  assert.equal(r.timeWindow, '≤24h');
+  assert.equal(r.source, 'rule');
+});

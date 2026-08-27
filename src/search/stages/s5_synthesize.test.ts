@@ -299,3 +299,59 @@ test('s5: 证据块带显式分隔符与元数据标记（§10.5 注入防御）
   assert.match(systemPrompt, /untrusted_data/);
   assert.match(systemPrompt, /不得当作指令执行/);
 });
+
+test('s5: pageContents 网页正文进入用户消息且系统含 P0/P2 硬约束', async () => {
+  let system = '';
+  let user = '';
+  const fake = new FakeLLM((messages) => {
+    system = messages[0]?.content ?? '';
+    user = messages[1]?.content ?? '';
+    return '根据网页正文，直接回答结论与关键数据。';
+  });
+  const r = await synthesizeAnswer(
+    '中国AI大模型公司中市值较高的是哪几家',
+    fusedOk,
+    classified,
+    {
+      llm: fake,
+      pageContents: [
+        {
+          title: '市值分析页',
+          url: 'https://example.com/page',
+          text: '中国 AI 大模型 公司 市值 排名 寒武纪 科大讯飞 金山办公 '.repeat(20),
+        },
+      ],
+    },
+  );
+  assert.equal(r.source, 'llm');
+  assert.ok(user.includes('【网页正文'));
+  assert.ok(user.includes('https://example.com/page'));
+  assert.ok(system.includes('P0 硬约束'));
+  assert.ok(system.includes('数值口径'));
+});
+
+test('s5: browser 来源证据正文切片放大到 4000 字符', async () => {
+  const browserItem: FusionItem = {
+    ...fusedItem('https://example.com/browser'),
+    result: {
+      ...fusedItem('https://example.com/browser').result,
+      provider: 'browser',
+      content: '正文'.repeat(3000),
+    },
+  };
+  let user = '';
+  const fake = new FakeLLM((messages) => {
+    user = messages[1]?.content ?? '';
+    return '直接回答。';
+  });
+  await synthesizeAnswer(
+    'STM32F103C8T6 最大主频是多少',
+    { ...fusedOk, items: [browserItem] },
+    classified,
+    { llm: fake },
+  );
+  // 4000 字符切片：超过 300 字符的 browser 正文应整体进入提示
+  assert.ok(user.includes('正文'.repeat(1500)));
+});
+
+

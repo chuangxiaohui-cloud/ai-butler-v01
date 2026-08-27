@@ -86,6 +86,10 @@ export const PARAMS = {
   browserOpStepTimeoutMs: 15_000,
   /** P-126 浏览器操作每步 DOM 快照上限（§4.1.5） */
   browserOpDomSnapshotMaxChars: 8_000,
+  /** P-127 知识问答抓取正文进合成的单页存储上限（P0 四步链路，browser 证据） */
+  knowledgePageFetchChars: 4_000,
+  /** P-128 Stage 5 网页正文单篇注入 prompt 上限（P0，3 篇 × 3k ≈ 9k tokens，12s 预算内） */
+  synthesizePageTextChars: 3_000,
   /** P-13 深度报告增量预算（生成+证据组装，不含内部搜索调用；对齐 §4.3.2） */
   deepReportBudgetMs: 45_000,
   /** P-38 编译/构建超时（§11.1.3，Keil/gcc/cmake） */
@@ -158,5 +162,7 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   browserOpMaxSteps: 'P-124',
   browserOpStepTimeoutMs: 'P-125',
   browserOpDomSnapshotMaxChars: 'P-126',
+  knowledgePageFetchChars: 'P-127',
+  synthesizePageTextChars: 'P-128',
   deepReportBudgetMs: 'P-13',
 };

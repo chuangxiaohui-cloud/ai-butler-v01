@@ -75,3 +75,32 @@ export function pickSecondPassTargets(
   if (html.length > 0) return html.map((entry) => entry.result);
   return ranked.slice(0, 1).map((entry) => entry.result);
 }
+
+/** 知识问答四步链路（P0）：从融合 Top 结果选 HTML 正文页，不足时按相关度从原始结果补足 */
+export function pickKnowledgeContentTargets(
+  fusedItems: FusionItem[],
+  results: SearchResultItem[],
+  query: string,
+  limit = 3,
+): SearchResultItem[] {
+  const isHtml = (url: string) => !/\.pdf(\?|#|$)/i.test(url);
+  const picked: SearchResultItem[] = [];
+  const seen = new Set<string>();
+  const byScore = [...fusedItems].sort((a, b) => b.finalScore - a.finalScore);
+  for (const f of byScore) {
+    if (picked.length >= limit) break;
+    if (!isHtml(f.result.url) || seen.has(f.result.url)) continue;
+    seen.add(f.result.url);
+    picked.push(f.result);
+  }
+  const ranked = results
+    .filter((r) => isHtml(r.url) && !seen.has(r.url))
+    .map((r) => ({ result: r, score: genericRelevance(query, r) }))
+    .sort((a, b) => b.score - a.score);
+  for (const { result } of ranked) {
+    if (picked.length >= limit) break;
+    seen.add(result.url);
+    picked.push(result);
+  }
+  return picked;
+}

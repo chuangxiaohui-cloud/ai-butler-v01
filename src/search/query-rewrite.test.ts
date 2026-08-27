@@ -143,3 +143,16 @@ test('rewrite: 含数字的器件型号仍生成 datasheet 子查询（E239 不�
   assert.ok(queries.some((q) => q.includes('site:xcc.com')));
   assert.ok(queries.includes('STM32F103C8T6 最大主频是多少'));
 });
+
+test('rewrite: 金融市值 news 查询优先权威行情源（E270）', () => {
+  const queries = ruleBasedRewrite('中国AI大模型公司中市值较高的是哪几家', 'news');
+  assert.ok(queries[0].includes('site:eastmoney.com'));
+  assert.ok(queries[1].includes('site:sse.com.cn'));
+  assert.ok(queries[0].includes('最新'));
+});
+
+test('rewrite: 金融市值非 news 查询也补权威源子查询（E270）', () => {
+  const queries = ruleBasedRewrite('全球芯片公司市值排名');
+  assert.ok(queries.some((q) => q.includes('site:eastmoney.com')));
+  assert.ok(queries.some((q) => q.includes('市值 排名 最新')));
+});

@@ -5,6 +5,7 @@ import {
   buildOfficialQueryContext,
   getDomainAuthority,
   isHighTrustDatasheetUrl,
+  isFinanceMarketQuery,
   isOfficialForQuery,
   isOfficialForQueryCtx,
   officialSourceHintForQuery,
@@ -188,3 +189,12 @@ test('authority: 大写 query 仍识别官方源（P6 预编译 nameRe）', () =
     true,
   );
 });
+
+test('authority: 金融市值查询识别 + 权威源域名评分（E270 补 §6.5.3）', () => {
+  assert.equal(isFinanceMarketQuery('中国AI大模型公司中市值较高的是哪几家'), true);
+  assert.equal(isFinanceMarketQuery('STM32F103C8T6 最大主频是多少'), false);
+  assert.equal(getDomainAuthority('https://quote.eastmoney.com/sz300474.html'), 0.85);
+  assert.equal(getDomainAuthority('https://www.sse.com.cn/'), 1.0);
+  assert.equal(getDomainAuthority('https://www.szse.cn/'), 1.0);
+});
+

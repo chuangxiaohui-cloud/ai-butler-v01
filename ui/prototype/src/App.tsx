@@ -254,7 +254,8 @@ function App() {
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsKey, setSettingsKey] = useState<SettingsKey>('providers');
-  const [bannerNotice, setBannerNotice] = useState<string | null>(null);
+  // P3：工具配额/API 告警进底部状态栏，不污染对话气泡
+  const [statusNotice, setStatusNotice] = useState<string | null>(null);
 
   const [shellEnabled, setShellEnabled] = useState(false);
   const [terminalLines, setTerminalLines] = useState<string[]>(TERMINAL_LINES);
@@ -423,7 +424,10 @@ function App() {
         mode?: UiMode;
         submode?: string;
         notice?: string;
+        toolNotice?: string;
       };
+      // P3：工具告警显示到底部状态栏
+      setStatusNotice(data.toolNotice ?? null);
       if (!manualLocked && data.mode) {
         applyMode(data.mode, data.submode);
       }
@@ -602,14 +606,6 @@ function App() {
                 产物
               </button>
             </header>
-            {bannerNotice && (
-              <div className="notice-banner" role="alert">
-                <span>⚠️ {bannerNotice}</span>
-                <button onClick={() => setBannerNotice(null)} aria-label="关闭预警">
-                  <X size={14} />
-                </button>
-              </div>
-            )}
             <div className="message-list">
               {messages.map((msg) => (
                 <MessageItem
@@ -726,8 +722,13 @@ function App() {
       <footer className="statusbar-v2">
         <span className="status-mode">
           <ShieldCheck size={13} />
-          系统正常
+          {statusNotice ? '资源告警' : '系统正常'}
         </span>
+        {statusNotice && (
+          <span className="status-notice" title={statusNotice}>
+            ⚠️ {statusNotice}
+          </span>
+        )}
         <span>
           <Zap size={13} />
           上下文 {contextUsage}%

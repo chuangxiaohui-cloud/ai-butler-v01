@@ -8,6 +8,7 @@ import type { IntentKey } from './stages/s2_classify.js';
 import {
   DOMESTIC_DATASHEET_DOMAINS,
   extractPartNumber,
+  isFinanceMarketQuery,
   isSpaceStatusQuery,
   officialSourceHintForQuery,
   techOfficialDomainsForQuery,
@@ -65,6 +66,9 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
     if (isSpaceStatusQuery(query)) {
       queries.unshift(`${base} site:cmse.gov.cn`, `${base} site:cnsa.gov.cn`);
     }
+    if (isFinanceMarketQuery(query)) {
+      queries.unshift(`${base} site:eastmoney.com 最新`, `${base} site:sse.com.cn 最新`);
+    }
     if (SPORTS_NEWS_RE.test(query)) {
       if (/世界杯/.test(query)) {
         queries.unshift(
@@ -82,6 +86,14 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
       `${query} site:cmse.gov.cn`,
       `${query} site:cnsa.gov.cn`,
       `${query} 载人航天小喇叭`,
+      query,
+    ]);
+  }
+  if (isFinanceMarketQuery(query)) {
+    return uniqueQueries([
+      `${query} site:eastmoney.com`,
+      `${query} site:sse.com.cn`,
+      `${query} 市值 排名 最新`,
       query,
     ]);
   }

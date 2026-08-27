@@ -17,20 +17,22 @@ import type { SessionContext, SessionContextStore } from '../memory/session-cont
 import type { QuotaStoreLike } from './quota.js';
 import type { MemoryRecord, MemoryStore } from '../memory/store.js';
 import type { SearchProvider, SearchProviderResult, SearchResultItem } from './providers/types.js';
-import { filterChatSearchNotices, pipeline } from './pipeline.js';
+import { splitSearchNotices, pipeline } from './pipeline.js';
 import { getSkills } from '../skills/registry.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { appendOperation } from '../security/operation-log.js';
 import { DeepReportStore } from './deep-report-store.js';
 import type { TrajectoryEvent } from '../trajectory/trajectory-log.js';
 
-test('pipeline: filterChatSearchNotices 过滤 Tavily 月配额噪音但保留其他预警', () => {
-  const filtered = filterChatSearchNotices([
+test('pipeline: splitSearchNotices 工具告警与用户提示分离（P1/P3）', () => {
+  const { chatNotices, toolNotices } = splitSearchNotices([
     'Tavily 计划用量已超限，本月不再提供搜索结果（Bocha/AnySearch 不受影响）',
     'Bocha 余额已耗尽，请购买体验包',
-    'Tavily 计划用量已超限，本月不再提供搜索结果（Bocha/AnySearch 不受影响）',
+    '联网暂时不可用，以下为模型内置知识回答（可能非最新）',
   ]);
-  assert.deepEqual(filtered, ['Bocha 余额已耗尽，请购买体验包']);
+  assert.deepEqual(chatNotices, ['联网暂时不可用，以下为模型内置知识回答（可能非最新）']);
+  assert.ok(toolNotices.some((n) => n.includes('Tavily')));
+  assert.ok(toolNotices.some((n) => n.includes('余额已耗尽')));
 });
 
 process.env.SEARCH_METRICS_LOG = join(tmpdir(), 'pipeline-search-metrics-test.jsonl');
@@ -1232,4 +1234,69 @@ test('pipeline: 深度报告取消后同 query 自动恢复已生成分节', asy
   assert.match(r2.answer, /已生成的第一节（取消前完成）。/, '恢复保留已生成分节');
   assert.match(r2.answer, /## 证据附录/);
   assert.equal(store.findResumable('写一份 STM32 的调研报告'), null, '完成后不再可恢复');
+});
+
+
+test('pipeline: 知识问答抓网页正文喂合成（P0 四步链路）', async () => {
+  const fake = new FakeLLM();
+  const browserSession = {
+    async fetchPage(url: string) {
+      return {
+        url,
+        title: url,
+        text: `中国 AI 大模型 公司 市值 排名 寒武纪 科大讯飞 金山办公 市场 数据 ${url} `.repeat(30),
+      };
+    },
+  } as never;
+  const r = await pipeline('中国AI大模型公司中市值较高的是哪几家', {
+    ...deps,
+    llm: fake,
+    browserSession,
+  });
+  assert.ok(fake.lastUserContent.includes('【网页正文'), '合成 prompt 应包含抓取的网页正文');
+  assert.ok(
+    r.evidence.some((e) => e.url === 'https://example.com/1'),
+    '抓取正文页应进入证据列表',
+  );
+});
+
+test('pipeline: 全部搜索引擎失败时提示联网暂时不可用（P1）', async () => {
+  const provider: SearchProvider = {
+    id: 'bocha',
+    async search() {
+      return { provider: 'bocha', ok: false, results: [], latencyMs: 1, error: 'HTTP 500' };
+    },
+  };
+  const fake = new FakeLLM();
+  const r = await pipeline('中国AI大模型公司中市值较高的是哪几家', {
+    ...deps,
+    llm: fake,
+    providers: [provider],
+  });
+  assert.match(r.notice ?? '', /联网暂时不可用/);
+});
+
+
+test('pipeline: 工具配额告警进 toolNotice，用户提示保留联网不可用（P1/P3）', async () => {
+  const provider: SearchProvider = {
+    id: 'bocha',
+    async search() {
+      return {
+        provider: 'bocha',
+        ok: false,
+        results: [],
+        latencyMs: 1,
+        error: 'HTTP 403',
+        notice: 'Bocha 余额已耗尽，请购买体验包',
+      };
+    },
+  };
+  const fake = new FakeLLM();
+  const r = await pipeline('中国AI大模型公司中市值较高的是哪几家', {
+    ...deps,
+    llm: fake,
+    providers: [provider],
+  });
+  assert.match(r.notice ?? '', /联网暂时不可用/);
+  assert.match(r.toolNotice ?? '', /余额已耗尽/);
 });
