@@ -1,0 +1,22 @@
+{
+  "name": "quotation",
+  "version": "0.1.0",
+  "triggers": [
+    "报价单",
+    "报价模板",
+    "生成报价",
+    "报价单模板",
+    "报价"
+  ],
+  "description": "报价单模板（E262/E251）：生成报价单 docx 模板（报价信息/报价明细/商务条款/备注 四章节），复用 docx-write 底座",
+  "steps": [
+    "npm run market:quotation -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

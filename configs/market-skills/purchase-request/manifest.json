@@ -1,0 +1,22 @@
+{
+  "name": "purchase-request",
+  "version": "0.1.0",
+  "triggers": [
+    "采购申请",
+    "采购申请模板",
+    "采购单",
+    "生成采购申请",
+    "采购申请单"
+  ],
+  "description": "采购申请模板（E262/E251）：生成采购申请 docx 模板（申请信息/采购明细/预算与供应商/审批意见/备注 五章节），复用 docx-write 底座",
+  "steps": [
+    "npm run market:purchase:request -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

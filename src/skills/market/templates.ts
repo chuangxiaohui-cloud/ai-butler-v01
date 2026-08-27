@@ -106,6 +106,64 @@ export function buildAnnualSummary(title: string, dateLabel: string): string {
   ];
   return lines.join('\n');
 }
+
+/** 报价单模板：标题=主题（日期），四章节 */
+export function buildQuotation(title: string, dateLabel: string): string {
+  const lines = [
+    `# ${title}（${dateLabel}）`,
+    '',
+    '## 报价信息',
+    '- 客户：',
+    '- 报价日期：',
+    '- 有效期至：',
+    '',
+    '## 报价明细',
+    '- 编号：1',
+    '- 品名：',
+    '- 规格：',
+    '- 数量：',
+    '- 单价：',
+    '- 金额：',
+    '',
+    '## 商务条款',
+    '',
+    '## 备注',
+    '',
+  ];
+  return lines.join('\n');
+}
+
+/** 采购申请模板：标题=主题（日期），五章节 */
+export function buildPurchaseRequest(title: string, dateLabel: string): string {
+  const lines = [
+    `# ${title}（${dateLabel}）`,
+    '',
+    '## 申请信息',
+    '- 申请人：',
+    '- 部门：',
+    '- 申请日期：',
+    '',
+    '## 采购明细',
+    '- 编号：1',
+    '- 品名：',
+    '- 规格：',
+    '- 数量：',
+    '- 用途：',
+    '',
+    '## 预算与供应商',
+    '- 预算金额：',
+    '- 建议供应商：',
+    '',
+    '## 审批意见',
+    '- 审批人：',
+    '- 审批意见：',
+    '',
+    '## 备注',
+    '',
+  ];
+  return lines.join('\n');
+}
+
 /** 模板 → docx：模板文本写临时 .txt（输出同目录）后调用 writeDocx（run 可注入便于测试） */
 export async function writeTemplateDocx(
   templateText: string,

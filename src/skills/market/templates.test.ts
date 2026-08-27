@@ -7,6 +7,8 @@ import { join } from 'node:path';
 import {
   buildAnnualSummary,
   buildMeetingMinutes,
+  buildPurchaseRequest,
+  buildQuotation,
   buildMonthlyReport,
   buildQuarterlyReport,
   quarterLabel,
@@ -49,6 +51,37 @@ test('templates: 年度总结模板结构（标题+五章节）', () => {
   for (const section of ['年度概述', '重大成果', '关键数据', '经验与风险', '来年展望']) {
     assert.ok(text.includes(`## ${section}`), `缺少章节：${section}`);
   }
+});
+
+test('templates: 报价单模板结构（标题+四章节+报价字段）', () => {
+  const text = buildQuotation('电源模块报价', '2026年8月27日');
+  assert.ok(text.includes('# 电源模块报价（2026年8月27日）'));
+  for (const section of ['报价信息', '报价明细', '商务条款', '备注']) {
+    assert.ok(text.includes(`## ${section}`), `缺少章节：${section}`);
+  }
+  for (const field of ['客户', '报价日期', '有效期至', '编号', '品名', '规格', '数量', '单价', '金额']) {
+    assert.ok(text.includes(`- ${field}：`), `缺少字段：${field}`);
+  }
+});
+
+test('templates: 采购申请模板结构（标题+五章节+申请/明细字段）', () => {
+  const text = buildPurchaseRequest('物料采购申请', '2026年8月27日');
+  assert.ok(text.includes('# 物料采购申请（2026年8月27日）'));
+  for (const section of ['申请信息', '采购明细', '预算与供应商', '审批意见', '备注']) {
+    assert.ok(text.includes(`## ${section}`), `缺少章节：${section}`);
+  }
+  for (const field of ['申请人', '部门', '申请日期', '编号', '品名', '规格', '数量', '用途', '预算金额', '建议供应商', '审批人', '审批意见']) {
+    assert.ok(text.includes(`- ${field}：`), `缺少字段：${field}`);
+  }
+});
+
+test('templates: 报价单/采购申请 标题日期参数化', () => {
+  const q = buildQuotation('报价单', '2026年8月27日');
+  const p = buildPurchaseRequest('采购申请', '2026年8月27日');
+  assert.ok(q.startsWith('# 报价单（2026年8月27日）'));
+  assert.ok(p.startsWith('# 采购申请（2026年8月27日）'));
+  assert.ok(!q.includes('undefined'));
+  assert.ok(!p.includes('undefined'));
 });
 
 test('templates: quarterLabel 推算（8月 → 第3季度）', () => {

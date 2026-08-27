@@ -136,3 +136,13 @@
 - **登记**：附录 A E261；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b8.md`。
 - **续接**：`npm run skill:market:run -- quarterly-report --query "生成<主题>季度汇报模板"`；`annual-summary --query "生成<主题>年度总结模板"`；下一批候选：器件规格对比细分（扩展 part-spec-observe 双型号对比，依赖真实浏览器冒烟）或 报价单/采购申请 模板（复用 templates 底座）。
 
+
+## 续推进（2026-08-27 第 9 批）——E262 市场 Skill 采购办公（报价单 / 采购申请）
+
+继续成熟度累积路径 Phase 1.2 沉淀 2 个采购办公市场 Skill，用户累积 Skill **28→30**。
+
+- **能力**：扩展 `src/skills/market/templates.ts`——`buildQuotation`（标题=主题（日期），四章节：报价信息/报价明细/商务条款/备注，报价明细含 编号/品名/规格/数量/单价/金额 字段）、`buildPurchaseRequest`（五章节：申请信息/采购明细/预算与供应商/审批意见/备注，申请信息含 申请人/部门/申请日期，采购明细含 编号/品名/规格/数量/用途）。
+- **入口**：薄 CLI `scripts/market-{quotation,purchase-request}.ts`（@input 通道）+ package.json 两个 `market:*` 脚本；2 个精选包 manifest（command + input:query + 中文触发词）已安装。标题取触发词后文本（缺省「报价单/采购申请」）。
+- **证据**：单测 3 条（报价单结构+四章节+报价字段、采购申请结构+五章节+申请/明细字段、标题日期参数化）；真实冒烟 2 Skill 全链 ok:true——quotation（「生成电源模块报价单模板」→ 电源模块-模板.docx 落盘，python-docx 复核 14 段落四章节）、purchase-request（「生成晶振采购申请模板」→ 晶振申-模板.docx 落盘，python-docx 复核 18 段落五章节）；全量单测 1007/1008（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）；`maturity:check` 用户累积 Skill 28→30。
+- **登记**：附录 A E262；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b9.md`。
+- **续接**：`npm run skill:market:run -- quotation --query "生成<主题>报价单模板"`；`purchase-request --query "生成<主题>采购申请模板"`；下一批候选：器件规格对比细分（扩展 part-spec-observe 双型号对比，依赖真实浏览器冒烟，需先 `npm run browser:launch`）或 会议邀请函/通知公告 模板（继续复用 templates 底座）。
