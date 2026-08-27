@@ -592,6 +592,7 @@ function App() {
                 applyMode(next);
                 setManualLocked(true);
               }}
+              onModeAuto={() => setManualLocked(false)}
             />
           </section>
         )}
@@ -860,6 +861,7 @@ function Composer({
   submode,
   manualLocked,
   onModeManual,
+  onModeAuto,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -872,6 +874,7 @@ function Composer({
   submode: string | null;
   manualLocked: boolean;
   onModeManual: (mode: UiMode) => void;
+  onModeAuto: () => void;
 }) {
   const [attachOpen, setAttachOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
@@ -934,7 +937,9 @@ function Composer({
             {submode && SUBMODE_LABELS[submode] && (
               <em>{SUBMODE_LABELS[submode]}</em>
             )}
-            {manualLocked && <span className="lock-tag">锁定</span>}
+            {manualLocked && (
+              <span className="lock-tag" title="已手动锁定：点击恢复自动识别" onClick={onModeAuto} role="button">锁定</span>
+            )}
             <ChevronDown size={14} />
           </button>
           {modeOpen && (
@@ -956,6 +961,17 @@ function Composer({
                   </button>
                 );
               })}
+              <button
+                className={!manualLocked ? 'active' : ''}
+                onClick={() => {
+                  onModeAuto();
+                  setModeOpen(false);
+                }}
+              >
+                <Sparkles size={15} />
+                <span>自动识别</span>
+                <small>按问题自动切换模式</small>
+              </button>
             </div>
           )}
         </div>

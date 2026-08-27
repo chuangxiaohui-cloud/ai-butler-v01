@@ -165,3 +165,12 @@
 - **证据**：单测 4 条（router-v2 路由不搜索 / self-identity 2 条 / pipeline 直达）；真实端到端「你现在是什么模型」44ms、「你是谁」12ms，evidence 0，modelId=light/heavy 分别驱动 flash/pro label 正确；全量单测 1014/1015（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）。
 - **登记**：附录 A E264；计划文档 `docs/plans/2026-08-27-question-answering-identity-reply.md`。
 - **续接**：便携版需重新打包才会包含本修复；下一批候选：普通知识问答 30s 耗时的搜索管道调优（并行 provider / 超时档位，涉及 §5 [P-NN] 需登记 bench）或继续市场 Skill 沉淀。
+
+## 续推进（2026-08-27 第 12 批）——E265 问答体验：模式自动切换解锁
+
+桌面便携版实测反馈：问答后模式不自动切换。根因：`manualLocked` 只置 true 无解锁入口，一旦手动点过模式即永久锁定。
+
+- **能力**：`ui/prototype/src/App.tsx` Composer +`onModeAuto`；模式菜单加「自动识别」项（Sparkles，未锁定时高亮）；锁定标签可点击解锁（title 提示）。自动切换逻辑（`!manualLocked && data.mode → applyMode`）不变。
+- **证据**：UI `tsc -b && vite build` 通过（index-CrQZuah-.js 195.48 kB）；desktop:smoke + 打包版冒烟 DESKTOP_READY；重新打包便携版与安装版；后端 1014/1015（1 skip）+ 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）。
+- **登记**：附录 A E265；计划文档 `docs/plans/2026-08-27-ui-mode-auto-switch.md`。
+- **续接**：新便携版已含 E264（身份直达秒回）+ E265（模式解锁）；下一批候选：普通知识问答 30s 耗时的搜索管道调优（并行 provider / 超时档位，涉及 §5 [P-NN] 需登记 bench）或继续市场 Skill 沉淀。
