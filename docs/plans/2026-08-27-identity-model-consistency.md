@@ -40,5 +40,5 @@
 
 - 验证：UI `tsc -b && vite build` 通过（index-Bt-sen56.js）；playwright-core + Edge 实测通过（meta=知识咨询、默认 deepseek-v4-flash medium、MiniMax M2.7-highspeed/M2.7/M3）；打包版冒烟 DESKTOP_READY；`data\一人公司AI-Agent 0.1.0.exe` 已同步。
 - 测试：单测 1015/1016（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）。
-- 提交：待提交（E268）
+- 提交：`dbc9f09`（E268，10 文件 +150/-25）
 - 遗留事项：用户实测新便携版；普通知识问答 30s 耗时调优待排期。
