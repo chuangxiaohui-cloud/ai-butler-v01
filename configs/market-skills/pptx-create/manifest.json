@@ -1,0 +1,23 @@
+{
+  "name": "pptx-create",
+  "version": "0.1.0",
+  "triggers": [
+    "生成 PPT",
+    "汇报 PPT",
+    "制作 PPT",
+    "PPT 生成",
+    "幻灯片",
+    "pptx"
+  ],
+  "description": "汇报 PPT 生成（E257/E251）：从输入提取标题与词条，生成三页汇报骨架（概述/进展/计划）输出沙箱 pptx",
+  "steps": [
+    "npm run market:pptx:create -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

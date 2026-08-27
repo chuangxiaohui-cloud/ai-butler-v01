@@ -1,6 +1,6 @@
-# 进度交接 2026-08-27（E252 浏览器操作实现——受限 Skill 代码落地 + ego-lite 调研 + 下载动态解析与样例集 + P-124/125/126 定稿签认 + 样例集扩充（器件参数对比/表格填写））
+# 进度交接 2026-08-27（E252 浏览器操作实现 + 样例集扩充 + P-124/125/126 定稿签认 + E253 doc-lint 修复 + E254/E255 市场 Skill 文件工具沉淀×6）
 
-> 当前分支：v0.2b｜本轮收口：E252（Agent 浏览器操作——受限 Skill 实现：安全 TDD A1-A13 全绿 + 域名/动作白名单 + 审批双闸 + 真实浏览器冒烟 + download 选择器动态解析 + 样例集登记附录 C.5）、样例集扩充（器件参数对比 / 表格填写，n=3→7）、ego-lite（citrolabs/ego-lite）参考调研登记、[P-124]/[P-125]/[P-126] owner 签认定稿。
+> 当前分支：v0.2b｜本轮收口：E252（Agent 浏览器操作——受限 Skill 实现：安全 TDD A1-A13 全绿 + 域名/动作白名单 + 审批双闸 + 真实浏览器冒烟 + download 选择器动态解析 + 样例集登记附录 C.5）、样例集扩充（器件参数对比 / 表格填写，n=3→7）、ego-lite 参考调研、[P-124]/[P-125]/[P-126] 定稿签认、E253（doc-lint C1 恢复执法）、E254-E258（市场 Skill 累积 14 个：pdf-read/table-read/pdf-compress + pdf-merge/pdf-encrypt/image-convert + table-ocr/bom-compare/doc-convert + docx-write/pptx-create/image-compress + reminder/image-ocr，用户累积 Skill 11→22）。
 > 上一份交接见 `docs/2026-08-26-progress-handoff.md`。
 
 ## 今日已收口
@@ -37,14 +37,71 @@
 - 文档批：`b6f44bf`（附录 C.5 样例集 + 附录 A E252 状态续 + 实现计划回填）
 - 定稿批：`b175459`（[P-124]/[P-125]/[P-126] 定稿签认：§5 注册表 + 附录 A 定稿记录 + 附录 C.5/计划回填）
 - 上一批：`2b0749e`（E252 模块 + 单测 40 条 + INT-MARKET-006 + 示例 Skill + browser:auth CLI）、`c721659`（附录 A 状态/地图/计划回填/08-27 handoff）、`bcdaeb8`（handoff 回填提交号）
+- E254/E255：**未提交**（代码+文档在工作区待确认后按单一主题提交；doc-lint 与 test:all 已通过，随时可提交）
 
 ## 全量验证
 
 - 单测 940/941（1 skip，含 E252 续 4 条）｜集成 32/32｜doc-lint 0 FAIL 0 WARN（C8 49 key，附录 559/950）｜maturity L1（用户累积 Skill 6/50+，通过率 73.9% n=23，复用率 16.6%）
 - （样例集扩充后复跑 2026-08-27）单测 940/941（1 skip）｜集成 32/32｜doc-lint 0 FAIL 0 WARN（C8 49 key，附录 564/950）
+- （E254 后复跑）单测 953/953 ｜集成 32/32｜doc-lint 0 FAIL 0 WARN｜用户累积 Skill 8→11
+- （E255 后复跑）单测 962/962｜集成 32/32｜doc-lint 0 FAIL 0 WARN｜用户累积 Skill 11→14
 
 ## 下一步（按优先级）
 
-1. **P-10 转定稿（条件③ 唯一阻塞）**：成熟度 L2+（当前 L1，L1→L2 ≈35-40%）仍为唯一阻塞；累积路径继续每周 3-5 个 Skill（E250/E251/E252 通道已就绪）；[P-124]/[P-125]/[P-126] 已定稿不再阻塞。
+1. **P-10 转定稿（条件③ 唯一阻塞）**：成熟度 L2+（当前 L1，Skill 14/50，通过率 73.9% n=23，复用率 16.6%）仍为唯一阻塞；累积路径继续每周 3-5 个 Skill（E250/E251/E252/E254/E255 通道已就绪）；下一批候选：表格 OCR（rapidocr 已装）/ BOM 对比 / 文档互转。
 2. **P-10 条件③ 样本维度已补强**：附录 C.5 n=7 覆盖三类场景（datasheet 下载 / 器件参数对比 / 表格填写），已对齐 §4.1.5 验收基准；后续可继续增补高风险动作更多反例（表单提交 / 跨域导航 / 下载）；成熟度 L2+ 仍为 P-10 唯一阻塞。
 3. **续接入口 / 用户实测**：新样例 Skill 可实测——`npm run skill:market:run -- part-spec-observe --query "STM32F103C8T6"`（只读，无需 --yes）、`npm run skill:market:run -- lcsc-search-form --query "STM32F103C8T6" --yes`（写操作需 --yes）；datasheet-fetch 同前（先 `browser:auth authorize datasheet-fetch <域名>`）。安装/授权记录在 `data/`（git 忽略，换机器需重新 `skill:market:install -- --source configs/market-skills/<name>` + `browser:auth authorize`）。
+
+## 续推进（2026-08-27 晚）——E254 市场 Skill 文件工具沉淀（pdf-read / table-read / pdf-compress）
+
+按成熟度累积路径 Phase 1.2（每周 3-5 个）沉淀 3 个真实高频市场 Skill，用户累积 Skill **8→11**。
+
+- **能力**：新增 `src/skills/market/file-readers.ts`——从用户 query 自动提取目标文件路径（首行即路径 / 单行「路径 关键词」/ 含触发词自然语言均可，引号/UNC/POSIX 路径支持），其余词作参数；`readPdfTextSummary`（复用 parseDocumentFile）、`readTableSummary`（office_xls_read.py，[P-112]）、`compressPdf`（office_pdf_compress.py，[P-112]）；python 子进程候选解释器 + 有界超时。
+- **入口**：薄 CLI `scripts/market-{pdf-text,table-read,pdf-compress}.ts` + package.json `market:*` 脚本；3 个精选包 manifest（command 权限 + input:query + 中文触发词）已安装。
+- **环境修复**：本机无 Excel COM，补装 `xlrd`（office_xls_read.py 既有回退路径依赖）。
+- **证据**：单测 13 条（file-readers）；真实冒烟 3 Skill 全链 ok:true——pdf-read（dm365 PDF，DM365 命中）、table-read（365IPC BOM，400 行、DM365 命中 2 行）、pdf-compress（89293→85053B，pymupdf）；全量单测 953/953 + 集成 32/32；doc-lint 0 FAIL 0 WARN；`maturity:check` 用户累积 Skill 8→11。
+- **登记**：附录 A E254；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation.md`。
+- **续接**：`npm run skill:market:run -- pdf-read --query "帮我 PDF 速读 <路径> <关键词>"`；table-read / pdf-compress 同型（压缩输出在沙箱目录）。
+
+## 续推进（2026-08-27 第 2 批）——E255 市场 Skill 文件工具沉淀（pdf-merge / pdf-encrypt / image-convert）
+
+继续成熟度累积路径 Phase 1.2 沉淀 3 个高频市场 Skill，用户累积 Skill **11→14**。
+
+- **能力**：扩展 `src/skills/market/file-readers.ts`——`extractFilePaths`（按出现顺序提取全部路径，引号含空格/UNC/POSIX 支持，供多文件输入）、`mergePdfs`（office_pdf_merge.py，[P-112]）、`encryptPdf`（office_pdf_encrypt.py，[P-112]，可选密码）、`convertImage`（office_image_convert.py，[P-112]，png/jpg/webp/bmp）。
+- **入口**：薄 CLI `scripts/market-{pdf-merge,pdf-encrypt,image-convert}.ts` + package.json `market:*` 脚本；3 个精选包 manifest（command + input:query + 中文触发词）已安装。
+- **约定**：密码 = 参数中首个 3-32 位字母数字串（中文触发词/路径自动排除，缺省 123456）。
+- **证据**：单测 962/962（新增 9 条）+ 集成 32/32；doc-lint 0 FAIL 0 WARN；真实冒烟 3 Skill 全链 ok:true 并交叉校验——pdf-merge（mb+pb → 10 页，6+4 复核）、pdf-encrypt（lb → is_encrypted=True、888888 可解密）、image-convert（真实 PNG 1440×2359 → webp 有效）；`maturity:check` 用户累积 Skill 11→14。
+- **登记**：附录 A E255；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b2.md`。
+- **续接**：`npm run skill:market:run -- pdf-merge --query "合并 <PDF1> 和 <PDF2>"`；pdf-encrypt / image-convert 同型（产物在沙箱目录）。
+
+## 续推进（2026-08-27 第 3 批）——E256 市场 Skill 文件工具沉淀（表格 OCR / BOM 对比 / 文档互转）
+
+继续成熟度累积路径 Phase 1.2 沉淀 3 个高频市场 Skill，用户累积 Skill **14→17**。
+
+- **能力**：扩展 `src/skills/market/file-readers.ts`——`ocrTable`（office_image_ocr.py --table，RapidOCR 表格重建 + 编号/词典纠正，输出沙箱 CSV）、`compareBoms`（新增 `scripts/office_bom_compare.py`：xlrd/openpyxl 读 xls/xlsx，扫描前 10 行自动定位位号列——表头去点去空格归一化匹配 位号/refdes/designator/编号/料号，输出 公共/仅A/仅B/变更 四类差异）、`convertDocToPdf`（office_docx_to_pdf.py：Word COM 优先 + 纯 python 兜底）、`readDocSummary`（新增 `scripts/office_docx_read.py`：python-docx 纯读 docx；.doc 走 Word COM）。
+- **入口**：薄 CLI `scripts/market-{table-ocr,bom-compare,doc-convert}.ts` + package.json `market:*` 脚本；3 个精选包 manifest（command + input:query + 中文触发词）已安装。doc-convert 双模：含速读触发词走文本摘要+关键词命中，否则转 PDF。
+- **环境修复**：本机无 Word/WPS COM（WPS 仅残留目录）且缺 openpyxl → 补装 openpyxl（office_xlsx_read.py 既有依赖，清华源）；`office_docx_to_pdf.py` 增 python-docx+reportlab 文本保真兜底（CJK 用 STSong-Light，Word 缺失时样式简化、诚实降级回传 method/warning）。
+- **证据**：单测 8 条（ocrTable 2 + compareBoms 2 + convertDocToPdf 2 + readDocSummary 2）；真实冒烟 3 Skill 全链 ok:true——table-ocr（OCRtest.png 裁剪 971×420 → 17 行 × 7 列 CSV，31s；整图 74s 超过 P-40 60s 上限，诚实登记边界）、bom-compare（365IPC xls vs 改版变体 xlsx：common 12 / 仅A 385 / 变更 1——C1 VALUE 0.1uF/16V→0.22uF/25V 精确命中）、doc-convert（真实 AI-Agent-v2.5_2.docx → 11 页 PDF，fitz 复核；速读模式 11822 字符 + 关键词命中）；全量单测 970/971（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）；`maturity:check` 用户累积 Skill 14→17。
+- **登记**：附录 A E256；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b3.md`。
+- **续接**：`npm run skill:market:run -- table-ocr --query "识别表格 <图片/PDF>"`、`bom-compare --query "BOM 对比 <xls/xlsx> 和 <xls/xlsx>"`、`doc-convert --query "文档互转 <docx>"`（速读加「速读/关键词」触发词）；表格 OCR 大图注意 P-40 60s 上限（可先裁剪）。
+
+## 续推进（2026-08-27 第 4 批）——E257 市场 Skill 文件工具沉淀（docx 日报/周报模板 / 汇报 PPT / 图片压缩）
+
+继续成熟度累积路径 Phase 1.2 沉淀 3 个高频市场 Skill，用户累积 Skill **17→20**。
+
+- **能力**：扩展 `src/skills/market/file-readers.ts`——`writeDocx`（office_docx_write.py：纯文本逐段排版 docx）、`createPptx`（office_pptx_create.py：标题+三页骨架 JSON 规格 → pptx，临时规格用后即删）、`compressImage`（compress_image.py：Pillow 压缩到目标 KB）。
+- **入口**：薄 CLI `scripts/market-{docx-write,pptx-create,image-compress}.ts` + package.json `market:*` 脚本；3 个精选包 manifest（command + input:query + 中文触发词）已安装。docx-write 双模（.txt 路径→排版；否则 日报/周报 模板 日期+四章节）；pptx-create 首个子句做标题、其余子句做条目（概述/进展/计划 三页骨架）；image-compress 首个纯数字参数为 max_kb（缺省 200）。
+- **环境修复**：本机缺 python-pptx（office_pptx_create.py 既有依赖）→ 补装（清华源）。
+- **证据**：单测 6 条（writeDocx 2 + createPptx 2 + compressImage 2）；真实冒烟 3 Skill 全链 ok:true——docx-write（日报模板 docx 五段结构 + txt→docx）、pptx-create（「项目周报」query → 4 页 pptx，python-pptx 复核）、image-compress（真实 PNG 971×420 → 48358B ≤ 50KB 目标）；全量单测 976/977（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）；`maturity:check` 用户累积 Skill 17→20。
+- **登记**：附录 A E257；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b4.md`。
+- **续接**：`npm run skill:market:run -- docx-write --query "生成一个日报模板"`、`pptx-create --query "生成一个关于<主题>的汇报 PPT，<条目1>，<条目2>"`、`image-compress --query "压缩图片 <路径> 到 100"`；下一批候选：日历/提醒管理、GitHub 项目解读细分（后者需先完成 skill 本体升级计划）。
+
+## 续推进（2026-08-27 第 5 批）——E258 市场 Skill 提醒管理 + 图片文字提取
+
+继续成熟度累积路径 Phase 1.2 沉淀 2 个高频市场 Skill，用户累积 Skill **20→22**。
+
+- **能力**：新增 `src/skills/market/reminder.ts`——`parseReminderQuery`（查询提醒→list / 含时间→add，复用 time-expression 的时间/每天每周/复杂周期 + calendar-skill `parseLeadMs` 提前量；复杂周期诚实拒绝）、`runReminderCommand`（ReminderStore 落仓库 `data/reminders.db`，dbPath 可注入便于单测）；`file-readers.ts` 增 `ocrText`（office_image_ocr.py 普通模式，RapidOCR + 沙箱 txt + 关键词命中）。
+- **入口**：薄 CLI `scripts/market-{reminder,image-ocr}.ts` + package.json `market:*` 脚本；2 个精选包 manifest（command + input:query + 中文触发词）已安装。
+- **证据**：单测 8 条（reminder 6 + ocrText 2）；真实冒烟 2 Skill 全链 ok:true——reminder（「明天下午3点提醒我交周报」→ add 交周报 remindAt=明天 15:00；「查询我的提醒」→ 待触发 1 条）、image-ocr（真实裁剪图 → 759 字符 + 「编号」命中，txt 落沙箱）；全量单测 984/985（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）；`maturity:check` 用户累积 Skill 20→22。
+- **登记**：附录 A E258；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b5.md`。
+- **续接**：`npm run skill:market:run -- reminder --query "明天下午3点提醒我开会"`（查询用「查询我的提醒」）；`image-ocr --query "提取图片文字 <路径> 关键词 <词>"`；E254→E258 已按指示累积提交。

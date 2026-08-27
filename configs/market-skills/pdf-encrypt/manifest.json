@@ -1,0 +1,21 @@
+{
+  "name": "pdf-encrypt",
+  "version": "0.1.0",
+  "triggers": [
+    "PDF 加密",
+    "加密 PDF",
+    "pdf-encrypt",
+    "给 PDF 加密码"
+  ],
+  "description": "PDF 加密（E255/E251）：从输入提取 PDF 路径，可选密码（3-32 位字母数字串，缺省 123456）；输出沙箱加密文件",
+  "steps": [
+    "npm run market:pdf:encrypt -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

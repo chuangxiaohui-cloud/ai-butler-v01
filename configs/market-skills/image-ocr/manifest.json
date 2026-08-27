@@ -1,0 +1,23 @@
+{
+  "name": "image-ocr",
+  "version": "0.1.0",
+  "triggers": [
+    "图片文字",
+    "图片 OCR",
+    "提取文字",
+    "文字识别",
+    "识别图片",
+    "OCR 图片"
+  ],
+  "description": "图片文字提取（E258/E251）：从输入提取图片路径，RapidOCR 输出沙箱 txt + 字符数/预览/关键词命中",
+  "steps": [
+    "npm run market:image:ocr -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

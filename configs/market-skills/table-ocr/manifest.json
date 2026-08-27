@@ -1,0 +1,24 @@
+{
+  "name": "table-ocr",
+  "version": "0.1.0",
+  "triggers": [
+    "表格识别",
+    "表格 OCR",
+    "识别表格",
+    "图片表格",
+    "OCR 表格",
+    "扫描表格",
+    "表格提取"
+  ],
+  "description": "表格 OCR（E256/E251）：从输入提取图片/PDF 路径，RapidOCR 表格重建输出沙箱 CSV + 行列摘要",
+  "steps": [
+    "npm run market:table:ocr -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

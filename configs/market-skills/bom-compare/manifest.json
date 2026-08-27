@@ -1,0 +1,24 @@
+{
+  "name": "bom-compare",
+  "version": "0.1.0",
+  "triggers": [
+    "BOM 对比",
+    "BOM 差异",
+    "对比 BOM",
+    "BOM diff",
+    "料单对比",
+    "物料清单对比",
+    "BOM 比较"
+  ],
+  "description": "BOM 对比（E256/E251）：从输入提取两个 xls/xlsx BOM 路径，按位号列对齐输出公共/仅A/仅B/变更四类差异",
+  "steps": [
+    "npm run market:bom:compare -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

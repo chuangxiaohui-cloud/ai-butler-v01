@@ -1,0 +1,24 @@
+{
+  "name": "image-convert",
+  "version": "0.1.0",
+  "triggers": [
+    "图片转换",
+    "图片格式转换",
+    "转 webp",
+    "转 jpg",
+    "转 png",
+    "image-convert",
+    "图片转格式"
+  ],
+  "description": "图片格式转换（E255/E251）：从输入提取图片路径，目标格式取参数中 png/jpg/jpeg/webp/bmp（缺省 webp）；输出沙箱",
+  "steps": [
+    "npm run market:image:convert -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

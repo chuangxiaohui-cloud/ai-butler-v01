@@ -1,0 +1,22 @@
+{
+  "name": "pdf-compress",
+  "version": "0.1.0",
+  "triggers": [
+    "PDF 压缩",
+    "压缩 PDF",
+    "pdf-compress",
+    "PDF 减肥",
+    "PDF 体积"
+  ],
+  "description": "PDF 体积压缩（E254/E251）：从输入自动提取 PDF 路径，可选目标 max_kb；输出到沙箱，报告压缩前后体积/页数/方法",
+  "steps": [
+    "npm run market:pdf:compress -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

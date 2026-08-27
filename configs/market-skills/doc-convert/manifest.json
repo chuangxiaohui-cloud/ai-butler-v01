@@ -1,0 +1,24 @@
+{
+  "name": "doc-convert",
+  "version": "0.1.0",
+  "triggers": [
+    "文档互转",
+    "转 PDF",
+    "docx 转 PDF",
+    "Word 转 PDF",
+    "文档速读",
+    "docx 速读",
+    "转成 PDF"
+  ],
+  "description": "文档互转/速读（E256/E251）：从输入提取 docx/doc 路径——含速读触发词走文本摘要+关键词命中，否则 Word COM 转 PDF 输出沙箱",
+  "steps": [
+    "npm run market:doc:convert -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

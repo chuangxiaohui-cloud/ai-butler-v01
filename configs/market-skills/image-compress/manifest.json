@@ -1,0 +1,22 @@
+{
+  "name": "image-compress",
+  "version": "0.1.0",
+  "triggers": [
+    "图片压缩",
+    "压缩图片",
+    "图片缩小",
+    "压缩到",
+    "image compress"
+  ],
+  "description": "图片压缩到目标 KB（E257/E251）：从输入提取图片路径，参数中首个纯数字为 max_kb（缺省 200），输出沙箱 jpg",
+  "steps": [
+    "npm run market:image:compress -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

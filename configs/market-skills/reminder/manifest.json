@@ -1,0 +1,25 @@
+{
+  "name": "reminder",
+  "version": "0.1.0",
+  "triggers": [
+    "提醒我",
+    "设提醒",
+    "设置提醒",
+    "我的提醒",
+    "查提醒",
+    "提醒",
+    "每天",
+    "每周"
+  ],
+  "description": "提醒管理（E258/E251）：新增提醒（time-expression 解析时间/每天每周/提前量）或查询待触发提醒，落 data/reminders.db",
+  "steps": [
+    "npm run market:reminder -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

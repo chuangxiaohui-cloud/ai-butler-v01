@@ -1,0 +1,25 @@
+{
+  "name": "docx-write",
+  "version": "0.1.0",
+  "triggers": [
+    "日报模板",
+    "周报模板",
+    "生成日报",
+    "生成周报",
+    "日报",
+    "周报",
+    "docx 排版",
+    "文本转 docx"
+  ],
+  "description": "docx 排版/日报周报模板（E257/E251）：含 .txt 路径则排版为 docx，否则按触发词生成 日报/周报 模板 docx",
+  "steps": [
+    "npm run market:docx:write -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

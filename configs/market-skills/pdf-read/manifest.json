@@ -1,0 +1,23 @@
+{
+  "name": "pdf-read",
+  "version": "0.1.0",
+  "triggers": [
+    "PDF 速读",
+    "PDF 文本提取",
+    "PDF 关键词",
+    "读 PDF",
+    "pdf-read",
+    "PDF 内容摘要"
+  ],
+  "description": "PDF/文本速读摘要（E254/E251）：从输入自动提取 PDF 路径，其余词为关键词；输出字符数/行数/前 500 字预览与关键词命中",
+  "steps": [
+    "npm run market:pdf:text -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

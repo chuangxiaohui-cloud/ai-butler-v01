@@ -1,0 +1,25 @@
+{
+  "name": "table-read",
+  "version": "0.1.0",
+  "triggers": [
+    "表格速读",
+    "BOM 速读",
+    "xls 读取",
+    "xlsx 读取",
+    "表格读取",
+    "table-read",
+    "读表格",
+    "BOM 解析"
+  ],
+  "description": "表格（xls/xlsx）速读摘要（E254/E251）：从输入自动提取表格路径，其余词为关键词；输出表头/行数/前 5 行/关键词命中行数",
+  "steps": [
+    "npm run market:table:read -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

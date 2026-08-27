@@ -1,0 +1,21 @@
+{
+  "name": "pdf-merge",
+  "version": "0.1.0",
+  "triggers": [
+    "PDF 合并",
+    "合并 PDF",
+    "pdf-merge",
+    "PDF 拼接"
+  ],
+  "description": "PDF 合并（E255/E251）：从输入提取全部 PDF 路径（≥2 个），输出沙箱合并文件，报告页数",
+  "steps": [
+    "npm run market:pdf:merge -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}
