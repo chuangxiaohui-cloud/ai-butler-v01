@@ -263,10 +263,19 @@ function App() {
   };
 
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}model-providers.json`)
+    // E267：先拉网关动态模型目录（读实际配置），失败再回退打包内静态目录
+    fetch(`${GATEWAY_URL}/api/model-providers`)
       .then((resp) => (resp.ok ? resp.json() : null))
+      .catch(() => null)
       .then((catalog: { models?: ModelOption[] } | null) => {
         const loaded = catalog?.models ?? [];
+        if (loaded.length) return loaded;
+        return fetch(`${import.meta.env.BASE_URL}model-providers.json`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((staticCatalog: { models?: ModelOption[] } | null) => staticCatalog?.models ?? [])
+          .catch(() => []);
+      })
+      .then((loaded: ModelOption[]) => {
         if (loaded.length) {
           setModels(loaded);
           setModel((prev) =>
@@ -275,7 +284,7 @@ function App() {
         }
       })
       .catch(() => {
-        // 目录缺失时保留静态列表
+        // 网关与静态目录都失败时保留静态列表
       });
   }, []);
 

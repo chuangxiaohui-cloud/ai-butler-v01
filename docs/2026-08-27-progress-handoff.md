@@ -183,3 +183,13 @@
 - **证据**：UI build 通过（index-D7Olf8Ee.js）；playwright-core + Edge（820x620）实测注入 40 条后 `scrollHeight 2224 > clientHeight 395` 可滚动；重新打包便携版与安装版；后端 1014/1015（1 skip）+ 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）。
 - **登记**：附录 A E266；计划文档 `docs/plans/2026-08-27-ui-scrollbar-and-notice.md`。
 - **续接**：新便携版已含 E264/E265/E266；下一批候选：普通知识问答 30s 耗时的搜索管道调优（并行 provider / 超时档位，涉及 §5 [P-NN] 需登记 bench）或继续市场 Skill 沉淀。
+
+## 续推进（2026-08-27 第 14 批）——E267 问答体验：模型切换器显示实体模型名
+
+桌面便携版实测反馈：切换器里 DeepSeek 三档都显示 deepseek-chat（应为 flash/pro），MiniMax 连续两个 M2.7。
+
+- **能力**：`App.tsx` 模型目录改为优先拉网关 `GET /api/model-providers`（读 .env DEEPSEEK_*），失败回退静态 `model-providers.json`（补 `.catch(() => null)` 修复回退 bug）；重写 `public/model-providers.json` 为运行时 catalog（deepseek-v4-flash/pro）。
+- **证据**：UI build 通过（index-Dp0AQ0fx.js）；playwright-core + Edge 实测：DeepSeek 显示 deepseek-v4-flash（快速/均衡）+ deepseek-v4-pro（旗舰·推理）、MiniMax M2.7/M2.7/M3、智谱 glm-5-turbo/5.2/5.3；重新打包便携版与安装版；后端 1014/1015（1 skip）+ 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）。
+- **登记**：附录 A E267；计划文档 `docs/plans/2026-08-27-ui-model-switch-names.md`。
+- **说明**：deepseek-v4-flash-vision 为视觉档，不进聊天档切换器（设计如此）；MiniMax light/medium 同用 M2.7（两档配置，note 区分）。
+- **续接**：新便携版已含 E264-E267；下一批候选：普通知识问答 30s 耗时的搜索管道调优（并行 provider / 超时档位，涉及 §5 [P-NN] 需登记 bench）或继续市场 Skill 沉淀。
