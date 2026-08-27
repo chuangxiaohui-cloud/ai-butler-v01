@@ -1,0 +1,22 @@
+{
+  "name": "notice-announcement",
+  "version": "0.1.0",
+  "triggers": [
+    "通知公告",
+    "公告模板",
+    "通知模板",
+    "发布通知",
+    "通知"
+  ],
+  "description": "通知公告模板（E263/E251）：生成通知公告 docx 模板（通知对象/通知事项/时间与地点/注意事项/落款 五章节），复用 docx-write 底座",
+  "steps": [
+    "npm run market:notice:announcement -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

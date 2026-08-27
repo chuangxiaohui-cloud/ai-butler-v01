@@ -146,3 +146,13 @@
 - **证据**：单测 3 条（报价单结构+四章节+报价字段、采购申请结构+五章节+申请/明细字段、标题日期参数化）；真实冒烟 2 Skill 全链 ok:true——quotation（「生成电源模块报价单模板」→ 电源模块-模板.docx 落盘，python-docx 复核 14 段落四章节）、purchase-request（「生成晶振采购申请模板」→ 晶振申-模板.docx 落盘，python-docx 复核 18 段落五章节）；全量单测 1007/1008（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）；`maturity:check` 用户累积 Skill 28→30。
 - **登记**：附录 A E262；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b9.md`。
 - **续接**：`npm run skill:market:run -- quotation --query "生成<主题>报价单模板"`；`purchase-request --query "生成<主题>采购申请模板"`；下一批候选：器件规格对比细分（扩展 part-spec-observe 双型号对比，依赖真实浏览器冒烟，需先 `npm run browser:launch`）或 会议邀请函/通知公告 模板（继续复用 templates 底座）。
+
+## 续推进（2026-08-27 第 10 批）——E263 市场 Skill 办公文书（会议邀请函 / 通知公告）
+
+继续成熟度累积路径 Phase 1.2 沉淀 2 个办公文书市场 Skill，用户累积 Skill **30→32**。
+
+- **能力**：扩展 `src/skills/market/templates.ts`——`buildMeetingInvitation`（标题=主题（日期），四章节：会议信息/议程安排/参会确认/备注，会议信息含 时间/地点/参会人/议题，参会确认含 请于/确认方式）、`buildNoticeAnnouncement`（五章节：通知对象/通知事项/时间与地点/注意事项/落款，时间与地点含 时间/地点，落款含 发布单位/发布日期）。
+- **入口**：薄 CLI `scripts/market-{meeting-invitation,notice-announcement}.ts`（@input 通道）+ package.json 两个 `market:*` 脚本；2 个精选包 manifest（command + input:query + 中文触发词）已安装。标题取触发词后文本（缺省「会议邀请函/通知公告」）。
+- **证据**：单测 3 条（邀请函结构+四章节+会议/确认字段、公告结构+五章节+时间地点/落款字段、标题日期参数化）；真实冒烟 2 Skill 全链 ok:true——meeting-invitation（「生成产品评审会议邀请函模板」→ 产品评审邀函-模板.docx 落盘，python-docx 复核 11 段落四章节）、notice-announcement（「生成国庆放假通知公告模板」→ 国庆放假-模板.docx 落盘，python-docx 复核 10 段落五章节）；全量单测 1010/1011（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）；`maturity:check` 用户累积 Skill 30→32。
+- **登记**：附录 A E263；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b10.md`。
+- **续接**：`npm run skill:market:run -- meeting-invitation --query "生成<主题>会议邀请函模板"`；`notice-announcement --query "生成<主题>通知公告模板"`；下一批候选：器件规格对比细分（扩展 part-spec-observe 双型号对比，依赖真实浏览器冒烟，需先 `npm run browser:launch`；浏览器会话当前 savedCdpPort=null）或 会议邀请函/通知公告 同类的 请假单/报销单 等表单模板（继续复用 templates 底座）。

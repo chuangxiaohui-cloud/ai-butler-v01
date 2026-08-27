@@ -1,0 +1,22 @@
+{
+  "name": "meeting-invitation",
+  "version": "0.1.0",
+  "triggers": [
+    "会议邀请函",
+    "邀请函模板",
+    "生成邀请函",
+    "会议邀请",
+    "邀请函"
+  ],
+  "description": "会议邀请函模板（E263/E251）：生成会议邀请函 docx 模板（会议信息/议程安排/参会确认/备注 四章节），复用 docx-write 底座",
+  "steps": [
+    "npm run market:meeting:invitation -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

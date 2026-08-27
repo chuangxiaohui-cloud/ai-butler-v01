@@ -99,7 +99,9 @@
     "market:quarterly:report": "tsx scripts/market-quarterly-report.ts",
     "market:annual:summary": "tsx scripts/market-annual-summary.ts",
     "market:quotation": "tsx scripts/market-quotation.ts",
-    "market:purchase:request": "tsx scripts/market-purchase-request.ts"
+    "market:purchase:request": "tsx scripts/market-purchase-request.ts",
+    "market:meeting:invitation": "tsx scripts/market-meeting-invitation.ts",
+    "market:notice:announcement": "tsx scripts/market-notice-announcement.ts"
   },
   "keywords": [
     "ai-agent",

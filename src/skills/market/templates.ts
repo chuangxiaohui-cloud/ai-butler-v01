@@ -164,6 +164,52 @@ export function buildPurchaseRequest(title: string, dateLabel: string): string {
   return lines.join('\n');
 }
 
+/** 会议邀请函模板：标题=主题（日期），四章节 */
+export function buildMeetingInvitation(title: string, dateLabel: string): string {
+  const lines = [
+    `# ${title}（${dateLabel}）`,
+    '',
+    '## 会议信息',
+    '- 时间：',
+    '- 地点：',
+    '- 参会人：',
+    '- 议题：',
+    '',
+    '## 议程安排',
+    '',
+    '## 参会确认',
+    '- 请于：',
+    '- 确认方式：',
+    '',
+    '## 备注',
+    '',
+  ];
+  return lines.join('\n');
+}
+
+/** 通知公告模板：标题=主题（日期），五章节 */
+export function buildNoticeAnnouncement(title: string, dateLabel: string): string {
+  const lines = [
+    `# ${title}（${dateLabel}）`,
+    '',
+    '## 通知对象',
+    '',
+    '## 通知事项',
+    '',
+    '## 时间与地点',
+    '- 时间：',
+    '- 地点：',
+    '',
+    '## 注意事项',
+    '',
+    '## 落款',
+    '- 发布单位：',
+    '- 发布日期：',
+    '',
+  ];
+  return lines.join('\n');
+}
+
 /** 模板 → docx：模板文本写临时 .txt（输出同目录）后调用 writeDocx（run 可注入便于测试） */
 export async function writeTemplateDocx(
   templateText: string,

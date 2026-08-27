@@ -6,9 +6,11 @@ import { join } from 'node:path';
 
 import {
   buildAnnualSummary,
+  buildMeetingInvitation,
   buildMeetingMinutes,
   buildPurchaseRequest,
   buildQuotation,
+  buildNoticeAnnouncement,
   buildMonthlyReport,
   buildQuarterlyReport,
   quarterLabel,
@@ -51,6 +53,37 @@ test('templates: 年度总结模板结构（标题+五章节）', () => {
   for (const section of ['年度概述', '重大成果', '关键数据', '经验与风险', '来年展望']) {
     assert.ok(text.includes(`## ${section}`), `缺少章节：${section}`);
   }
+});
+
+test('templates: 会议邀请函模板结构（标题+四章节+会议/确认字段）', () => {
+  const text = buildMeetingInvitation('产品评审邀请函', '2026年8月27日');
+  assert.ok(text.includes('# 产品评审邀请函（2026年8月27日）'));
+  for (const section of ['会议信息', '议程安排', '参会确认', '备注']) {
+    assert.ok(text.includes(`## ${section}`), `缺少章节：${section}`);
+  }
+  for (const field of ['时间', '地点', '参会人', '议题', '请于', '确认方式']) {
+    assert.ok(text.includes(`- ${field}：`), `缺少字段：${field}`);
+  }
+});
+
+test('templates: 通知公告模板结构（标题+五章节+时间地点/落款字段）', () => {
+  const text = buildNoticeAnnouncement('放假通知', '2026年8月27日');
+  assert.ok(text.includes('# 放假通知（2026年8月27日）'));
+  for (const section of ['通知对象', '通知事项', '时间与地点', '注意事项', '落款']) {
+    assert.ok(text.includes(`## ${section}`), `缺少章节：${section}`);
+  }
+  for (const field of ['时间', '地点', '发布单位', '发布日期']) {
+    assert.ok(text.includes(`- ${field}：`), `缺少字段：${field}`);
+  }
+});
+
+test('templates: 会议邀请函/通知公告 标题日期参数化', () => {
+  const m = buildMeetingInvitation('会议邀请函', '2026年8月27日');
+  const n = buildNoticeAnnouncement('通知公告', '2026年8月27日');
+  assert.ok(m.startsWith('# 会议邀请函（2026年8月27日）'));
+  assert.ok(n.startsWith('# 通知公告（2026年8月27日）'));
+  assert.ok(!m.includes('undefined'));
+  assert.ok(!n.includes('undefined'));
 });
 
 test('templates: 报价单模板结构（标题+四章节+报价字段）', () => {
