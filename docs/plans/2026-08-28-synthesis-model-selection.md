@@ -38,5 +38,5 @@
 
 - 验证：gateway + medium 实测市值问题 notice=null、LLM 真实作答（诚实说明无统一市值排名并给出寒武纪/科大讯飞/金山办公与主要玩家）；playwright 实测切换器含视觉档、meta=知识咨询、无 Tavily 提示；视觉客户端 direct 调用 767ms 正常。
 - 测试：单测 1017/1018（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）。
-- 提交：待提交（E269）
+- 提交：`b0e6ed0`（E269，15 文件 +142/-28）
 - 遗留事项：搜索耗时仍 ~33-46s（provider 并行/超时调优另排期）；`data\` 副本待旧版关闭后覆盖。
