@@ -1,0 +1,22 @@
+{
+  "name": "monthly-report",
+  "version": "0.1.0",
+  "triggers": [
+    "月度汇报",
+    "月报模板",
+    "月度报告",
+    "生成月报",
+    "月报"
+  ],
+  "description": "月度汇报模板（E260/E251）：生成月度汇报 docx 模板（本月概述/关键成果/数据与指标/风险与问题/下月计划 五章节），复用 docx-write 底座",
+  "steps": [
+    "npm run market:monthly:report -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

@@ -116,3 +116,13 @@
 - **登记**：附录 A E259；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b6.md`。
 - **续接**：`npm run skill:market:run -- calendar --query "明天上午10点安排会议"`（查询用「查询我的日程」，导出用「导出日程为ics」）；`github-project --query "https://github.com/<owner>/<repo> 这项目是做什么用的？"`；下一批候选：日历/提醒管理已沉淀完毕，可继续增补 器件规格对比 细分或 高频办公模板（月度汇报/会议纪要）。
 
+## 续推进（2026-08-27 第 7 批）——E260 市场 Skill 高频办公模板（月度汇报 / 会议纪要）
+
+继续成熟度累积路径 Phase 1.2 沉淀 2 个高频办公模板市场 Skill，用户累积 Skill **24→26**。
+
+- **能力**：新增 `src/skills/market/templates.ts`——`buildMonthlyReport`（标题=日期+月份，五章节：本月概述/关键成果/数据与指标/风险与问题/下月计划）、`buildMeetingMinutes`（标题=日期+主题，五章节：会议信息（时间/地点/参会人/主持人）/议题/讨论记录/决议与行动项/待办与负责人）、`todayLabel`、`writeTemplateDocx`（模板文本 → 沙箱 .txt → 复用 E257 `writeDocx` 落盘，run 可注入）。
+- **入口**：薄 CLI `scripts/market-{monthly-report,meeting-minutes}.ts`（@input 通道）+ package.json 两个 `market:*` 脚本；2 个精选包 manifest（command + input:query + 中文触发词）已安装。标题取触发词后文本（缺省「月度汇报/会议纪要」）。
+- **证据**：单测 5 条（模板结构 + todayLabel + writeTemplateDocx 成功/失败链）；真实冒烟 2 Skill 全链 ok:true——monthly-report（「生成嵌入式项目月度汇报模板」→ 嵌入式项目-模板.docx 落盘，python-docx 复核 6 段落五章节）、meeting-minutes（「生成产品评审会议纪要模板」→ 产品评审-模板.docx 落盘，五章节+会议信息字段）；全量单测 1001/1002（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）；`maturity:check` 用户累积 Skill 24→26。
+- **登记**：附录 A E260；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b7.md`。
+- **续接**：`npm run skill:market:run -- monthly-report --query "生成<主题>月度汇报模板"`；`meeting-minutes --query "生成<会议主题>会议纪要模板"`；下一批候选：器件规格对比细分（复用 part-spec-observe 浏览器通道扩展双型号对比）或 高频报告（季度汇报/年度总结）。
+

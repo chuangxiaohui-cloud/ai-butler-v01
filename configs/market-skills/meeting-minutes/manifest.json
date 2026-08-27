@@ -1,0 +1,22 @@
+{
+  "name": "meeting-minutes",
+  "version": "0.1.0",
+  "triggers": [
+    "会议纪要",
+    "会议记录",
+    "纪要模板",
+    "生成会议纪要",
+    "会议模板"
+  ],
+  "description": "会议纪要模板（E260/E251）：生成会议纪要 docx 模板（会议信息/议题/讨论记录/决议与行动项/待办与负责人 五章节），复用 docx-write 底座",
+  "steps": [
+    "npm run market:meeting:minutes -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

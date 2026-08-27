@@ -83,18 +83,20 @@
     "market:pdf:compress": "tsx scripts/market-pdf-compress.ts",
     "market:pdf:merge": "tsx scripts/market-pdf-merge.ts",
     "market:pdf:encrypt": "tsx scripts/market-pdf-encrypt.ts",
-      "market:image:convert": "tsx scripts/market-image-convert.ts",
-      "market:table:ocr": "tsx scripts/market-table-ocr.ts",
-      "market:bom:compare": "tsx scripts/market-bom-compare.ts",
-      "market:doc:convert": "tsx scripts/market-doc-convert.ts",
-      "market:docx:write": "tsx scripts/market-docx-write.ts",
-      "market:pptx:create": "tsx scripts/market-pptx-create.ts",
-      "market:image:compress": "tsx scripts/market-image-compress.ts",
-      "market:reminder": "tsx scripts/market-reminder.ts",
-      "market:image:ocr": "tsx scripts/market-image-ocr.ts",
-      "market:calendar": "tsx scripts/market-calendar.ts",
-      "market:github:project": "tsx scripts/market-github-project.ts"
-    },
+    "market:image:convert": "tsx scripts/market-image-convert.ts",
+    "market:table:ocr": "tsx scripts/market-table-ocr.ts",
+    "market:bom:compare": "tsx scripts/market-bom-compare.ts",
+    "market:doc:convert": "tsx scripts/market-doc-convert.ts",
+    "market:docx:write": "tsx scripts/market-docx-write.ts",
+    "market:pptx:create": "tsx scripts/market-pptx-create.ts",
+    "market:image:compress": "tsx scripts/market-image-compress.ts",
+    "market:reminder": "tsx scripts/market-reminder.ts",
+    "market:image:ocr": "tsx scripts/market-image-ocr.ts",
+    "market:calendar": "tsx scripts/market-calendar.ts",
+    "market:github:project": "tsx scripts/market-github-project.ts",
+    "market:monthly:report": "tsx scripts/market-monthly-report.ts",
+    "market:meeting:minutes": "tsx scripts/market-meeting-minutes.ts"
+  },
   "keywords": [
     "ai-agent",
     "search",
@@ -122,4 +124,3 @@
     "node": ">=22.0.0"
   }
 }
-
