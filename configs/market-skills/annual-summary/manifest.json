@@ -1,0 +1,22 @@
+{
+  "name": "annual-summary",
+  "version": "0.1.0",
+  "triggers": [
+    "年度总结",
+    "年终总结",
+    "年度报告",
+    "年总结",
+    "年度总结模板"
+  ],
+  "description": "年度总结模板（E261/E251）：生成年度总结 docx 模板（年度概述/重大成果/关键数据/经验与风险/来年展望 五章节），复用 templates 底座",
+  "steps": [
+    "npm run market:annual:summary -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

@@ -1,0 +1,22 @@
+{
+  "name": "quarterly-report",
+  "version": "0.1.0",
+  "triggers": [
+    "季度汇报",
+    "季报模板",
+    "季度报告",
+    "生成季报",
+    "季报"
+  ],
+  "description": "季度汇报模板（E261/E251）：生成季度汇报 docx 模板（季度概述/关键成果/数据与指标/风险与问题/下季度计划 五章节），复用 templates 底座",
+  "steps": [
+    "npm run market:quarterly:report -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

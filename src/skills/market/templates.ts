@@ -63,6 +63,49 @@ export function buildMeetingMinutes(title: string, dateLabel: string): string {
   return lines.join('\n');
 }
 
+/** 季度标签：YYYY年第N季度（按日期月份推算） */
+export function quarterLabel(now = new Date()): string {
+  const quarter = Math.floor(now.getMonth() / 3) + 1;
+  return `${now.getFullYear()}年第${quarter}季度`;
+}
+
+/** 季度汇报模板：标题=季度标签，五章节 */
+export function buildQuarterlyReport(title: string, dateLabel: string): string {
+  const lines = [
+    `# ${title}（${dateLabel}）`,
+    '',
+    '## 季度概述',
+    '',
+    '## 关键成果',
+    '',
+    '## 数据与指标',
+    '',
+    '## 风险与问题',
+    '',
+    '## 下季度计划',
+    '',
+  ];
+  return lines.join('\n');
+}
+
+/** 年度总结模板：标题=年份，五章节 */
+export function buildAnnualSummary(title: string, dateLabel: string): string {
+  const lines = [
+    `# ${title}（${dateLabel}）`,
+    '',
+    '## 年度概述',
+    '',
+    '## 重大成果',
+    '',
+    '## 关键数据',
+    '',
+    '## 经验与风险',
+    '',
+    '## 来年展望',
+    '',
+  ];
+  return lines.join('\n');
+}
 /** 模板 → docx：模板文本写临时 .txt（输出同目录）后调用 writeDocx（run 可注入便于测试） */
 export async function writeTemplateDocx(
   templateText: string,
@@ -78,3 +121,4 @@ export async function writeTemplateDocx(
   const summary = await writeDocx(txtPath, outputDocx, run);
   return { ok: summary.ok, outputPath: summary.outputPath, template: summary.ok ? templateText : undefined, error: summary.error };
 }
+

@@ -5,8 +5,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  buildAnnualSummary,
   buildMeetingMinutes,
   buildMonthlyReport,
+  buildQuarterlyReport,
+  quarterLabel,
   todayLabel,
   writeTemplateDocx,
   type TemplateDocxSummary,
@@ -32,7 +35,26 @@ test('templates: 会议纪要模板结构（标题+五章节+会议信息字段�
   }
 });
 
-test('templates: todayLabel 格式', () => {
+test('templates: 季度汇报模板结构（标题+五章节）', () => {
+  const text = buildQuarterlyReport('2026年第3季度', '2026年8月27日');
+  assert.ok(text.includes('# 2026年第3季度（2026年8月27日）'));
+  for (const section of ['季度概述', '关键成果', '数据与指标', '风险与问题', '下季度计划']) {
+    assert.ok(text.includes(`## ${section}`), `缺少章节：${section}`);
+  }
+});
+
+test('templates: 年度总结模板结构（标题+五章节）', () => {
+  const text = buildAnnualSummary('2026年度总结', '2026年8月27日');
+  assert.ok(text.includes('# 2026年度总结（2026年8月27日）'));
+  for (const section of ['年度概述', '重大成果', '关键数据', '经验与风险', '来年展望']) {
+    assert.ok(text.includes(`## ${section}`), `缺少章节：${section}`);
+  }
+});
+
+test('templates: quarterLabel 推算（8月 → 第3季度）', () => {
+  assert.equal(quarterLabel(new Date('2026-08-27T10:00:00+08:00')), '2026年第3季度');
+  assert.equal(quarterLabel(new Date('2026-01-05T10:00:00+08:00')), '2026年第1季度');
+});test('templates: todayLabel 格式', () => {
   assert.equal(todayLabel(new Date('2026-08-27T10:00:00+08:00')), '2026年8月27日');
 });
 
@@ -78,3 +100,4 @@ test('templates: writeTemplateDocx 失败归因透出', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+

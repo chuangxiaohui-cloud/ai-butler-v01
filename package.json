@@ -95,7 +95,9 @@
     "market:calendar": "tsx scripts/market-calendar.ts",
     "market:github:project": "tsx scripts/market-github-project.ts",
     "market:monthly:report": "tsx scripts/market-monthly-report.ts",
-    "market:meeting:minutes": "tsx scripts/market-meeting-minutes.ts"
+    "market:meeting:minutes": "tsx scripts/market-meeting-minutes.ts",
+    "market:quarterly:report": "tsx scripts/market-quarterly-report.ts",
+    "market:annual:summary": "tsx scripts/market-annual-summary.ts"
   },
   "keywords": [
     "ai-agent",

@@ -126,3 +126,13 @@
 - **登记**：附录 A E260；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b7.md`。
 - **续接**：`npm run skill:market:run -- monthly-report --query "生成<主题>月度汇报模板"`；`meeting-minutes --query "生成<会议主题>会议纪要模板"`；下一批候选：器件规格对比细分（复用 part-spec-observe 浏览器通道扩展双型号对比）或 高频报告（季度汇报/年度总结）。
 
+## 续推进（2026-08-27 第 8 批）——E261 市场 Skill 高频报告（季度汇报 / 年度总结）
+
+继续成熟度累积路径 Phase 1.2 沉淀 2 个高频报告市场 Skill，用户累积 Skill **26→28**。
+
+- **能力**：扩展 `src/skills/market/templates.ts`——`buildQuarterlyReport`（标题=日期+季度，五章节：季度概述/关键成果/数据与指标/风险与问题/下季度计划）、`buildAnnualSummary`（标题=年份，五章节：年度概述/重大成果/关键数据/经验与风险/来年展望）、`quarterLabel`（YYYY年第N季度，按月份推算）。
+- **入口**：薄 CLI `scripts/market-{quarterly-report,annual-summary}.ts`（@input 通道）+ package.json 两个 `market:*` 脚本；2 个精选包 manifest（command + input:query + 中文触发词）已安装。标题取触发词后文本（缺省「季度汇报/年度总结」）。
+- **证据**：单测 3 条（季度/年度模板结构 + quarterLabel 推算 8月→第3季度）；真实冒烟 2 Skill 全链 ok:true——quarterly-report（「生成嵌入式项目季度汇报模板」→ 嵌入式项目-模板.docx 落盘，python-docx 复核 6 段落五章节 + 标题「2026年第3季度」）、annual-summary（「生成嵌入式项目年度总结模板」→ 嵌入式项目-模板.docx 落盘，五章节）；全量单测 1004/1005（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）；`maturity:check` 用户累积 Skill 26→28。
+- **登记**：附录 A E261；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b8.md`。
+- **续接**：`npm run skill:market:run -- quarterly-report --query "生成<主题>季度汇报模板"`；`annual-summary --query "生成<主题>年度总结模板"`；下一批候选：器件规格对比细分（扩展 part-spec-observe 双型号对比，依赖真实浏览器冒烟）或 报价单/采购申请 模板（复用 templates 底座）。
+
