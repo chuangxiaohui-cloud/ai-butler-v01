@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T15:27:11.121Z",
+  "generatedAt": "2026-08-27T15:55:24.975Z",
   "defaultTier": "medium",
   "tiers": [
     "light",
@@ -28,7 +28,7 @@
     {
       "id": "minimax:light",
       "provider": "MiniMax",
-      "label": "MiniMax-M2.7",
+      "label": "MiniMax-M2.7-highspeed",
       "note": "快速"
     },
     {

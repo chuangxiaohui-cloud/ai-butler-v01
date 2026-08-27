@@ -17,7 +17,8 @@ export function buildSelfIdentityAnswer(selection: ModelSelection | undefined): 
   const label = entry?.label ?? 'deepseek-v4-flash';
   const note = entry?.note ?? '均衡';
   return (
-    `我是「一人公司 AI-Agent」桌面助手，当前问答链路由 ${provider} 的 ${label} 驱动（${role} 档 · ${note}）。\n` +
-    '可以在 UI 的模型切换器里选择 light（快速）/ medium（均衡）/ heavy（旗舰 · 推理）三档，新问题会走新选的模型。'
+    `我是「一人公司 AI-Agent」桌面助手，当前生效模型是 ${provider} 的 ${label}（${role} 档 · ${note}）。\n` +
+    '身份/系统信息类问题由内置规则直接秒回，不消耗模型调用额度；普通问答按所选档位调用模型，' +
+    '可在 UI 模型切换器选 light（快速）/ medium（均衡）/ heavy（旗舰 · 推理），新问题按新档位走。'
   );
 }

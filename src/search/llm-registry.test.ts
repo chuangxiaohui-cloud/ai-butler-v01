@@ -53,6 +53,12 @@ describe('llm-registry: provider 选择', () => {
     assert.ok(profile);
     assert.equal(profile.id, 'minimax');
     assert.equal(profile.models.heavy, 'MiniMax-M3');
+    const light = registry.resolveProfile('light');
+    assert.ok(light);
+    assert.equal(light.models.light, 'MiniMax-M2.7-highspeed');
+    const medium = registry.resolveProfile('medium');
+    assert.ok(medium);
+    assert.equal(medium.models.medium, 'MiniMax-M2.7');
   });
 
   it('旧 LLM_PRIMARY_* 配置仍解析为 legacy profile', () => {

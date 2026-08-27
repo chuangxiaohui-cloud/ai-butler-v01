@@ -59,7 +59,7 @@ const PROVIDER_DEFS: readonly ProviderDef[] = [
     defaultBaseUrl: 'https://api.minimax.chat/v1',
     modelEnvPrefix: 'MINIMAX',
     defaultModels: {
-      light: 'MiniMax-M2.7',
+      light: 'MiniMax-M2.7-highspeed',
       medium: 'MiniMax-M2.7',
       heavy: 'MiniMax-M3',
       vision: 'MiniMax-M2.7',

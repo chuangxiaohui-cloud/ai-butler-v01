@@ -98,13 +98,27 @@ const SUBMODE_LABELS: Record<string, string> = {
 };
 
 const FALLBACK_MODELS: ModelOption[] = [
-  { id: 'deepseek:heavy', provider: 'DeepSeek', label: 'deepseek-chat', note: '旗舰 · 推理' },
-  { id: 'deepseek:medium', provider: 'DeepSeek', label: 'deepseek-chat', note: '均衡' },
-  { id: 'deepseek:light', provider: 'DeepSeek', label: 'deepseek-chat', note: '快速' },
-  { id: 'zhipu:heavy', provider: '智谱', label: 'glm-5.3', note: '旗舰' },
+  { id: 'deepseek:heavy', provider: 'DeepSeek', label: 'deepseek-v4-pro', note: '旗舰 · 推理' },
+  { id: 'deepseek:medium', provider: 'DeepSeek', label: 'deepseek-v4-flash', note: '均衡' },
+  { id: 'deepseek:light', provider: 'DeepSeek', label: 'deepseek-v4-flash', note: '快速' },
+  { id: 'minimax:heavy', provider: 'MiniMax', label: 'MiniMax-M3', note: '旗舰 · 推理' },
+  { id: 'minimax:medium', provider: 'MiniMax', label: 'MiniMax-M2.7', note: '均衡' },
+  { id: 'minimax:light', provider: 'MiniMax', label: 'MiniMax-M2.7-highspeed', note: '快速' },
+  { id: 'zhipu:heavy', provider: '智谱', label: 'glm-5.3', note: '旗舰 · 推理' },
   { id: 'zhipu:medium', provider: '智谱', label: 'glm-5.2', note: '均衡' },
   { id: 'zhipu:light', provider: '智谱', label: 'glm-5-turbo', note: '快速' },
 ];
+
+// P-105 模型路由缺省中档（便宜优先）；UI 未手动选档时跟随该档
+const DEFAULT_MODEL_TIER = 'medium';
+
+function defaultModelId(list: ModelOption[]): string {
+  return (
+    list.find((item) => item.id.endsWith(`:${DEFAULT_MODEL_TIER}`))?.id ??
+    list[0]?.id ??
+    'deepseek:medium'
+  );
+}
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL ?? 'http://127.0.0.1:8787';
 // 会话上下文（E193）：每次页面会话一个稳定 conversationId，供 gateway 端逐字窗口 + 压缩
@@ -224,7 +238,8 @@ function App() {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [models, setModels] = useState<ModelOption[]>(FALLBACK_MODELS);
-  const [model, setModel] = useState<string>(FALLBACK_MODELS[0].id);
+  const [model, setModel] = useState<string>(() => defaultModelId(FALLBACK_MODELS));
+  const modelTouchedRef = useRef(false);
   const [liked, setLiked] = useState<Record<string, boolean>>({});
 
   const [l1Section, setL1Section] = useState<'sessions' | 'projects'>('projects');
@@ -267,20 +282,29 @@ function App() {
     fetch(`${GATEWAY_URL}/api/model-providers`)
       .then((resp) => (resp.ok ? resp.json() : null))
       .catch(() => null)
-      .then((catalog: { models?: ModelOption[] } | null) => {
+      .then((catalog: { models?: ModelOption[]; defaultTier?: string } | null) => {
         const loaded = catalog?.models ?? [];
-        if (loaded.length) return loaded;
+        if (loaded.length) {
+          return { models: loaded, defaultTier: catalog?.defaultTier };
+        }
         return fetch(`${import.meta.env.BASE_URL}model-providers.json`)
           .then((r) => (r.ok ? r.json() : null))
-          .then((staticCatalog: { models?: ModelOption[] } | null) => staticCatalog?.models ?? [])
-          .catch(() => []);
+          .then((staticCatalog: { models?: ModelOption[]; defaultTier?: string } | null) => ({
+            models: staticCatalog?.models ?? [],
+            defaultTier: staticCatalog?.defaultTier,
+          }))
+          .catch(() => ({ models: [], defaultTier: undefined }));
       })
-      .then((loaded: ModelOption[]) => {
-        if (loaded.length) {
-          setModels(loaded);
-          setModel((prev) =>
-            loaded.some((item) => item.id === prev) ? prev : (loaded[0]?.id ?? prev),
-          );
+      .then(({ models: loaded, defaultTier }: { models: ModelOption[]; defaultTier?: string }) => {
+        if (!loaded.length) return;
+        setModels(loaded);
+        if (modelTouchedRef.current) {
+          // 用户已手动选档：保留原选择，仅兜底保证落在目录内
+          setModel((prev) => (loaded.some((item) => item.id === prev) ? prev : defaultModelId(loaded)));
+        } else {
+          // P-105 缺省中档：未手动选过模型时跟随目录 defaultTier（便宜优先）
+          const tier = defaultTier ?? DEFAULT_MODEL_TIER;
+          setModel(loaded.find((item) => item.id.endsWith(`:${tier}`))?.id ?? loaded[0].id);
         }
       })
       .catch(() => {
@@ -406,6 +430,15 @@ function App() {
         detail: item.url,
         hard: item.type === '[hard]',
       }));
+      // 回复标签跟随后端实际路由结果（工程开发/知识咨询/生活助手），不再用发送时的旧 mode
+      const replyMode = data.mode ?? mode;
+      const replySubmode = data.mode ? data.submode : submode;
+      const replyMeta = [
+        MODES.find((m) => m.key === replyMode)?.label,
+        replySubmode && SUBMODE_LABELS[replySubmode] ? SUBMODE_LABELS[replySubmode] : null,
+      ]
+        .filter((item): item is string => Boolean(item))
+        .join(' · ');
       appendReply({
         id: `reply-${Date.now()}`,
         role: 'agent',
@@ -416,7 +449,7 @@ function App() {
           url: v.url,
           platform: v.platform,
         })),
-        meta: `${MODES.find((m) => m.key === mode)?.label} · 后端`,
+        meta: replyMeta,
         notice: data.notice,
       });
       loadFiles();
@@ -590,7 +623,10 @@ function App() {
               onChange={setInput}
               onSend={send}
               model={model}
-              onModelChange={setModel}
+              onModelChange={(id) => {
+                modelTouchedRef.current = true;
+                setModel(id);
+              }}
               models={models}
               contextUsage={contextUsage}
               mode={mode}
