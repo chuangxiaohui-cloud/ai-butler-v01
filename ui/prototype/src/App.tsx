@@ -411,7 +411,6 @@ function App() {
         notice: data.notice,
       });
       loadFiles();
-      if (data.notice) setBannerNotice(data.notice);
     } catch {
       appendReply(ReplyDraft(mode, text));
       loadFiles();

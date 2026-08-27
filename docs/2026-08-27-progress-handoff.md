@@ -174,3 +174,12 @@
 - **证据**：UI `tsc -b && vite build` 通过（index-CrQZuah-.js 195.48 kB）；desktop:smoke + 打包版冒烟 DESKTOP_READY；重新打包便携版与安装版；后端 1014/1015（1 skip）+ 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）。
 - **登记**：附录 A E265；计划文档 `docs/plans/2026-08-27-ui-mode-auto-switch.md`。
 - **续接**：新便携版已含 E264（身份直达秒回）+ E265（模式解锁）；下一批候选：普通知识问答 30s 耗时的搜索管道调优（并行 provider / 超时档位，涉及 §5 [P-NN] 需登记 bench）或继续市场 Skill 沉淀。
+
+## 续推进（2026-08-27 第 13 批）——E266 UI 体验：回复区滚动条 + 预警去重
+
+桌面便携版实测反馈：① 回复内容过长时窗口右边无下拉条（需拉伸窗口看全）；② Tavily 超限提示在顶部 banner 与消息内重复。
+
+- **能力**：`styles.css` 补齐 grid/flex 高度链（`.app-shell` 行 2 `minmax(0, 1fr)`、`.center-v2` +`min-height:0`+`overflow:hidden`），`.message-list` 加深色主题滚动条；`App.tsx` 去掉回答后自动设 banner（保留消息内 `msg.notice` 单处显示）。
+- **证据**：UI build 通过（index-D7Olf8Ee.js）；playwright-core + Edge（820x620）实测注入 40 条后 `scrollHeight 2224 > clientHeight 395` 可滚动；重新打包便携版与安装版；后端 1014/1015（1 skip）+ 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）。
+- **登记**：附录 A E266；计划文档 `docs/plans/2026-08-27-ui-scrollbar-and-notice.md`。
+- **续接**：新便携版已含 E264/E265/E266；下一批候选：普通知识问答 30s 耗时的搜索管道调优（并行 provider / 超时档位，涉及 §5 [P-NN] 需登记 bench）或继续市场 Skill 沉淀。
