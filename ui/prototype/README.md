@@ -24,7 +24,7 @@ npm run dev
 
 聊天输入框支持直接粘贴图片，粘贴后显示缩略图，发送后随消息进入对话。
 
-提问框右下角提供模型切换器：DeepSeek V4 Flash / DeepSeek V4 Pro / MiniMax M3 / MiniMax M2.7 / MiniMax M2.7-highspeed / GLM-5.3 / GLM-5.2 / GLM-5-Turbo，点击即切换。
+提问框右下角提供模型切换器：DeepSeek V4 Flash / DeepSeek V4 Pro / DeepSeek V4 Flash Vision Exp / MiniMax M3 / MiniMax M2.7 / MiniMax M2.7-highspeed / GLM-5.3 / GLM-5.2 / GLM-5-Turbo，点击即切换。
 
 模型名已按官方文档核对（2026-08-15 / 2026-08-27 更新）：DeepSeek 价格页 `deepseek-v4-flash/deepseek-v4-pro`；MiniMax 接口概览 `MiniMax-M3 / MiniMax-M2.7 / MiniMax-M2.7-highspeed`（三档：heavy=M3、medium=M2.7、light=M2.7-highspeed）；智谱文档 `glm-5.3/glm-5.2/glm-5-turbo`。注意 GLM-5.3 官方标注“模型 API 即将上线”，Coding Plan 已全量可用。
 

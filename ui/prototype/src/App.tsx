@@ -104,9 +104,12 @@ const FALLBACK_MODELS: ModelOption[] = [
   { id: 'minimax:heavy', provider: 'MiniMax', label: 'MiniMax-M3', note: '旗舰 · 推理' },
   { id: 'minimax:medium', provider: 'MiniMax', label: 'MiniMax-M2.7', note: '均衡' },
   { id: 'minimax:light', provider: 'MiniMax', label: 'MiniMax-M2.7-highspeed', note: '快速' },
+  { id: 'minimax:vision', provider: 'MiniMax', label: 'MiniMax-M2.7', note: '视觉' },
   { id: 'zhipu:heavy', provider: '智谱', label: 'glm-5.3', note: '旗舰 · 推理' },
   { id: 'zhipu:medium', provider: '智谱', label: 'glm-5.2', note: '均衡' },
   { id: 'zhipu:light', provider: '智谱', label: 'glm-5-turbo', note: '快速' },
+  { id: 'zhipu:vision', provider: '智谱', label: 'glm-5.2', note: '视觉' },
+  { id: 'deepseek:vision', provider: 'DeepSeek', label: 'deepseek-v4-flash-vision-exp', note: '视觉' },
 ];
 
 // P-105 模型路由缺省中档（便宜优先）；UI 未手动选档时跟随该档

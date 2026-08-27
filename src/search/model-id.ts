@@ -3,11 +3,11 @@
  * id 格式：`<provider>:<role>`，如 `deepseek:heavy` / `zhipu:medium`。
  */
 
-import type { ModelTier } from './model-router.js';
+import type { ModelRole } from './llm-registry.js';
 
 export interface ModelSelection {
   provider: string;
-  role: ModelTier;
+  role: ModelRole;
 }
 
 export function parseModelId(modelId: string | undefined | null): ModelSelection | null {
@@ -16,7 +16,10 @@ export function parseModelId(modelId: string | undefined | null): ModelSelection
   if (index <= 0) return null;
   const provider = modelId.slice(0, index).trim();
   const role = modelId.slice(index + 1).trim();
-  if (!provider || (role !== 'light' && role !== 'medium' && role !== 'heavy')) {
+  if (
+    !provider ||
+    (role !== 'light' && role !== 'medium' && role !== 'heavy' && role !== 'vision')
+  ) {
     return null;
   }
   return { provider, role };

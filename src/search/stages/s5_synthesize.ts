@@ -3,9 +3,9 @@
  * 重模型基于融合证据生成中文秘书答案；超时降级为证据摘要，禁止无证据硬答。
  */
 
-import type { LLMClient } from '../llm.js';
+import type { LLMClient, ModelRole } from '../llm.js';
 import { createClientForRole, describeUsedModel } from '../llm.js';
-import type { ModelRouteInfo, ModelTier } from '../model-router.js';
+import type { ModelRouteInfo } from '../model-router.js';
 import type { FusedOutput } from '../fusion.js';
 import type { ClassifiedQuery } from './s2_classify.js';
 import type { PrimaryLens } from '../../agent/types.js';
@@ -20,7 +20,7 @@ export interface SynthesizeOptions {
   skillHints?: string[];
   skillOutputs?: string[];
   primaryLens?: PrimaryLens;
-  modelTier?: ModelTier;
+  modelTier?: ModelRole;
   preferredProvider?: string;
   onModelRoute?: (info: ModelRouteInfo) => void;
 }

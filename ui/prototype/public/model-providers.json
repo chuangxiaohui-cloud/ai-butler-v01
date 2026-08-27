@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T15:55:24.975Z",
+  "generatedAt": "2026-08-27T16:43:43.573Z",
   "defaultTier": "medium",
   "tiers": [
     "light",
@@ -26,6 +26,12 @@
       "note": "旗舰 · 推理"
     },
     {
+      "id": "deepseek:vision",
+      "provider": "DeepSeek",
+      "label": "deepseek-v4-flash-vision-exp",
+      "note": "视觉"
+    },
+    {
       "id": "minimax:light",
       "provider": "MiniMax",
       "label": "MiniMax-M2.7-highspeed",
@@ -44,6 +50,12 @@
       "note": "旗舰 · 推理"
     },
     {
+      "id": "minimax:vision",
+      "provider": "MiniMax",
+      "label": "MiniMax-M2.7",
+      "note": "视觉"
+    },
+    {
       "id": "zhipu:light",
       "provider": "智谱",
       "label": "glm-5-turbo",
@@ -60,6 +72,12 @@
       "provider": "智谱",
       "label": "glm-5.3",
       "note": "旗舰 · 推理"
+    },
+    {
+      "id": "zhipu:vision",
+      "provider": "智谱",
+      "label": "glm-5.2",
+      "note": "视觉"
     }
   ]
 }

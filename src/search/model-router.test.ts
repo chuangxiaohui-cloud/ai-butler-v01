@@ -40,12 +40,12 @@ describe('model-id: UI 模型选择解析', () => {
   it('合法 id 解析出 provider 与档位', () => {
     assert.deepEqual(parseModelId('deepseek:heavy'), { provider: 'deepseek', role: 'heavy' });
     assert.deepEqual(parseModelId('zhipu:medium'), { provider: 'zhipu', role: 'medium' });
+    assert.deepEqual(parseModelId('deepseek:vision'), { provider: 'deepseek', role: 'vision' });
   });
 
-  it('非法 id / 视觉档返回 null', () => {
+  it('非法 id 返回 null', () => {
     assert.equal(parseModelId(null), null);
     assert.equal(parseModelId('nope'), null);
-    assert.equal(parseModelId('deepseek:vision'), null);
     assert.equal(parseModelId(':heavy'), null);
   });
 });

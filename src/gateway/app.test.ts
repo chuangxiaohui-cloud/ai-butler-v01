@@ -149,7 +149,8 @@ test('gateway: /api/ask 走同一 pipeline 并返回四字段契约', async () =
     const resp = await fetch(`${base}/api/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: 'STM32F103C8T6 主频是多少', modelId: 'deepseek:heavy' }),
+      // 不带 modelId：走注入的 fake LLM（带 modelId 时按 E269 用所选 provider:role 真实客户端）
+      body: JSON.stringify({ query: 'STM32F103C8T6 主频是多少' }),
     });
     const body = (await resp.json()) as {
       query?: string;
@@ -259,7 +260,7 @@ test('gateway: /api/model-providers 返回 UI 可用的模型目录', async () =
     assert.equal(resp.status, 200);
     assert.ok((body.models ?? []).length > 0);
     for (const item of body.models ?? []) {
-      assert.match(item.id, /^[a-z]+:(light|medium|heavy)$/);
+      assert.match(item.id, /^[a-z]+:(light|medium|heavy|vision)$/);
       assert.ok(item.provider);
       assert.ok(item.label);
     }

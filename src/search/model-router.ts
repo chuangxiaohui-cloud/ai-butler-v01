@@ -4,11 +4,12 @@
  */
 
 import { PARAMS } from '../config/params.js';
+import type { ModelRole } from './llm-registry.js';
 
 export type ModelTier = 'light' | 'medium' | 'heavy';
 
 export interface ModelRouteInfo {
-  tier: ModelTier;
+  tier: ModelRole;
   provider: string;
   model: string;
   fallbacks: Array<{ from: string; to: string }>;

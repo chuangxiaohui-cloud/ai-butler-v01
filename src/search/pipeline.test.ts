@@ -17,12 +17,21 @@ import type { SessionContext, SessionContextStore } from '../memory/session-cont
 import type { QuotaStoreLike } from './quota.js';
 import type { MemoryRecord, MemoryStore } from '../memory/store.js';
 import type { SearchProvider, SearchProviderResult, SearchResultItem } from './providers/types.js';
-import { pipeline } from './pipeline.js';
+import { filterChatSearchNotices, pipeline } from './pipeline.js';
 import { getSkills } from '../skills/registry.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { appendOperation } from '../security/operation-log.js';
 import { DeepReportStore } from './deep-report-store.js';
 import type { TrajectoryEvent } from '../trajectory/trajectory-log.js';
+
+test('pipeline: filterChatSearchNotices 过滤 Tavily 月配额噪音但保留其他预警', () => {
+  const filtered = filterChatSearchNotices([
+    'Tavily 计划用量已超限，本月不再提供搜索结果（Bocha/AnySearch 不受影响）',
+    'Bocha 余额已耗尽，请购买体验包',
+    'Tavily 计划用量已超限，本月不再提供搜索结果（Bocha/AnySearch 不受影响）',
+  ]);
+  assert.deepEqual(filtered, ['Bocha 余额已耗尽，请购买体验包']);
+});
 
 process.env.SEARCH_METRICS_LOG = join(tmpdir(), 'pipeline-search-metrics-test.jsonl');
 process.env.CALENDAR_DB_PATH = join(tmpdir(), 'pipeline-calendar-test.db');

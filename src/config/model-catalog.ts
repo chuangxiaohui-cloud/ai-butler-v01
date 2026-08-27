@@ -1,6 +1,6 @@
 /**
  * Provider Registry 模型目录（供 UI 与 gateway 共用）
- * 只导出聊天档 light/medium/heavy；视觉档由 VLM Skill 按需解析。
+ * 导出聊天档 light/medium/heavy + 视觉档 vision（UI 模型切换器可选）。
  */
 
 import { defaultRegistry, MODEL_ROLES, type ModelRole } from '../search/llm-registry.js';
@@ -41,7 +41,7 @@ export function buildModelCatalog(): ModelCatalog {
 
   const models: ModelCatalogEntry[] = [];
   for (const [id, entry] of byId) {
-    for (const role of ['light', 'medium', 'heavy'] as const) {
+    for (const role of MODEL_ROLES) {
       const label = entry.models[role];
       if (!label) continue;
       models.push({
@@ -56,7 +56,7 @@ export function buildModelCatalog(): ModelCatalog {
   return {
     generatedAt: new Date().toISOString(),
     defaultTier: PARAMS.modelRouterDefaultTier,
-    tiers: ['light', 'medium', 'heavy'],
+    tiers: [...MODEL_ROLES],
     models,
   };
 }

@@ -61,6 +61,7 @@ import type { RouteCaseStore } from '../agent/route-case-store.js';
 import { prepareQuery } from './stages/s1_prepare.js';
 import { classifyQuery } from './stages/s2_classify.js';
 import { runSearchLoop, type BrowserFetcher } from './search-loop.js';
+import { createClientForRole } from './llm.js';
 import { synthesizeAnswer } from './stages/s5_synthesize.js';
 import { postProcess } from './stages/s6_post.js';
 import {
@@ -71,6 +72,11 @@ import {
 import { resolveModelTier } from './model-router.js';
 import type { ModelRouteInfo } from './model-router.js';
 import type { ModelSelection } from './model-id.js';
+
+/** 聊天可见搜索预警：过滤 Tavily 月配额噪音（配额监控走 tavily:smoke，不打扰用户） */
+export function filterChatSearchNotices(notices: string[]): string[] {
+  return [...new Set(notices)].filter((notice) => !notice.includes('Tavily 计划用量已超限'));
+}
 
 export interface Evidence {
   title: string;
@@ -892,7 +898,8 @@ export async function pipeline(
     },
   });
 
-  const searchNotices = [...new Set(search.notices ?? [])];
+  // Tavily 月配额超限提示只对运维/监控有用，聊天场景静默（Bocha/AnySearch 正常时纯噪音）
+  const searchNotices = filterChatSearchNotices(search.notices ?? []);
 
   // Stage 4：四过滤器 + 加权评分 + 规则① + 来源权威注入
   const relevanceQuery = search.subQueries[0] ?? searchQuery;
@@ -987,7 +994,13 @@ export async function pipeline(
     hasGithubLink: route.features.hasGithubLink,
   });
   const synthesized = await synthesizeAnswer(prepared.cleanQuery, fused, classified, {
-    llm: deps.llm,
+    // UI 显式选档时按所选 provider:role 走模型（缺省 medium 便宜且快），
+    // 未选档（CLI 等）才回落到默认 heavy 客户端
+    llm: opts.modelSelection
+      ? createClientForRole(opts.modelSelection.role, {
+          preferredId: opts.modelSelection.provider,
+        })
+      : deps.llm,
     serious: rule3.serious,
     memoryNotes: memoryBlock ? [...memoryNotes, memoryBlock] : memoryNotes,
     aiAnswers: search.aiAnswers,
