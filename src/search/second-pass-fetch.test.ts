@@ -40,16 +40,52 @@ function sessionOver(opts: {
   };
 }
 
-test('second-pass-fetch: HTML 目标抓取正文并返回', async () => {
-  const session = sessionOver({ fetchText: ' 完整正文 ' });
-  const result = await fetchSecondPassTarget(htmlTarget, 'STM32F103C8T6', session);
+test('second-pass-fetch: HTML 目标 HTTP 直抓优先，无需浏览器会话（P-YYY）', async () => {
+  const session = sessionOver({ fetchText: '不应走浏览器' });
+  const result = await fetchSecondPassTarget(
+    htmlTarget,
+    'STM32F103C8T6',
+    session,
+    undefined,
+    async () => ({ url: htmlTarget.url, title: 't', text: 'HTTP 直抓正文 72MHz' }),
+  );
   assert.ok(result);
-  assert.equal(result.text, ' 完整正文 ');
+  assert.equal(result.text, 'HTTP 直抓正文 72MHz');
 });
 
-test('second-pass-fetch: HTML 空正文不产出结果', async () => {
+test('second-pass-fetch: HTTP 直抓失败时浏览器会话兜底', async () => {
+  const session = sessionOver({ fetchText: ' 浏览器兜底正文 ' });
+  const result = await fetchSecondPassTarget(
+    htmlTarget,
+    'STM32F103C8T6',
+    session,
+    undefined,
+    async () => null,
+  );
+  assert.ok(result);
+  assert.equal(result.text, ' 浏览器兜底正文 ');
+});
+
+test('second-pass-fetch: 无浏览器会话且 HTTP 直抓失败返回 null', async () => {
+  const result = await fetchSecondPassTarget(
+    htmlTarget,
+    'STM32F103C8T6',
+    undefined,
+    undefined,
+    async () => null,
+  );
+  assert.equal(result, null);
+});
+
+test('second-pass-fetch: HTTP 直抓空正文不产出结果', async () => {
   const session = sessionOver({ fetchText: '   ' });
-  const result = await fetchSecondPassTarget(htmlTarget, 'STM32F103C8T6', session);
+  const result = await fetchSecondPassTarget(
+    htmlTarget,
+    'STM32F103C8T6',
+    session,
+    undefined,
+    async () => ({ url: htmlTarget.url, title: 't', text: '' }),
+  );
   assert.equal(result, null);
 });
 
@@ -89,7 +125,8 @@ test('second-pass-fetch: 总预算超时快速返回，不串行等满各目标�
   const hang = sessionOver({ fetchText: 'hang' });
   const targets = [htmlTarget, { ...htmlTarget, url: 'https://example.com/2.html' }];
   const start = Date.now();
-  const results = await fetchSecondPassTargets(targets, 'STM32F103C8T6', hang, 150);
+  const results = await fetchSecondPassTargets(targets, 'STM32F103C8T6', hang, 150,   async () => null,
+  );
   assert.deepEqual(results, []);
   assert.ok(Date.now() - start < 3000, '预算生效，不等待 provider 自身超时');
 });
@@ -98,7 +135,8 @@ test('second-pass-fetch: 目标并发抓取，总耗时≈最慢目标（P1）',
   const session = sessionOver({ fetchText: 'ok', fetchDelayMs: 120 });
   const targets = [htmlTarget, { ...htmlTarget, url: 'https://example.com/2.html' }];
   const start = Date.now();
-  const results = await fetchSecondPassTargets(targets, 'STM32F103C8T6', session, 5000);
+  const results = await fetchSecondPassTargets(targets, 'STM32F103C8T6', session, 5000,   async () => null,
+  );
   const elapsed = Date.now() - start;
   assert.equal(results.length, 2);
   assert.ok(elapsed < 300, `并发应≈最慢目标（120ms），实际 ${elapsed}ms`);

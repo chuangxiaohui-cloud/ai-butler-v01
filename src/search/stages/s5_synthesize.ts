@@ -22,6 +22,8 @@ export interface SynthesizeOptions {
   skillOutputs?: string[];
   /** P0 四步链路：检索后抓取的网页正文（readability 抽取），LLM 必须基于正文直接作答 */
   pageContents?: Array<{ title: string; url: string; text: string }>;
+  /** P-ZZZ' 信号 B：证据覆盖度缺口（如「具体数值/数量信息」）——注入诚实边界，禁止编造 */
+  readinessGap?: string;
   primaryLens?: PrimaryLens;
   modelTier?: ModelRole;
   preferredProvider?: string;
@@ -31,6 +33,10 @@ export interface SynthesizeOptions {
 export interface SynthesizeResult {
   answer: string;
   source: 'llm' | 'fallback';
+  /** 合成 LLM 调用失败（超时/HTTP 错误）时置 true——调用方据此显式标记 gate，不再静默 */
+  synthesisFailed?: boolean;
+  /** 失败原因（调试/轨迹用，不直接展示给用户） */
+  synthesisError?: string;
 }
 
 /** P2：数值/时效类问题（市值/排名/价格等）需标注数据日期与口径 */
@@ -191,6 +197,12 @@ export async function synthesizeAnswer(
         '并区分「上市市值」与「一级市场估值」，来源只有旧数据时明确说明数据时点，不要拿旧闻冒充现状。',
     );
   }
+  if (opts.readinessGap) {
+    p0Lines.push(
+      `诚实边界：当前证据可能缺乏${opts.readinessGap}。若证据中确实没有，请明确说明“证据未覆盖”并给出已有方向，` +
+        '不要编造数字/日期/步骤/观点。',
+    );
+  }
   const messages = [
     {
       role: 'system' as const,
@@ -216,7 +228,7 @@ export async function synthesizeAnswer(
       opts.onModelRoute({ tier: opts.modelTier ?? 'heavy', ...used });
     }
     return { answer, source: 'llm' };
-  } catch {
+  } catch (err) {
     const pageSummary =
       pageContents.length > 0
         ? `\n已抓取正文：${pageContents.map((p) => `${p.title}（${p.url}）`).join('；')}`
@@ -228,6 +240,8 @@ export async function synthesizeAnswer(
     return {
       answer: `搜索到了 ${fused.items.length} 条相关结果，其中较可信的包括：${summary}。${pageSummary}`,
       source: 'fallback',
+      synthesisFailed: true,
+      synthesisError: err instanceof Error ? err.message : String(err),
     };
   }
 }

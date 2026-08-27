@@ -30,6 +30,7 @@ import { extractPartNumber, getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
 import { PARAMS } from '../config/params.js';
 import { fetchSecondPassTargets } from './second-pass-fetch.js';
+import { checkEvidenceReadiness } from './answer-readiness.js';
 import {
   DeepReportCancelledError,
   generateDeepReport,
@@ -113,7 +114,7 @@ export interface AnswerResult {
   answer: string;
   confidence: number;
   evidence: Evidence[];
-  gate_triggered: 'none' | 'emergency' | 'low_confidence' | 'safety';
+  gate_triggered: 'none' | 'emergency' | 'low_confidence' | 'safety' | 'synthesis_timeout';
   elapsed_ms: number;
   mode?: UiMode;
   submode?: string;
@@ -1015,7 +1016,6 @@ export async function pipeline(
   if (
     CONTENT_READING_INTENTS.has(classified.intent) &&
     search.results.length > 0 &&
-    deps.browserSession &&
     !shouldSecondPass(prepared.cleanQuery)
   ) {
     // 低置信二次取证已抓的 browser 证据直接并入 pageContents（不重复抓）
@@ -1037,6 +1037,9 @@ export async function pipeline(
       deps.browserSession,
       PARAMS.secondPassBudgetMs,
     );
+    if (targets.length > 0 && fetched.length === 0) {
+      toolNotices.push('网页正文抓取失败（站点不可访问或被反爬拦截），回答将基于搜索结果摘要');
+    }
     for (const { target, text } of fetched) {
       const content = text.slice(0, PARAMS.knowledgePageFetchChars);
       pageContents.push({ title: target.title, url: target.url, text: content });
@@ -1054,6 +1057,12 @@ export async function pipeline(
 
   const videoResults = collectVideoResults(evidence);
   const videoBlock = buildVideoBlock(videoResults);
+
+  // P-ZZZ' 信号 B：证据覆盖度检测（predicate 类型 → 形态缺失检查），缺口注入合成诚实边界
+  const readiness = checkEvidenceReadiness(prepared.cleanQuery, [
+    ...evidence.map((e) => e.title),
+    ...pageContents.map((p) => `${p.title} ${p.text}`),
+  ]);
 
   // Stage 5：秘书级合成
   let lastModelRoute: ModelRouteInfo | undefined;
@@ -1081,6 +1090,7 @@ export async function pipeline(
     skillHints,
     skillOutputs,
     pageContents,
+    readinessGap: readiness.gap,
     primaryLens: routeSelected.primaryLens,
     modelTier: opts.modelSelection?.role ?? routeModelTier,
     preferredProvider: opts.modelSelection?.provider,
@@ -1105,12 +1115,22 @@ export async function pipeline(
     synthesize: {
       source: synthesized.source,
       evidenceCount: evidence.length,
+      ...(synthesized.synthesisError ? { error: synthesized.synthesisError } : {}),
+      readiness: { kind: readiness.kind, ready: readiness.ready, ...(readiness.gap ? { gap: readiness.gap } : {}) },
     },
   });
 
   if (synthesized.source === 'llm') {
     for (const id of usedExperienceIds) deps.experienceManager?.recordUse?.(id);
     if (usedSkillName) deps.skillLifecycle?.recordUse?.(usedSkillName);
+  }
+
+  // P-130/P-XXX：合成 LLM 调用失败（如 heavy 档超时）→ 显式标记 gate，不再静默「搜索到了 N 条」
+  if (synthesized.source === 'fallback' && synthesized.synthesisFailed) {
+    if (gate === 'none') gate = 'synthesis_timeout';
+    if (!chatNotices.some((n) => n.includes('回答生成超时'))) {
+      chatNotices.push('回答生成超时，以下为基于现有证据的摘要；可重试或切换更快档位。');
+    }
   }
 
   // v1.0 S1/S2：深度报告（§4.3.2）——搜索证据基础上分阶段生成结构化报告 + 证据附录；

@@ -101,7 +101,8 @@
     "market:quotation": "tsx scripts/market-quotation.ts",
     "market:purchase:request": "tsx scripts/market-purchase-request.ts",
     "market:meeting:invitation": "tsx scripts/market-meeting-invitation.ts",
-    "market:notice:announcement": "tsx scripts/market-notice-announcement.ts"
+    "market:notice:announcement": "tsx scripts/market-notice-announcement.ts",
+    "bench:answer-readiness": "tsx scripts/bench-answer-readiness.ts"
   },
   "keywords": [
     "ai-agent",

@@ -36,6 +36,8 @@ export interface TrajectorySearch {
 export interface TrajectorySynthesize {
   source: 'llm' | 'fallback';
   evidenceCount: number;
+  error?: string;
+  readiness?: { kind: string; ready: boolean; gap?: string };
 }
 
 export interface TrajectoryModelRoute {

@@ -87,6 +87,15 @@ function roleModelEnvKey(prefix: string, role: ModelRole): string {
   return `${prefix}_${role.toUpperCase()}_MODEL`;
 }
 
+/** P-129/P-130：fallback 链总预算按档分级——light 短预算（分类等轻任务），heavy 放宽到推理模型可完成；medium 沿用 [P-116] 基准。 */
+export function resolveFallbackBudgetMs(role: ModelRole): number {
+  return role === 'light'
+    ? PARAMS.llmFallbackBudgetLightMs
+    : role === 'heavy'
+      ? PARAMS.llmFallbackBudgetHeavyMs
+      : PARAMS.llmFallbackTotalBudgetMs;
+}
+
 function resolveTimeoutMs(
   role: ModelRole,
   env: Record<string, string | undefined>,
@@ -315,6 +324,7 @@ export class LlmProviderRegistry {
       }
     }
     const timeoutMs = resolveTimeoutMs(role, this.env, opts.timeoutMs);
+    const fallbackBudgetMs = resolveFallbackBudgetMs(role);
     const chain = profiles.map((p) => ({
       providerId: p.id,
       model: p.models[role],
@@ -330,7 +340,7 @@ export class LlmProviderRegistry {
     return new FallbackLLMClient(
       chain,
       opts.onFallback,
-      opts.totalBudgetMs ?? PARAMS.llmFallbackTotalBudgetMs,
+      opts.totalBudgetMs ?? fallbackBudgetMs,
     );
   }
 }

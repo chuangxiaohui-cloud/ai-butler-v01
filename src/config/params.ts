@@ -64,8 +64,12 @@ export const PARAMS = {
   rateLimitMaxEntries: 10_000,
   /** P-115 /api/ask 最大并发请求数 */
   askMaxConcurrent: 4,
-  /** P-116 LLM fallback 链总预算（对齐 [P-06] Stage 5 预算） */
+  /** P-116 LLM fallback 链总预算（对齐 [P-06] Stage 5 预算，medium 档基准） */
   llmFallbackTotalBudgetMs: 12_000,
+  /** P-129 light 档 fallback 链总预算（分类等轻任务，快模型短预算） */
+  llmFallbackBudgetLightMs: 5_000,
+  /** P-130 heavy 档 fallback 链总预算（v4-pro 等推理模型合成，实测 >12s，放宽到单客户端超时上限） */
+  llmFallbackBudgetHeavyMs: 30_000,
   /** P-117 低置信二次取证总预算（对齐单目标抓取 8s 超时） */
   secondPassBudgetMs: 8_000,
   /** P-118 取证 PDF 解析大小上限 */
@@ -90,6 +94,8 @@ export const PARAMS = {
   knowledgePageFetchChars: 4_000,
   /** P-128 Stage 5 网页正文单篇注入 prompt 上限（P0，3 篇 × 3k ≈ 9k tokens，12s 预算内） */
   synthesizePageTextChars: 3_000,
+  /** P-131 证据多样性约束：标题/正文 token Jaccard 超过该值视为同质簇（零依赖语义近似） */
+  evidenceDiversityJaccard: 0.6,
   /** P-13 深度报告增量预算（生成+证据组装，不含内部搜索调用；对齐 §4.3.2） */
   deepReportBudgetMs: 45_000,
   /** P-38 编译/构建超时（§11.1.3，Keil/gcc/cmake） */
@@ -144,6 +150,8 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   rateLimitMaxEntries: 'P-114',
   askMaxConcurrent: 'P-115',
   llmFallbackTotalBudgetMs: 'P-116',
+  llmFallbackBudgetLightMs: 'P-129',
+  llmFallbackBudgetHeavyMs: 'P-130',
   secondPassBudgetMs: 'P-117',
   pdfParseMaxBytes: 'P-118',
   calibrationWindowDays: 'P-119',
@@ -164,5 +172,6 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   browserOpDomSnapshotMaxChars: 'P-126',
   knowledgePageFetchChars: 'P-127',
   synthesizePageTextChars: 'P-128',
+  evidenceDiversityJaccard: 'P-131',
   deepReportBudgetMs: 'P-13',
 };

@@ -1,6 +1,6 @@
-# 进度交接 2026-08-28（E268 身份一致性 + E269 合成跟随选档 + E270 知识问答四步链路 / 工具告警分离）
+# 进度交接 2026-08-28（E268 身份一致性 + E269 合成跟随选档 + E270 知识问答四步链路 / 工具告警分离 + E271 通用管道机制级修复）
 
-> 当前分支：v0.2b｜本轮收口：E268（身份问答一致性）+ E269（合成跟随 UI 选档、Tavily 预警静默、视觉档进切换器）+ E270（知识问答四步链路：通用问答强制抓正文作答 + 工具告警静默兜底 + E81 词表与金融权威域）。
+> 当前分支：v0.2b｜本轮收口：E268（身份问答一致性）+ E269（合成跟随 UI 选档、Tavily 预警静默、视觉档进切换器）+ E270（知识问答四步链路：通用问答强制抓正文作答 + 工具告警静默兜底 + E81 词表与金融权威域）+ E271（通用问答管道机制级修复：fallback 预算分档 + HTTP 直抓正文 + 三维回答力信号）。
 > 上一份交接见 `docs/2026-08-27-progress-handoff.md`。
 
 ## 今日已收口
@@ -14,6 +14,16 @@
 - **P3**：工具告警（Tavily 超限/Bocha 余额）→ `AnswerResult.toolNotice` → UI 底部状态栏（移除死代码 banner），不污染气泡。
 - **证据**：新增单测 12 条；全量单测 1029/1030（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 51 key）；UI 构建通过；gateway E2E：市值题 toolNotice=Tavily 超限、notice 空、LLM 诚实作答（截至 2026-08-28 无完整榜单 + 来源）、evidence 含 eastmoney；计划文档 `docs/plans/2026-08-28-knowledge-qa-four-step.md`。
 - **登记**：附录 A E270；[P-127]/[P-128] provisional@2026-08-28。
+
+### 3. E271 通用问答管道机制级修复（依审阅结论：预算分档 + HTTP 直抓 + 三维回答力信号）
+
+- **审阅结论落地**：不修「市值」内容，修三个与 query 无关的结构缺陷——① fallback 预算不分档（heavy 推理模型 12s 总预算撞线 → 兜底摘要）；② 正文抓取依赖浏览器（P0 无浏览器就不抓）；③ 选证只看相关性不看「回答力」。全部机制级修复，代码与文档规则不引入任何领域关键词/域名/实体（用户硬约束）。
+- **P-XXX 预算按档**：`params.ts` 新增 [P-129] light=5000ms / [P-130] heavy=30000ms（medium 沿用 [P-116] 12s）；`llm-registry.ts` 抽 `resolveFallbackBudgetMs(role)`；合成失败显式 `gate_triggered=synthesis_timeout` + 聊天提示「回答生成超时…可重试或切换更快档位」，轨迹记 error，不再静默「搜索到了 N 条」。
+- **P-YYY HTTP 直抓**：新增 `src/search/http-fetch.ts`（node 原生 fetch + 正则正文提取 + UTF-8→GB18030 探测 + SSRF 复用）；`second-pass-fetch.ts` HTML 分支 HTTP 优先、浏览器兜底（`session` 改可选）；`pipeline.ts` P0 移除 browserSession 前置条件，全失败时 `toolNotice`「网页正文抓取失败…」。
+- **P-ZZZ' 三维回答力信号**：A 证据粒度匹配（`fusion.ts` `detectShapes()` 数值密度/日期/步骤/引述/标识符，替换领域词表 `ANSWER_SIGNALS`，数值按密度 ≥2 判定避免泛文刷覆盖）；B 答案覆盖度（新增 `answer-readiness.ts` predicate 四分类 + 形态检测，观点词优先于「如何」，缺口注入 Stage 5 诚实边界）；C 证据多样性（同域名 + token Jaccard ≥ [P-131] 同质簇替换，零依赖近似）。
+- **bench 整体指标**：新增 `scripts/bench-answer-readiness.ts`（`npm run bench:answer-readiness`，离线）——predicate 分类覆盖率 / 真实证据覆盖度达标率 / 证据多样性达标率，按意图分组，不逐 query 加断言；基线 bench:B-20260827-01（60.7% / 55.1% n=89 / 93.7% n=79）。
+- **证据**：新增/更新单测 28 条（http-fetch 7、answer-readiness 10、fusion 多样性 1、llm-registry 预算分档 2、s5 诚实边界/失败标记 2、pipeline synthesis_timeout/P0 无浏览器 2、second-pass-fetch HTTP 直抓 4）；全量单测 + 集成 32/32 全绿；doc-lint 0 FAIL 0 WARN（C8 54 key）；UI 构建通过；`bench:devil-v25` 版本查询回归（官方 release 胜出）恢复通过。
+- **登记**：附录 A E271；[P-129]/[P-130]/[P-131] provisional@2026-08-28；计划文档 `docs/plans/2026-08-28-general-qa-pipeline-fix.md`。
 
 ### 1. E268 身份问答一致性（桌面便携版实测反馈修复）
 
@@ -38,16 +48,18 @@
 
 - `dbc9f09`（E268 身份问答一致性 + MiniMax 三档，10 文件 +150/-25）
 - `b0e6ed0`（E269 合成跟随 UI 选档 + Tavily 预警静默 + 视觉档进切换器，15 文件 +142/-28）
-- `E270`（知识问答四步链路 + 工具告警分离 + E81 词表与金融权威域，待提交）
+- `992b71d`（E270 知识问答四步链路 + 工具告警分离 + E81 词表与金融权威域）
+- E271（通用管道机制级修复 + 三维回答力信号，23 文件 +1197/-214，见 `git log --oneline -5`）
 
 ## 全量验证
 
-- 单测 1029/1030（1 skip）｜集成 32/32｜doc-lint 0 FAIL 0 WARN（C8 51 key）
+- 单测全绿（E271 后含新增 28 条）｜集成 32/32｜doc-lint 0 FAIL 0 WARN（C8 54 key）
 - UI `tsc -b && vite build` 通过（index-BllgQORM.js）
 
 ## 下一步（按优先级）
 
-1. **用户实测新便携版（含 E270）**：关闭运行中的旧便携版后覆盖同步 `data\一人公司AI-Agent 0.1.0.exe`——市值类问题应基于抓取正文/来源直接作答、Tavily 告警只出现在底部状态栏、切换器含 deepseek-v4-flash-vision-exp。
-2. **普通知识问答耗时调优**：搜索仍 ~33-50s（Bocha/AnySearch 并行慢），涉及 §5 [P-NN] 需登记 bench 另排期。
-3. **[P-127]/[P-128] 转定稿**：provisional@2026-08-28，随 `bench:devil-v25` 回归评估（金融词表/权威域行为变更暂未新增基准）。
-4. **P-10 转定稿（条件③ 唯一阻塞）**：成熟度 L2+（当前 L1，用户累积 Skill 32/50+）仍为唯一阻塞；累积路径继续每周 3-5 个 Skill。
+1. **用户实测新便携版（含 E270+E271）**：覆盖同步 `data\一人公司AI-Agent 0.1.0.exe`——市值/排名类问题应基于抓取正文/来源直接作答、Tavily 告警只在底部状态栏、合成失败明确提示超时而非甩链接。
+2. **E271 后继续用户实测**：若仍有具体 query 答不好，先查 predicate 分类/形态检测器（`npm run bench:answer-readiness` 对比基线），修检测器本身，不再加领域规则。
+3. **普通知识问答耗时调优**：搜索仍 ~33-50s（Bocha/AnySearch 并行慢），涉及 §5 [P-NN] 需登记 bench 另排期。
+4. **[P-127]/[P-128]/[P-129]/[P-130]/[P-131] 转定稿**：provisional@2026-08-28，随 `bench:devil-v25` 回归评估。
+5. **P-10 转定稿（条件③ 唯一阻塞）**：成熟度 L2+（当前 L1，用户累积 Skill 32/50+）仍为唯一阻塞；累积路径继续每周 3-5 个 Skill。

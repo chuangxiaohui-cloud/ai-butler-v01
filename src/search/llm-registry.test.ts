@@ -5,6 +5,7 @@ import {
   defaultRegistry,
   FallbackLLMClient,
   LlmProviderRegistry,
+  resolveFallbackBudgetMs,
 } from './llm-registry.js';
 import type { ChatMessage, LLMClient } from './llm-client.js';
 
@@ -136,6 +137,28 @@ describe('llm-registry: fallback 链', () => {
     assert.ok(Date.now() - start < 2000, '不能等 client 自身超时（P17 总预算生效）');
     assert.equal(secondCalled, false);
   });
+
+
+describe('llm-registry: fallback 预算按档分级（P-129/P-130）', () => {
+  it('light 档短预算，heavy 档放宽，medium 沿用基准', () => {
+    const light = resolveFallbackBudgetMs('light');
+    const medium = resolveFallbackBudgetMs('medium');
+    const heavy = resolveFallbackBudgetMs('heavy');
+    assert.ok(light < medium);
+    assert.ok(heavy > medium);
+  });
+
+  it('createForRole 多 provider 时按档位应用预算', () => {
+    const registry = new LlmProviderRegistry({
+      DEEPSEEK_API_KEY: 'sk-deepseek',
+      MINIMAX_API_KEY: 'sk-minimax',
+    });
+    const lightClient = registry.createForRole('light');
+    const heavyClient = registry.createForRole('heavy');
+    assert.ok(lightClient instanceof FallbackLLMClient);
+    assert.ok(heavyClient instanceof FallbackLLMClient);
+  });
+});
 
   it('预算内首 provider 失败仍正常兜底（P17）', async () => {
     const client = new FallbackLLMClient(

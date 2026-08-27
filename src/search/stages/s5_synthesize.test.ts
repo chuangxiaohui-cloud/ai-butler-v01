@@ -125,7 +125,7 @@ test('s5: 天气+芯片多意图无证据时拆分引导', async () => {
   assert.ok(r.answer.includes('芯片'));
 });
 
-test('s5: LLM 异常降级为证据摘要', async () => {
+test('s5: LLM 异常降级为证据摘要并显式标记失败（P-XXX）', async () => {
   const fake = new FakeLLM(() => {
     throw new Error('timeout');
   });
@@ -133,7 +133,23 @@ test('s5: LLM 异常降级为证据摘要', async () => {
     llm: fake,
   });
   assert.equal(r.source, 'fallback');
+  assert.equal(r.synthesisFailed, true);
+  assert.ok(r.synthesisError);
   assert.ok(r.answer.includes('example.com'));
+});
+
+test('s5: readinessGap 注入诚实边界约束禁止编造', async () => {
+  let systemPrompt = '';
+  const fake = new FakeLLM((messages) => {
+    systemPrompt = messages[0]?.content ?? '';
+    return '答案';
+  });
+  await synthesizeAnswer('中国AI公司中市值较高的是哪几家？', fusedOk, classified, {
+    llm: fake,
+    readinessGap: '具体数值/数量信息',
+  });
+  assert.ok(systemPrompt.includes('诚实边界：当前证据可能缺乏具体数值/数量信息'));
+  assert.ok(systemPrompt.includes('不要编造'));
 });
 
 test('s5: 严肃通道追加专业提示约束', async () => {

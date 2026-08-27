@@ -1300,3 +1300,30 @@ test('pipeline: 工具配额告警进 toolNotice，用户提示保留联网不�
   assert.match(r.notice ?? '', /联网暂时不可用/);
   assert.match(r.toolNotice ?? '', /余额已耗尽/);
 });
+
+class ThrowingSynthesisLLM extends FakeLLM {
+  async complete(messages: ChatMessage[]): Promise<string> {
+    const system = messages[0]?.content ?? '';
+    if (system.includes('你是「她」')) throw new Error('heavy 档合成超时');
+    return super.complete(messages);
+  }
+}
+
+test('pipeline: 合成 LLM 失败显式标记 synthesis_timeout 门（P-XXX）', async () => {
+  const r = await pipeline('STM32F103C8T6 最大主频是多少', {
+    ...deps,
+    llm: new ThrowingSynthesisLLM(),
+  });
+  assert.equal(r.gate_triggered, 'synthesis_timeout');
+  assert.ok(r.notice?.includes('回答生成超时'));
+  assert.ok(r.answer.includes('搜索到了'));
+});
+
+test('pipeline: 知识问答无浏览器会话也能走 P0 抓正文路径（P-YYY）', async () => {
+  const r = await pipeline('openclaw 是什么', {
+    ...deps,
+    providers: [new FakeProvider()],
+  });
+  assert.equal(r.gate_triggered, 'none');
+  assert.ok(r.answer.length > 0);
+});

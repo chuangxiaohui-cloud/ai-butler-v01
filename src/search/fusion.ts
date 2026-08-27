@@ -15,6 +15,7 @@ import { resolveFactConsistency } from './rule1.js';
 import type { SearchResultItem } from './providers/types.js';
 import type { IntentKey } from './stages/s2_classify.js';
 import { isRecencySensitiveQuery } from './recency.js';
+import { PARAMS } from '../config/params.js';
 
 export const DISCARD_THRESHOLD = 0.4; // [P-16]
 export const LOW_CONFIDENCE_THRESHOLD = 0.6; // [P-17]
@@ -84,193 +85,99 @@ function relevanceScore(tokens: string[], textLower: string): number {
   return hits / tokens.length;
 }
 
-const ANSWER_SIGNALS: Partial<Record<IntentKey, string[]>> = {
-  factual: [
-    '最大',
-    '最小',
-    '范围',
-    '参数',
-    '规格',
-    '特性',
-    '输入',
-    '输出',
-    '电压',
-    '电流',
-    '频率',
-    '数据',
-    'datasheet',
-    'description',
-    'features',
-    'specifications',
-    '用途',
-    '简介',
-    '多少',
-    '是什么',
-    '应用',
-    '功率',
-    '温度',
-    '封装',
-    '引脚',
-    'maximum',
-    'voltage',
-    'current',
-    'frequency',
-  ],
-  experience: [
-    '经验',
-    '踩坑',
-    '坑',
-    '注意',
-    '教训',
-    '实践',
-    '解决',
-    '问题',
-    '建议',
-    '避免',
-    '容易',
-    '实战',
-    '注意事项',
-    '心得',
-    '技巧',
-    '处理',
-    '断连',
-    '连接',
-    '机制',
-  ],
-  comparison: [
-    '对比',
-    '区别',
-    '比较',
-    '优缺点',
-    '优势',
-    '劣势',
-    '不同',
-    '优于',
-    '选择',
-    '适合',
-    'vs',
-    'versus',
-    'comparison',
-    'difference',
-    'pros',
-    'cons',
-    '优点',
-    '缺点',
-  ],
-  how_to: [
-    '步骤',
-    '第1步',
-    '第一步',
-    '首先',
-    '然后',
-    '点击',
-    '选择',
-    '打开',
-    '文件',
-    '菜单',
-    '导出',
-    '生成',
-    '设置',
-    '配置',
-    '输入',
-    '确认',
-    '保存',
-    '完成',
-    '工作台',
-    '工具栏',
-    '教程',
-    '方法',
-    'guide',
-    'tutorial',
-    'steps',
-    'export',
-    'import',
-    'menu',
-    'file',
-    '流程',
-  ],
-  troubleshooting: [
-    '报错',
-    '错误',
-    '失败',
-    '原因',
-    '解决',
-    '修复',
-    '排查',
-    '检查',
-    '方法',
-    '步骤',
-    '导致',
-    '故障',
-    '方案',
-    '建议',
-    '重试',
-    '清除',
-    '重启',
-    '定位',
-    '处理',
-    'troubleshoot',
-    'fix',
-    'error',
-    'cause',
-    'solution',
-    'diagnose',
-    'debug',
-  ],
-  github_analysis: [
-    '架构',
-    '技术栈',
-    '用途',
-    '功能',
-    '特性',
-    '使用',
-    '开源',
-    '项目',
-    '仓库',
-    'readme',
-    '简介',
-    '特点',
-    '分析',
-    'architecture',
-    'tech',
-    'stack',
-    'purpose',
-    'feature',
-    'usage',
-    'open',
-    'source',
-  ],
-  news: [
-    '今日',
-    '今天',
-    '最新',
-    '实时',
-    '行情',
-    '发布',
-    '报道',
-    '截至',
-    '进展',
-    '更新',
-    'news',
-    'latest',
-    'report',
-    'today',
-  ],
+// P-ZZZ' 信号 A：证据粒度匹配（重构）——按意图偏好「证据形态」而非领域词。
+// 形态检测与领域无关：数字/日期/步骤/引述/标识符；不包含任何领域关键词/域名/实体。
+interface ShapeFlags {
+  numeric: boolean;
+  date: boolean;
+  steps: boolean;
+  attribution: boolean;
+  identifier: boolean;
+}
+
+function detectShapes(textLower: string): ShapeFlags {
+  // 数值形态按「密度」判定：≥2 处数值才视为数据型证据（规格/列表页天然多数值；
+  // 只有零星年份/编号的泛文不算覆盖）——与领域无关的纯形态信号
+  const numericHits = (textLower.match(/\d[\d,.]*/g) ?? []).length;
+  return {
+    numeric: numericHits >= 2,
+    date:
+      /(?:19|20)\d{2}[-/年.]\d{1,2}(?:[-/月.]\d{1,2})?/.test(textLower) ||
+      /\d{1,2}月\d{1,2}日/.test(textLower) ||
+      /(?:19|20)\d{6}/.test(textLower),
+    steps:
+      /第[一二三四五六七八九十百\d]+[步环阶段]/.test(textLower) ||
+      /(?:^|\n)\s*\d+[\.、)．]/.test(textLower),
+    attribution: /认为|表示|指出|称|透露|预计|宣称|宣布|强调|解释/.test(textLower),
+    identifier: /[a-z][a-z0-9_]{2,}/i.test(textLower) && /[a-z]{2,}/i.test(textLower),
+  };
+}
+
+/** 意图 → 证据形态偏好（与 query 领域无关；键为项目自有意图枚举） */
+const INTENT_SHAPE_PREFERENCE: Partial<Record<IntentKey, Array<keyof ShapeFlags>>> = {
+  factual: ['numeric', 'date', 'identifier'],
+  comparison: ['numeric', 'identifier'],
+  how_to: ['steps', 'identifier'],
+  troubleshooting: ['steps', 'identifier'],
+  experience: ['attribution', 'steps'],
+  news: ['date', 'attribution'],
+  github_analysis: ['identifier'],
 };
 
-// P6：信号表模块级预编译小写，避免每条结果重复 toLowerCase
-const ANSWER_SIGNALS_LOWER: Partial<Record<IntentKey, string[]>> = Object.fromEntries(
-  Object.entries(ANSWER_SIGNALS).map(([intent, signals]) => [
-    intent,
-    signals.map((s) => s.toLowerCase()),
-  ]),
-) as Partial<Record<IntentKey, string[]>>;
-
 function answerCoverageScore(intent: IntentKey, textLower: string): number {
-  const signals = ANSWER_SIGNALS_LOWER[intent];
-  if (!signals || signals.length === 0) return 1;
-  const hits = signals.filter((s) => textLower.includes(s)).length;
-  return Math.min(1, hits / 3);
+  const prefs = INTENT_SHAPE_PREFERENCE[intent];
+  if (!prefs || prefs.length === 0) return 1;
+  const shapes = detectShapes(textLower);
+  const hits = prefs.filter((p) => shapes[p]).length;
+  return Math.min(1, hits / 2);
+}
+
+// P-ZZZ' 信号 C：证据多样性约束（零依赖语义近似）——同域名 + token Jaccard 超阈值视为同质簇，
+// 从剩余候选中替换为异质高分项，保证 top-K 至少覆盖 ≥2 个语义簇。纯结构信号，与领域无关。
+function diversityTokens(text: string): Set<string> {
+  return new Set(tokenizeText(text));
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  let inter = 0;
+  for (const t of a) if (b.has(t)) inter += 1;
+  const union = a.size + b.size - inter;
+  return union === 0 ? 1 : inter / union;
+}
+
+function isHomogeneousPair(a: FusionItem, b: FusionItem): boolean {
+  let hostA = '';
+  let hostB = '';
+  try {
+    hostA = new URL(a.result.url).hostname;
+    hostB = new URL(b.result.url).hostname;
+  } catch {
+    return false;
+  }
+  if (hostA === '' || hostA !== hostB) return false;
+  const sim = jaccard(
+    diversityTokens(a.result.title + ' ' + a.result.content),
+    diversityTokens(b.result.title + ' ' + b.result.content),
+  );
+  return sim >= PARAMS.evidenceDiversityJaccard;
+}
+
+function ensureDiversity(sorted: FusionItem[], fused: FusionItem[]): FusionItem[] {
+  if (sorted.length < 2) return sorted;
+  const result = [...sorted];
+  const rest = fused.filter((f) => !result.includes(f));
+  for (let i = 1; i < result.length; i += 1) {
+    const prev = result.slice(0, i);
+    if (!prev.some((p) => isHomogeneousPair(p, result[i]))) continue;
+    const replacement = rest
+      .filter((r) => !prev.some((p) => isHomogeneousPair(p, r)))
+      .sort((a, b) => b.finalScore - a.finalScore)[0];
+    if (!replacement) continue;
+    result[i] = replacement;
+    const idx = rest.indexOf(replacement);
+    if (idx >= 0) rest.splice(idx, 1);
+  }
+  return result;
 }
 
 interface ItemText {
@@ -472,6 +379,8 @@ export function fuseResults(
     return ok;
   });
   const sorted = [...kept].sort((a, b) => b.finalScore - a.finalScore).slice(0, topK);
+  // P-ZZZ' 信号 C：top-K 内同质簇替换，保证证据多样（零依赖 token Jaccard）
+  const diverse = ensureDiversity(sorted, fused);
   const lowConfidence =
     sorted.length === 0 || sorted[0].finalScore < LOW_CONFIDENCE_THRESHOLD;
 
@@ -486,7 +395,7 @@ export function fuseResults(
   }
 
   return {
-    items: sorted,
+    items: diverse,
     dropped,
     gated: rule1.gated,
     lowConfidence,

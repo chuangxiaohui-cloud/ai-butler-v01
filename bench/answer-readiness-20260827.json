@@ -1,0 +1,159 @@
+{
+  "csv": "M:\\202608111\\AI-Agent_魔鬼训练_v2.5.csv",
+  "total": 122,
+  "predicateCoverage": 0.607,
+  "readinessExpectedOverall": 0.434,
+  "readinessEvidence": {
+    "samples": 89,
+    "passRate": 0.551
+  },
+  "perIntent": [
+    {
+      "intent": "factual",
+      "total": 45,
+      "predicateCoverage": 0.289,
+      "readinessExpectedPassRate": 0.733,
+      "readinessEvidencePassRate": 0.903,
+      "evidenceSamples": 31,
+      "predicateCount": {
+        "other": 32,
+        "numeric": 8,
+        "opinion": 2,
+        "temporal": 3
+      }
+    },
+    {
+      "intent": "how_to",
+      "total": 43,
+      "predicateCoverage": 0.953,
+      "readinessExpectedPassRate": 0.093,
+      "readinessEvidencePassRate": 0.147,
+      "evidenceSamples": 34,
+      "predicateCount": {
+        "procedural": 33,
+        "numeric": 5,
+        "opinion": 1,
+        "temporal": 2,
+        "other": 2
+      }
+    },
+    {
+      "intent": "comparison",
+      "total": 12,
+      "predicateCoverage": 0.417,
+      "readinessExpectedPassRate": 0.667,
+      "readinessEvidencePassRate": 0.818,
+      "evidenceSamples": 11,
+      "predicateCount": {
+        "procedural": 3,
+        "other": 7,
+        "numeric": 2
+      }
+    },
+    {
+      "intent": "troubleshooting",
+      "total": 7,
+      "predicateCoverage": 0.571,
+      "readinessExpectedPassRate": 0.429,
+      "readinessEvidencePassRate": 0.833,
+      "evidenceSamples": 6,
+      "predicateCount": {
+        "numeric": 1,
+        "procedural": 2,
+        "temporal": 1,
+        "other": 3
+      }
+    },
+    {
+      "intent": "emergency",
+      "total": 5,
+      "predicateCoverage": 0.8,
+      "readinessExpectedPassRate": 0.2,
+      "readinessEvidencePassRate": 1,
+      "evidenceSamples": 1,
+      "predicateCount": {
+        "numeric": 1,
+        "procedural": 3,
+        "other": 1
+      }
+    },
+    {
+      "intent": "github_analysis",
+      "total": 4,
+      "predicateCoverage": 0.5,
+      "readinessExpectedPassRate": 0.5,
+      "readinessEvidencePassRate": 0.333,
+      "evidenceSamples": 3,
+      "predicateCount": {
+        "procedural": 1,
+        "opinion": 1,
+        "other": 2
+      }
+    },
+    {
+      "intent": "news",
+      "total": 3,
+      "predicateCoverage": 1,
+      "readinessExpectedPassRate": 0,
+      "readinessEvidencePassRate": 0,
+      "evidenceSamples": 1,
+      "predicateCount": {
+        "procedural": 2,
+        "temporal": 1
+      }
+    },
+    {
+      "intent": "experience",
+      "total": 3,
+      "predicateCoverage": 0.667,
+      "readinessExpectedPassRate": 0.667,
+      "readinessEvidencePassRate": 0,
+      "evidenceSamples": 2,
+      "predicateCount": {
+        "procedural": 2,
+        "other": 1
+      }
+    }
+  ],
+  "topExpectedGaps": [
+    [
+      "操作步骤/流程信息",
+      43
+    ],
+    [
+      "具体数值/数量信息",
+      15
+    ],
+    [
+      "时间信息（日期/时点）",
+      7
+    ],
+    [
+      "观点/评价类表述",
+      4
+    ]
+  ],
+  "topEvidenceGaps": [
+    [
+      "操作步骤/流程信息",
+      34
+    ],
+    [
+      "观点/评价类表述",
+      4
+    ],
+    [
+      "时间信息（日期/时点）",
+      1
+    ],
+    [
+      "具体数值/数量信息",
+      1
+    ]
+  ],
+  "evidenceDiversity": {
+    "available": true,
+    "passRate": 0.937,
+    "samples": 79
+  }
+}

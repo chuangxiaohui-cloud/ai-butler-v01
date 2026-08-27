@@ -367,3 +367,31 @@ test('fusion: P6 预计算后大写 query 仍识别官方源并乘数生效', ()
   assert.ok(github);
   assert.equal(github.official, true);
 });
+
+test('fusion: P-ZZZ 信号C 证据多样性替换同质簇', () => {
+  const sameA = item({
+    url: 'https://same.example/a',
+    title: 'STM32F103C8T6 主频 72MHz 说明',
+    content: 'STM32F103C8T6 最大主频 72MHz 完整 参数 说明 步骤 示例 设计 文档 100A '.repeat(5),
+  });
+  const sameB = item({
+    url: 'https://same.example/b',
+    title: 'STM32F103C8T6 主频 72MHz 说明',
+    content: 'STM32F103C8T6 最大主频 72MHz 完整 参数 说明 步骤 示例 设计 文档 100A '.repeat(5),
+  });
+  const other = item({
+    url: 'https://other.example/c',
+    title: 'STM32F103C8T6 主频 知识 汇总',
+    content: 'STM32F103C8T6 主频 知识 汇总 完整 参数 说明 步骤 示例 设计 文档 100A '.repeat(5),
+  });
+  const third = item({
+    url: 'https://third.example/d',
+    title: '行业 背景 资料',
+    content: 'STM32F103C8T6 主频是多少 其他 领域 内容 介绍 背景 资料 信息 详情 参考 来源 文章 观点 分析 100A 2.0',
+  });
+  const r = fuseResults('STM32F103C8T6 主频是多少', [sameA, sameB, other, third], 'factual');
+  const sameCount = r.items.filter((f) => f.result.url.includes('same.example')).length;
+  assert.ok(r.items.some((f) => f.result.url.includes('other.example')));
+  assert.ok(r.items.some((f) => f.result.url.includes('third.example')));
+  assert.equal(sameCount, 1, '同质簇只保留一条');
+});
