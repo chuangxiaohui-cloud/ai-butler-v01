@@ -1,0 +1,23 @@
+{
+  "name": "github-project",
+  "version": "0.1.0",
+  "triggers": [
+    "github.com",
+    "项目解读",
+    "开源项目",
+    "这个仓库",
+    "repo",
+    "GitHub 项目"
+  ],
+  "description": "GitHub 项目解读（E259/E251）：仓库链接或 owner/repo → X.6 契约（定位/架构/技术栈/健康分/风险/evidence[]），可选 LLM 合成，降级链 API→raw→网页",
+  "steps": [
+    "npm run market:github:project -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

@@ -91,7 +91,9 @@
       "market:pptx:create": "tsx scripts/market-pptx-create.ts",
       "market:image:compress": "tsx scripts/market-image-compress.ts",
       "market:reminder": "tsx scripts/market-reminder.ts",
-      "market:image:ocr": "tsx scripts/market-image-ocr.ts"
+      "market:image:ocr": "tsx scripts/market-image-ocr.ts",
+      "market:calendar": "tsx scripts/market-calendar.ts",
+      "market:github:project": "tsx scripts/market-github-project.ts"
     },
   "keywords": [
     "ai-agent",
@@ -120,3 +122,4 @@
     "node": ">=22.0.0"
   }
 }
+

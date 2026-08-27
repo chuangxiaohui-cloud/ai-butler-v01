@@ -1,0 +1,26 @@
+{
+  "name": "calendar",
+  "version": "0.1.0",
+  "triggers": [
+    "日程",
+    "日历",
+    "安排会议",
+    "预约",
+    "查日程",
+    "查询日程",
+    "导出日程",
+    "我的日程",
+    "我的日历"
+  ],
+  "description": "日历管理（E259/E251）：新增日程（time-expression 解析时间/每天每周/提前量，同步登记提醒）、查询最近日程、导出 .ics，落 data/calendar.db",
+  "steps": [
+    "npm run market:calendar -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

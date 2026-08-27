@@ -105,3 +105,14 @@
 - **证据**：单测 8 条（reminder 6 + ocrText 2）；真实冒烟 2 Skill 全链 ok:true——reminder（「明天下午3点提醒我交周报」→ add 交周报 remindAt=明天 15:00；「查询我的提醒」→ 待触发 1 条）、image-ocr（真实裁剪图 → 759 字符 + 「编号」命中，txt 落沙箱）；全量单测 984/985（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）；`maturity:check` 用户累积 Skill 20→22。
 - **登记**：附录 A E258；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b5.md`。
 - **续接**：`npm run skill:market:run -- reminder --query "明天下午3点提醒我开会"`（查询用「查询我的提醒」）；`image-ocr --query "提取图片文字 <路径> 关键词 <词>"`；E254→E258 已按指示累积提交。
+
+## 续推进（2026-08-27 第 6 批）——E259 市场 Skill 日历管理 + GitHub 项目解读
+
+继续成熟度累积路径 Phase 1.2 沉淀 2 个高频市场 Skill，用户累积 Skill **22→24**。
+
+- **能力**：新增 `src/skills/market/calendar.ts`——`parseCalendarQuery`（查询→list / 含时间→add / 导出→export）、`runCalendarCommand`（复用 calendar-skill `openCalendarDb`/`buildCalendarIcs` 与 time-expression/ReminderStore：add 同步登记提醒、export 落盘 .ics，dbPath/outDir 可注入）；新增 `src/skills/market/github-project.ts`——`runGithubProjectCommand` 包装 E242 `createGithubReaderSkill().execute()`（L1 抓取 → X.6 契约 → 结构化兜底回答，complete/fetchImpl/timeoutMs 可注入）。
+- **入口**：薄 CLI `scripts/market-{calendar,github-project}.ts`（@input 通道）+ package.json 两个 `market:*` 脚本；2 个精选包 manifest（command + input:query + 中文触发词）已安装。github-project 市场通道默认不做 LLM 合成（沙箱步骤 [P-40] 60s 预算，深度合成走主问答链路 E242 deps.complete；`MARKET_GH_ENABLE_LLM=1` 显式开启，`MARKET_GH_TIMEOUT_MS` 调单请求超时默认 6s）。
+- **证据**：单测 12 条（calendar 8 + github-project 4，mock fetch）；真实冒烟 2 Skill 全链 ok:true——calendar（「明天上午10点安排项目评审会」→ add 项目评审会 startAt=明天 10:00 + 同步提醒；「查询我的日程」→ list 10 条）、github-project（真实 openworker 链接 → X.6 契约 + health_score 82（对齐 POC-C 冒烟口径）+ evidence api/raw 六条，README/pyproject 完整抓取，6s 完成；梯子恢复后复验通过）；全量单测 996/997（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN（C8 49 key）；`maturity:check` 用户累积 Skill 22→24。
+- **登记**：附录 A E259；计划文档 `docs/plans/2026-08-27-maturity-skill-sedimentation-b6.md`。
+- **续接**：`npm run skill:market:run -- calendar --query "明天上午10点安排会议"`（查询用「查询我的日程」，导出用「导出日程为ics」）；`github-project --query "https://github.com/<owner>/<repo> 这项目是做什么用的？"`；下一批候选：日历/提醒管理已沉淀完毕，可继续增补 器件规格对比 细分或 高频办公模板（月度汇报/会议纪要）。
+
