@@ -44,4 +44,4 @@
 - 离线 bench:answer-readiness 与基线一致：predicate 60.7%、真实证据覆盖度 55.1%（n=89）、多样性 93.7%（n=79）。
 - §5 五参数转定稿；附录 A E272 条目 + 附录 C.4 证据登记完成。
 - doc-lint 0 FAIL 0 WARN（C8 54 key）；build + 全量单测 + 集成 32/32 全绿。
-- 提交：`<hash>` · 遗留：P-04/P-02/P-10 等其余 provisional 仍待各自复验门（非本批）。
+- 提交：`539753f` · 遗留：P-04/P-02/P-10 等其余 provisional 仍待各自复验门（非本批）。
