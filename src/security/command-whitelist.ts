@@ -48,6 +48,8 @@ const HARD_REJECTS: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /(^|[\s;&|])eval([\s]|$)/i, reason: 'eval 硬编码拒绝' },
   { pattern: /\brm\b[^|;&]*\s+-r[fi]*\s+([\/]|\*|~\/)/i, reason: 'rm 递归删除根/通配/家目录拒绝' },
   { pattern: /\bdel\b[^|;&]*\/\s*[sSqQ]/i, reason: 'del /S /Q 批量删除拒绝' },
+  { pattern: /\b(powershell|pwsh)\s+-(enc|encodedcommand)\b/i, reason: 'PowerShell 编码命令通道拒绝' },
+  { pattern: /\bnode\s+(-e|--eval)\b/i, reason: 'node -e 解释器通道拒绝' },
   { pattern: /\b(curl|wget)\b[^|;&]*\|\s*(sh|bash|zsh|pwsh|powershell)\b/i, reason: '管道执行下载脚本拒绝' },
   { pattern: /\b(curl|wget)\b[^;]*\s+-o\s+\S+\.(exe|msi)\b/i, reason: '下载并执行 .exe/.msi 拒绝' },
   { pattern: /\b(mkfs|mkfs\.\w+|fdisk|format)\b/i, reason: '格式化/分区命令拒绝' },

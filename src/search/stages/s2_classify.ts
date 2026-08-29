@@ -6,6 +6,7 @@
 import type { ChatMessage, LLMClient } from '../llm.js';
 import { createLightClient } from '../llm.js';
 import { isRecencySensitiveQuery } from '../recency.js';
+import { applyRule3 } from '../rule3.js';
 
 export type IntentKey =
   | 'factual'
@@ -91,6 +92,15 @@ function isAbortError(err: unknown): boolean {
 }
 
 export async function classifyQuery(query: string, llm?: LLMClient): Promise<ClassifiedQuery> {
+  if (applyRule3(query).serious) {
+    return {
+      intent: 'factual',
+      searchQuery: query,
+      timeWindow: '不限',
+      domain: '官方优先',
+      source: 'rule',
+    };
+  }
   if (VERSION_QUERY_RE.test(query)) {
     return {
       intent: 'factual',

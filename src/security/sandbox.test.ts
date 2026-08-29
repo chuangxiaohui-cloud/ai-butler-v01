@@ -20,6 +20,13 @@ test('sandbox: 越界路径拒绝', () => {
   assert.equal(isPathAllowed('../outside.txt', root).allowed, false);
 });
 
+test('sandbox: 越界读取（~/.ssh/id_rsa）拒绝（§10.4）', () => {
+  const root = 'M:\\workspace';
+  const check = isPathAllowed('~/.ssh/id_rsa', root);
+  assert.equal(check.allowed, false);
+  assert.match(check.reason ?? '', /越界/);
+});
+
 test('sandbox: 越界写入审计日志', () => {
   const dir = mkdtempSync(join(tmpdir(), 'sandbox-test-'));
   const logPath = join(dir, 'audit.jsonl');
