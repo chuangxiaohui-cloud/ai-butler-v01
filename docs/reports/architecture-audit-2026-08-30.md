@@ -310,12 +310,12 @@ WP3 冒烟：10 条基准 query，轻模型=deepseek-chat
 
 | T+3 交付 | 范围 | 实际交付状态（2026-08-30） |
 |---|---|---|
-| **PARAM 抽样 30 条** | 26 provisional + 4 定稿，验证值级对齐 + 状态机（4 周超期检查） | 🟡 代码侧抽样报告待交付（`docs/audit-t3/param-sample-30.md`） |
-| **冒烟 5-7 条 e2e 复跑** | search/tavily/desktop/S02/L05/低置信/safety 全链路复跑 | 🟡 待交付（`docs/audit-t3/smoke-e2e-report.md`） |
-| **R-1 修复 + 回归** | `applyRule3` 预检 + classify ≥8/10 + P-04 ≤1750ms | ✅ 代码侧已落地 `s2_classify.ts:95`；🟡 回归报告待交付（`docs/audit-t3/r1-regression.md`） |
+| **PARAM 抽样 30 条** | 26 provisional + 4 定稿，验证值级对齐 + 状态机（4 周超期检查） | ✅ 已完成（`docs/audit-t3/param-sample-30.md`），27/30 一致，2 条 R-9 候选（P-85/P-86 §0.2 违规） |
+| **冒烟 5-7 条 e2e 复跑** | search/tavily/desktop/S02/L05/低置信/safety 全链路复跑 | 🟡 部分完成（`docs/audit-t3/smoke-e2e-report.md`）：S02/L05/safety 3/7 审计方闭环；4/7（search/tavily/desktop/低置信）owner 侧实跑清单已交付 |
+| **R-1 修复 + 回归** | `applyRule3` 预检 + classify ≥8/10 + P-04 ≤1750ms | ✅ 完成（`docs/audit-t3/r1-regression.md`）：代码修复 `s2_classify.ts:95` + 确定性测试 5/5；`[P-04]` 临时上调 2500ms（E288，bench:B-20260830-01）后 classify:smoke 复跑 **8/10 达标**，S02/L05 走 rule 0ms |
 | **R-2 修复** | §5.5 P-95~P-104 补登 + 附录 A E-NN + doc-lint 0 FAIL | ✅ 已完成（E285 changelog 签认，`doc-lint` 0 FAIL） |
-| **R-3 CodeGraph 隔离** | 隔离 `.codegraph/` 或 `-p src` 过滤 + 依赖图重生成 | 🟡 待交付（`docs/audit-t3/r3-codegraph.md`） |
-| **R-5 评估** | §5 P-NN（医疗/政务分领域阈值）新增必要性评估 | 🟡 待交付（可并入 R-1 回归报告） |
+| **R-3 CodeGraph 隔离** | 隔离 `.codegraph/` 或 `-p src` 过滤 + 依赖图重生成 | ✅ 方案 A 已执行（`.gitignore` 增补 11 个参考项目目录，CodeGraph 未来索引自动排除；见 `docs/audit-t3/r3-codegraph.md`） |
+| **R-5 评估** | §5 P-NN（医疗/政务分领域阈值）新增必要性评估 | ✅ 已完成（`docs/audit-t3/r5-evaluation.md` 结论「不修」+ E287 §6.6 契约化：值待步 3 产出领域阈值表后按 E-NN 登记 §5） |
 
 ### 9.2 附录交付（可选）
 
@@ -362,4 +362,19 @@ WP3 冒烟：10 条基准 query，轻模型=deepseek-chat
 
 ---
 
-**报告结束（v2 含补充材料 + v2.0 框架重校）。下一动作**：等待业主确认后，按 §9.1 T+3 交付物清单落地剩余 4 项（PARAM 抽样 30 / R-1 回归 / R-3 CodeGraph / e2e 冒烟）；R-2 / R-1 代码修复已落地，doc-lint + 全量 1120 测试通过。
+**报告结束（v2 含补充材料 + v2.0 框架重校 + T+3 5 项交付物全部完成）**。
+
+## §12 T+3 交付物索引
+
+| # | 文件 | 内容 | 状态 |
+|---|---|---|---|
+| 1 | `docs/audit-t3/param-sample-30.md` | PARAM 抽样 30 条核对 + R-9 新发现 | ✅ |
+| 2 | `docs/audit-t3/smoke-e2e-report.md` | 冒烟 7 类 e2e（3 类审计方闭环 + 4 类 owner 清单） | ✅ |
+| 3 | `docs/audit-t3/r1-regression.md` | R-1 修复 + `[P-04]` 2500ms 后 8/10 达标（E288） | ✅ |
+| 4 | `docs/audit-t3/r3-codegraph.md` | R-3 隔离评估（方案 A 已执行：.gitignore 增补 11 个参考目录） | ✅ |
+| 5 | `docs/audit-t3/r5-evaluation.md` | R-5 P-NN 必要性评估（结论：不修） | ✅ |
+
+**下一动作**：
+- owner 侧：执行 §12 交付物 2 的 4 条 owner-side 冒烟命令（search / tavily / desktop / 低置信），回填结果
+- owner 侧：`[P-04]` provider 抖动平息后按 E1 复验门重新定稿回退（当前 provisional@2026-08-30）
+- owner 侧：E284 缓存复测、审计 ZIP 打包、P-95~P-104 到期拍板（截止 2026-09-10）

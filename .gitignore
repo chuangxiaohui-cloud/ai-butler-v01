@@ -68,3 +68,16 @@ sandbox/
 # 本地 AI 工具会话状态（Codex worktree / OMC 状态，不提交）
 .claude/
 .omc/
+
+# 参考项目/独立仓库（AGENTS.md 定位：只读参考，不入库，CodeGraph 不索引）
+AI-Butler/
+OpenHands/
+Tavily+AnySearch+Bocha/
+openocta/
+opensquilla/
+openworker/
+v3/
+crm/
+benchmarks/
+deepseek-harness/
+agent-skills/
