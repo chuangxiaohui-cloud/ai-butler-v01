@@ -14,6 +14,10 @@ export const PARAMS = {
   routeCandidateGap: 0.15,
   /** P-84 fallback 提取全局置信度折扣 */
   fallbackDiscount: 0.9,
+  /** P-85 子搜索循环上限（search-loop 默认兜底） */
+  subSearchLoopCap: 5,
+  /** P-86 子搜索覆盖度下限（search-loop 默认兜底） */
+  subSearchCoverageFloor: 5,
   /** P-89 wrapLegacySkill 包装旧 handler 的默认置信度 */
   legacySkillConfidence: 0.8,
   /** P-90 长期事实注入 prompt 的最低置信度 */
@@ -146,6 +150,8 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   routeConfidenceLow: 'P-81',
   routeCandidateGap: 'P-82',
   fallbackDiscount: 'P-84',
+  subSearchLoopCap: 'P-85',
+  subSearchCoverageFloor: 'P-86',
   legacySkillConfidence: 'P-89',
   injectMinConfidence: 'P-90',
   injectMaxFacts: 'P-91',

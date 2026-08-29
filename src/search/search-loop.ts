@@ -29,9 +29,6 @@ import { FileMonthlyQuotaStore, TAVILY_MONTHLY_LIMIT } from './quota.js';
 import { tavilyProvider } from './providers/tavily.js';
 import type { SearchSourceStats } from './source-stats.js';
 
-export const DEFAULT_MAX_SUB_SEARCHES = 5; // [P-85]
-export const DEFAULT_MIN_RESULTS = 5; // [P-86]
-
 export interface BrowserFetcher {
   fetchPage(
     url: string,
@@ -176,8 +173,8 @@ export async function runSearchLoop(
   opts: SearchLoopOptions,
 ): Promise<SearchLoopResult> {
   const start = Date.now();
-  const maxSubSearches = opts.maxSubSearches ?? DEFAULT_MAX_SUB_SEARCHES;
-  const minResults = opts.minResults ?? DEFAULT_MIN_RESULTS;
+  const maxSubSearches = opts.maxSubSearches ?? PARAMS.subSearchLoopCap; // [P-85]
+  const minResults = opts.minResults ?? PARAMS.subSearchCoverageFloor; // [P-86]
   const rewritten = await rewriteQuery(query, opts.intent, opts.llm, opts.originalQuery);
   // E239 修正：规则改写可能生成大量 datasheet 子查询把原查询挤出 [P-85] 5 次预算，
   // 原查询最先搜索（最忠实于用户问题的子查询），官方/专业站子查询在 judge 判定不足时继续追加。

@@ -8,6 +8,7 @@ import type { ChatMessage, LLMClient } from './llm.js';
 import type { QuotaStoreLike } from './quota.js';
 import type { SearchProvider, SearchProviderResult, SearchResultItem } from './providers/types.js';
 import { buildCoverageJudgeMessages, buildEmptyFallbackQueries, runSearchLoop } from './search-loop.js';
+import { PARAMS, PARAM_IDS } from '../config/params.js';
 
 process.env.SEARCH_METRICS_LOG = join(tmpdir(), 'search-loop-metrics-test.jsonl');
 
@@ -533,4 +534,12 @@ test('search-loop: 分类器剥疑问词后仍按原始 query 触发增强（E28
     r.subQueries.includes('Redis 和 Memcached 读取延迟对比 数据 参数 对比'),
     '原始 query 的 numeric predicate 应驱动增强子查询入队并消费',
   );
+});
+
+
+test('search-loop: [P-85]/[P-86] 默认值读 PARAMS 单一来源（R-7）', () => {
+  assert.equal(PARAMS.subSearchLoopCap, 5);
+  assert.equal(PARAM_IDS.subSearchLoopCap, 'P-85');
+  assert.equal(PARAMS.subSearchCoverageFloor, 5);
+  assert.equal(PARAM_IDS.subSearchCoverageFloor, 'P-86');
 });
