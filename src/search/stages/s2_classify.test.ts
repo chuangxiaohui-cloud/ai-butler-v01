@@ -139,3 +139,71 @@ test('s2: 市值/排名类强时效问题规则优先为 news（E270）', async 
   assert.equal(r.timeWindow, '≤24h');
   assert.equal(r.source, 'rule');
 });
+
+// ===== T+3 R-1 修复：规则③预检端到端验证（审计交付物 2） =====
+
+test('s2: 规则③ 预检 — 药品关键词 → 强制 factual + rule，跳过 LLM', async () => {
+  let llmCalled = false;
+  const watch = new FakeLLM(() => {
+    llmCalled = true;
+    return JSON.stringify({ intent: 'experience', search_query: '...' });
+  });
+  const r = await classifyQuery('高血压 用药注意事项 禁忌', watch);
+  assert.equal(llmCalled, false, 'LLM 不应被调用');
+  assert.equal(r.intent, 'factual');
+  assert.equal(r.timeWindow, '不限');
+  assert.equal(r.domain, '官方优先');
+  assert.equal(r.source, 'rule');
+});
+
+test('s2: 规则③ 预检 — 税率关键词 → 强制 factual + rule，跳过 LLM', async () => {
+  let llmCalled = false;
+  const watch = new FakeLLM(() => {
+    llmCalled = true;
+    return JSON.stringify({ intent: 'how_to', search_query: '...' });
+  });
+  const r = await classifyQuery('个人所得税 专项附加扣除 怎么申报', watch);
+  assert.equal(llmCalled, false, 'LLM 不应被调用');
+  assert.equal(r.intent, 'factual');
+  assert.equal(r.timeWindow, '不限');
+  assert.equal(r.domain, '官方优先');
+  assert.equal(r.source, 'rule');
+});
+
+test('s2: 规则③ 预检 — 法规/统计关键词同样触发', async () => {
+  let llmCalled = false;
+  const watch = new FakeLLM(() => {
+    llmCalled = true;
+    return '{}';
+  });
+  for (const q of [
+    '劳动法 经济补偿金 计算',
+    '中国 GDP 2024 增速 统计口径',
+    '民法典 离婚 财产分割',
+  ]) {
+    const r = await classifyQuery(q, watch);
+    assert.equal(r.source, 'rule', `${q} 应走 rule`);
+    assert.equal(r.intent, 'factual', `${q} 应强制 factual`);
+  }
+  assert.equal(llmCalled, false, 'LLM 不应被任何一条调用');
+});
+
+test('s2: 非严肃 query 仍走 LLM（不影响正常分类）', async () => {
+  let llmCalled = false;
+  const watch = new FakeLLM(() => {
+    llmCalled = true;
+    return JSON.stringify({ intent: 'experience', search_query: '...' });
+  });
+  const r = await classifyQuery('STM32F103 ADC 多通道采集 踩坑 经验', watch);
+  assert.equal(llmCalled, true, 'LLM 应被调用');
+  assert.equal(r.intent, 'experience');
+  assert.equal(r.source, 'llm');
+});
+
+test('s2: 规则③ 预检 — 子查询延迟 0ms（同步拦截，未触网）', async () => {
+  const t0 = Date.now();
+  const r = await classifyQuery('高血压 用药注意事项 禁忌', fakeOk);
+  const elapsed = Date.now() - t0;
+  assert.equal(r.source, 'rule');
+  assert.ok(elapsed < 5, `规则③预检应 < 5ms，实测 ${elapsed}ms`);
+});
