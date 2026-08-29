@@ -1,6 +1,6 @@
-# 进度交接 2026-08-30（GitHub 解读收尾 + 17.65 元 token 成本归因 + 第三方审计材料清单）
+# 进度交接 2026-08-30（GitHub 解读收尾 + 成本归因 + 审计材料 + 提交收口 + 审计 T+3 推进）
 
-> 当前分支：v0.2b｜本轮收口：GitHub 解读（E283 合成速度 + E284 API 缓存）文档/代码闭环核对；DeepSeek 账户 17.65 元成本归因；第三方审计材料清单。
+> 当前分支：v0.2b｜本轮收口：GitHub 解读闭环；17.65 元成本归因；审计材料清单；E275-E285 提交收口；审计 T+3 交付物 5/5 + E286/E287/E288 落地。
 > 上一份交接见 `docs/2026-08-29-progress-handoff.md`。上一份只读核对结论：E275-E284 工作区大量未提交改动，提交前需 doc-lint + test:all 全绿。
 
 ## 今日已收口
@@ -52,8 +52,27 @@
 
 未提交残余仅剩：参考项目/工作文档（AI-Butler、OpenHands、docx/xls/pdf、旧版需求文档 v1.9-v2.3、文档/ 副本）与误创建文件 `undefined`（不提交）。
 
+### 5. 审计 T+3 推进完成（2026-08-30 下午，E286/E287/E288 + 交付物 5/5）
+
+| 提交号 | 内容 |
+|---|---|
+| `c6d1b57` | E286：R-7 修复——[P-85]/[P-86] 迁入 params.ts 单一来源（删 search-loop 硬编码，C8 67 key） |
+| `519bcbe` | E287：R-5 评估——§6.6 分领域阈值暂不新增 P-NN，改契约化注释 |
+| `d8e524f` | E288：[P-04] 临时上调 2500ms（provider 抖动期）——classify:smoke 复跑 8/10 达标，转 provisional@2026-08-30 + bench:B-20260830-01 |
+| `f343793` | T+3 交付物 2+5/5（smoke-e2e / r5-evaluation）+ R-3 方案 A 落地（.gitignore 增补 11 参考目录）+ 审计报告状态同步 |
+
+- **T+3 交付物 5/5 全部完成**：param-sample-30（48e31bd）/ smoke-e2e-report / r1-regression / r3-codegraph / r5-evaluation（f343793 收口）。
+- **R-1 双问题闭环**：S02/L05 → rule 0ms 硬拦截（安全场景）；[P-04] 1750→2500ms 后 classify 5/10→8/10 达标（性能瓶颈）。[P-04] 现为 provisional@2026-08-30 临时值，provider 恢复后按 E1 复验门回退。
+- **R-3 方案 A 已执行**：11 个参考项目目录（AI-Butler/OpenHands/Tavily+AnySearch+Bocha/openocta/opensquilla/openworker/v3/crm/benchmarks/deepseek-harness/agent-skills）加入 .gitignore，git status 噪音从 120→26 项。
+- **R-5 结论**：暂不新增分领域 P-NN（applyRule3 已覆盖 drug/tax/regulation/statistics 4 类），候选 P-148~P-150 列 v2.6+ 可选能力。
+- **并发会话发现**：2:50 前后另一会话生成了 r5-evaluation.md / smoke-e2e-report.md 并更新审计报告 T+3 状态，已审阅并入账（无冲突）。
+
 ## 待办
 
-1. 用户手动复测 E284（同一仓库二次 fetchMs 回落）。
-2. ✅ 已完成（见 §4 提交前收口完成，6 笔提交 c4b3e5b/e33e2c2/12641a4/7171ba5/9c0e52c/48e31bd）。后续待办 3 项：R-7（P-85/P-86 迁移 params.ts）修复、T+3 剩余交付物（r1-regression / smoke-e2e / r3-codegraph / R-5 评估）、P-95~P-104 到期拍板（截止 2026-09-10）。
-3. 是否把审计材料打包为交付 ZIP。
+1. **owner 侧冒烟 4/7**：search / tavily / desktop / 低置信 按 `docs/audit-t3/smoke-e2e-report.md` 清单实跑，回填结果（命令已在报告列出）。
+2. **E284 缓存复测**：同一仓库二次 fetchMs 应回落 ~1-2s、答案数据不变。
+3. **审计 ZIP 打包**：确认后由 agent 列装箱清单（checklist §11）。
+4. **P-95~P-104 到期拍板**：provisional@2026-08-13，截止 2026-09-10（剩 11 天），晋升定稿或下线。
+5. **[P-04] 回退**：provider 抖动平息后按 E1 复验门（n≥30 / 超时率 ≤10% / 准确率 ≥80% / p95×1.2）重定稿（当前临时 2500ms）。
+6. **误创建文件 `undefined`**（20KB 工具日志）删除确认。
+7. **v2.6+ 候选**：分领域阈值 P-148~P-150（r5-evaluation.md）、市场通道 github-project 接缓存（E284 残余）。
