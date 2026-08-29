@@ -56,7 +56,7 @@ CLI (src/main.ts)  UI (ui/prototype)  桌面壳 (desktop)
 | `src/skills/market/` | Skill 市场远程化（索引/校验/权限门禁/安装记录 JSONL + 可执行 handler + 自然语言触发词直连 + 本地安装通道，v1.0 S7，E243+E248+E250+E251 输入通道） | `index-client.ts`、`manifest.ts`、`installer.ts`、`nl-router.ts`、`runner.ts`、`store.ts`、`types.ts`（精选包源 `configs/market-skills/`） |
 | `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理、rewrite/记住指令、时间表达、路由 case JSONL（追加/轮转） | `router-v2.ts`、`routing-table.ts`、`mode-mapper.ts`、`route-case-store.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` |
 | `src/skills/` | Skill 注册、生命周期、预置 Skill | `registry.ts`、`lifecycle.ts`、`deps.ts`、`skills/*` |
-| `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标、`npm run maturity:check`，v1.0 P-10 条件③，E247） | `metrics.ts` |
+| `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标、`npm run maturity:check`，v1.0 P-10 条件③，E247）+ 运行时看门狗（E282，synthesis_timeout 环境噪音告警） | `metrics.ts`、`runtime-watchdog.ts` |
 | `src/memory/` | MemoryStore（sqlite/memorycore 配置切换）、ExperienceManager、用户上下文、蒸馏 | `store.ts`、`memorycore-store.ts`、`experience.ts`、`distill.ts` |
 | `src/slash/` | 斜杠命令层（/compact 手动压缩、/context 会话状态，§8.3 E204） | `slash-commands.ts` |
 | `src/reminder/` | 主动提醒存储 | `reminder-store.ts` |

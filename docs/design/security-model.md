@@ -20,7 +20,7 @@
 | 需求 | 当前状态 | 差距 |
 |------|---------|------|
 | 白名单完整命令集合（编译/烧录/包管理/文件/测试） | 🔨 部分 | 只落地前缀白名单，未做完整命令参数正则 |
-| 硬编码拒绝（rm -rf /、curl | sh 等） | 📋 待建 | 需在 terminal 执行前增加拒绝表 |
+| 硬编码拒绝（rm -rf /、del /S /Q、sudo、powershell -enc、node -e 等） | ✅ | `command-whitelist.ts` HARD_REJECTS + `terminal.ts` HARD_DENY_RULES 双层拦截 |
 | 搜索脱敏 | ✅ 部分 | Stage 1 `sanitizeQuery` 已实现路径/IP/密钥剥离 |
 | 五源信任域 | 🔨 部分 | prompt 隔离与元数据标记在合成 prompt 中体现，未形成独立防御模块 |
 | 安全 TDD 用例 | ✅ 部分 | `sandbox.test.ts`、`terminal.test.ts`、`security-config.test.ts` 已存在，需按 §10.4 补齐全量 |
@@ -45,11 +45,11 @@
 - `src/gateway/terminal.test.ts`
 - `src/config/security-config.test.ts`
 
-待补（§10.4 全量）：
+已覆盖（§10.4，2026-08-29 M7 复核）：
 
-- 越界写系统目录 403。
-- 读 `~/.ssh/id_rsa` 拒绝。
-- `rm -rf /` 硬编码拒绝。
-- `curl ... | sh` 拒绝。
-- 白名单内命令允许。
-- 搜索路径 / IP / API Key 脱敏。
+- 越界写系统目录 403：`sandbox.test.ts`。
+- `rm -rf /`、`del /S /Q`、`powershell -enc`、`node -e` 硬编码拒绝：`command-whitelist.test.ts` + `terminal.test.ts`。
+- `curl ... | sh` 拒绝：`command-whitelist.test.ts`。
+- 白名单内命令允许：`command-whitelist.test.ts`。
+- 搜索路径 / IP / API Key 脱敏：`query-sanitize.test.ts`。
+- 读 `~/.ssh/id_rsa` 拒绝：`sandbox.test.ts`「越界读取」独立断言。

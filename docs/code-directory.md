@@ -45,7 +45,7 @@
 | `src/agent/` | `route-case-store.ts`、`route-case-audit.ts`、`confidence-calibration.ts` | 路由 case 采集、审核、校准闭环（JSONL 追加/轮转 P13） | ✅ |
 | `src/skills/` | `registry.ts`、`lifecycle.ts`、`deps.ts`、`install.ts` | Skill 注册、生命周期、依赖注入、安装 | ✅ |
 | `src/skills/*/` | 23 个 Skill 目录 | 预置能力 | ✅ |
-| `src/maturity/` | `metrics.ts` | 成熟度观测（五维指标纯函数 + L0-L3 判定，v1.0 P-10 条件③，§12.4，E247，`npm run maturity:check`） | ✅ |
+| `src/maturity/` | `metrics.ts`、`runtime-watchdog.ts` | 成熟度观测（五维指标纯函数 + L0-L3 判定，v1.0 P-10 条件③，§12.4，E247，`npm run maturity:check`）+ 运行时看门狗（E282，synthesis_timeout 环境噪音告警） | ✅ |
 | `src/memory/` | `store.ts`、`memorycore-store.ts`、`schema.sql` | MemoryStore 双实现与冻结 schema（v1.0 S8：`MEMORY_STORE` 配置切换 sqlite/memorycore，E227） | ✅ |
 | `src/memory/` | `experience.ts`、`distill.ts`、`confidence-decay.ts` | 经验、蒸馏、衰减 | ✅ |
 | `src/memory/` | `user-context-store.ts`、`user-context.ts` | 用户画像、长期事实、会话摘要 | ✅ |
@@ -112,6 +112,7 @@
 | `docs/adrs/` | 架构决策记录 | ✅ |
 | `docs/documentation-map.md` | 文档资产总账 | ✅ |
 | `docs/audit-navigation.md` | 第三方审核导航（逻辑目录 → 真实路径） | ✅ |
+| `docs/audit-package-checklist.md` | 第三方审计交付包清单（装箱单 + 审阅路线） | ✅ |
 | `docs/code-directory.md` | 本文档 | ✅ |
 | `docs/architecture/` | 架构图、数据流、依赖、接口契约、部署 | ✅ |
 | `docs/design/` | 搜索、路由、记忆、安全、UI、Skill、PARAM 设计 | ✅ |
@@ -126,4 +127,3 @@
 - 新增目录先补本表，再进 `docs/directory-structure.md` 与 AGENTS.md 目录地图。
 - 已冻结文件（需求文档、schema v1）不得在本表里“重新设计”，只能登记偏离（E-NN）。
 - 测试文件不逐行列出，但新增行为必须带同名单测或集成测试。
-
