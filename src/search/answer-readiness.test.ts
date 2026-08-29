@@ -14,6 +14,24 @@ test('answer-readiness: predicate 四分类覆盖跨领域疑问词', () => {
   assert.equal(classifyPredicate('介绍一下这家公司的产品线'), 'other');
 });
 
+test('answer-readiness: 测量需求词判 numeric（E280，硬约束① 仅测量 frame 不含量纲词）', () => {
+  assert.equal(classifyPredicate('PostgreSQL 16 写入性能 benchmark'), 'numeric');
+  assert.equal(classifyPredicate('PostgreSQL 16 写入性能实测数据'), 'numeric');
+  assert.equal(classifyPredicate('RTX 5090 跑分'), 'numeric');
+  assert.equal(classifyPredicate('数据库压测结果'), 'numeric');
+  assert.equal(classifyPredicate('这台服务器性能测试'), 'numeric');
+  // 量纲词不在表内：延迟满足/价格与价值 不误判
+  assert.equal(classifyPredicate('延迟满足理论是什么'), 'other');
+  assert.equal(classifyPredicate('价格与价值的关系'), 'other');
+});
+
+test('answer-readiness: 测量需求词排除定义类 frame（E280，硬约束② 反例钉死）', () => {
+  assert.equal(classifyPredicate('什么是基准测试'), 'other');
+  assert.equal(classifyPredicate('什么是评测'), 'other');
+  assert.equal(classifyPredicate('性能测试的定义'), 'other');
+  assert.equal(classifyPredicate('什么是关系型数据库'), 'other');
+});
+
 test('answer-readiness: 数值型 query 证据缺数值时标记缺口', () => {
   const r = checkEvidenceReadiness('中国AI公司中市值较高的是哪几家？', [
     'AI 公司生态图谱与业务介绍',

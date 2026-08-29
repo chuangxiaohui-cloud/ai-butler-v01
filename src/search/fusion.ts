@@ -14,6 +14,8 @@ import {
 import { resolveFactConsistency } from './rule1.js';
 import type { SearchResultItem } from './providers/types.js';
 import type { IntentKey } from './stages/s2_classify.js';
+import { classifyPredicate, type PredicateKind } from './answer-readiness.js';
+import { numericUnitCount } from './numeric-pattern.js';
 import { isRecencySensitiveQuery } from './recency.js';
 import { PARAMS } from '../config/params.js';
 
@@ -46,6 +48,8 @@ export interface FusionItem {
 
 export interface FusedOutput {
   items: FusionItem[];
+  /** 完整通过 minScore 门槛的排序列表（top-K 截断前，E275 诊断用） */
+  ranked: FusionItem[];
   dropped: string[];
   gated: boolean;
   lowConfidence: boolean;
@@ -120,15 +124,24 @@ const INTENT_SHAPE_PREFERENCE: Partial<Record<IntentKey, Array<keyof ShapeFlags>
   how_to: ['steps', 'identifier'],
   troubleshooting: ['steps', 'identifier'],
   experience: ['attribution', 'steps'],
-  news: ['date', 'attribution'],
+  news: ['date', 'attribution', 'numeric'],
   github_analysis: ['identifier'],
 };
 
-function answerCoverageScore(intent: IntentKey, textLower: string): number {
+function answerCoverageScore(
+  intent: IntentKey,
+  textLower: string,
+  predicate: PredicateKind = 'other',
+): number {
   const prefs = INTENT_SHAPE_PREFERENCE[intent];
   if (!prefs || prefs.length === 0) return 1;
   const shapes = detectShapes(textLower);
   const hits = prefs.filter((p) => shapes[p]).length;
+  // predicate 感知加成（E273）：数值/时序 predicate 下，对应主形态命中即视为「直接作答」
+  // 证据——纯数字数据页（市值/榜单 snippet 通常只有数字、无日期/引述）不再被
+  // 「带日期+引述但无数字」的新闻页以覆盖度压过；只加成不惩罚，避免误伤中文数词页。
+  if (predicate === 'numeric' && shapes.numeric) return Math.min(1, 0.5 + hits / 2);
+  if (predicate === 'temporal' && shapes.date) return Math.min(1, 0.5 + hits / 2);
   return Math.min(1, hits / 2);
 }
 
@@ -154,12 +167,21 @@ function isHomogeneousPair(a: FusionItem, b: FusionItem): boolean {
   } catch {
     return false;
   }
-  if (hostA === '' || hostA !== hostB) return false;
   const sim = jaccard(
     diversityTokens(a.result.title + ' ' + a.result.content),
     diversityTokens(b.result.title + ' ' + b.result.content),
   );
-  return sim >= PARAMS.evidenceDiversityJaccard;
+  if (hostA !== '' && hostA === hostB) {
+    // 同域页面：沿用 [P-131] 同质阈值（站内高度相似页）
+    return sim >= PARAMS.evidenceDiversityJaccard;
+  }
+  if (hostA !== '' && hostB !== '' && hostA !== hostB) {
+    // 跨域「转载同文」：同一篇文章被多家门户转载（标题/正文 token Jaccard 极高，
+    // 实测同文 ≥0.92、不同文章 ≤0.13，0.75 为安全高阈值）；按 [P-133] 判同质，
+    // 避免同文多域重复占用 top-K 槽位。
+    return sim >= PARAMS.syndicatedDupJaccard;
+  }
+  return false;
 }
 
 function ensureDiversity(sorted: FusionItem[], fused: FusionItem[]): FusionItem[] {
@@ -223,7 +245,10 @@ function isErrorTopicMismatch(
 }
 
 function timelinessScore(item: SearchResultItem, recencySensitive = false): number {
-  const missing = recencySensitive ? 0.15 : 0.5;
+  // 缺失日期统一按中性兜底（0.5）：AnySearch 等引擎不回传日期字段，
+  // 强时效意图下若按 0.15 会把「无日期但内容即答案」的数据页整体压到丢弃线以下；
+  // 带日期的旧闻仍按窗口衰减到 0，不受此兜底影响。
+  const missing = 0.5;
   if (!item.published) return missing;
   const days = (Date.now() - new Date(item.published).getTime()) / 86_400_000;
   if (!Number.isFinite(days) || days < 0) return missing;
@@ -233,8 +258,13 @@ function timelinessScore(item: SearchResultItem, recencySensitive = false): numb
 
 function usabilityScore(item: SearchResultItem): number {
   const len = item.content.length;
-  if (len >= 200 && /\d/.test(item.content)) return 0.8;
+  const hasDigit = /\d/.test(item.content);
+  if (len >= 200 && hasDigit) return 0.8;
   if (len >= 200) return 0.6;
+  // 短片段但含数值：数据页/榜单页 snippet 常短于 200 字符（如「智谱市值首破万亿
+  // ・ 收盘价 2410 港元」），数值密度本身是可用性信号——短数字片段与长数字文章
+  // 对「给数值」类 query 同样可用，直接对齐 0.8（E273 校准）。
+  if (len >= 60 && hasDigit) return 0.8;
   return 0.4;
 }
 
@@ -323,6 +353,8 @@ export function fuseResults(
   const recencySensitive = isRecencySensitiveQuery(query);
   const effectiveIntent = recencySensitive ? 'news' : intent;
   const weights = INTENT_WEIGHTS[effectiveIntent] ?? INTENT_WEIGHTS.default;
+  // E273：predicate 类型（数值/时序/操作/观点）一次算好，供覆盖度信号按 query 需求加权
+  const predicate = classifyPredicate(query);
   // P6：query 派生值每条结果只算一次（relevance token / 官方域上下文 / 小写 query）
   const relevanceTokens = buildRelevanceTokens(relevanceQuery);
   const officialCtx = buildOfficialQueryContext(query);
@@ -336,7 +368,7 @@ export function fuseResults(
       isSeoNoise(result, itemText) &&
       !(result.provider === 'browser' && (official || isDomesticDatasheetUrl(result.url)));
     const relevance = relevanceScore(relevanceTokens, itemText.lower);
-    const answerCoverage = answerCoverageScore(intent, itemText.lower);
+    const answerCoverage = answerCoverageScore(intent, itemText.lower, predicate);
     const timeliness = timelinessScore(result, recencySensitive);
     const usability = usabilityScore(result);
     const factConsistency = rule1.factConsistency.get(result.url) ?? 1;
@@ -345,6 +377,22 @@ export function fuseResults(
       weights[1] * timeliness +
       weights[2] * usability +
       weights[3] * factConsistency;
+    const shapePrefs = INTENT_SHAPE_PREFERENCE[intent];
+    if (shapePrefs && shapePrefs.length > 0) {
+      score += PARAMS.coverageScoreWeight * answerCoverage;
+    }
+    // E275：数值 predicate 下，含「数字+量级单位」的证据按「标题+正文头部」独立数值密度加权加分
+    // （[P-136]×min(count,[P-138])）。密度只看头部：公司级数据页头部天然集中公司市值对
+    // （guba 讯飞1022亿/三六零555亿/昆仑万维408亿…10 个），泛文头部只有 1~3 个；
+    // 长文正文后段的数字多为融资/参数/预测等次要数字，不进密度。
+    // 相关性护栏（rel≥0.1）：数字形态加分只作用于与 query 相关的证据——东财首页基金收益率
+    // （rel=0.00，含 424.39% 等噪音数字）不加分，避免门户首页混入 top-K。
+    if (predicate === 'numeric' && relevance >= 0.1) {
+      const count = numericUnitCount(itemText.text.slice(0, 240));
+      if (count > 0) {
+        score += PARAMS.numericPatternBonus * Math.min(PARAMS.numericPatternCountCap, count);
+      }
+    }
     if (seoNoise) score *= 0.5;
     if (
       !opts.skipRelevanceGate &&
@@ -381,6 +429,7 @@ export function fuseResults(
   const sorted = [...kept].sort((a, b) => b.finalScore - a.finalScore).slice(0, topK);
   // P-ZZZ' 信号 C：top-K 内同质簇替换，保证证据多样（零依赖 token Jaccard）
   const diverse = ensureDiversity(sorted, fused);
+  const ranked = [...kept].sort((a, b) => b.finalScore - a.finalScore);
   const lowConfidence =
     sorted.length === 0 || sorted[0].finalScore < LOW_CONFIDENCE_THRESHOLD;
 
@@ -396,6 +445,7 @@ export function fuseResults(
 
   return {
     items: diverse,
+    ranked,
     dropped,
     gated: rule1.gated,
     lowConfidence,

@@ -5,7 +5,9 @@ import {
   createGithubReaderSkill,
   extractRepo,
   type GithubContract,
+  type GithubSkillTiming,
 } from './index.js';
+import { LLMLengthTruncatedError } from '../../search/llm-client.js';
 import type { SkillDeps } from '../deps.js';
 
 // ── mock fetch 基础设施（不引入新依赖；按 URL 路由返回 fixture）──
@@ -146,7 +148,13 @@ async function runSkill(
   query: string,
   routes: MockRoute[],
   opts: { timeoutMs?: number; now?: () => number } = {},
-): Promise<{ contract: GithubContract; answer: string; evidence: unknown[]; confidence: number }> {
+): Promise<{
+  contract: GithubContract;
+  answer: string;
+  evidence: unknown[];
+  confidence: number;
+  timing: GithubSkillTiming;
+}> {
   const skill = createGithubReaderSkill({
     fetchImpl: mockFetch(routes),
     timeoutMs: opts.timeoutMs ?? 500,
@@ -161,13 +169,14 @@ async function runSkill(
     answer: string;
     evidence: unknown[];
     confidence: number;
+    timing: GithubSkillTiming;
   };
   return result;
 }
 
 // ── 1. 契约结构：8 字段 + depth + evidence（api+raw）+ README 级标注 ──
 test('github-reader: 契约结构与健康分 82（对齐 POC-C openworker 冒烟口径）', async () => {
-  const { contract, answer } = await runSkill(
+  const { contract, answer, timing } = await runSkill(
     'https://github.com/zephyrproject-rtos/zephyr 这项目是做什么用的？',
     fullSuccessRoutes(),
   );
@@ -188,6 +197,11 @@ test('github-reader: 契约结构与健康分 82（对齐 POC-C openworker 冒�
   assert.equal(contract.evidence.some((e) => e.type === 'raw'), true);
   // 无 LLM：诚实提示 + 结构化契约
   assert.ok(answer.includes('L1 结构化解读'));
+  assert.ok(answer.includes('## 定位'));
+  assert.ok(answer.includes('## 健康分'));
+  assert.equal(typeof timing.totalMs, 'number');
+  assert.equal(typeof timing.fetchMs, 'number');
+  assert.equal(timing.synthesisMs, 0);
 });
 
 // ── 2. LLM 合成注入《专业审阅协议 §一》──
@@ -217,14 +231,99 @@ test('github-reader: deps.complete 时注入审阅协议并按契约合成', asy
     contract: GithubContract;
     evidence: unknown[];
     confidence: number;
+    timing: GithubSkillTiming;
   };
   assert.equal(result.answer, '一句话结论：值得关注的开源项目。');
   assert.ok(systemPrompt.includes('README 级判断'));
   assert.ok(systemPrompt.includes('诚实边界'));
-  assert.ok(systemPrompt.includes('一句话结论 → 定位 → 架构与栈'));
+  assert.ok(systemPrompt.includes('一句话结论（仅当信息完整且 confidence > 0.6）→ 定位'));
+  assert.ok(systemPrompt.includes('总字数 ≤ 1200 字'));
+  assert.ok(systemPrompt.includes('未出现在这些数据中的文件名'));
   assert.ok(userPrompt.includes('X.6 契约 JSON'));
+  assert.ok(userPrompt.includes('confidence：0.85'));
   assert.ok(userPrompt.includes('zephyrproject-rtos/zephyr'));
   assert.equal(result.confidence, 0.85);
+  assert.equal(typeof result.timing.totalMs, 'number');
+  assert.equal(typeof result.timing.fetchMs, 'number');
+  assert.equal(typeof result.timing.synthesisMs, 'number');
+});
+
+// ── 2b. LLM 截断：同 maxTokens 重试一次，仍截断才落结构化兜底 ──
+test('github-reader: LLM 首次截断后以同 maxTokens 重试成功，直接返回 LLM 报告', async () => {
+  const skill = createGithubReaderSkill({
+    fetchImpl: mockFetch(fullSuccessRoutes()),
+    timeoutMs: 500,
+    now: () => NOW,
+  });
+  let calls = 0;
+  const seenOpts: Array<{ maxTokens?: number; rejectOnTruncate?: boolean }> = [];
+  const complete = {
+    complete: async (
+      _messages: Array<{ role: string; content: string }>,
+      opts?: { maxTokens?: number; rejectOnTruncate?: boolean },
+    ): Promise<string> => {
+      calls += 1;
+      seenOpts.push({ maxTokens: opts?.maxTokens, rejectOnTruncate: opts?.rejectOnTruncate });
+      if (calls === 1) throw new LLMLengthTruncatedError('健康分 82 /');
+      return '重试完整报告：项目适合嵌入式场景。';
+    },
+  };
+  const output = await skill.execute(
+    { query: 'https://github.com/zephyrproject-rtos/zephyr 值不值得用？', attachmentSignals: [], rawFiles: [], memory: null },
+    { callVLM: async () => '', complete } as unknown as SkillDeps,
+  );
+  const result = output.result as {
+    answer: string;
+    confidence: number;
+    timing: GithubSkillTiming;
+  };
+  assert.equal(calls, 2);
+  assert.deepEqual(seenOpts, [
+    { maxTokens: 4096, rejectOnTruncate: true },
+    { maxTokens: 4096, rejectOnTruncate: true },
+  ]);
+  assert.equal(result.answer, '重试完整报告：项目适合嵌入式场景。');
+  assert.equal(result.confidence, 0.85);
+  assert.equal(result.timing.synthesisError, undefined);
+});
+
+test('github-reader: LLM 连续截断时同 maxTokens 重试一次，仍截断才落结构化兜底', async () => {
+  const skill = createGithubReaderSkill({
+    fetchImpl: mockFetch(fullSuccessRoutes()),
+    timeoutMs: 500,
+    now: () => NOW,
+  });
+  let calls = 0;
+  const seenOpts: Array<{ maxTokens?: number; rejectOnTruncate?: boolean }> = [];
+  const complete = {
+    complete: async (
+      _messages: Array<{ role: string; content: string }>,
+      opts?: { maxTokens?: number; rejectOnTruncate?: boolean },
+    ): Promise<string> => {
+      calls += 1;
+      seenOpts.push({ maxTokens: opts?.maxTokens, rejectOnTruncate: opts?.rejectOnTruncate });
+      throw new LLMLengthTruncatedError('健康分 82 /');
+    },
+  };
+  const output = await skill.execute(
+    { query: 'https://github.com/zephyrproject-rtos/zephyr 值不值得用？', attachmentSignals: [], rawFiles: [], memory: null },
+    { callVLM: async () => '', complete } as unknown as SkillDeps,
+  );
+  const result = output.result as {
+    answer: string;
+    confidence: number;
+    timing: GithubSkillTiming;
+  };
+  assert.equal(calls, 2);
+  assert.deepEqual(seenOpts, [
+    { maxTokens: 4096, rejectOnTruncate: true },
+    { maxTokens: 4096, rejectOnTruncate: true },
+  ]);
+  assert.ok(result.answer.includes('L1 结构化解读'));
+  assert.ok(result.answer.includes('## 风险'));
+  assert.equal(result.confidence, 0.7);
+  assert.ok(result.timing.synthesisMs >= 0);
+  assert.ok((result.timing.synthesisError ?? '').includes('截断'));
 });
 
 // ── 3. API 全失败降级：raw README + releases.atom 兜底 ──
@@ -240,7 +339,7 @@ test('github-reader: API 全失败时走 raw + releases.atom 降级，缺字段�
       respond: () => okText(ATOM_XML),
     },
   ];
-  const { contract, answer } = await runSkill(
+  const { contract, answer, confidence } = await runSkill(
     'github.com/zephyrproject-rtos/zephyr 这个项目怎么样',
     routes,
   );
@@ -253,6 +352,7 @@ test('github-reader: API 全失败时走 raw + releases.atom 降级，缺字段�
   assert.equal(contract.health_score, 3); // Release 1→8 分，License 缺失 -5
   assert.ok(contract.health_basis.some((b) => b.includes('近6月 Release 1（8 分）')));
   assert.ok(answer.includes('未获取'));
+  assert.ok(confidence <= 0.6, '字段不完整时 confidence 应降至低置信区间');
 });
 
 // ── 4. API 部分失败：contributors/commits/releases 各自缺失仍出解读 ──
@@ -536,6 +636,121 @@ npm install
   assert.ok(contract.usage.includes('npm install'));
 });
 
+// ── 11.1 README fenced code block：``` 标记不进 usage ──
+test('github-reader: fenced code block 的 ```/`bash 标记不进 usage', async () => {
+  const readmeWithFence = `# Fenced
+
+Intro text about the project.
+
+## Quick Start
+
+\`\`\`bash
+npm install
+\`\`\`
+`;
+  const routes: MockRoute[] = [
+    { match: (url) => url === REPO_API, respond: () => okText(jsonBody(REPO_META)) },
+    {
+      match: matches(`${REPO_API}/releases?per_page=30`),
+      respond: () => okText(jsonBody([])),
+    },
+    {
+      match: matches(`${REPO_API}/contributors?per_page=100`),
+      respond: () => okText(jsonBody([])),
+    },
+    {
+      match: matches(`${REPO_API}/commits?per_page=100`),
+      respond: () => okText(jsonBody([])),
+    },
+    {
+      match: matches('raw.githubusercontent.com/zephyrproject-rtos/zephyr/main/README.md'),
+      respond: () => okText(readmeWithFence),
+    },
+  ];
+  const { contract } = await runSkill('https://github.com/zephyrproject-rtos/zephyr', routes);
+  assert.ok(contract.usage.includes('npm install'));
+  assert.equal(contract.usage.includes('```'), false);
+  assert.equal(contract.usage.includes('`bash'), false);
+});
+
+// ── 11.2-11.4 README 正文链路：excerpt / 语言切换行 / Run 章节 ──
+function readmeRoutes(readme: string): MockRoute[] {
+  return [
+    { match: (url) => url === REPO_API, respond: () => okText(jsonBody(REPO_META)) },
+    {
+      match: matches(`${REPO_API}/releases?per_page=30`),
+      respond: () => okText(jsonBody([])),
+    },
+    {
+      match: matches(`${REPO_API}/contributors?per_page=100`),
+      respond: () => okText(jsonBody([])),
+    },
+    {
+      match: matches(`${REPO_API}/commits?per_page=100`),
+      respond: () => okText(jsonBody([])),
+    },
+    {
+      match: matches('raw.githubusercontent.com/zephyrproject-rtos/zephyr/main/README.md'),
+      respond: () => okText(readme),
+    },
+  ];
+}
+
+test('github-reader: readme_excerpt 携带 README 原文正文', async () => {
+  const readme = `# DeepSeek Harness
+
+English | [中文](README.zh.md)
+
+DeepSeek Harness (dsh) is an open-source agent harness developed by DeepSeek AI.
+
+## Run from npm
+
+Install Node.js, then run:
+
+npx @deepseek-ai/dsh web
+`;
+  const { contract } = await runSkill(
+    'https://github.com/zephyrproject-rtos/zephyr 这项目是做什么用的？',
+    readmeRoutes(readme),
+  );
+  assert.ok(contract.readme_excerpt.includes('DeepSeek Harness (dsh) is an open-source agent harness'));
+  assert.ok(contract.readme_excerpt.includes('npx @deepseek-ai/dsh web'));
+});
+
+test('github-reader: positioning 过滤语言切换行', async () => {
+  const readme = `# DeepSeek Harness
+
+English | [中文](README.zh.md)
+
+DeepSeek Harness (dsh) is an open-source agent harness developed by DeepSeek AI.
+
+## Run from npm
+
+Install Node.js, then run:
+
+npx @deepseek-ai/dsh web
+`;
+  const { contract } = await runSkill('https://github.com/zephyrproject-rtos/zephyr', readmeRoutes(readme));
+  assert.ok(contract.positioning.includes('DeepSeek Harness (dsh) is an open-source agent harness'));
+  assert.equal(contract.positioning.includes('English | 中文'), false);
+});
+
+test('github-reader: usage 命中 Run from npm 章节', async () => {
+  const readme = `# DeepSeek Harness
+
+DeepSeek Harness (dsh) is an open-source agent harness developed by DeepSeek AI.
+
+## Run from npm
+
+Install Node.js, then run:
+
+npx @deepseek-ai/dsh web
+`;
+  const { contract } = await runSkill('https://github.com/zephyrproject-rtos/zephyr', readmeRoutes(readme));
+  assert.ok(contract.usage.includes('npx @deepseek-ai/dsh web'));
+  assert.equal(contract.usage.includes('未获取'), false);
+});
+
 // ── 12. LLM 合成失败兜底 ──
 test('github-reader: LLM 合成抛错时落到结构化契约兜底', async () => {
   const skill = createGithubReaderSkill({
@@ -569,6 +784,45 @@ test('github-reader: 无仓库链接时请求提供链接', async () => {
   assert.ok(result.answer.includes('GitHub 仓库链接'));
 });
 
+// ── 14. deps.httpCache 命中后 GitHub API JSON 不再发网络请求（E284）──
+test('github-reader: deps.httpCache 命中后 GitHub API 不再发请求（E284）', async () => {
+  const apiFetchCounts = new Map<string, number>();
+  const rawFetch = mockFetch(fullSuccessRoutes()) as unknown as typeof fetch;
+  const wrappedFetch = (async (url: string) => {
+    if (url.includes('api.github.com')) {
+      apiFetchCounts.set(url, (apiFetchCounts.get(url) ?? 0) + 1);
+    }
+    return rawFetch(url);
+  }) as unknown as typeof fetch;
 
+  const store = new Map<string, string>();
+  const httpCache = {
+    get: (url: string) => store.get(url) ?? null,
+    set: (url: string, body: string) => {
+      store.set(url, body);
+    },
+  };
+  const skill = createGithubReaderSkill({
+    fetchImpl: wrappedFetch,
+    timeoutMs: 500,
+    now: () => NOW,
+  });
+  const deps = { callVLM: async () => '', httpCache } as unknown as SkillDeps;
+  const input = {
+    query: 'https://github.com/zephyrproject-rtos/zephyr 这项目是做什么用的？',
+    attachmentSignals: [],
+    rawFiles: [],
+    memory: null,
+  };
 
+  const first = await skill.execute(input, deps);
+  const firstTotal = [...apiFetchCounts.values()].reduce((a, b) => a + b, 0);
+  assert.ok(firstTotal >= 4, '首次应抓取 4 个 GitHub API JSON');
+  assert.ok((first.result as { contract?: GithubContract }).contract, '首次产出契约');
+
+  await skill.execute(input, deps);
+  const secondTotal = [...apiFetchCounts.values()].reduce((a, b) => a + b, 0);
+  assert.equal(secondTotal, firstTotal, '第二次 GitHub API 应全部命中缓存，不再发请求');
+  assert.ok(store.size >= 4, '缓存应存有 4 个 API JSON 条目');
+});
 

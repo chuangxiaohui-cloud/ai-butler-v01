@@ -10,6 +10,11 @@
 export type PredicateKind = 'numeric' | 'temporal' | 'procedural' | 'opinion' | 'other';
 
 const NUMERIC_RE = /多少|几[家个条款份]|排名|排行|第几|最高|最大|最贵|最便宜|最多|最少|最快|最慢|哪个|哪些|谁|领先|靠前|靠后/;
+/** E280：测量需求词——「要测/测过 X」的 frame 需要数值证据（benchmark/基准测试/跑分/压测/实测/性能测试/评测）；
+ *  硬约束①：不含 延迟/价格/评分 等量纲词（「延迟满足」「价格与价值」是误判源）；
+ *  硬约束②：排除定义类 frame（什么是/啥是/是什么/定义/概念），防「什么是基准测试」误判为 numeric。 */
+const DEFINITION_RE = /什么是|啥是|是什么|定义|概念/;
+const NUMERIC_DEMAND_RE = /benchmark|基准测试|跑分|压测|实测|性能测试|评测/i;
 const TEMPORAL_RE = /何时|什么时候|哪一年|哪一天|最新|现在|当前|今天|进展|更新|未来|历史|过去|多久/;
 const PROCEDURAL_RE = /如何|怎么|怎样|步骤|配置|安装|设置|操作|流程|方法|办法|部署|实现|编写|搭建/;
 const OPINION_RE = /评价|看法|观点|觉得|怎么样|争议|优缺点|口碑|推荐(?:吗)?/;
@@ -17,6 +22,7 @@ const OPINION_RE = /评价|看法|观点|觉得|怎么样|争议|优缺点|口�
 /** 从 query 推导 predicate 类型（规则式，纯跨领域疑问词） */
 export function classifyPredicate(query: string): PredicateKind {
   if (NUMERIC_RE.test(query)) return 'numeric';
+  if (!DEFINITION_RE.test(query) && NUMERIC_DEMAND_RE.test(query)) return 'numeric';
   if (TEMPORAL_RE.test(query)) return 'temporal';
   // 观点词优先于「如何/怎么」：含评价/看法/优缺点等词时即使带“如何”也按观点处理
   if (OPINION_RE.test(query)) return 'opinion';

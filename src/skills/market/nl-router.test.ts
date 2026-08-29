@@ -73,3 +73,26 @@ test('renderMarketSkillAnswer：失败步骤透出 stderr 摘要', () => {
   assert.ok(answer.includes('badcmd'));
   assert.ok(answer.includes('command not found'));
 });
+
+test('renderMarketSkillAnswer：剥离 npm 横幅并收敛 github-project 输出', () => {
+  const answer = renderMarketSkillAnswer({
+    name: 'github-project',
+    version: '0.1.0',
+    results: [
+      {
+        ok: true,
+        step: 'npm run market:github:project -- @input',
+        stdout:
+          '> ai-butler-v01@0.1.0 market:github:project\n' +
+          '> tsx scripts/market-github-project.ts C:\\input.txt\n\n' +
+          '【openclaw/openclaw】README 级判断\n' +
+          '定位：OpenClaw 是个人 AI 助手。\n' +
+          '健康分：64/100',
+        stderr: '',
+      },
+    ],
+  });
+  assert.ok(answer.includes('【openclaw/openclaw】'));
+  assert.equal(answer.includes('ai-butler-v01'), false);
+  assert.equal(answer.includes('market:github:project'), false);
+});

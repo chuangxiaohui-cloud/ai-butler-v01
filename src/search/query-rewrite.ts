@@ -5,6 +5,8 @@
 
 import type { ChatMessage, LLMClient } from './llm.js';
 import type { IntentKey } from './stages/s2_classify.js';
+import { classifyPredicate } from './answer-readiness.js';
+import { PARAMS } from '../config/params.js';
 import {
   DOMESTIC_DATASHEET_DOMAINS,
   extractPartNumber,
@@ -58,7 +60,7 @@ function techOfficialQueries(query: string): string[] {
   return techOfficialDomainsForQuery(query).map((domain) => `${core} site:${domain}`);
 }
 
-export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
+export function ruleBasedRewrite(query: string, intent?: IntentKey, originalQuery?: string): string[] {
   if (intent === 'news') {
     const year = NEWS_YEAR_RE.test(query) ? '' : `${new Date().getFullYear()} `;
     const base = `${year}${query}`.trim();
@@ -145,6 +147,16 @@ export function ruleBasedRewrite(query: string, intent?: IntentKey): string[] {
       query,
     ]);
   }
+  // E280：predicate 判定用原始 query——s2_classify 可能剥掉「哪个/哪些」等疑问词
+  // （轨迹实证：「Redis 和 Memcached 哪个读取延迟更低」被改写成「读取延迟对比」→ 改写层判 other，
+  //  而输出层用 cleanQuery 判 numeric，同一次运行两个 predicate 的数据流不一致）。
+  // E279：数值 predicate（纯疑问词判定，零领域词）→ 主检索确定性追加「[P-137] 后缀」子查询，
+  // 不再依赖分类器 LLM 心情（轨迹实证：同 query 三次运行分类器分别产出 性能对比/低延迟数据库排名/裸 query，
+  // run1 恰好带「性能对比」→ 证据即出现 22ms/6ms 对比文）。E85/E270 同款「规则子查询」模式。
+  const predicateSource = originalQuery && originalQuery.trim() ? originalQuery : query;
+  if (classifyPredicate(predicateSource) === 'numeric') {
+    return uniqueQueries([`${query}${PARAMS.numericSupplementSuffix}`, ...techQueries, query]);
+  }
   return uniqueQueries([...techQueries, query]);
 }
 
@@ -178,8 +190,9 @@ export async function rewriteQuery(
   query: string,
   intent: IntentKey,
   llm?: LLMClient,
+  originalQuery?: string,
 ): Promise<RewriteResult> {
-  const ruleQueries = ruleBasedRewrite(query, intent);
+  const ruleQueries = ruleBasedRewrite(query, intent, originalQuery);
   const needsRuleQueries = ruleQueries.length > 1;
   if (!llm) {
     return { queries: ruleQueries, source: 'rule', issues: [] };

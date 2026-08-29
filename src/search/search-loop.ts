@@ -14,6 +14,8 @@ import {
   type SearchStageResult,
 } from './stages/s3_search.js';
 import { rewriteQuery } from './query-rewrite.js';
+import { classifyPredicate } from './answer-readiness.js';
+import { PARAMS } from '../config/params.js';
 import {
   DOMESTIC_DATASHEET_DOMAINS,
   DOMESTIC_DATASHEET_SITES,
@@ -112,11 +114,16 @@ export function buildCoverageJudgeMessages(
   query: string,
   subQuery: string,
   results: SearchResultItem[],
+  requireNumeric = false,
 ): Array<{ role: 'system' | 'user'; content: string }> {
   const top = results
     .slice(0, 8)
     .map((r, i) => `${i + 1}. ${r.title}（${r.url}）\n${r.content.slice(0, 120)}`)
     .join('\n');
+  // E279：数值 predicate 主检索增强期，judge 要求证据含带量纲的具体数值才判够
+  const numericNote = requireNumeric
+    ? '\n注意：这是需要具体数值的问题（金额/延迟/评分/价格等）。当前结果若缺少带量级单位的具体数值（如 8.5ms、1022 亿、4.9 分），判 enough=false，并在 moreQueries 中给出 1 条能命中数据/对比页的子查询。'
+    : '';
   return [
     {
       role: 'system',
@@ -125,7 +132,7 @@ export function buildCoverageJudgeMessages(
     },
     {
       role: 'user',
-      content: `用户问题：${query}\n当前子查询：${subQuery}\n已收集结果数：${results.length}\nTop 结果：\n${top}`,
+      content: `用户问题：${query}\n当前子查询：${subQuery}\n已收集结果数：${results.length}\nTop 结果：\n${top}${numericNote}`,
     },
   ];
 }
@@ -136,12 +143,14 @@ async function judgeCoverage(
   results: SearchResultItem[],
   llm: LLMClient | undefined,
   minResults: number,
+  requireNumeric = false,
 ): Promise<{ enough: boolean; moreQueries: string[] }> {
   if (!llm) {
-    return { enough: results.length >= minResults, moreQueries: [] };
+    // E279：无 LLM 时数值感知强制判不够，保证增强子查询至少跑一轮（确定性，不依赖 LLM judge）
+    return { enough: requireNumeric ? false : results.length >= minResults, moreQueries: [] };
   }
   try {
-    const raw = await llm.complete(buildCoverageJudgeMessages(query, subQuery, results), {
+    const raw = await llm.complete(buildCoverageJudgeMessages(query, subQuery, results, requireNumeric), {
       temperature: 0,
       maxTokens: 200,
       json: true,
@@ -169,11 +178,22 @@ export async function runSearchLoop(
   const start = Date.now();
   const maxSubSearches = opts.maxSubSearches ?? DEFAULT_MAX_SUB_SEARCHES;
   const minResults = opts.minResults ?? DEFAULT_MIN_RESULTS;
-  const rewritten = await rewriteQuery(query, opts.intent, opts.llm);
+  const rewritten = await rewriteQuery(query, opts.intent, opts.llm, opts.originalQuery);
   // E239 修正：规则改写可能生成大量 datasheet 子查询把原查询挤出 [P-85] 5 次预算，
   // 原查询最先搜索（最忠实于用户问题的子查询），官方/专业站子查询在 judge 判定不足时继续追加。
   const queue = [query, ...rewritten.queries.filter((q) => q !== query)];
   const seenQueries = new Set<string>(queue);
+  // E279：数值 predicate 主检索增强——规则改写已追加「query + [P-137] 后缀」子查询；
+  // 仅当该增强子查询仍在队列且未超 [P-139] 上限时，judge 才延迟判够（超限即接受当前证据，防预算膨胀）
+  const numericEnhancedQuery = `${query}${PARAMS.numericSupplementSuffix}`;
+  // E280：predicate 判定用原始 query（与 ruleBasedRewrite 同源，防分类器剥疑问词导致两个 predicate 不一致）
+  const numericPredicateSource =
+    opts.originalQuery && opts.originalQuery.trim() ? opts.originalQuery : query;
+  const hasNumericEnhancement =
+    classifyPredicate(numericPredicateSource) === 'numeric' &&
+    maxSubSearches > 1 &&
+    rewritten.queries.includes(numericEnhancedQuery);
+  let numericExtraRounds = 0;
   let results: SearchResultItem[] = [];
   const attempts: SearchStageResult['attempts'] = [];
   const notices: string[] = [];
@@ -202,7 +222,12 @@ export async function runSearchLoop(
     if (stage.cacheEngines) cacheEngines = stage.cacheEngines;
     if (stage.degraded && results.length === 0) degraded = true;
 
-    const judge = await judgeCoverage(query, subQuery, results, opts.llm, minResults);
+    const numericPending =
+      hasNumericEnhancement &&
+      queue.includes(numericEnhancedQuery) &&
+      numericExtraRounds < PARAMS.numericJudgeExtraSearchCap;
+    const judge = await judgeCoverage(query, subQuery, results, opts.llm, minResults, numericPending);
+    if (numericPending) numericExtraRounds += 1;
     for (const next of judge.moreQueries) {
       if (!seenQueries.has(next)) {
         seenQueries.add(next);

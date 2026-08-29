@@ -3,9 +3,11 @@ import { test } from 'node:test';
 
 import type { ChatMessage, LLMClient } from '../llm.js';
 import { FallbackLLMClient } from '../llm-registry.js';
+import { LLMLengthTruncatedError } from '../llm-client.js';
 import type { FusedOutput, FusionItem } from '../fusion.js';
 import type { ClassifiedQuery } from './s2_classify.js';
 import { synthesizeAnswer } from './s5_synthesize.js';
+import { PARAMS } from '../../config/params.js';
 
 class FakeLLM implements LLMClient {
   constructor(private readonly handler: (messages: ChatMessage[]) => string) {}
@@ -37,6 +39,7 @@ function fusedItem(url: string): FusionItem {
 
 const fusedOk: FusedOutput = {
   items: [fusedItem('https://example.com/1')],
+  ranked: [fusedItem('https://example.com/1')],
   dropped: [],
   gated: false,
   lowConfidence: false,
@@ -44,6 +47,7 @@ const fusedOk: FusedOutput = {
 
 const fusedEmpty: FusedOutput = {
   items: [],
+  ranked: [],
   dropped: [],
   gated: false,
   lowConfidence: true,
@@ -64,6 +68,23 @@ test('s5: LLM 合成答案并引用证据', async () => {
   });
   assert.equal(r.source, 'llm');
   assert.ok(r.answer.includes('72MHz'));
+});
+
+test('s5: onToken 透传给合成客户端（流式渐进展示）', async () => {
+  const seen: string[] = [];
+  const fake: LLMClient = {
+    async complete(_messages, opts) {
+      opts?.onToken?.('增量文本');
+      return '完整答案';
+    },
+  };
+  const r = await synthesizeAnswer('STM32F103C8T6 最大主频是多少', fusedOk, classified, {
+    llm: fake,
+    onToken: (d) => seen.push(d),
+  });
+  assert.equal(r.source, 'llm');
+  assert.equal(r.answer, '完整答案');
+  assert.deepEqual(seen, ['增量文本']);
 });
 
 test('s5: 合成成功后回调模型路由信息', async () => {
@@ -135,7 +156,98 @@ test('s5: LLM 异常降级为证据摘要并显式标记失败（P-XXX）', asyn
   assert.equal(r.source, 'fallback');
   assert.equal(r.synthesisFailed, true);
   assert.ok(r.synthesisError);
-  assert.ok(r.answer.includes('example.com'));
+  assert.ok(r.answer.includes('回答生成超时'), '明确告知超时而非「搜索到了 N 条」');
+  assert.ok(r.answer.includes('https://example.com/1'), '来源 URL 独立成行');
+  assert.ok(r.answer.includes('72MHz'), 'fallback 附证据关键片段');
+  assert.ok(!r.answer.includes('搜索到了'), '不再复述过程性描述');
+  assert.ok(!r.answer.includes('（https://'), 'URL 不粘连在标题后');
+});
+
+test('s5: fallback 对标题退化成 URL 的来源用域名展示，不出现「URL（URL）」粘连（E276）', async () => {
+  const fake = new FakeLLM(() => {
+    throw new Error('timeout');
+  });
+  const r = await synthesizeAnswer('中国AI大模型公司市值较高的是哪几家', fusedOk, classified, {
+    llm: fake,
+    pageContents: [
+      {
+        title: 'https://finance.example.com/a/123',
+        url: 'https://finance.example.com/a/123',
+        text: '寒武纪市值6300亿 摩尔线程市值3100亿 沐曦股份市值2500亿 '.repeat(2),
+      },
+    ],
+  });
+  assert.ok(r.answer.includes('finance.example.com'), '用域名展示来源');
+  assert.ok(r.answer.includes('寒武纪市值6300亿'), '抓取正文关键片段进 fallback');
+  assert.ok(!r.answer.includes('（https://'), '标题不再与 URL 粘连');
+});
+
+test('s5: 网页正文单篇注入不超过 [P-128] 上限（E276 合成输入瘦身）', async () => {
+  let user = '';
+  const fake = new FakeLLM((messages) => {
+    user = messages[1]?.content ?? '';
+    return '直接回答。';
+  });
+  await synthesizeAnswer('STM32 主频', fusedOk, classified, {
+    llm: fake,
+    pageContents: [
+      {
+        title: '长文页',
+        url: 'https://example.com/long',
+        text: '内容'.repeat(3000),
+      },
+    ],
+  });
+  const start = user.indexOf('【网页正文');
+  const end = user.indexOf('【正文结束】');
+  assert.ok(start >= 0 && end > start, '正文块存在');
+  const blockLen = end - start;
+  assert.ok(
+    blockLen <= PARAMS.synthesizePageTextChars + 200,
+    `单篇注入 ${blockLen} 字符 ≤ [P-128] 上限 + 头部`,
+  );
+});
+
+test('s5: 仅返回 <think> 推理块时按失败处理，不向用户泄漏推理原文', async () => {
+  const fake = new FakeLLM(() => '<think>让我先推理一下这个问题的答案……</think>');
+  const r = await synthesizeAnswer('STM32F103C8T6 最大主频是多少', fusedOk, classified, {
+    llm: fake,
+  });
+  assert.equal(r.source, 'fallback');
+  assert.equal(r.synthesisFailed, true);
+  assert.ok(r.synthesisError, '记录失败原因');
+  assert.ok(!r.answer.includes('<think>'), '不泄漏推理块');
+});
+
+test('s5: 首次输出被 max_tokens 截断时按 [P-135] 更高预算重试一次（E274）', async () => {
+  const calls: number[] = [];
+  const fake: LLMClient = {
+    async complete(_messages, opts) {
+      calls.push(opts?.maxTokens ?? 0);
+      if (calls.length === 1) throw new LLMLengthTruncatedError('半截回答');
+      return '完整回答：智谱 AI 市值约 4800 亿港元……';
+    },
+  };
+  const r = await synthesizeAnswer('STM32F103C8T6 最大主频是多少', fusedOk, classified, {
+    llm: fake,
+  });
+  assert.equal(r.source, 'llm');
+  assert.ok(r.answer.startsWith('完整回答'));
+  assert.deepEqual(calls, [PARAMS.synthesisMaxTokens, PARAMS.synthesisMaxTokensRetry]);
+});
+
+test('s5: 截断重试仍截断时按失败处理走兜底（E274）', async () => {
+  const fake: LLMClient = {
+    async complete() {
+      throw new LLMLengthTruncatedError('又是半截');
+    },
+  };
+  const r = await synthesizeAnswer('STM32F103C8T6 最大主频是多少', fusedOk, classified, {
+    llm: fake,
+  });
+  assert.equal(r.source, 'fallback');
+  assert.equal(r.synthesisFailed, true);
+  assert.ok(!r.answer.includes('又是半截'), '不把残句当答案');
 });
 
 test('s5: readinessGap 注入诚实边界约束禁止编造', async () => {
@@ -369,5 +481,3 @@ test('s5: browser 来源证据正文切片放大到 4000 字符', async () => {
   // 4000 字符切片：超过 300 字符的 browser 正文应整体进入提示
   assert.ok(user.includes('正文'.repeat(1500)));
 });
-
-

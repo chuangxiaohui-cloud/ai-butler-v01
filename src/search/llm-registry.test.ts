@@ -7,7 +7,7 @@ import {
   LlmProviderRegistry,
   resolveFallbackBudgetMs,
 } from './llm-registry.js';
-import type { ChatMessage, LLMClient } from './llm-client.js';
+import { LLMLengthTruncatedError, type ChatMessage, type LLMClient } from './llm-client.js';
 
 function clientReturning(value: string): LLMClient {
   return {
@@ -111,6 +111,36 @@ describe('llm-registry: fallback 链', () => {
       { providerId: 'zhipu', model: 'glm-5.2', client: clientThrowing('b') },
     ]);
     await assert.rejects(() => client.complete([{ role: 'user', content: 'hi' }]), /b/);
+  });
+
+  it('截断错误直接上抛，不尝试后续 provider（E274）', async () => {
+    let secondCalled = false;
+    const client = new FallbackLLMClient([
+      {
+        providerId: 'deepseek',
+        model: 'deepseek-chat',
+        client: {
+          async complete(): Promise<string> {
+            throw new LLMLengthTruncatedError('半截');
+          },
+        },
+      },
+      {
+        providerId: 'zhipu',
+        model: 'glm-5.2',
+        client: {
+          async complete(): Promise<string> {
+            secondCalled = true;
+            return 'ok';
+          },
+        },
+      },
+    ]);
+    await assert.rejects(
+      () => client.complete([{ role: 'user', content: 'hi' }]),
+      (err: unknown) => err instanceof LLMLengthTruncatedError,
+    );
+    assert.equal(secondCalled, false);
   });
 
   it('总预算超时立即终止，不再尝试后续 provider（P17）', async () => {

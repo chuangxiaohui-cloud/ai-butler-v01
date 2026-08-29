@@ -156,3 +156,71 @@ test('rewrite: 金融市值非 news 查询也补权威源子查询（E270）', (
   assert.ok(queries.some((q) => q.includes('site:eastmoney.com')));
   assert.ok(queries.some((q) => q.includes('市值 排名 最新')));
 });
+
+test('rewrite: 数值列举 query 主检索确定性追加中性触发子查询（E279）', () => {
+  const q = '延迟最低的数据库有哪些';
+  const queries = ruleBasedRewrite(q);
+  assert.equal(queries[0], `${q} 数据 参数 对比`);
+  assert.ok(queries.includes(q), '原查询保留');
+});
+
+test('rewrite: 数值 query 无 LLM 时增强子查询同样入队（E279 确定性）', async () => {
+  const r = await rewriteQuery('4K 下帧率最高的显卡', 'comparison');
+  assert.equal(r.source, 'rule');
+  assert.ok(r.queries.includes('4K 下帧率最高的显卡 数据 参数 对比'));
+  assert.ok(r.queries.includes('4K 下帧率最高的显卡'));
+});
+
+test('rewrite: 数值 query + LLM 改写时规则子查询仍强制入队（E279）', async () => {
+  const llm = new FakeLLM(() => JSON.stringify({ queries: ['GPU 性能天梯图'] }));
+  const r = await rewriteQuery('评分最高的电影有哪些', 'comparison', llm);
+  assert.ok(r.queries.includes('评分最高的电影有哪些 数据 参数 对比'));
+  assert.ok(r.queries.includes('GPU 性能天梯图'));
+});
+
+test('rewrite: GDP 增速类数值 query 同样增强（E279 用户用例 5 回归）', () => {
+  const q = '中国 GDP 增速是多少';
+  const queries = ruleBasedRewrite(q);
+  assert.ok(queries.includes(`${q} 数据 参数 对比`));
+  assert.ok(queries.includes(q));
+});
+
+test('rewrite: 金融/器件/新闻优先分支不吃数值后缀（E279 回归保护）', () => {
+  const fin = ruleBasedRewrite('全球芯片公司市值排名');
+  assert.ok(!fin.some((q) => q.includes(' 数据 参数 对比')));
+  assert.ok(fin.some((q) => q.includes('site:eastmoney.com')));
+  const part = ruleBasedRewrite('STM32F103C8T6 最大主频是多少');
+  assert.ok(!part.some((q) => q.includes(' 数据 参数 对比')));
+  assert.ok(part.some((q) => q.includes('site:st.com')));
+  const news = ruleBasedRewrite('中国AI大模型公司中市值较高的是哪几家', 'news');
+  assert.ok(!news.some((q) => q.includes(' 数据 参数 对比')));
+});
+
+test('rewrite: 非数值 query 不加增强子查询（E279）', () => {
+  const queries = ruleBasedRewrite('什么是关系型数据库');
+  assert.deepEqual(queries, ['什么是关系型数据库']);
+});
+
+test('rewrite: predicate 用原始 query 判定（E280，分类器剥疑问词修复）', () => {
+  const stripped = 'Redis 和 Memcached 读取延迟对比';
+  const original = 'Redis 和 Memcached 哪个读取延迟更低';
+  const queries = ruleBasedRewrite(stripped, undefined, original);
+  assert.equal(queries[0], `${stripped} 数据 参数 对比`);
+  assert.ok(queries.includes(stripped));
+});
+
+test('rewrite: 无原始 query 时被剥疑问词的串不触发增强（E280 回归）', () => {
+  const queries = ruleBasedRewrite('Redis 和 Memcached 读取延迟对比');
+  assert.ok(!queries.some((q) => q.includes(' 数据 参数 对比')));
+});
+
+test('rewrite: rewriteQuery 透传 originalQuery（E280）', async () => {
+  const r = await rewriteQuery(
+    'Redis 和 Memcached 读取延迟对比',
+    'comparison',
+    undefined,
+    'Redis 和 Memcached 哪个读取延迟更低',
+  );
+  assert.equal(r.source, 'rule');
+  assert.ok(r.queries.includes('Redis 和 Memcached 读取延迟对比 数据 参数 对比'));
+});

@@ -340,14 +340,14 @@ test('fusion: 强时效问题旧闻按新闻权重压制', () => {
   assert.ok(freshItem.finalScore > oldItem.finalScore);
 });
 
-test('fusion: 强时效问题缺失日期证据降权', () => {
+test('fusion: 强时效问题缺失日期证据按中性兜底（不再按 0.15 误杀无日期数据页）', () => {
   const noDate = item({
     url: 'https://news.example/no-date',
     title: '中国空间站 航天员 在轨',
     content: '中国空间站现在有哪几个航天员在太空 航天员 在轨 完整 内容 足够 长 100A '.repeat(5),
   });
   const r = fuseResults('中国空间站现在有哪几个航天员在太空', [noDate], 'factual');
-  assert.equal(r.items[0].timeliness, 0.15);
+  assert.equal(r.items[0].timeliness, 0.5);
 });
 test('fusion: P6 预计算后大写 query 仍识别官方源并乘数生效', () => {
   const items = [
@@ -394,4 +394,131 @@ test('fusion: P-ZZZ 信号C 证据多样性替换同质簇', () => {
   assert.ok(r.items.some((f) => f.result.url.includes('other.example')));
   assert.ok(r.items.some((f) => f.result.url.includes('third.example')));
   assert.equal(sameCount, 1, '同质簇只保留一条');
+});
+
+test('fusion: 短数字片段按可用性 0.8 保留（与长数字文章同权，不再按 0.4 丢数据页）', () => {
+  const dataPage = item({
+    url: 'https://news.example/data',
+    title: '智谱市值首破万亿 收盘价 2410 港元',
+    content: '智谱市值1.07万亿港元 收盘价2410港元 MiniMax市值3000亿港元 科大讯飞1022亿 三六零555亿 寒武纪6300亿 拓尔思109亿',
+  });
+  const r = fuseResults('中国AI大模型公司市值较高的是哪几家', [dataPage], 'news');
+  assert.ok(r.items.length >= 1);
+  assert.equal(r.items[0].usability, 0.8);
+  assert.ok(r.items[0].answerCoverage >= 0.5, 'news 意图识别 numeric 形态');
+});
+
+test('fusion: 数值形态新闻页评分高于同查询无形态长泛文（E273 覆盖加成组合）', () => {
+  const dataPage = item({
+    url: 'https://news.example/data',
+    title: '智谱市值首破万亿 收盘价 2410 港元',
+    content: '智谱市值1.07万亿港元 收盘价2410港元 MiniMax市值3000亿港元 科大讯飞1022亿 三六零555亿 寒武纪6300亿 拓尔思109亿',
+  });
+  const generic = item({
+    url: 'https://news.example/generic',
+    title: '行业综述 背景 分析',
+    content: '行业综述 背景 分析 报告 完整 内容 足够 长 介绍 信息 详情 参考 来源 观点 总结 讨论 说明 描述 评价 文章'.repeat(3),
+  });
+  const r = fuseResults('中国AI大模型公司市值较高的是哪几家', [dataPage, generic], 'news');
+  const d = r.items.find((f) => f.result.url.includes('data'));
+  const g = r.items.find((f) => f.result.url.includes('generic'));
+  assert.ok(d && g, '两条都保留在融合结果');
+  assert.ok(d.answerCoverage > g.answerCoverage, '数据页覆盖度更高');
+  assert.ok(d.finalScore > g.finalScore, '数据页评分高于泛文');
+});
+
+test('fusion: 跨域转载同文按 [P-133] 替换为异质页（E273）', () => {
+  const articleA = item({
+    url: 'https://a.example/news/1',
+    title: '国产AI大模型规模有望超700亿元 机构预测8只概念股高增长',
+    content: '国产AI大模型规模有望超700亿元 机构预测8只概念股高增长 完整 内容 足够 长 参数 说明 100A '.repeat(5),
+  });
+  const articleB = item({
+    url: 'https://b.example/news/2',
+    title: '国产AI大模型规模有望超700亿元 机构预测8只概念股高增长',
+    content: '国产AI大模型规模有望超700亿元 机构预测8只概念股高增长 完整 内容 足够 长 参数 说明 100A '.repeat(5),
+  });
+  const otherC = item({
+    url: 'https://c.example/news/3',
+    title: '2025胡润中国人工智能企业50强',
+    content: '寒武纪 摩尔线程 沐曦股份 科大讯飞 地平线 5家企业价值均在1000亿元以上 完整 内容 足够 长 参数 说明 100A '.repeat(5),
+  });
+  const otherD = item({
+    url: 'https://d.example/news/4',
+    title: '全球AI大模型公司市值榜单',
+    content: '智谱 1.07万亿港元 MiniMax 3000亿港元 讯飞 1022亿 三六零 555亿 完整 内容 足够 长 参数 说明 100A '.repeat(5),
+  });
+  const r = fuseResults(
+    '国产AI大模型 概念股 高增长',
+    [articleA, articleB, otherC, otherD],
+    'news',
+  );
+  const dupCount = r.items.filter(
+    (f) => f.result.url.includes('news/1') || f.result.url.includes('news/2'),
+  ).length;
+  assert.equal(dupCount, 1, '跨域转载同文只保留一条');
+  assert.ok(r.items.some((f) => f.result.url.includes('news/3')));
+  assert.ok(r.items.some((f) => f.result.url.includes('news/4')));
+});
+
+test('fusion: 数值 predicate 下含数字量级单位的数据页获 [P-136] 加分', () => {
+  const generic = item({
+    url: 'https://a.example/news/1',
+    title: '中国AI大模型公司市值较高的是哪几家',
+    content: '中国AI大模型公司 竞争力 排名 2026 分析 报告 内容 足够 长 完整 参数 说明 示例 '.repeat(8),
+  });
+  const numeric = item({
+    url: 'https://b.example/news/2',
+    title: '中国AI大模型公司市值较高的是哪几家',
+    content: '中国AI大模型公司 智谱市值5000亿港元 MiniMax3000亿港元 寒武纪6300亿 讯飞1022亿 完整 内容 足够 长 参数 说明 示例 '.repeat(8),
+  });
+  const r = fuseResults('中国AI大模型公司市值较高的是哪几家?', [generic, numeric], 'news');
+  const byUrl = new Map(r.items.map((f) => [f.result.url, f.finalScore]));
+  assert.ok(byUrl.has('https://b.example/news/2'), '数字数据页进入 top-K');
+  assert.ok(
+    byUrl.get('https://b.example/news/2')! > byUrl.get('https://a.example/news/1')!,
+    '数字数据页分数高于同相关度泛文',
+  );
+});
+
+test('fusion: [P-136] 按独立数值密度加权——多公司市值页显著高于单数值泛文', () => {
+  const single = item({
+    url: 'https://a.example/news/1',
+    title: '市场规模有望超700亿元 机构预测概念股高增长',
+    content: '国产AI大模型行业高速增长 市场规模有望超700亿元 完整 内容 足够 长 参数 说明 示例 '.repeat(8),
+  });
+  const dense = item({
+    url: 'https://b.example/news/2',
+    title: '国产AI大模型概念股梳理',
+    content: '昆仑万维:总市值:408亿 科大讯飞:总市值:1022亿 万兴科技:总市值:104亿 三六零:总市值:555亿 拓尔思:总市值:109亿 完整 内容 足够 长 参数 说明 示例 '.repeat(4),
+  });
+  const r = fuseResults('中国AI大模型公司市值较高的是哪几家?', [single, dense], 'news');
+  const byUrl = new Map(r.items.map((f) => [f.result.url, f.finalScore]));
+  const denseScore = byUrl.get('https://b.example/news/2');
+  const singleScore = byUrl.get('https://a.example/news/1');
+  assert.ok(denseScore && singleScore, '两条都保留在融合结果');
+  assert.ok(
+    denseScore - singleScore >= 0.4,
+    `多公司市值页（${denseScore}）显著高于单数值泛文（${singleScore}），密度加权生效`,
+  );
+});
+
+test('fusion: [P-136] 密度加权跨领域生效——数据库延迟页(ms)高于同相关泛文（E277）', () => {
+  const generic = item({
+    url: 'https://a.example/db/overview',
+    title: '主流数据库延迟对比介绍',
+    content: '数据库 延迟 对比 评测 关系型 数据库管理系统 强调 完整性 可靠性 完整 内容 足够 长 参数 说明 示例 '.repeat(8),
+  });
+  const dense = item({
+    url: 'https://b.example/db/bench',
+    title: '数据库延迟基准测试',
+    content: '数据库延迟实测：PostgreSQL 12ms，SQLite 8.5ms，ClickHouse 45ms，MySQL 70ms 完整 内容 足够 长 参数 说明 示例 '.repeat(4),
+  });
+  const r = fuseResults('延迟最低的数据库有哪些?', [generic, dense], 'factual');
+  const byUrl = new Map(r.items.map((f) => [f.result.url, f.finalScore]));
+  assert.ok(byUrl.has('https://b.example/db/bench'), '延迟数据页进入 top-K');
+  assert.ok(
+    byUrl.get('https://b.example/db/bench')! > byUrl.get('https://a.example/db/overview')!,
+    '带 ms 密度的延迟页分数高于同相关泛文，P-136 跨领域生效',
+  );
 });

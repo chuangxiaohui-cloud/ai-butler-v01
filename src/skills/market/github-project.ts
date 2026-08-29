@@ -8,7 +8,7 @@
 import { createGithubReaderSkill, type EvidenceEntry, type GithubContract } from '../github-reader/index.js';
 import type { SkillDeps } from '../deps.js';
 import type { LLMClient } from '../../search/llm.js';
-import { createSkillHeavyClient } from '../../search/llm.js';
+import { createSkillCompleteClient } from '../../search/llm.js';
 
 export interface GithubProjectResult {
   ok: boolean;
@@ -21,7 +21,7 @@ export interface GithubProjectResult {
 }
 
 export interface GithubProjectOptions {
-  /** LLM 合成注入（缺省尝试 createSkillHeavyClient，未配置则结构化契约兜底） */
+  /** LLM 合成注入（缺省按 github-reader 档位解析——medium，未配置则结构化契约兜底） */
   complete?: LLMClient;
   /** 测试注入：fetch 实现（透传 createGithubReaderSkill） */
   fetchImpl?: typeof fetch;
@@ -46,7 +46,7 @@ export async function runGithubProjectCommand(
   });
   const complete = Object.prototype.hasOwnProperty.call(opts, 'complete')
     ? opts.complete
-    : createSkillHeavyClient();
+    : createSkillCompleteClient('github-reader');
   const deps: SkillDeps = { callVLM: async () => '', complete } as SkillDeps;
   const input = {
     query: text,

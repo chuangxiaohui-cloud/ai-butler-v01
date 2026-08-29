@@ -29,10 +29,20 @@ export type VLMClient = (
   options?: VLMCallOptions,
 ) => Promise<string>;
 
+/** HTTP 响应缓存（E284：github-reader L1 API JSON 复用；get 未命中返回 null） */
+export interface HttpCacheLike {
+  get(url: string): string | null;
+  set(url: string, body: string, ttlMs: number): void;
+}
+
 export interface SkillDeps {
   callVLM: VLMClient;
   parseDocument?: (file: RawFileLike) => Promise<string>; // Week 3 文档解析用
   complete?: LLMClient; // 文本 LLM，文档 QA/摘要用（Week 3 起）
+  /** 按 skill 名解析合成客户端（github-reader 等速读型 skill 切 medium 档；缺省回落 complete） */
+  completeForSkill?: (skillName: string) => LLMClient | undefined;
+  /** E284：HTTP 响应缓存（github-reader 等 L1 抓取复用；测试不注入即不缓存，保持隔离） */
+  httpCache?: HttpCacheLike;
   now?: () => number; // 衰减逻辑可测时间
   experienceManager?: Pick<ExperienceManager, 'add'>; // 视频学习等 Skill 回写经验库
   browserSession?: BrowserFetcher; // B站等浏览器会话兜底

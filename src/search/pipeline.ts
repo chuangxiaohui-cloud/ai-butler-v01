@@ -25,12 +25,20 @@ import { getSkills, isSkillEnabled, toDisplayText } from '../skills/registry.js'
 import { matchInstalledSkillTrigger, renderMarketSkillAnswer } from '../skills/market/nl-router.js';
 import type { MarketRunOutcome } from '../skills/market/runner.js';
 import type { RawFileLike, SkillDeps } from '../skills/deps.js';
+import { checkSynthesisHealth } from '../maturity/runtime-watchdog.js';
 import { executorStatus } from '../agent/executors.js';
 import { extractPartNumber, getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
 import { PARAMS } from '../config/params.js';
 import { fetchSecondPassTargets } from './second-pass-fetch.js';
 import { checkEvidenceReadiness } from './answer-readiness.js';
+import { classifyPredicate } from './answer-readiness.js';
+import {
+  cooccursWithQuery,
+  hasAnyNumber,
+  hasNumericUnit,
+  numericUnitCount,
+} from './numeric-pattern.js';
 import {
   DeepReportCancelledError,
   generateDeepReport,
@@ -101,6 +109,15 @@ export function splitSearchNotices(
   return { chatNotices, toolNotices };
 }
 
+/** 给 skill 的 LLM 客户端包一层 onToken：skill 长文生成也能流式渐进展示（不影响返回契约）；无 onToken 时透传原样 */
+function withStreamingToken(client: LLMClient, onToken?: (delta: string) => void): LLMClient {
+  return {
+    ...client,
+    complete: (messages, completeOpts) =>
+      client.complete(messages, onToken ? { ...completeOpts, onToken } : completeOpts),
+  };
+}
+
 export interface Evidence {
   title: string;
   url: string;
@@ -116,6 +133,10 @@ export interface AnswerResult {
   evidence: Evidence[];
   gate_triggered: 'none' | 'emergency' | 'low_confidence' | 'safety' | 'synthesis_timeout';
   elapsed_ms: number;
+  /** E275：query 的 predicate 类型（数值/时序/操作/观点），§6.1 输出新增字段（搜索路径填写，兜底路径缺省） */
+  predicate?: ReturnType<typeof classifyPredicate>;
+  /** P1：direct skill 计时拆分（github-reader 等），输出 JSON 可直接观测 */
+  timing?: { totalMs: number; fetchMs: number; synthesisMs: number; synthesisError?: string };
   mode?: UiMode;
   submode?: string;
   videos?: VideoResult[];
@@ -171,9 +192,13 @@ export interface PipelineOptions {
   userId?: string;
   conversationId?: string;
   modelSelection?: ModelSelection;
+  /** E282：运行时看门狗开关（CLI/gateway 生产接线开启，测试保持关闭避免读真实轨迹） */
+  watchdog?: boolean;
   /** 外部取消信号（v1.0 S1 深度报告等长任务透传） */
   signal?: AbortSignal;
   onProgress?: (stage: string) => void;
+  /** 合成/生成流式增量回调（CLI 渐进展示；不影响 answer 返回契约） */
+  onToken?: (delta: string) => void;
   onArtifact?: (event: {
     skill: string;
     state: 'generating' | 'done' | 'failed';
@@ -191,6 +216,70 @@ let sharedDeepReportStore: DeepReportStore | null = null;
 function defaultDeepReportStore(): DeepReportStore {
   sharedDeepReportStore ??= new DeepReportStore();
   return sharedDeepReportStore;
+}
+
+/** direct skill 分支：Skill result 内部 evidence 归一化为 pipeline Evidence[] */
+function normalizeSkillEvidence(result: unknown): Evidence[] {
+  if (!result || typeof result !== 'object') return [];
+  const raw = (result as Record<string, unknown>).evidence;
+  if (!Array.isArray(raw)) return [];
+  const out: Evidence[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const e = item as Record<string, unknown>;
+    if (typeof e.url !== 'string' || !e.url) continue;
+    if (
+      typeof e.title === 'string' &&
+      typeof e.domain === 'string' &&
+      typeof e.score === 'number' &&
+      (e.type === '[hard]' || e.type === '[soft]')
+    ) {
+      out.push({ title: e.title, url: e.url, domain: e.domain, score: e.score, type: e.type });
+      continue;
+    }
+    // github-reader 等内部证据：api/raw 为硬证据，web 为软证据
+    if (e.type === 'api' || e.type === 'raw' || e.type === 'web') {
+      out.push({
+        title: e.url,
+        url: e.url,
+        domain: getHostname(e.url),
+        score: 1,
+        type: e.type === 'web' ? '[soft]' : '[hard]',
+      });
+    }
+  }
+  return out;
+}
+
+/** P0：低置信时答案开头注入醒目声明；github-reader 明确 README 级 */
+function buildLowConfidenceWarning(confidence: number, skillName: string): string {
+  const note =
+    skillName === 'github-reader' ? '以下内容为 README 级初步判断' : '以下内容为初步判断';
+  return `> ⚠️ 本结论置信度仅 ${confidence.toFixed(3)}，${note}，大量细节未验证，仅供参考。`;
+}
+
+function readSkillTiming(
+  result: unknown,
+): {
+  durationMs?: number;
+  fetchMs?: number;
+  synthesisMs?: number;
+  synthesisError?: string;
+} {
+  if (!result || typeof result !== 'object') return {};
+  const timing = (result as Record<string, unknown>).timing;
+  if (!timing || typeof timing !== 'object') return {};
+  const t = timing as Record<string, unknown>;
+  const num = (v: unknown): number | undefined =>
+    typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+  return {
+    durationMs: num(t.totalMs),
+    fetchMs: num(t.fetchMs),
+    synthesisMs: num(t.synthesisMs),
+    ...(typeof t.synthesisError === 'string' && t.synthesisError
+      ? { synthesisError: t.synthesisError }
+      : {}),
+  };
 }
 
 export async function pipeline(
@@ -591,7 +680,7 @@ export async function pipeline(
   }
   // E243 收口：市场 Skill 自然语言路由（命中已安装 Skill 触发词 → 直连执行，绕开搜索）
   // 安全/专用意图已在前面短路返回；deep_report 走深度报告专用链路，不拦截。
-  if (deps.marketSkillRunner && routeSelected.intent !== 'deep_report') {
+  if (deps.marketSkillRunner && routeSelected.intent !== 'deep_report' && routeSelected.intent !== 'github_analysis') {
     const skillHit = matchInstalledSkillTrigger(
       prepared.cleanQuery,
       deps.marketSkillRunner.listInstalledWithTriggers(),
@@ -678,8 +767,14 @@ export async function pipeline(
       safeArtifact({ skill: skill.name, state: 'generating' });
       try {
         const skillDeps = deps.skillDeps ?? { callVLM: async () => '' };
+        // 按 skill 名解析合成客户端：github-reader 等速读型 skill 经 completeForSkill 切 medium 档，
+        // 其余回落注入的 complete（测试注入 mock 时走原逻辑，不构造真实 client）
+        const resolvedComplete = skillDeps.completeForSkill?.(skillName) ?? skillDeps.complete;
         const skillDepsForRun: SkillDeps = {
           ...skillDeps,
+          ...(resolvedComplete
+            ? { complete: withStreamingToken(resolvedComplete, opts.onToken) }
+            : {}),
           ...(deps.experienceManager
             ? {
                 experienceManager: deps.experienceManager as SkillDeps['experienceManager'],
@@ -723,6 +818,26 @@ export async function pipeline(
             originalQuestion: query,
           });
         }
+        const skillConfidence =
+          typeof output.confidence === 'number' && Number.isFinite(output.confidence)
+            ? Math.max(0, Math.min(1, output.confidence))
+            : route.confidence;
+        const skillEvidence = normalizeSkillEvidence(output.result);
+        const skillTiming = readSkillTiming(output.result);
+        const answerTiming =
+          skillTiming.durationMs !== undefined
+            ? {
+                totalMs: skillTiming.durationMs,
+                fetchMs: skillTiming.fetchMs ?? 0,
+                synthesisMs: skillTiming.synthesisMs ?? 0,
+                ...(skillTiming.synthesisError
+                  ? { synthesisError: skillTiming.synthesisError }
+                  : {}),
+              }
+            : undefined;
+        if (skillConfidence <= 0.6) {
+          answer = `${buildLowConfidenceWarning(skillConfidence, skill.name)}\n\n${answer}`;
+        }
         recordTrajectory({
           type: 'skill',
           skill: {
@@ -730,13 +845,14 @@ export async function pipeline(
             version: skill.version,
             kind: 'direct',
             outputSnippet: answer.slice(0, 300),
+            ...skillTiming,
           },
         });
         recordTrajectory({
           type: 'answer',
           answer: {
             answerSnippet: answer.slice(0, 300),
-            confidence: route.confidence,
+            confidence: skillConfidence,
             gateTriggered: 'none',
             elapsedMs: Date.now() - start,
           },
@@ -746,8 +862,8 @@ export async function pipeline(
             {
               query,
               answer,
-              confidence: route.confidence,
-              evidence: [],
+              confidence: skillConfidence,
+              evidence: skillEvidence,
               gateTriggered: 'none',
               elapsedMs: Date.now() - start,
               sessionId: memorySessionId,
@@ -766,10 +882,11 @@ export async function pipeline(
         return {
           query,
           answer,
-          confidence: route.confidence,
-          evidence: [],
+          confidence: skillConfidence,
+          evidence: skillEvidence,
           gate_triggered: 'none',
           elapsed_ms: Date.now() - start,
+          ...(answerTiming ? { timing: answerTiming } : {}),
           mode: uiRoute.mode,
           submode: uiRoute.submode,
         };
@@ -920,8 +1037,30 @@ export async function pipeline(
       aiAnswerCount: search.aiAnswers.length,
       degraded: search.degraded,
       latencyMs: search.elapsedMs,
+      subQueries: search.subQueries,
     },
   });
+
+  // E275 诊断（DIAGNOSE_NUMERIC=1）：候选池 dump——原始结果合并后、融合打分前。
+  // 与 evidence dump 对照定位「市值/排名」类 query 缺具体数字的故障层（融合丢弃 or 召回缺失）。
+  if (process.env.DIAGNOSE_NUMERIC === '1') {
+    recordTrajectory({
+      type: 'diagnose',
+      diagnose: {
+        stage: 'candidates',
+        items: search.results.map((r) => ({
+          title: r.title,
+          url: r.url,
+          snippet: r.content.slice(0, 200),
+          fullContent: r.content,
+          numericCount: numericUnitCount(r.content),
+          hasNumeric: hasNumericUnit(r.content),
+          cooccurs: cooccursWithQuery(r.content, prepared.cleanQuery),
+          published: r.published,
+        })),
+      },
+    });
+  }
 
   // Tavily 月配额超限提示只对运维/监控有用，聊天场景静默（Bocha/AnySearch 正常时纯噪音）
   // P1/P3：工具告警（配额/API）拆分到状态栏/日志，聊天只保留用户可见提示；
@@ -930,6 +1069,10 @@ export async function pipeline(
   if (search.results.length === 0 && chatNotices.length === 0) {
     chatNotices.push('联网暂时不可用，以下为模型内置知识回答（可能非最新）');
   }
+  // M6 探针：search→synth 内部阶段计时（P0 抓正文 / 数值补检索 / Stage 5 合成）
+  let secondPassMs: number | undefined;
+  let contentFetchMs: number | undefined;
+  let supplementMs: number | undefined;
 
   // Stage 4：四过滤器 + 加权评分 + 规则① + 来源权威注入
   const relevanceQuery = search.subQueries[0] ?? searchQuery;
@@ -965,12 +1108,14 @@ export async function pipeline(
     deps.browserSession
   ) {
     const targets = pickSecondPassTargets(search.results, prepared.cleanQuery, fused.items);
+    const secondPassStart = Date.now();
     const secondPassResults = await fetchSecondPassTargets(
       targets,
       prepared.cleanQuery,
       deps.browserSession,
       PARAMS.secondPassBudgetMs,
     );
+    secondPassMs = Date.now() - secondPassStart;
     const secondPassAdded = secondPassResults.length > 0;
     for (const { target, text } of secondPassResults) {
       search.results.push({
@@ -1031,12 +1176,14 @@ export async function pipeline(
       prepared.cleanQuery,
       3,
     ).filter((t) => !alreadyFetched.has(t.url));
+    const contentFetchStart = Date.now();
     const fetched = await fetchSecondPassTargets(
       targets,
       prepared.cleanQuery,
       deps.browserSession,
       PARAMS.secondPassBudgetMs,
     );
+    contentFetchMs = Date.now() - contentFetchStart;
     if (targets.length > 0 && fetched.length === 0) {
       toolNotices.push('网页正文抓取失败（站点不可访问或被反爬拦截），回答将基于搜索结果摘要');
     }
@@ -1058,6 +1205,96 @@ export async function pipeline(
   const videoResults = collectVideoResults(evidence);
   const videoBlock = buildVideoBlock(videoResults);
 
+  // E275 覆盖度门控：数值 predicate 且 evidence 完全无数字 → 一次带单位约束的补检索
+  // （安全网；本次市值题诊断已证明候选池不缺数字页——缺的是融合 top-K，由 [P-136] 加分解决。
+  //  触发条件刻意收紧为「一个数字都没有」，避免「72MHz 主频」等带数字但无量级单位的 query 空跑补检索）
+  if (
+    classifyPredicate(prepared.cleanQuery) === 'numeric' &&
+    !hasAnyNumber(
+      [...evidence.map((e) => e.title), ...pageContents.map((p) => `${p.title} ${p.text}`)].join(
+        '\n',
+      ),
+    )
+  ) {
+    const supplementQuery = `${prepared.cleanQuery}${PARAMS.numericSupplementSuffix}`;
+    const supplementStart = Date.now();
+    const supplement = await runSearchLoop(supplementQuery, {
+      originalQuery: prepared.cleanQuery,
+      intent: classified.intent,
+      cacheKey: `search:loop:numeric-supplement:${Date.now()}`,
+      cachedValue: null,
+      providers: deps.providers,
+      quota: deps.quota,
+      llm: deps.llm,
+      sourceStats: deps.sourceStats,
+      tavily: { enabled: tavilyEnabled, trigger: tavilyTrigger },
+      browserSession: deps.browserSession,
+      maxSubSearches: 1,
+    });
+    supplementMs = Date.now() - supplementStart;
+    if (supplement.results.length > 0) {
+      for (const r of supplement.results) {
+        if (!search.results.some((x) => x.url === r.url)) search.results.push(r);
+      }
+      const refused = fuseResults(
+        prepared.cleanQuery,
+        search.results,
+        classified.intent,
+        undefined,
+        relevanceQuery,
+      );
+      fused = refused;
+      evidence = refused.items.map((f) => ({
+        title: f.result.title,
+        url: f.result.url,
+        domain: getHostname(f.result.url),
+        score: f.finalScore,
+        type: f.official ? ('[hard]' as const) : ('[soft]' as const),
+      }));
+      confidence =
+        refused.items.length > 0 ? Math.max(...refused.items.map((f) => f.finalScore)) : 0;
+      gate = rule3.serious
+        ? 'safety'
+        : refused.items.length === 0 || refused.gated || refused.lowConfidence
+          ? 'low_confidence'
+          : 'none';
+    }
+  }
+
+  // E275 诊断（DIAGNOSE_NUMERIC=1）：evidence dump——融合打分后、送入合成前。
+  // 若候选池含「寒武纪 6300 亿/讯飞 1022 亿」而这里没有 → 确诊融合过滤；反之确诊召回缺失。
+  if (process.env.DIAGNOSE_NUMERIC === '1') {
+    recordTrajectory({
+      type: 'diagnose',
+      diagnose: {
+        stage: 'evidence',
+        items: [
+          ...evidence.map((e) => {
+            const src = search.results.find((r) => r.url === e.url);
+            return {
+              title: e.title,
+              url: e.url,
+              score: e.score,
+              snippet: (src?.content ?? '').slice(0, 200),
+              numericCount: numericUnitCount(src?.content ?? ''),
+              hasNumeric: hasNumericUnit(src?.content ?? ''),
+              cooccurs: cooccursWithQuery(src?.content ?? '', prepared.cleanQuery),
+            };
+          }),
+          ...fused.ranked.slice(3).map((f) => ({
+            title: f.result.title,
+            url: f.result.url,
+            score: f.finalScore,
+            snippet: f.result.content.slice(0, 200),
+            numericCount: numericUnitCount(f.result.content),
+            hasNumeric: hasNumericUnit(f.result.content),
+            cooccurs: cooccursWithQuery(f.result.content, prepared.cleanQuery),
+          })),
+        ],
+      },
+    });
+  }
+
   // P-ZZZ' 信号 B：证据覆盖度检测（predicate 类型 → 形态缺失检查），缺口注入合成诚实边界
   const readiness = checkEvidenceReadiness(prepared.cleanQuery, [
     ...evidence.map((e) => e.title),
@@ -1075,9 +1312,10 @@ export async function pipeline(
     hasDocument: route.features.hasDocument,
     hasGithubLink: route.features.hasGithubLink,
   });
+  const synthStart = Date.now();
   const synthesized = await synthesizeAnswer(prepared.cleanQuery, fused, classified, {
     // UI 显式选档时按所选 provider:role 走模型（缺省 medium 便宜且快），
-    // 未选档（CLI 等）才回落到默认 heavy 客户端
+    // 未选档（CLI 等）回落到调用方默认客户端（E278：CLI 由 heavy 改 medium，对齐 P-105）
     llm: opts.modelSelection
       ? createClientForRole(opts.modelSelection.role, {
           preferredId: opts.modelSelection.provider,
@@ -1098,7 +1336,9 @@ export async function pipeline(
       lastModelRoute = info;
       recordTrajectory({ type: 'model_route', modelRoute: info });
     },
+    onToken: opts.onToken,
   });
+  const synthesisMs = Date.now() - synthStart;
   safeProgress('stage5');
   if (routeCaseId && lastModelRoute) {
     try {
@@ -1117,6 +1357,10 @@ export async function pipeline(
       evidenceCount: evidence.length,
       ...(synthesized.synthesisError ? { error: synthesized.synthesisError } : {}),
       readiness: { kind: readiness.kind, ready: readiness.ready, ...(readiness.gap ? { gap: readiness.gap } : {}) },
+      ...(secondPassMs !== undefined ? { secondPassMs } : {}),
+      ...(contentFetchMs !== undefined ? { contentFetchMs } : {}),
+      ...(supplementMs !== undefined ? { supplementMs } : {}),
+      synthesisMs,
     },
   });
 
@@ -1127,7 +1371,8 @@ export async function pipeline(
 
   // P-130/P-XXX：合成 LLM 调用失败（如 heavy 档超时）→ 显式标记 gate，不再静默「搜索到了 N 条」
   if (synthesized.source === 'fallback' && synthesized.synthesisFailed) {
-    if (gate === 'none') gate = 'synthesis_timeout';
+    // E276：合成超时优先于低置信门——否则「预算超时」会被 low_confidence 掩盖成「证据不足」
+    if (gate === 'none' || gate === 'low_confidence') gate = 'synthesis_timeout';
     if (!chatNotices.some((n) => n.includes('回答生成超时'))) {
       chatNotices.push('回答生成超时，以下为基于现有证据的摘要；可重试或切换更快档位。');
     }
@@ -1189,6 +1434,14 @@ export async function pipeline(
     },
   });
 
+  // E282：环境噪音显式化——窗口内 synthesis_timeout 占比达标时优先于其他工具告警
+  if (opts.watchdog === true) {
+    const watchdog = checkSynthesisHealth();
+    if (watchdog.triggered && watchdog.message && !toolNotices.includes(watchdog.message)) {
+      toolNotices.unshift(watchdog.message);
+    }
+  }
+
   try {
     userStore?.addSessionSummary?.(
       userId,
@@ -1208,6 +1461,7 @@ export async function pipeline(
     evidence: final.evidence,
     gate_triggered: final.gateTriggered as AnswerResult['gate_triggered'],
     elapsed_ms: final.elapsedMs,
+    predicate: classifyPredicate(prepared.cleanQuery),
     mode: uiRoute.mode,
     submode: uiRoute.submode,
     videos: videoResults.length > 0 ? videoResults : undefined,

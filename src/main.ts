@@ -5,11 +5,12 @@ import { SkillLifecycle } from './skills/lifecycle.js';
 import { SearchSourceStats } from './search/source-stats.js';
 import { UserContextStore } from './memory/user-context-store.js';
 import { RouteCaseStore } from './agent/route-case-store.js';
-import { createHeavyClient, createOptionalHeavyClient, createSkillHeavyClient, createVisionClient } from './search/llm.js';
+import { createHeavyClient, createOptionalMediumClient, createSkillCompleteClient, createSkillHeavyClient, createVisionClient } from './search/llm.js';
 import { SessionContextStore } from './memory/session-context.js';
 import { handleSlashCommand, parseSlashCommand } from './slash/slash-commands.js';
 import { parseDocumentFile } from './search/document-parser.js';
 import type { SkillDeps } from './skills/deps.js';
+import { createGithubApiCache } from './skills/github-reader/cache.js';
 import { TrajectoryLog } from './trajectory/trajectory-log.js';
 import { browserSession } from './browser/session.js';
 import { MarketSkillRunner } from './skills/market/runner.js';
@@ -45,6 +46,8 @@ const skillDeps: SkillDeps = {
   complete: {
     complete: async (messages, opts) => (createSkillHeavyClient() ?? createHeavyClient()).complete(messages, opts),
   },
+  completeForSkill: createSkillCompleteClient,
+  httpCache: createGithubApiCache(),
   parseDocument: parseDocumentFile,
   subAgent: { dispatch: (task, options) => mcpDispatcher.dispatch(task, options) },
 };
@@ -78,7 +81,7 @@ prelude
     }
     return pipeline(arg, {
   tavily: { enabled: true },
-  llm: createOptionalHeavyClient(),
+  llm: createOptionalMediumClient(),
   experienceManager,
   skillLifecycle,
   sourceStats,
@@ -94,6 +97,9 @@ prelude
 }, {
   userId: 'cli-user',
   conversationId: CLI_CONVERSATION_ID,
+  watchdog: true,
+  // P0 流式：合成增量写 stderr，stdout 仍输出最终 JSON（answer() 契约不变）
+  onToken: (delta) => process.stderr.write(delta),
 });
 })
   .then((result) => {

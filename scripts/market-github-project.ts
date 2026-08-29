@@ -9,7 +9,7 @@
  * 设置 MARKET_GH_ENABLE_LLM=1 可显式启用 LLM 合成（注意沙箱步骤 60s 上限）。
  * 单请求超时默认 6s（降级链 raw 候选多，市场步骤 [P-40] 60s 预算内可控），
  * 可用 MARKET_GH_TIMEOUT_MS 覆盖（弱网环境收紧避免步骤超时）。
- * 输出 JSON（answer + contract + evidence）；失败 exit 1。
+ * 成功输出可读 answer（L1 结构化解读）；失败输出 JSON 错误；exit 1。
  */
 
 import { readFileSync } from 'node:fs';
@@ -30,7 +30,8 @@ async function main(): Promise<void> {
       ...(enableLlm ? {} : { complete: undefined }),
       timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 6000,
     });
-    console.log(JSON.stringify(result, null, 2));
+    const text = result.ok && result.answer ? result.answer : JSON.stringify(result, null, 2);
+    console.log(text);
     process.exit(result.ok ? 0 : 1);
   } catch (err) {
     console.error(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }));

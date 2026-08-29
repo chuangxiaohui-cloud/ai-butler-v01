@@ -325,6 +325,28 @@ const deps = {
   sessionContext: new FakeSessionContextStore(),
 };
 
+function pipelineOkJson(obj: unknown) {
+  return { ok: true, status: 200, text: async () => JSON.stringify(obj) };
+}
+
+function pipelineOkText(text: string) {
+  return { ok: true, status: 200, text: async () => text };
+}
+
+function pipelineGithubFetch(
+  routes: Array<{
+    match: (url: string) => boolean;
+    respond: () => { ok: boolean; status: number; text: () => Promise<string> };
+  }>,
+): typeof fetch {
+  return (async (url: string) => {
+    for (const route of routes) {
+      if (route.match(url)) return route.respond();
+    }
+    return { ok: false, status: 404, text: async () => 'Not Found' } as unknown as Response;
+  }) as unknown as typeof fetch;
+}
+
 // SEV-1.2 后 SANDBOX_ALLOWED_DIRS 必须落在 workspaceRoot 内：写入类用例改用工作区内临时目录
 function sandboxTmpDir(prefix: string): string {
   const base = join(process.cwd(), 'data', 'pipeline-test');
@@ -473,6 +495,12 @@ test('pipeline: 统一轨迹记录路由/技能/搜索/合成/答案', async () 
   const routeEvent = events.find((e): e is Extract<TrajectoryEvent, { type: 'route' }> => e.type === 'route');
   assert.ok(routeEvent);
   assert.ok(routeEvent.route.matchedRules.length > 0);
+  const synthesizeEvent = events.find(
+    (e): e is Extract<TrajectoryEvent, { type: 'synthesize' }> => e.type === 'synthesize',
+  );
+  assert.ok(synthesizeEvent);
+  assert.equal(typeof synthesizeEvent.synthesize.synthesisMs, 'number');
+  assert.ok((synthesizeEvent.synthesize.synthesisMs ?? 0) >= 0);
 });
 
 test('pipeline: onProgress 按阶段回调', async () => {
@@ -679,7 +707,190 @@ test('pipeline: 未安装市场 Skill 时路由不受影响（E243）', async ()
   assert.ok(r.answer.length > 0);
 });
 
+test('pipeline: github_analysis 不被市场 Skill 触发词截走（E242 主链路优先）', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    ({ ok: false, status: 404, text: async () => 'Not Found' })) as unknown as typeof fetch;
+  try {
+    const r = await pipeline(
+      'https://github.com/openclaw/openclaw 这项目是做什么用的？',
+      {
+        ...deps,
+        llm: undefined,
+        skillDeps: {
+          callVLM: async () => '',
+          complete: {
+            complete: async () => '一句话结论：OpenClaw 是运行在自有设备上的个人 AI 助手。',
+          },
+        },
+        marketSkillRunner: {
+          listInstalledWithTriggers: () => [
+            { name: 'github-project', triggers: ['github.com', '项目解读'] },
+          ],
+          run: () => {
+            throw new Error('github_analysis 不应被市场 Skill 截走');
+          },
+        },
+      },
+      { userId: 'u1' },
+    );
+    assert.ok(r.answer.includes('OpenClaw'));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
+test('pipeline: github-reader 直连透传 evidence 与 skill confidence（P3）', async () => {
+  const originalFetch = globalThis.fetch;
+  const readme = `# OpenClaw
+
+OpenClaw is an AI assistant that runs on your devices.
+
+## Architecture
+
+Gateway connects models, tools and channels.
+
+## Quick Start
+
+npm install && npm run dev
+
+## Use Cases
+
+Personal assistant, shared team deployment.`;
+  const routes = [
+    {
+      match: (url: string) => url === 'https://api.github.com/repos/openclaw/openclaw',
+      respond: () =>
+        pipelineOkJson({
+          full_name: 'openclaw/openclaw',
+          stargazers_count: 1000,
+          forks_count: 100,
+          open_issues_count: 20,
+          license: { spdx_id: 'MIT' },
+          language: 'TypeScript',
+          default_branch: 'main',
+          pushed_at: '2026-08-28T00:00:00Z',
+          created_at: '2025-01-01T00:00:00Z',
+          description: 'Personal AI assistant',
+          topics: ['ai'],
+        }),
+    },
+    {
+      match: (url: string) => url.includes('/contributors?per_page=100'),
+      respond: () => pipelineOkJson([]),
+    },
+    {
+      match: (url: string) => url.includes('/commits?per_page=100&since='),
+      respond: () => pipelineOkJson([]),
+    },
+    {
+      match: (url: string) => url.includes('/releases?per_page=30'),
+      respond: () => pipelineOkJson([]),
+    },
+    {
+      match: (url: string) =>
+        url.includes('raw.githubusercontent.com/openclaw/openclaw/main/README.md'),
+      respond: () => pipelineOkText(readme),
+    },
+    {
+      match: (url: string) =>
+        url.includes('raw.githubusercontent.com/openclaw/openclaw/main/package.json'),
+      respond: () => pipelineOkJson({ dependencies: { '@openclaw/core': '1.0.0' } }),
+    },
+  ];
+  globalThis.fetch = pipelineGithubFetch(routes) as unknown as typeof fetch;
+  try {
+    const r = await pipeline(
+      'https://github.com/openclaw/openclaw 这项目是做什么用的？',
+      {
+        ...deps,
+        llm: undefined,
+        skillDeps: {
+          callVLM: async () => '',
+          complete: {
+            complete: async () => 'README 级判断：OpenClaw 是个人 AI 助手。',
+          },
+        },
+      },
+      { userId: 'u1' },
+    );
+    assert.equal(r.confidence, 0.85);
+    assert.ok(r.evidence.length >= 3);
+    assert.ok(r.evidence.some((e) => e.url.includes('api.github.com') && e.type === '[hard]'));
+    assert.ok(
+      r.evidence.some((e) => e.url.includes('raw.githubusercontent.com') && e.type === '[hard]'),
+    );
+    assert.ok(r.answer.includes('OpenClaw'));
+    assert.ok(!r.answer.includes('置信度仅'));
+    assert.equal(typeof r.timing?.totalMs, 'number');
+    assert.equal(typeof r.timing?.fetchMs, 'number');
+    assert.equal(typeof r.timing?.synthesisMs, 'number');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('pipeline: github-reader 经 completeForSkill 按名解析合成客户端（E283）', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = pipelineGithubFetch([]) as unknown as typeof fetch;
+  try {
+    const r = await pipeline(
+      'https://github.com/openclaw/openclaw 这项目是做什么用的？',
+      {
+        ...deps,
+        llm: undefined,
+        skillDeps: {
+          callVLM: async () => '',
+          complete: {
+            complete: async () => '不应被使用：fallback complete。',
+          },
+          completeForSkill: (skillName) =>
+            skillName === 'github-reader'
+              ? { complete: async () => 'README 级判断：github-reader 走 medium 档合成。' }
+              : undefined,
+        },
+      },
+      { userId: 'u1' },
+    );
+    assert.ok(r.answer.includes('走 medium 档合成'));
+    assert.ok(!r.answer.includes('不应被使用'));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('pipeline: 低置信 direct skill 在答案开头注入警告（P0）', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = pipelineGithubFetch([]) as unknown as typeof fetch;
+  try {
+    const r = await pipeline(
+      'https://github.com/openclaw/openclaw 这项目是做什么用的？',
+      {
+        ...deps,
+        llm: undefined,
+        skillDeps: {
+          callVLM: async () => '',
+          complete: {
+            complete: async () => 'README 级判断：仓库信息不完整，无法确认定位。',
+          },
+        },
+      },
+      { userId: 'u1' },
+    );
+    assert.equal(r.confidence, 0.4);
+    assert.ok(
+      r.answer.startsWith('> ⚠️ 本结论置信度仅 0.400，以下内容为 README 级初步判断'),
+    );
+    assert.ok(
+      r.answer.includes('README 级判断：仓库信息不完整，无法确认定位。'),
+      '低置信声明应是叠加层，不替换原始报告',
+    );
+    assert.equal(typeof r.timing?.fetchMs, 'number');
+    assert.equal(typeof r.timing?.synthesisMs, 'number');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test('pipeline: 市场 Skill 直连执行时把查询作为 input 传入（E251）', async () => {
   let receivedInput: string | undefined;
@@ -1239,6 +1450,7 @@ test('pipeline: 深度报告取消后同 query 自动恢复已生成分节', asy
 
 test('pipeline: 知识问答抓网页正文喂合成（P0 四步链路）', async () => {
   const fake = new FakeLLM();
+  const events: TrajectoryEvent[] = [];
   const browserSession = {
     async fetchPage(url: string) {
       return {
@@ -1252,12 +1464,20 @@ test('pipeline: 知识问答抓网页正文喂合成（P0 四步链路）', asyn
     ...deps,
     llm: fake,
     browserSession,
+    trajectory: { record: (event) => events.push(event) },
   });
   assert.ok(fake.lastUserContent.includes('【网页正文'), '合成 prompt 应包含抓取的网页正文');
   assert.ok(
     r.evidence.some((e) => e.url === 'https://example.com/1'),
     '抓取正文页应进入证据列表',
   );
+  const synth = events.find(
+    (e): e is Extract<TrajectoryEvent, { type: 'synthesize' }> => e.type === 'synthesize',
+  );
+  assert.ok(synth);
+  assert.equal(typeof synth.synthesize.contentFetchMs, 'number');
+  assert.ok((synth.synthesize.contentFetchMs ?? 0) >= 0);
+  assert.equal(typeof synth.synthesize.synthesisMs, 'number');
 });
 
 test('pipeline: 全部搜索引擎失败时提示联网暂时不可用（P1）', async () => {
@@ -1316,7 +1536,47 @@ test('pipeline: 合成 LLM 失败显式标记 synthesis_timeout 门（P-XXX）',
   });
   assert.equal(r.gate_triggered, 'synthesis_timeout');
   assert.ok(r.notice?.includes('回答生成超时'));
-  assert.ok(r.answer.includes('搜索到了'));
+  assert.ok(r.answer.includes('回答生成超时'), 'fallback 不再输出「搜索到了 N 条」');
+});
+
+test('pipeline: 合成超时优先于低置信门，不被 low_confidence 掩盖（E276）', async () => {
+  // rule1 对规格单元冲突置 gated → 初始 gate=low_confidence；合成再超时时必须升级为 synthesis_timeout
+  class ConflictProvider extends FakeProvider {
+    override async search(): Promise<SearchProviderResult> {
+      return {
+        provider: 'bocha',
+        ok: true,
+        results: [
+          {
+            title: 'A 输出电压 5V',
+            url: 'https://example.com/a',
+            content: 'STM32F103C8T6 输出电压 5V 说明 文档 '.repeat(3),
+            provider: 'bocha',
+          },
+          {
+            title: 'B 输出电压 3.3V',
+            url: 'https://example.com/b',
+            content: 'STM32F103C8T6 输出电压 3.3V 说明 文档 '.repeat(3),
+            provider: 'bocha',
+          },
+          {
+            title: 'C 主频',
+            url: 'https://example.com/c',
+            content: 'STM32F103C8T6 72MHz 完整 参数 说明 步骤 示例 设计 文档 100A '.repeat(5),
+            provider: 'bocha',
+          },
+        ],
+        latencyMs: 1,
+      };
+    }
+  }
+  const r = await pipeline('STM32F103C8T6 最大主频是多少', {
+    ...deps,
+    providers: [new ConflictProvider()],
+    llm: new ThrowingSynthesisLLM(),
+  });
+  assert.equal(r.gate_triggered, 'synthesis_timeout');
+  assert.ok(r.notice?.includes('回答生成超时'));
 });
 
 test('pipeline: 知识问答无浏览器会话也能走 P0 抓正文路径（P-YYY）', async () => {

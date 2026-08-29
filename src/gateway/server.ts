@@ -13,10 +13,11 @@ import { ExperienceManager } from '../memory/experience.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { SessionContextStore } from '../memory/session-context.js';
 import { parseDocumentFile } from '../search/document-parser.js';
-import { createHeavyClient, createOptionalHeavyClient, createSkillHeavyClient, createVisionClient } from '../search/llm.js';
+import { createHeavyClient, createOptionalHeavyClient, createSkillCompleteClient, createSkillHeavyClient, createVisionClient } from '../search/llm.js';
 import { SearchSourceStats } from '../search/source-stats.js';
 import { SkillLifecycle } from '../skills/lifecycle.js';
 import type { SkillDeps } from '../skills/deps.js';
+import { createGithubApiCache } from '../skills/github-reader/cache.js';
 import { TrajectoryLog } from '../trajectory/trajectory-log.js';
 import { createGatewayApp } from './app.js';
 import { publishArtifactEvent } from './artifact-bus.js';
@@ -43,6 +44,8 @@ const skillDeps: SkillDeps = {
   complete: {
     complete: async (messages, opts) => (createSkillHeavyClient() ?? createHeavyClient()).complete(messages, opts),
   },
+  completeForSkill: createSkillCompleteClient,
+  httpCache: createGithubApiCache(),
   parseDocument: parseDocumentFile,
   subAgent: { dispatch: (task, options) => mcpDispatcher.dispatch(task, options) },
 };

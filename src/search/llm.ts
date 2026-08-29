@@ -53,8 +53,21 @@ export function createOptionalHeavyClient(): LLMClient | undefined {
 }
 
 /**
+ * CLI 生产入口可选 medium 客户端（E278：CLI 默认档对齐 P-105 缺省中档，
+ * 避免 heavy 档 v4-pro 在 [P-130] 30s 预算内完不成合成而必现 synthesis_timeout）；
+ * 已配置 Provider 时返回 medium 客户端；未配置时返回 undefined——调用方走纯规则路由。
+ */
+export function createOptionalMediumClient(): LLMClient | undefined {
+  try {
+    return createClientForRole('medium');
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * 深度报告专用 heavy 客户端（E231）：per-call fallback 预算放开到 [P-13]，
- * 避免被 P-116（对齐 Stage 5 的 12s）提前截断分节生成；未配置 Provider 返回 undefined。
+ * 避免被 P-116（对齐 Stage 5 的 18s）提前截断分节生成；未配置 Provider 返回 undefined。
  */
 export function createDeepReportHeavyClient(): LLMClient | undefined {
   try {
@@ -66,15 +79,42 @@ export function createDeepReportHeavyClient(): LLMClient | undefined {
 
 /**
  * Skill 生成专用 heavy 客户端（E238）：per-call fallback 预算放开到 [P-122]，
- * 避免 engineer/content-writer 长文生成被 P-116（对齐 Stage 5 的 12s）提前截断；
- * 未配置 Provider 返回 undefined。
+ * 避免 engineer/content-writer 长文生成被 P-116（对齐 Stage 5 的 18s）提前截断；
+ * 单 provider 超时同步对齐 P-122，避免 v4-pro 长报告在默认 30s 被切后
+ * 提前兜底到其他 provider；未配置 Provider 返回 undefined。
  */
 export function createSkillHeavyClient(): LLMClient | undefined {
   try {
-    return createClientForRole('heavy', { totalBudgetMs: PARAMS.skillGenerationBudgetMs });
+    return createClientForRole('heavy', {
+      totalBudgetMs: PARAMS.skillGenerationBudgetMs,
+      timeoutMs: PARAMS.skillGenerationBudgetMs,
+    });
   } catch {
     return undefined;
   }
+}
+
+/**
+ * 生产 skill 合成客户端（main/gateway/im 三入口与市场通道共用）：按 skill 名选档。
+ * github-reader 属速读型 skill（契约渲染为主），走 medium（v4-flash）——heavy 档
+ * v4-pro 的 <think> 推理块与答案共享 max_tokens，实测合成 ~46s；medium 更快完成
+ * 同等契约渲染。但 medium 默认 [P-116] 18s 总预算在 API 抖动/长答案时会把正在生成的
+ * 答案杀掉（E283 实测 18s 截断触发模板兜底），故 github-reader 合成单独放宽到 [P-122]
+ * 90s（与 skill 长文档位同一预算口径，模型仍为 v4-flash；不动全局 [P-116]）。
+ * 其余 skill 维持 heavy（E238：长文生成需要 [P-122] 的 90s 预算防截断）。
+ */
+export function createSkillCompleteClient(skillName: string): LLMClient {
+  if (skillName === 'github-reader') {
+    try {
+      return createClientForRole('medium', {
+        totalBudgetMs: PARAMS.skillGenerationBudgetMs,
+        timeoutMs: PARAMS.skillGenerationBudgetMs,
+      });
+    } catch {
+      // 未配置 medium provider 时回落 heavy 链
+    }
+  }
+  return createSkillHeavyClient() ?? createHeavyClient();
 }
 
 /**

@@ -10,8 +10,12 @@
  * 显式「未获取（原因）」，任一环节失败只降级、不抛错。
  */
 
+import { performance } from 'node:perf_hooks';
+
+import { PARAMS } from '../../config/params.js';
+import { isLengthTruncated } from '../../search/llm-client.js';
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
-import type { SkillDeps } from '../deps.js';
+import type { HttpCacheLike, SkillDeps } from '../deps.js';
 
 export type EvidenceType = 'api' | 'raw' | 'web';
 
@@ -47,11 +51,20 @@ export interface GithubContract {
   tech_stack: string;
   usage: string;
   scenarios: string;
+  readme_excerpt: string;
   health_score: number;
   health_basis: string[];
   risks: string[];
   meta: GithubMeta;
   evidence: EvidenceEntry[];
+}
+
+/** P1 计时埋点：区分 L1 抓取与 LLM 合成各自耗时 */
+export interface GithubSkillTiming {
+  totalMs: number;
+  fetchMs: number;
+  synthesisMs: number;
+  synthesisError?: string;
 }
 
 export interface GithubReaderOptions {
@@ -67,6 +80,8 @@ export interface GithubReaderOptions {
   now?: () => number;
   /** 测试注入：fetch 实现，默认 globalThis.fetch */
   fetchImpl?: typeof fetch;
+  /** E284：GitHub API JSON 响应缓存（repo/contributors/commits/releases；raw README/manifest 不缓存） */
+  httpCache?: HttpCacheLike;
 }
 
 interface RepoApi {
@@ -108,15 +123,21 @@ const MANIFEST_CANDIDATES = [
   'go.mod',
   'Cargo.toml',
 ];
-const BRANCH_CANDIDATES = ['main', 'master', 'HEAD'];
+// HEAD 直连默认分支，优先试探可避免 main/master 逐分支串行 404
+const BRANCH_CANDIDATES = ['HEAD', 'main', 'master'];
 /** README 只读前 96KB（对齐 POC-C 大仓库策略；上下文有界，避免拉爆） */
 const README_MAX_BYTES = 96 * 1024;
 /** manifest 只读前 64KB（依赖摘要足够） */
 const MANIFEST_MAX_BYTES = 64 * 1024;
 /** README 章节提取上限字符数 */
 const SECTION_MAX_CHARS = 600;
+/** README 原文有界截取进契约，修复章节正则漏检时的空壳推断（LLM 直接可见正文） */
+const README_EXCERPT_MAX_CHARS = 8000;
 /** 每个 manifest 最多提取的依赖项数 */
 const MANIFEST_MAX_ITEMS = 12;
+/** github-reader 合成输出上限：首轮与截断重试均 4096（配合协议 ≤1200 字约束，正常输出远低于上限） */
+const SYNTH_MAX_TOKENS_FIRST = 4096;
+const SYNTH_MAX_TOKENS_RETRY = 4096;
 /** 近 6 月窗口（183 天，对齐 POC-C since 参数） */
 const SIX_MONTHS_MS = 183 * 24 * 60 * 60 * 1000;
 /** Cargo.toml 元数据键（name/version 等不属于依赖） */
@@ -143,30 +164,21 @@ const CARGO_METADATA_KEYS = new Set([
 ]);
 
 /** 《专业审阅协议 §一》节选（注入 LLM system） */
-const REVIEW_PROTOCOL_SYSTEM = `你是一个严谨的 GitHub 项目审阅助手。用户问「这个 GitHub 项目是做什么的 / 值不值得用 / 能不能借鉴」时，按以下维度回答：
-1. 项目定位与解决的问题。
-2. 主要用户与适用场景。
-3. 技术架构、核心模块、数据流。
-4. 核心技术栈、运行时、部署方式。
-5. 安装、使用、扩展方式。
-6. 模型 / 工具 / MCP / 插件 / Agent 机制。
-7. 最近提交、Release、Issue/PR 与维护活跃度。
-8. 许可证、商业使用、传递依赖风险。
-9. 隐私、安全、权限、供应链风险。
-10. 优点、限制、成熟度、隐藏成本。
-11. 与同类项目差异。
-12. 与老板当前项目与技术栈的适配度。
-13. 可直接复用 / 改造采用 / 只参考设计 / 明确放弃清单。
+const REVIEW_PROTOCOL_SYSTEM = `你是一个严谨的 GitHub 项目审阅助手。回答「这个 GitHub 项目是做什么的 / 值不值得用 / 能不能借鉴」时，只依据下方提供的 L1 抓取数据（X.6 契约）发言。
 
-深度分级：仅看过 README → 明确标注「README 级判断」；源码级结论需检查入口、目录、依赖、关键模块、许可证与运行路径，并注明检查范围与日期。
+覆盖维度（内部检查清单，不是输出目录）：定位与解决的问题、适用场景、架构/模块/数据流、技术栈/运行时/部署、安装与使用、模型/工具/MCP/插件机制、活跃度（提交/Release/Issue）、许可证、隐私/安全/供应链风险、成熟度与隐藏成本、与同类项目差异、对当前项目的适配建议、可复用/改造/参考/放弃清单。
 
-默认输出顺序：一句话结论 → 定位 → 架构与栈 → 使用 → 活跃度与许可证 → 风险 → 对比 → 对当前项目的建议 → 仍需确认。
+输出要求（硬性）：
+- 总字数 ≤ 1200 字，只写有数据支撑的维度；数据缺失的维度不展开，在「仍需确认」一句带过。
+- 输出顺序固定：一句话结论（仅当信息完整且 confidence > 0.6）→ 定位 → 架构与栈 → 使用 → 活跃度与许可证 → 风险 → 对当前项目的建议 → 仍需确认。
+- 每节 1-3 句，禁止逐项编号展开覆盖清单。
 
-诚实边界 4 条：
-- Star 数 ≠ 质量；
-- README 宣称 ≠ 已实现（交叉验证 Release/代码）；
-- 「活跃维护」必须有量化依据（近 N 月提交等）；
-- License 只给事实，不给法律建议。`;
+数据边界（硬性）：
+- 本次只抓取 README、manifest（package.json 等）、GitHub API 元数据（repo/contributors/commits/releases）与 evidence 列表；未出现在这些数据中的文件名、CLI 参数、功能描述、文件内容一律不得提及，只能写「未获取（未抓取）」。
+- 字段值「未获取（原因）」或 null 表示数据缺失，禁止编造或补全。
+- 深度分级：仅基于 README → 标注「README 级判断」；源码级结论需检查入口、目录、依赖、关键模块、许可证与运行路径，并注明检查范围与日期。
+
+诚实边界：Star 数 ≠ 质量；README 宣称 ≠ 已实现；「活跃维护」必须有量化依据（近 N 月提交等）；License 只给事实，不给法律建议；confidence ≤ 0.6 或任一核心维度「未获取」时，禁止「值得关注」「解决的核心痛点」「一句话结论」等断言式措辞，改用「可能」「推测」「README 暗示」「需进一步验证」等限定词。`;
 
 /** 缺失字段统一显式标注，不硬凑 */
 function notFetched(reason: string): string {
@@ -235,10 +247,23 @@ async function httpGetJson<T>(
   url: string,
   opts: GithubReaderOptions,
 ): Promise<T | null> {
+  if (opts.httpCache) {
+    const hit = opts.httpCache.get(url);
+    if (hit !== null) {
+      try {
+        return JSON.parse(hit) as T;
+      } catch {
+        // 坏缓存条目按 miss 处理，重抓后覆盖
+      }
+    }
+  }
   const text = await httpGetText(url, opts);
   if (text === null) return null;
   try {
-    return JSON.parse(text) as T;
+    const parsed = JSON.parse(text) as T;
+    // E284：仅成功解析的 JSON 才写缓存，避免把 200 状态的非 JSON 错误页缓存成永久 miss
+    if (opts.httpCache) opts.httpCache.set(url, text, PARAMS.githubApiCacheTtlMs);
+    return parsed;
   } catch {
     return null;
   }
@@ -369,14 +394,20 @@ async function fetchRaw(
 
   const manifests: Array<{ file: string; summary: string[] }> = [];
   const branchForManifest = branch ?? defaultBranch ?? 'HEAD';
-  for (const file of MANIFEST_CANDIDATES) {
-    const url = `${rawBase}/${owner}/${repo}/${branchForManifest}/${file}`;
-    const text = await httpGetText(url, { ...opts, maxBytes: MANIFEST_MAX_BYTES });
-    if (text === null || !text.trim()) continue;
-    const summary = parseManifest(file, text);
-    if (summary.length === 0) continue;
-    evidence.push({ type: 'raw', url, accessed_at: accessedAt });
-    manifests.push({ file, summary });
+  const manifestResults = await Promise.all(
+    MANIFEST_CANDIDATES.map(async (file) => {
+      const url = `${rawBase}/${owner}/${repo}/${branchForManifest}/${file}`;
+      const text = await httpGetText(url, { ...opts, maxBytes: MANIFEST_MAX_BYTES });
+      if (text === null || !text.trim()) return null;
+      const summary = parseManifest(file, text);
+      if (summary.length === 0) return null;
+      return { file, summary, url };
+    }),
+  );
+  for (const result of manifestResults) {
+    if (!result) continue;
+    evidence.push({ type: 'raw', url: result.url, accessed_at: accessedAt });
+    manifests.push({ file: result.file, summary: result.summary });
   }
   return { readmeText, manifests };
 }
@@ -397,6 +428,12 @@ function extractPositioning(readme: string): string {
       if (linkTexts.length > 0 && linkTexts.join('').length * 2 > line.length) {
         return false; // 纯导航链接行
       }
+      const withoutLinks = line
+        .replace(/\[[^\]]*\]\([^)]*\)/g, '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/\s*[|·]\s*/g, ' ')
+        .trim();
+      if (withoutLinks.length < 12) return false; // 剥链接/分隔符后残余过短：语言切换行/导航行
       return true;
     });
   if (!first) return '';
@@ -427,6 +464,8 @@ function extractSections(
         if ((h[0].match(/^#+/)?.[0].length ?? 1) <= level) break;
         continue;
       }
+      // 跳过 fenced code block 的 ```/~~~ 标记行，避免 `bash 等 fence 污染正文
+      if (/^\s*(```+|~~~+)/.test(lines[i])) continue;
       if (lines[i].trim()) out.push(lines[i].trim());
     }
     return out.join(' ').replace(/\s+/g, ' ').trim().slice(0, SECTION_MAX_CHARS);
@@ -434,7 +473,7 @@ function extractSections(
   const rules: Array<['architecture' | 'usage' | 'scenarios', RegExp]> = [
     ['architecture', /架构|architecture|模块|module|设计|design|overview|数据流|结构/i],
     ['scenarios', /使用场景|适用场景|use\s*cases|use-case|scenarios|场景|应用场景|典型用户|适合谁/i],
-    ['usage', /quick\s*start|getting\s*started|快速开始|安装|使用|usage|开始使用|install/i],
+    ['usage', /quick\s*start|getting\s*started|快速开始|安装|使用|usage|开始使用|install|\brun\b|\brunning\b|运行|启动|部署|deploy|how\s+to/i],
   ];
   const result = { architecture: '', usage: '', scenarios: '' };
   const used = new Set<number>();
@@ -597,20 +636,61 @@ function buildTechStack(
   return parts.join('；');
 }
 
-function buildPlainAnswer(contract: GithubContract): string {
+function buildMarkdownAnswer(contract: GithubContract): string {
   const lines = [
-    `【${contract.repo}】${contract.depth}`,
-    `定位：${contract.positioning}`,
-    `架构：${contract.architecture}`,
-    `技术栈：${contract.tech_stack}`,
-    `使用：${contract.usage}`,
-    `场景：${contract.scenarios}`,
-    `健康分：${contract.health_score}/100（${contract.health_basis.join('；')}）`,
-    `风险：${contract.risks.length > 0 ? contract.risks.join('；') : '无显著风险项'}`,
-    `来源：${contract.evidence.map((e) => `[${e.type}] ${e.url}`).join('；')}`,
-    '说明：深度 LLM 合成未接入，以上为 L1 结构化解读。',
+    `# ${contract.repo} 项目解读`,
+    '',
+    `> 深度：${contract.depth}`,
+    '',
+    '## 定位',
+    '',
+    contract.positioning,
+    '',
+    '## 架构',
+    '',
+    contract.architecture,
+    '',
+    '## 技术栈',
+    '',
+    contract.tech_stack,
+    '',
+    '## 使用',
+    '',
+    contract.usage,
+    '',
+    '## 适用场景',
+    '',
+    contract.scenarios,
+    '',
+    '## 健康分',
+    '',
+    `${contract.health_score}/100`,
+    ...contract.health_basis.map((b) => `- ${b}`),
+    '',
+    '## 风险',
+    '',
+    ...(contract.risks.length > 0 ? contract.risks.map((r) => `- ${r}`) : ['- 无显著风险项']),
+    '',
+    '## 来源',
+    '',
+    ...contract.evidence.map((e) => `- [${e.type}] ${e.url}`),
+    '',
+    '> 说明：深度 LLM 合成未接入，以上为 L1 结构化解读（模板渲染）。',
   ];
   return lines.join('\n');
+}
+
+/** confidence 与信息完整度联动：每缺一个核心维度扣 0.1，LLM 合成基座 0.85、无 LLM 兜底 0.7 */
+function computeConfidence(contract: GithubContract, llmSynthesized: boolean): number {
+  const missing = [
+    contract.positioning,
+    contract.architecture,
+    contract.tech_stack,
+    contract.usage,
+    contract.scenarios,
+  ].filter((v) => v.includes('未获取')).length;
+  const base = llmSynthesized ? 0.85 : 0.7;
+  return Math.max(0.4, Math.round((base - missing * 0.1) * 100) / 100);
 }
 
 export function createGithubReaderSkill(opts: GithubReaderOptions = {}): ExecutableSkill {
@@ -630,14 +710,28 @@ export function createGithubReaderSkill(opts: GithubReaderOptions = {}): Executa
           followUpAction: '把仓库链接发给我即可开始分析。',
         };
       }
+      const skillStartMs = performance.now();
       const now = opts.now?.() ?? Date.now();
       const evidence: EvidenceEntry[] = [];
+      // E284：deps.httpCache 注入 L1 抓取（生产接线在 skillDeps；测试不注入即不缓存，保持隔离）
+      const optsWithCache: GithubReaderOptions = deps.httpCache
+        ? { ...opts, httpCache: deps.httpCache }
+        : opts;
       const apiBase = (opts.apiBase ?? 'https://api.github.com').replace(/\/+$/, '');
       const accessedAt = new Date(now).toISOString();
 
       // ── L1：GitHub API 元数据（失败仅降级，不抛错）──
+      const fetchStartMs = performance.now();
       const repoUrl = `${apiBase}/repos/${repo.owner}/${repo.repo}`;
-      const repoData = await httpGetJson<RepoApi>(repoUrl, opts);
+      const contributorsUrl = `${apiBase}/repos/${repo.owner}/${repo.repo}/contributors?per_page=100`;
+      const since = new Date(now - SIX_MONTHS_MS).toISOString();
+      const commitsUrl = `${apiBase}/repos/${repo.owner}/${repo.repo}/commits?per_page=100&since=${encodeURIComponent(since)}`;
+      const [repoData, contributors, commits, releases] = await Promise.all([
+        httpGetJson<RepoApi>(repoUrl, optsWithCache),
+        httpGetJson<unknown[]>(contributorsUrl, optsWithCache),
+        httpGetJson<unknown[]>(commitsUrl, optsWithCache),
+        fetchReleases(repo.owner, repo.repo, optsWithCache, evidence, now),
+      ]);
       const meta = emptyMeta();
       if (repoData) {
         evidence.push({ type: 'api', url: repoUrl, accessed_at: accessedAt });
@@ -653,28 +747,23 @@ export function createGithubReaderSkill(opts: GithubReaderOptions = {}): Executa
         meta.topics = repoData.topics ?? [];
       }
 
-      const contributorsUrl = `${apiBase}/repos/${repo.owner}/${repo.repo}/contributors?per_page=100`;
-      const contributors = await httpGetJson<unknown[]>(contributorsUrl, opts);
       if (Array.isArray(contributors)) {
         meta.contributors = contributors.length;
         evidence.push({ type: 'api', url: contributorsUrl, accessed_at: accessedAt });
       }
 
-      const since = new Date(now - SIX_MONTHS_MS).toISOString();
-      const commitsUrl = `${apiBase}/repos/${repo.owner}/${repo.repo}/commits?per_page=100&since=${encodeURIComponent(since)}`;
-      const commits = await httpGetJson<unknown[]>(commitsUrl, opts);
       if (Array.isArray(commits)) {
         meta.commits_6m = commits.length;
         evidence.push({ type: 'api', url: commitsUrl, accessed_at: accessedAt });
       }
 
-      const releases = await fetchReleases(repo.owner, repo.repo, opts, evidence, now);
       meta.latest_release = releases.latest;
       meta.latest_published = releases.published;
       meta.releases_6m = releases.count6m;
 
       // ── L1：raw README + manifest ──
-      const raw = await fetchRaw(repo.owner, repo.repo, meta.default_branch, opts, evidence, now);
+      const raw = await fetchRaw(repo.owner, repo.repo, meta.default_branch, optsWithCache, evidence, now);
+      const fetchMs = performance.now() - fetchStartMs;
       const readmeText = raw.readmeText;
 
       // ── X.6 契约组装（字段缺失显式「未获取（原因）」）──
@@ -682,7 +771,9 @@ export function createGithubReaderSkill(opts: GithubReaderOptions = {}): Executa
       let architecture = '';
       let usage = '';
       let scenarios = '';
+      let readmeExcerpt = '';
       if (readmeText) {
+        readmeExcerpt = readmeText.slice(0, README_EXCERPT_MAX_CHARS);
         positioning = extractPositioning(readmeText);
         const sections = extractSections(readmeText);
         architecture = sections.architecture;
@@ -708,6 +799,7 @@ export function createGithubReaderSkill(opts: GithubReaderOptions = {}): Executa
         tech_stack: buildTechStack(meta, raw.manifests),
         usage,
         scenarios,
+        readme_excerpt: readmeExcerpt,
         health_score: 0,
         health_basis: [],
         risks: [],
@@ -731,52 +823,96 @@ export function createGithubReaderSkill(opts: GithubReaderOptions = {}): Executa
       if (!meta.description) meta.description = notFetched('GitHub API 不可用');
 
       // ── LLM 合成（《专业审阅协议 §一》注入）；无 LLM 或失败时返回结构化契约 ──
+      let synthesisMs = 0;
+      let synthesisError: string | undefined;
       if (deps.complete) {
+        const synthesisStartMs = performance.now();
         try {
-          const answer = await deps.complete.complete(
-            [
-              {
-                role: 'system',
-                content:
-                  `${REVIEW_PROTOCOL_SYSTEM}\n\n` +
-                  '以下是 L1 抓取的结构化数据（X.6 契约）。字段值为「未获取（原因）」或 null 表示抓取失败/缺失，禁止编造。' +
-                  '回答须以「README 级判断」标注深度，健康分与依据直接引用，来源可点（evidence[]）。',
-              },
-              {
-                role: 'user',
-                content:
-                  `用户问题：${input.query}\n\n仓库：${contract.repo}\n\nX.6 契约 JSON：\n` +
-                  `${JSON.stringify(contract, null, 2)}\n\nevidence：\n` +
-                  `${contract.evidence.map((e) => `- [${e.type}] ${e.url}（${e.accessed_at}）`).join('\n')}`,
-              },
-            ],
-            { temperature: 0.2, maxTokens: 2000 },
-          );
-          return {
-            result: {
-              answer,
-              contract,
-              evidence: contract.evidence,
-              confidence: 0.85,
+          const messages: Array<{ role: 'system' | 'user'; content: string }> = [
+            {
+              role: 'system',
+              content:
+                `${REVIEW_PROTOCOL_SYSTEM}\n\n` +
+                '以下是 L1 抓取的结构化数据（X.6 契约）。字段值为「未获取（原因）」或 null 表示抓取失败/缺失，禁止编造。' +
+                '回答须以「README 级判断」标注深度，健康分与依据直接引用，来源可点（evidence[]）。' +
+                '篇幅与结构遵守协议输出要求（≤ 1200 字，只写有数据支撑的维度）。',
             },
-            confidence: 0.85,
-          };
-        } catch {
+            {
+              role: 'user',
+              content:
+                `用户问题：${input.query}\n\n仓库：${contract.repo}\n\nX.6 契约 JSON：\n` +
+                `${JSON.stringify(contract, null, 2)}\n\nconfidence：${computeConfidence(contract, true)}\n\nevidence：\n` +
+                `${contract.evidence.map((e) => `- [${e.type}] ${e.url}（${e.accessed_at}）`).join('\n')}`,
+            },
+          ];
+          // P-122 预算内：首轮 4096，截断时同预算重试一次（prompt 已限 2000 字内，双 4096 强制精简）；
+          // 重试仍截断/失败才落结构化兜底，不无限重试。
+          let answer: string | undefined;
+          try {
+            answer = await deps.complete.complete(messages, {
+              temperature: 0.2,
+              maxTokens: SYNTH_MAX_TOKENS_FIRST,
+              rejectOnTruncate: true,
+            });
+          } catch (err) {
+            if (isLengthTruncated(err)) {
+              try {
+                answer = await deps.complete.complete(messages, {
+                  temperature: 0.2,
+                  maxTokens: SYNTH_MAX_TOKENS_RETRY,
+                  rejectOnTruncate: true,
+                });
+              } catch (retryErr) {
+                synthesisError = retryErr instanceof Error ? retryErr.message : String(retryErr);
+              }
+            } else {
+              synthesisError = err instanceof Error ? err.message : String(err);
+            }
+          }
+          if (answer !== undefined) {
+            synthesisMs = performance.now() - synthesisStartMs;
+            const confidence = computeConfidence(contract, true);
+            const timing: GithubSkillTiming = {
+              totalMs: performance.now() - skillStartMs,
+              fetchMs,
+              synthesisMs,
+            };
+            return {
+              result: {
+                answer,
+                contract,
+                evidence: contract.evidence,
+                confidence,
+                timing,
+              },
+              confidence,
+            };
+          }
+          synthesisMs = performance.now() - synthesisStartMs;
+        } catch (err) {
+          synthesisMs = performance.now() - synthesisStartMs;
+          synthesisError = err instanceof Error ? err.message : String(err);
           // LLM 合成失败落到结构化契约兜底，不静默吞错
         }
       }
 
+      const fallbackConfidence = computeConfidence(contract, false);
+      const fallbackTiming: GithubSkillTiming = {
+        totalMs: performance.now() - skillStartMs,
+        fetchMs,
+        synthesisMs,
+        ...(synthesisError ? { synthesisError } : {}),
+      };
       return {
         result: {
-          answer: buildPlainAnswer(contract),
+          answer: buildMarkdownAnswer(contract),
           contract,
           evidence: contract.evidence,
-          confidence: 0.7,
+          confidence: fallbackConfidence,
+          timing: fallbackTiming,
         },
-        confidence: 0.7,
+        confidence: fallbackConfidence,
       };
     },
   };
 }
-
-

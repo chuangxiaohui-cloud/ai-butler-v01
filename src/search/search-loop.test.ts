@@ -7,7 +7,7 @@ import { clearCacheForTests } from './cache.js';
 import type { ChatMessage, LLMClient } from './llm.js';
 import type { QuotaStoreLike } from './quota.js';
 import type { SearchProvider, SearchProviderResult, SearchResultItem } from './providers/types.js';
-import { buildEmptyFallbackQueries, runSearchLoop } from './search-loop.js';
+import { buildCoverageJudgeMessages, buildEmptyFallbackQueries, runSearchLoop } from './search-loop.js';
 
 process.env.SEARCH_METRICS_LOG = join(tmpdir(), 'search-loop-metrics-test.jsonl');
 
@@ -475,4 +475,62 @@ test('search-loop: Tavily 官方域补搜并联并发（H9）', async () => {
   });
   assert.ok(official.queries.length >= 3);
   assert.ok(official.maxActive >= 2, `maxActive=${official.maxActive}，串行时恒为 1`);
+});
+
+test('search-loop: 数值列举 query 无 LLM 时也强制消费增强子查询（E279）', async () => {
+  const r = await runSearchLoop('延迟最低的数据库有哪些', {
+    intent: 'comparison',
+    providers: [new FakeProvider()],
+    quota: new FakeQuota(),
+    minResults: 1,
+  });
+  assert.ok(r.subQueries.includes('延迟最低的数据库有哪些'));
+  assert.ok(
+    r.subQueries.includes('延迟最低的数据库有哪些 数据 参数 对比'),
+    '数值感知 judge 强制判不够，增强子查询应被消费',
+  );
+});
+
+test('search-loop: 数值感知 judge 消息含具体数值要求（E279）', () => {
+  const withNote = buildCoverageJudgeMessages('q', 'q', [], true);
+  assert.ok(withNote[1].content.includes('具体数值'));
+  const plain = buildCoverageJudgeMessages('q', 'q', []);
+  assert.ok(!plain[1].content.includes('具体数值'));
+});
+
+test('search-loop: 数值增强轮数受 [P-139] 上限与 maxSubSearches 双约束（E279）', async () => {
+  class AlwaysNotEnoughLLM implements LLMClient {
+    async complete(messages: ChatMessage[]): Promise<string> {
+      const system = messages[0]?.content ?? '';
+      if (system.includes('检索查询改写器')) {
+        return JSON.stringify({ queries: [] });
+      }
+      return JSON.stringify({ enough: false, moreQueries: ['more1'] });
+    }
+  }
+  const r = await runSearchLoop('延迟最低的数据库有哪些', {
+    intent: 'comparison',
+    providers: [new FakeProvider()],
+    quota: new FakeQuota(),
+    llm: new AlwaysNotEnoughLLM(),
+    minResults: 1,
+    maxSubSearches: 4,
+  });
+  assert.ok(r.subQueries.includes('延迟最低的数据库有哪些 数据 参数 对比'));
+  assert.ok(r.subQueries.length <= 4, `受 maxSubSearches 硬上限约束（实际 ${r.subQueries.length}）`);
+});
+
+test('search-loop: 分类器剥疑问词后仍按原始 query 触发增强（E280）', async () => {
+  const r = await runSearchLoop('Redis 和 Memcached 读取延迟对比', {
+    originalQuery: 'Redis 和 Memcached 哪个读取延迟更低',
+    intent: 'comparison',
+    providers: [new FakeProvider()],
+    quota: new FakeQuota(),
+    minResults: 1,
+  });
+  assert.ok(r.subQueries.includes('Redis 和 Memcached 读取延迟对比'));
+  assert.ok(
+    r.subQueries.includes('Redis 和 Memcached 读取延迟对比 数据 参数 对比'),
+    '原始 query 的 numeric predicate 应驱动增强子查询入队并消费',
+  );
 });

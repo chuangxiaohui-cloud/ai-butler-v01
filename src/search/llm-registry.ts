@@ -8,6 +8,7 @@ import { loadEnvFile } from '../config/env.js';
 import { PARAMS } from '../config/params.js';
 import { readProviderOrder, writeProviderOrder } from '../config/provider-order.js';
 import {
+  isLengthTruncated,
   OpenAiCompatibleClient,
   type ChatMessage,
   type CompleteOptions,
@@ -211,6 +212,9 @@ export class FallbackLLMClient implements LLMClient {
           return await (budgetReject !== null ? Promise.race([attempt, budgetReject]) : attempt);
         } catch (err) {
           lastError = err;
+          // E274：截断不是 provider 故障——换下一家同 maxTokens 仍会截断，直接上抛让
+          // 合成层按更高预算重试，避免白白消耗 fallback 预算。
+          if (isLengthTruncated(err)) throw err;
           if (deadline !== null && Date.now() >= deadline) break;
           if (i < this.chain.length - 1) {
             const to = this.chain[i + 1].providerId;

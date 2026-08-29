@@ -644,6 +644,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
         conversationId,
         modelSelection,
         files,
+        watchdog: true,
         onProgress: (stage) =>
           publishArtifactEvent('progress', { stage, at: Date.now() }),
         onArtifact: (event) =>

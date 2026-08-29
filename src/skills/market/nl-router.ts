@@ -35,6 +35,11 @@ export function matchInstalledSkillTrigger(
   return best;
 }
 
+/** 剥离 npm run 包装输出的横幅行（如 > ai-butler-v01@0.1.0 market:github:project） */
+function stripNpmBanner(text: string): string {
+  return text.replace(/^(?:> [^\n]*\n?)+\n?/, '');
+}
+
 /** 把 MarketRunOutcome 渲染为可读答案（有界截断，无文本输出时给摘要兜底） */
 export function renderMarketSkillAnswer(outcome: {
   name: string;
@@ -44,7 +49,7 @@ export function renderMarketSkillAnswer(outcome: {
   const parts: string[] = [];
   for (const result of outcome.results) {
     if (result.stdout && result.stdout.trim()) {
-      parts.push(result.stdout.trim());
+      parts.push(stripNpmBanner(result.stdout).trim());
     } else if (!result.ok && result.stderr && result.stderr.trim()) {
       parts.push(`⚠️ 步骤「${result.step}」：${result.stderr.trim().slice(0, 200)}`);
     }

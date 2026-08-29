@@ -89,6 +89,11 @@ export function resolveFactConsistency(
   for (const [key, rawEntries] of groups) {
     if (rawEntries.length < 2) continue;
     const [attribute, unit] = key.split('|');
+    // E275：`%` 不参与冲突仲裁——% 是跨领域通用比例单位（涨跌幅/效率/增速/份额），
+    // 同一 query 下不同页面各自的 % 大概率是不同事实（如智谱+36.9% vs MiniMax+18.46% vs
+    // 首页基金 424.39%），按同一属性仲裁会把所有页面 fact 归零并误触发 low_confidence 门。
+    // 规格类单元（V/A/W/Hz/℃）仍按原逻辑仲裁（datasheet 效率/电压冲突不受影响）。
+    if (unit === '%') continue;
     const seen = new Set<string>();
     const entries = rawEntries.filter((e) => {
       if (seen.has(e.url)) return false;

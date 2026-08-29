@@ -73,3 +73,17 @@ test('rule1: 版本查询忽略单位噪声，不误触发门控', () => {
   assert.equal(r.gated, false);
   assert.equal(r.factConsistency.get('https://github.com/arduino/arduino-ide/releases'), 1);
 });
+
+test('rule1: 百分比冲突不参与仲裁（E275 金融/涨跌幅场景不误门控、不归零）', () => {
+  const items = [
+    { url: 'u1', title: '智谱收盘大涨36.9%', content: '智谱收盘大涨36.9% 市值破5000亿港元', query: '中国AI大模型公司市值较高的是哪几家' },
+    { url: 'u2', title: 'MiniMax收涨超14%', content: 'MiniMax 收涨超14% 市值破900亿港元', query: '中国AI大模型公司市值较高的是哪几家' },
+    { url: 'u3', title: '概念股增速有望超30%', content: 'AI大模型概念股增速有望超30%', query: '中国AI大模型公司市值较高的是哪几家' },
+  ];
+  const r = resolveFactConsistency(items);
+  assert.equal(r.conflicts.length, 0, '百分比差异不判为事实冲突');
+  assert.equal(r.gated, false, '百分比差异不触发门控');
+  assert.equal(r.factConsistency.get('u1'), 1);
+  assert.equal(r.factConsistency.get('u2'), 1);
+  assert.equal(r.factConsistency.get('u3'), 1);
+});
