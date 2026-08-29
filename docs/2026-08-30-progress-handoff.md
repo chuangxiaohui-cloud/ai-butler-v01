@@ -37,8 +37,23 @@
 - 已知缺口（诚实声明）：无独立 E2E 套件、OpenAPI 待生成、memory-core 为外部依赖、UI 组件未拆分等（audit-navigation 🔨 标记处）。
 - 已落盘：`docs/audit-package-checklist.md` v2.5（装箱单 + 审阅路线：§0 资质自证 / §3.1 架构可视化验证（CodeGraph 辅助 + 人工复核）/ §5.1 PARAM 对齐 / §6.1 冒烟通过标准（『可用』判定锚定 §4.2+§6.1.3+§6.5+§6.6）/ §7 AI 代码特异性必查（分层抽样 20 条）/ §9 结论置信度 / §10 交付前收口·提交前检查清单 / §11 打包建议）；已登记 `docs/code-directory.md` 与 `docs/documentation-map.md`（四·17）。打包交付 ZIP 待用户决定。
 
+### 4. 提交前收口完成（E275-E285，2026-08-30）
+
+已按 `docs/audit-package-checklist.md` §10 执行：doc-lint 0 FAIL + build 通过 + 单测 1120/1121 + 集成 32/32 全绿后分批提交 6 笔：
+
+| 提交号 | 内容 |
+|---|---|
+| `c4b3e5b` | E283+E284：GitHub 解读收口（合成切 v4-flash + P-122 90s + API 缓存 + 管道/三入口接线） |
+| `e33e2c2` | R-1：Stage 2 规则③预检 + 安全 TDD + 运行时看护/数值模式新模块 |
+| `12641a4` | E285：审计 R-2 文档治理（P-95~P-104 补登 + P-128 定稿 + doc-lint 预算 170）+ 审计材料包 v2.5 |
+| `7171ba5` | E275-E285 文档同步（交接/计划/基准/目录地图）+ .gitignore 忽略 .claude/.omc |
+| `9c0e52c` | R-1 补 T+3 规则③预检端到端测试 |
+| `48e31bd` | T+3 交付物 1/5：PARAM 抽样 30 条核对报告（新发现 R-7：P-85/P-86 数值双处存储） |
+
+未提交残余仅剩：参考项目/工作文档（AI-Butler、OpenHands、docx/xls/pdf、旧版需求文档 v1.9-v2.3、文档/ 副本）与误创建文件 `undefined`（不提交）。
+
 ## 待办
 
 1. 用户手动复测 E284（同一仓库二次 fetchMs 回落）。
-2. 提交前收口：工作区 E275-E284 大量未提交改动待收口；按 `docs/audit-package-checklist.md` §10 提交前检查清单执行（盘点 → 全量验证 → 分批提交 → 回填提交号 → 打 tag）。
+2. ✅ 已完成（见 §4 提交前收口完成，6 笔提交 c4b3e5b/e33e2c2/12641a4/7171ba5/9c0e52c/48e31bd）。后续待办 3 项：R-7（P-85/P-86 迁移 params.ts）修复、T+3 剩余交付物（r1-regression / smoke-e2e / r3-codegraph / R-5 评估）、P-95~P-104 到期拍板（截止 2026-09-10）。
 3. 是否把审计材料打包为交付 ZIP。
