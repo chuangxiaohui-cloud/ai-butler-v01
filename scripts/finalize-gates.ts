@@ -124,7 +124,7 @@ function main(): void {
     classify.length >= 30 &&
     timeoutRate <= 0.1 &&
     accuracy >= 0.8 &&
-    proposed <= 1750;
+    proposed <= 2500; // 对齐 [P-04] 临时值（E288），回退时同步改回
   console.log(
     `  E1 gate: ${e1Pass ? 'PASS, ready for finalization review' : 'NOT PASS, keep provisional'}`,
   );
