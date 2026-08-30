@@ -37,5 +37,5 @@
 
 - 验证：`npm run build` 绿；url-safety + browser-actions + browser-session + browser-session skill 单测 29/29
 - 测试：单测 x/x + 集成 x/x（全量待提交前 test:all）
-- 提交：`<hash>` · 推送：Gitee / GitHub
+- 提交：`26e86d5`（实现）+ `40dca3c`（metrics 基线）+ `dd27cf0`（回填/登记） · 推送：Gitee / GitHub
 - 遗留事项：完整域名白名单 v2.6（roadmap B4）；RFC1918 收紧影响内网 datasheet 抓取（README 已标注）
