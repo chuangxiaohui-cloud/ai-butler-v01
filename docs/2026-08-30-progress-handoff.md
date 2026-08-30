@@ -80,12 +80,22 @@
 - **交付物**：`docs/audit-t3/skill-trust-audit.md`（8 章节，含逐 Skill 矩阵 + 五源交叉表 + 修复路径成本估算）；交叉链接到 `architecture-audit-2026-08-30.md §11/§12` + `closure-report.md §6.2/§8`。
 - **预估成本(¥)**：¥0（纯静态审计；6 项缺口 v2.6+ 候选落地预算 ¥0~¥50，全部纯代码治理）。
 
+### 7. 审计交付 ZIP 复核收口 + undefined 根因（2026-08-30 晚）
+
+- **ZIP 复核收口**：并发会话的 T+3 闭环文档已审阅并入账（无冲突），两笔新提交——`6ba23e6`（decisions-R1/R3 决策记录 + closure-report + skill-trust-audit + architecture-audit 状态回执）、`cba6af6`（checklist §10.4/§11 完成标记 + smoke §5 提交号回填 + handoff 清理记录）。
+- **tag 移动**：`v0.2b-audit-2026-08-30` 由 a977dcd 移至最终交付提交 `cba6af6`（本地 tag，未推送）。
+- **交付 ZIP 重打**：`ai-butler-audit-package-v0.2b-audit-2026-08-30.zip`（1009 条，SHA256 `EA8C97797E0BDBB9F6C2DE0B7E3D61849F8F3CD97DA4752518EFC622764C4C77`，`git archive` 口径）。核验：doc-lint 0 FAIL 0 WARN；排除项（.env/data/dist/desktop 产物/参考项目/undefined/e284-*）逐项核验全不在包内；ZIP 与 tag 文件级一致。
+- **decisions-R3.md 补全**：占位符「这里填你刚才生成的哈希值」替换为真实提交号（`4a9565b`/`e91e6ba`/`3708ce3`），「拍板人：[你的名字]」补为「老张」。
+- **R3-terminal-proof.png**：被 `.gitignore` 忽略未入库，已确认在 `R-3-evidence.zip`（随附交付，166,541 B）内；`audit-evidence/` 为原始证据工作区，随附不打包。
+- **undefined 根因定位（供 owner 决策）**：删除 3 个实例（20KB 原始 / 18:11 753B / 18:26 251B）后仍复现。根因：测试还原写法 `process.env.OPERATIONS_LOG_PATH = oldLog`（`src/skills/project-writer/index.test.ts:89` + `src/search/pipeline.test.ts` 5 处）在 `oldLog` 未设置时把 env 变量赋成字符串 `"undefined"`，后续 project-writer `appendOperation` 即写入 cwd/`undefined`；另有 12:06 启动的 node 进程（PID 18072，疑似 `--watch` 残留）在触发测试重跑。修复建议：restore 改 `delete process.env.OPERATIONS_LOG_PATH` + 停残留进程（待 owner 点头）。
+
 ## 待办（2026-08-30 下午更新）
 
 1. ✅ **owner 侧冒烟 4/7 已回填**（agent 按报告 §3 代跑，结果见 `docs/audit-t3/smoke-e2e-report.md` §6）：search 10/10 双引擎 PASS；tavily 触发 6/6 正确但 2026-08 月配额 1000/1000 耗尽（环境原因，9/1 重置后复跑）；desktop PASS（DESKTOP_READY + gateway 拉起，exit=0）；低置信 PASS（先修脚本健壮性：跳过无 result 的 error 条目，如 C06 github 超时条目）。复盘输出：总数 57 / 无证据 5 / 弱证据 5 / 平均<0.5 9 / 含官方源 6。
 2. ✅ **E284 缓存复测完成**：deepseek-harness 同仓库连跑两次，fetchMs 9234.9ms → 2817.8ms（回落 3.3×），答案核心数据一致；未到 ~1-2s 因 commits `since` 按秒重算（每次 miss）+ raw 不缓存（设计内）。复测结果已写回计划文档 `docs/plans/2026-08-29-github-reader-http-cache.md`；证据 `e284-run1.json` / `e284-run2.json`（临时文件，已按确认清理）。
-3. ✅ **审计 ZIP 打包（2026-08-30 下午收口）**：owner 确认后执行——先收口提交 4 笔（b6faf8b E289 / d3dbb07 审计回填 / dffac83 脚本修复 / 13c5134 交付包文件，test:all 1126/1127+32/32 + doc-lint 0/0 全绿），再打快照 tag `v0.2b-audit-2026-08-30`，交付 ZIP 基于该 tag（含 checklist/bench 证据/.env.example/运行说明/资质自证模板，排除 .env/data/dist/desktop 产物/参考项目）。复核收口：并发会话的 T+3 闭环文档（decisions-R1/R3、closure-report、skill-trust-audit）合入后重打 tag + 重打 ZIP。
+3. ✅ **审计 ZIP 打包（2026-08-30 下午收口）**：owner 确认后执行——先收口提交 4 笔（b6faf8b E289 / d3dbb07 审计回填 / dffac83 脚本修复 / 13c5134 交付包文件，test:all 1126/1127+32/32 + doc-lint 0/0 全绿），再打快照 tag `v0.2b-audit-2026-08-30`，交付 ZIP 基于该 tag（含 checklist/bench 证据/.env.example/运行说明/资质自证模板，排除 .env/data/dist/desktop 产物/参考项目）。复核收口：并发会话的 T+3 闭环文档（decisions-R1/R3、closure-report、skill-trust-audit）合入后重打 tag + 重打 ZIP。最终交付：tag 移至 `cba6af6`，ZIP 1009 条（SHA256 `EA8C9779…C77`），详见 §7。
 4. ✅ **P-95~P-104 到期拍板（已晋升 E289）**：owner 2026-08-30 签认晋升——同批 20 项（P-82 / P-84~P-86 / P-89~P-104）§5 状态 provisional@2026-08-13 → 定稿，数值不变；附录 A E289 五条件对照 + C.4 证据登记 + 计划 docs/plans/2026-08-30-param-promote-route-batch.md；doc-lint 0 FAIL 0 WARN。08-13 批 provisional 债务清零；后续超期检查：09-09 P-105~P-107、09-21 P-10、09-25/26/27 08-28/29 批（P-132~P-142）。
 5. ⏳ **[P-04] 回退**：2026-08-30 12:18 抽样（classify:smoke 单轮）6/10、4 条 LLM 调用超 2500ms（E06/E11/E14/E16 → 4465-4602ms），provider 抖动未平息 → **维持 provisional 2500ms，暂不回退**；待稳定窗口 n≥30 / 超时率≤10% / 准确率≥80% 后按 p95×1.2 重定稿。**9/1 实测 6/10 = 60%（不达 80% 验收线），4/8 LLM 调用 4.7-5.0s 残余抖动** → owner 拍板维持选项 A 2500ms（回退 1750ms 会触发 fallback 降级，服务可用性劣化更严重）。**代码落点勘误**：[P-04] 实际生效点 `src/search/llm-registry.ts:115` `resolveTimeoutMs()` light 档默认 2500ms（env `LLM_CLASSIFY_TIMEOUT_MS` + 函数默认两路），非 `src/config/params.ts`（[P-04] 非 PARAMS key）。详见 `docs/audit-t3/param-sample-30.md §3.4`。**待 9/2 复测**：若 ≥7/10 启动回退评估（选项 B）；按 E1 复验门达标后定稿回退 1750ms。
-6. ✅ **误创建文件 `undefined` 已删除**（2026-08-30 下午，owner 确认；project-writer 工具日志，非源码非入库）。复核时（18:11）再次出现同源日志实例（753B，3 行），已再次删除。
+6. ✅ **误创建文件 `undefined` 已删除**（2026-08-30 下午，owner 确认；project-writer 工具日志，非源码非入库）。复核时（18:11）再次出现同源日志实例（753B，3 行），已再次删除；（18:26）第 3 次复现（251B）已删。根因与修复建议见 §7。
 7. 📌 **v2.6+ 候选**：P-148~P-150 分领域阈值（r5-evaluation.md 已登记，触发条件明确）；市场通道 github-project 接缓存（已列入计划文档遗留项）。两项均不阻塞 v2.5 交付，默认延后。
+8. ⏳ **undefined 根因修复（待 owner 点头）**：测试 restore 改 `delete process.env.OPERATIONS_LOG_PATH`（`index.test.ts:89` + `pipeline.test.ts` 5 处）+ 停 PID 18072 残留进程；`bench/search-metrics.jsonl` 被后台测试追加 5 行（指标，未提交，待核对）。
