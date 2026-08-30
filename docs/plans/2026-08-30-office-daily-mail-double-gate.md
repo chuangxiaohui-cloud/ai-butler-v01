@@ -37,5 +37,5 @@
 
 - 验证：`npm run build` 绿；office-daily 邮件相关单测 5/5 + 草稿类 2/2；router-v2 78/78（新增 1 条）
 - 测试：单测 x/x + 集成 x/x（全量待提交前 test:all）
-- 提交：`<hash>` · 推送：Gitee / GitHub
+- 提交：`946f62d`（实现）+ `7c4b9ec`（回填） · 推送：Gitee / GitHub
 - 遗留事项：真实 `npm run dev` 冒烟两段式发送待用户（成本纪律）；E291 归入审计 §3.2 缺口 #1 关闭依据
