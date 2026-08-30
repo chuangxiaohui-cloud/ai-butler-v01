@@ -13,8 +13,11 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { runGithubProjectCommand } from '../src/skills/market/github-project.js';
+import { createGithubApiCache } from '../src/skills/github-reader/cache.js';
 
 async function main(): Promise<void> {
   const inputFile = process.argv[2];
@@ -26,9 +29,14 @@ async function main(): Promise<void> {
     const inputText = readFileSync(inputFile, 'utf-8');
     const enableLlm = process.env.MARKET_GH_ENABLE_LLM === '1';
     const timeoutMs = Number(process.env.MARKET_GH_TIMEOUT_MS ?? '6000');
+    // E290：市场通道接入 E284 GitHub API 缓存（与 main/gateway/im 共用仓库根 data/ 同一份 DB；GITHUB_CACHE_DB_PATH 可覆盖）
+    const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+    process.env.GITHUB_CACHE_DB_PATH ??= join(repoRoot, 'data', 'github-api-cache.db');
+    const httpCache = createGithubApiCache();
     const result = await runGithubProjectCommand(inputText, {
       ...(enableLlm ? {} : { complete: undefined }),
       timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 6000,
+      httpCache,
     });
     const text = result.ok && result.answer ? result.answer : JSON.stringify(result, null, 2);
     console.log(text);
@@ -40,3 +48,4 @@ async function main(): Promise<void> {
 }
 
 void main();
+

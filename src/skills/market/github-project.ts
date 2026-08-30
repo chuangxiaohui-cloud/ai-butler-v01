@@ -6,7 +6,7 @@
  */
 
 import { createGithubReaderSkill, type EvidenceEntry, type GithubContract } from '../github-reader/index.js';
-import type { SkillDeps } from '../deps.js';
+import type { HttpCacheLike, SkillDeps } from '../deps.js';
 import type { LLMClient } from '../../search/llm.js';
 import { createSkillCompleteClient } from '../../search/llm.js';
 
@@ -21,6 +21,8 @@ export interface GithubProjectResult {
 }
 
 export interface GithubProjectOptions {
+  /** E290：GitHub API 缓存注入（透传 github-reader，[P-142] TTL；测试注入即缓存，不注入保持隔离） */
+  httpCache?: HttpCacheLike;
   /** LLM 合成注入（缺省按 github-reader 档位解析——medium，未配置则结构化契约兜底） */
   complete?: LLMClient;
   /** 测试注入：fetch 实现（透传 createGithubReaderSkill） */
@@ -43,6 +45,7 @@ export async function runGithubProjectCommand(
     webBase: opts.webBase,
     timeoutMs: opts.timeoutMs,
     fetchImpl: opts.fetchImpl,
+    httpCache: opts.httpCache,
   });
   const complete = Object.prototype.hasOwnProperty.call(opts, 'complete')
     ? opts.complete
@@ -87,5 +90,6 @@ export async function runGithubProjectCommand(
     confidence: result.confidence ?? output.confidence,
   };
 }
+
 
 

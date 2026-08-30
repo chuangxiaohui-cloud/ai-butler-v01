@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import { runGithubProjectCommand } from './github-project.js';
 import type { GithubContract } from '../github-reader/index.js';
+import type { HttpCacheLike } from '../deps.js';
 
 // ── mock fetch 基建（不引入新依赖；按 URL 路由返回 fixture）──
 
@@ -151,3 +152,36 @@ test('github-project: 无 LLM 注入 → 结构化契约兜底（不抛错）', 
 
 
 
+
+test('github-project: httpCache 注入后二次运行 GitHub API 命中缓存（E290）', async () => {
+  let apiFetches = 0;
+  const routes = fullSuccessRoutes();
+  const fetchImpl = (async (url: string): Promise<Response> => {
+    if (url.includes('api.github.com')) apiFetches++;
+    for (const route of routes) {
+      const resp = route.respond(url);
+      if (resp) return resp;
+    }
+    return okText('Not Found', 404);
+  }) as unknown as typeof fetch;
+  const store = new Map<string, string>();
+  const httpCache: HttpCacheLike = {
+    get: (url) => store.get(url) ?? null,
+    set: (url, body) => {
+      store.set(url, body);
+    },
+  };
+  const opts = { fetchImpl, timeoutMs: 500, complete: undefined, httpCache };
+  const first = await runGithubProjectCommand('https://github.com/andrewyng/openworker 这项目是做什么用的？', opts);
+  assert.equal(first.ok, true);
+  const firstRunApiFetches = apiFetches;
+  assert.ok(firstRunApiFetches >= 4, '首次运行应抓取 repo/contributors/commits/releases 四个 API');
+  const second = await runGithubProjectCommand('https://github.com/andrewyng/openworker 这项目是做什么用的？', opts);
+  assert.equal(second.ok, true);
+  const secondRunApiFetches = apiFetches - firstRunApiFetches;
+  assert.ok(
+    secondRunApiFetches <= 1,
+    `二次运行 GitHub API 调用应 ≤1（repo/contributors/releases 命中 [P-142] 缓存，仅 commits since 秒级变动可 miss），实际 ${secondRunApiFetches}`,
+  );
+  assert.ok(secondRunApiFetches < firstRunApiFetches, '缓存应显著减少二次运行的 API 调用');
+});
