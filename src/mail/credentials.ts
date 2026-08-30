@@ -14,6 +14,10 @@ export interface SmtpCredentials {
   user: string;
   pass: string;
   from: string;
+  /** E293：可选 IMAP 收件参数；缺省由 host 推导（smtp.xxx → imap.xxx，默认 993 TLS） */
+  imapHost?: string;
+  imapPort?: number;
+  imapSecure?: boolean;
 }
 
 export const CREDENTIALS_FILE = 'mail-credentials.json';
@@ -36,6 +40,12 @@ export function validateCredentials(
   if (typeof c.user !== 'string' || !c.user.trim()) missing.push('user');
   if (typeof c.pass !== 'string' || !c.pass.trim()) missing.push('pass');
   if (typeof c.from !== 'string' || !/^[^@\s]+@[^@\s]+$/.test(c.from.trim())) missing.push('from');
+  if (c.imapHost !== undefined && (typeof c.imapHost !== 'string' || !c.imapHost.trim())) missing.push('imapHost');
+  if (c.imapPort !== undefined) {
+    const imapPort = Number(c.imapPort);
+    if (!Number.isInteger(imapPort) || imapPort <= 0 || imapPort > 65535) missing.push('imapPort');
+  }
+  if (c.imapSecure !== undefined && typeof c.imapSecure !== 'boolean') missing.push('imapSecure');
   return missing;
 }
 
@@ -58,6 +68,9 @@ export function loadCredentials(path = defaultCredentialsPath()): SmtpCredential
       user: String(c.user).trim(),
       pass: String(c.pass),
       from: String(c.from).trim(),
+      ...(c.imapHost !== undefined ? { imapHost: String(c.imapHost).trim() } : {}),
+      ...(c.imapPort !== undefined ? { imapPort: Number(c.imapPort) } : {}),
+      ...(c.imapSecure !== undefined ? { imapSecure: Boolean(c.imapSecure) } : {}),
     };
   } catch {
     return null;

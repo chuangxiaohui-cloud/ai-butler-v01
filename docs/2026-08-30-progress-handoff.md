@@ -138,3 +138,13 @@
 - ✅ **写盘沙箱**：按实际场景判定为纯本地单用户 → 延后 v2.6，README「已知风险」已标注（roadmap B1）。
 - ✅ **ASR 白名单 / 安装日志 / 其余延后项**：登记 `docs/roadmap.md` backlog（B2/B3/B5），不丢。
 - ⏳ **SMTP 冒烟邮箱**：真实两段式发送冒烟需要 SMTP 凭据（host/账号/授权码），owner 未提供；待 owner 自行运行 `npm run mail:config` 配置后复测（fake SMTP 单测已覆盖双闸语义）。
+
+## 12. 收邮件 IMAP 只读收件箱实现（E293，2026-08-31）
+
+- **背景**：v2.5 交付后 owner 指令「既然邮件发送做了，收邮件也一起实现」（2026-08-31）；v0.2b 已封版 → 实现按 v2.6 pre-ship 候选评估，提交归属待 owner 拍板。
+- **落地**：`src/mail/imap.ts`（最小只读 IMAP 客户端，node:net/node:tls 无外部依赖，Buffer 字节级 `{n}` 字面量解析；`fetchRecentEmails` 最新 N 封 + `fetchEmailText` 正文 + `extractPlainText`；明文无 STARTTLS 拒绝 LOGIN（H4））；`credentials.ts` 可选 `imapHost/imapPort/imapSecure` 透传（缺省 smtp.xxx→imap.xxx + 993 TLS）；office-daily 收件分支（收件箱/收邮件/查邮件/未读邮件/读第 N 封）+ 正文 untrusted_data 防护分隔符；intent-feature 路由关键词。
+- **验证**：build 绿；imap 8/8、office-daily 161/162（1 skip）、router-v2+credentials+smtp 97/97；doc-lint 0 FAIL 0 WARN。真实 QQ/Gmail IMAP 冒烟待用户（QQ 需开启 IMAP 服务 + 授权码）。
+- **文档**：计划 `docs/plans/2026-08-31-email-imap-receive.md`；附录 A E293；roadmap E293 + E293-后（MIME/附件/搜信/多账号 v2.6+ 候选）。
+- **待 owner 拍板**：提交归属（v0.2b 覆盖 vs v2.6 pre-ship）；是否把 `npm run mail:config` 扩展收件参数（imapHost/imapPort/imapSecure）。
+
+

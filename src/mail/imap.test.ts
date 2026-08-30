@@ -1,0 +1,349 @@
+import { strict as assert } from 'node:assert';
+import { execFileSync } from 'node:child_process';
+import { createServer as createNetServer, type Server as NetServer, type Socket } from 'node:net';
+import { createServer as createTlsServer, type Server as TlsServer } from 'node:tls';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { test } from 'node:test';
+
+import {
+  deriveImapHost,
+  extractPlainText,
+  fetchEmailText,
+  fetchRecentEmails,
+  resolveImapConfig,
+} from './imap.js';
+
+function pythonHasCryptography(): boolean {
+  try {
+    const out = execFileSync(
+      process.env.OFFICE_PYTHON ??
+        'C:\\Users\\zhxh\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe',
+      ['-c', "import importlib.util as u; print('1' if u.find_spec('cryptography') else '0')"],
+      { encoding: 'utf8' },
+    ).trim();
+    return out === '1';
+  } catch {
+    return false;
+  }
+}
+
+const HAS_CRYPTOGRAPHY = pythonHasCryptography();
+
+function tempDir(): string {
+  return mkdtempSync(join(tmpdir(), 'imap-test-'));
+}
+
+const IMAP_CREDS = {
+  host: 'smtp.example.com',
+  user: 'you@example.com',
+  pass: 'secret',
+};
+
+interface FakeImapMessage {
+  from: string;
+  subject: string;
+  date: string;
+  seen: boolean;
+  body: string;
+}
+
+const SAMPLE_MESSAGES: FakeImapMessage[] = [
+  { from: 'alice@example.com', subject: '周报', date: 'Mon, 31 Aug 2026 09:00:00 +0800', seen: false, body: '本周完成收件功能。' },
+  { from: 'bob@example.com', subject: 'Re: 方案', date: 'Fri, 28 Aug 2026 18:30:00 +0800', seen: true, body: '方案收到，下周细聊。' },
+  { from: 'carol@example.com', subject: '会议邀请', date: 'Wed, 26 Aug 2026 10:00:00 +0800', seen: true, body: '明天下午 3 点周会，请准时参加。' },
+];
+
+function handleImapSocket(
+  socket: Socket,
+  messages: FakeImapMessage[],
+  opts: { advertiseStartTls?: boolean },
+  transcript: string[],
+): void {
+  let socketBuffer = '';
+  socket.write('* OK fake IMAP ready\r\n');
+  socket.on('data', (chunk: string) => {
+    socketBuffer += chunk;
+    const lines = socketBuffer.split('\n');
+    socketBuffer = lines.pop() ?? '';
+    for (const raw of lines) {
+      const line = raw.replace(/\r$/, '');
+      if (!line.trim()) continue;
+      const tag = line.split(' ')[0];
+      transcript.push(line);
+      const cmd = line.slice(tag.length + 1).trim().toUpperCase();
+      if (cmd.startsWith('CAPABILITY')) {
+        const caps = opts.advertiseStartTls ? ' IMAP4rev1 STARTTLS' : ' IMAP4rev1 LOGIN-REFERRALS';
+        socket.write(`* CAPABILITY${caps}\r\n${tag} OK CAPABILITY completed\r\n`);
+      } else if (cmd.startsWith('STARTTLS')) {
+        socket.write(`* OK Begin TLS negotiation now\r\n${tag} OK Begin TLS negotiation\r\n`);
+      } else if (cmd.startsWith('LOGIN')) {
+        socket.write(`${tag} OK LOGIN completed\r\n`);
+      } else if (cmd.startsWith('SELECT')) {
+        socket.write(`* ${messages.length} EXISTS\r\n* 0 RECENT\r\n${tag} OK [READ-WRITE] SELECT completed\r\n`);
+      } else if (cmd.startsWith('SEARCH')) {
+        const seqs = messages.map((_, i) => i + 1).join(' ');
+        socket.write(`* SEARCH${seqs ? ' ' + seqs : ''}\r\n${tag} OK SEARCH completed\r\n`);
+      } else if (cmd.startsWith('FETCH')) {
+        const targetSpec = cmd.slice('FETCH '.length).split(' ')[0];
+        for (const t of targetSpec.split(',')) {
+          const seq = Number(t);
+          const msg = messages[seq - 1];
+          if (!msg) continue;
+          const flags = msg.seen ? '\\Seen' : '\\Unseen';
+          if (/HEADER\.FIELDS/.test(cmd)) {
+            const header = `From: ${msg.from}\r\nSubject: ${msg.subject}\r\nDate: ${msg.date}\r\n\r\n`;
+            socket.write(`* ${seq} FETCH (FLAGS (${flags}) BODY[HEADER.FIELDS (FROM SUBJECT DATE)] {${Buffer.byteLength(header)}}\r\n`);
+            socket.write(`${header}\r\n`);
+            socket.write(')\r\n');
+          } else {
+            const partial = cmd.match(/<0\.(\d+)>/);
+            const maxBytes = partial ? Number(partial[1]) : Number.POSITIVE_INFINITY;
+            const body = Buffer.from(msg.body, 'utf8').subarray(0, maxBytes).toString('utf8');
+            socket.write(`* ${seq} FETCH (BODY[TEXT] {${Buffer.byteLength(body)}}\r\n`);
+            socket.write(`${body}\r\n`);
+            socket.write(')\r\n');
+          }
+        }
+        socket.write(`${tag} OK FETCH completed\r\n`);
+      } else if (cmd.startsWith('LOGOUT')) {
+        socket.write(`* BYE Logging out\r\n${tag} OK LOGOUT completed\r\n`);
+        socket.end();
+      } else {
+        socket.write(`${tag} BAD Unknown command\r\n`);
+      }
+    }
+  });
+}
+
+function startFakeImapServer(
+  messages: FakeImapMessage[],
+  opts: { advertiseStartTls?: boolean } = {},
+): Promise<{ port: number; transcript: string[]; close(): Promise<void> }> {
+  const transcript: string[] = [];
+  const server: NetServer = createNetServer((socket: Socket) => {
+    socket.setEncoding('utf8');
+    handleImapSocket(socket, messages, opts, transcript);
+  });
+  return new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      resolve({
+        port,
+        transcript,
+        close: async () => {
+          server.close();
+        },
+      });
+    });
+  });
+}
+
+function genCert(dir: string): { certPath: string; keyPath: string } {
+  const certPath = join(dir, 'cert.pem');
+  const keyPath = join(dir, 'key.pem');
+  const python =
+    process.env.OFFICE_PYTHON ??
+    'C:\\Users\\zhxh\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe';
+  const genScript = `
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+import datetime, sys
+key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'localhost')])
+cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
+        .public_key(key.public_key()).serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1))
+        .not_valid_after(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30))
+        .sign(key, hashes.SHA256()))
+open(sys.argv[1], 'wb').write(cert.public_bytes(serialization.Encoding.PEM))
+open(sys.argv[2], 'wb').write(key.private_bytes(serialization.Encoding.PEM,
+    serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
+`;
+  execFileSync(python, ['-c', genScript, certPath, keyPath], { encoding: 'utf8' });
+  return { certPath, keyPath };
+}
+
+function startFakeTlsImapServer(
+  messages: FakeImapMessage[],
+  certPath: string,
+  keyPath: string,
+): Promise<{ port: number; transcript: string[]; close(): Promise<void> }> {
+  const transcript: string[] = [];
+  const server: TlsServer = createTlsServer(
+    { cert: readFileSync(certPath), key: readFileSync(keyPath) },
+    (socket) => {
+      socket.setEncoding('utf8');
+      handleImapSocket(socket, messages, {}, transcript);
+    },
+  );
+  return new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      resolve({
+        port,
+        transcript,
+        close: async () => {
+          server.close();
+        },
+      });
+    });
+  });
+}
+
+test('imap: deriveImapHost / resolveImapConfig 缺省推导与覆盖', () => {
+  assert.equal(deriveImapHost('smtp.qq.com'), 'imap.qq.com');
+  assert.equal(deriveImapHost('smtp.gmail.com'), 'imap.gmail.com');
+  assert.equal(deriveImapHost('mail.example.com'), 'mail.example.com');
+  assert.deepEqual(resolveImapConfig({ host: 'smtp.qq.com' }), {
+    host: 'imap.qq.com',
+    port: 993,
+    secure: true,
+  });
+  assert.deepEqual(
+    resolveImapConfig({ host: 'smtp.qq.com', imapHost: 'imap.custom.com', imapPort: 143, imapSecure: false }),
+    { host: 'imap.custom.com', port: 143, secure: false },
+  );
+});
+
+test('imap: extractPlainText 简单正文直返 / multipart 只取第一个部件', () => {
+  assert.equal(extractPlainText('你好\n请查收。\r\n'), '你好\n请查收。');
+  const multipart =
+    '--boundary123\r\n' +
+    'Content-Type: text/plain; charset="utf-8"\r\n' +
+    '\r\n' +
+    '正文第一段\r\n' +
+    '--boundary123\r\n' +
+    'Content-Type: text/html; charset="utf-8"\r\n' +
+    '\r\n' +
+    '<p>html</p>\r\n' +
+    '--boundary123--\r\n';
+  assert.equal(extractPlainText(multipart), '正文第一段');
+});
+
+test('imap: 明文连接不支持 STARTTLS → 拒绝 LOGIN（H4，不发送凭据）', async () => {
+  const fake = await startFakeImapServer(SAMPLE_MESSAGES);
+  try {
+    const port = fake.port;
+    await assert.rejects(
+      fetchRecentEmails(
+        { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: false },
+        { timeoutMs: 5000 },
+      ),
+      (err: Error) => err.message.includes('STARTTLS'),
+    );
+    assert.equal(fake.transcript.some((l) => l.includes(' LOGIN ')), false, '明文连接不得发送 LOGIN');
+  } finally {
+    await fake.close();
+  }
+});
+
+test('imap: TLS 查收件箱 → 最新在前 + 未读标记 + 中文头部解析', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(SAMPLE_MESSAGES, certPath, keyPath);
+  try {
+    const port = fake.port;
+    const list = await fetchRecentEmails(
+      { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: true },
+      { timeoutMs: 8000, allowInsecureTls: true },
+    );
+    assert.equal(list.length, 3);
+    assert.deepEqual(list.map((m) => m.seq), [3, 2, 1], '最新在前');
+    assert.equal(list[0].subject, '会议邀请');
+    assert.equal(list[0].from, 'carol@example.com');
+    assert.equal(list[0].seen, true);
+    assert.equal(list[2].subject, '周报');
+    assert.equal(list[2].seen, false);
+    assert.equal(fake.transcript.some((l) => l.includes(' LOGIN ')), true);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: TLS limit 只取最新 N 封', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(SAMPLE_MESSAGES, certPath, keyPath);
+  try {
+    const port = fake.port;
+    const list = await fetchRecentEmails(
+      { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: true },
+      { timeoutMs: 8000, allowInsecureTls: true, limit: 1 },
+    );
+    assert.equal(list.length, 1);
+    assert.equal(list[0].seq, 3);
+    assert.equal(fake.transcript.some((l) => l.startsWith('A') && l.includes('FETCH 3 (')), true);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: TLS 空收件箱 → 空数组', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer([], certPath, keyPath);
+  try {
+    const port = fake.port;
+    const list = await fetchRecentEmails(
+      { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: true },
+      { timeoutMs: 8000, allowInsecureTls: true },
+    );
+    assert.deepEqual(list, []);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: TLS 读指定封正文（中文，BODY.PEEK 不置已读）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(SAMPLE_MESSAGES, certPath, keyPath);
+  try {
+    const port = fake.port;
+    const { text, truncated } = await fetchEmailText(
+      { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: true },
+      1,
+      { timeoutMs: 8000, allowInsecureTls: true },
+    );
+    assert.equal(text, '本周完成收件功能。');
+    assert.equal(truncated, false);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: TLS maxBodyBytes 部分抓取 → truncated 标记', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const longMessage: FakeImapMessage = {
+    from: 'x@example.com',
+    subject: '长文',
+    date: 'Mon, 31 Aug 2026 09:00:00 +0800',
+    seen: false,
+    body: 'A'.repeat(200),
+  };
+  const fake = await startFakeTlsImapServer([longMessage], certPath, keyPath);
+  try {
+    const port = fake.port;
+    const { text, truncated } = await fetchEmailText(
+      { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: true },
+      1,
+      { timeoutMs: 8000, allowInsecureTls: true, maxBodyBytes: 50 },
+    );
+    assert.equal(truncated, true);
+    assert.equal(text, 'A'.repeat(50));
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
