@@ -69,6 +69,11 @@ sandbox/
 .claude/
 .omc/
 
+# R-3 审计验证产物（终端截图 + 临时证据，交付包外随附，不入库）
+R-3-evidence.zip
+audit-evidence/
+R3-terminal-proof.png
+
 # 参考项目/独立仓库（AGENTS.md 定位：只读参考，不入库，CodeGraph 不索引）
 AI-Butler/
 OpenHands/
