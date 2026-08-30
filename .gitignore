@@ -4,6 +4,43 @@ C5183894/
 *.step
 *.stl
 
+# 历史需求文档（v1.9-v2.4）——已替换为 v2.5，仅作参考不入库
+一人公司AI-Agent需求文档_v1.9.md
+一人公司AI-Agent需求文档_v2.0.md
+一人公司AI-Agent需求文档_v2.1.md
+一人公司AI-Agent需求文档_v2.2.md
+一人公司AI-Agent需求文档_v2.3.md
+一人公司AI-Agent需求文档_v2.4.md
+一人公司AI-Agent需求文档_v1.9-v2.0变更对照表.md
+
+# v2.5 草稿/历史版本——非定稿，不入库
+AI-Agent-v2.docx
+AI-Agent-v2.5_2.docx
+AI-Agent-v2.5_3.docx
+AI-Agent-v2.5-UI重构需求文档.docx
+AI-Agent_魔鬼训练_v2.5.csv
+
+# 对比/分析 md——开发过程产物，不入库
+AI-Butler增补方案vs一人公司需求文档-对比审阅.md
+
+# 临时办公/PDF 杂物（顶层，非项目交付物，限定 top-level 不影响子目录合法 .docx/.xls）
+/365IPC_TOTAL_BOM_0307.xls
+/人脸识别仪（闸机式）BOM-20171106.xls
+/dm365_ip_cam_lb_v1_1b.pdf
+/dm365_ip_cam_mb_v1_1b.pdf
+/dm365_ip_cam_pb_v1_1b.pdf
+/骑人驱动器件检测.pdf
+/老人防跌倒检测.pdf
+/Audio-IC选型与PCB布线设计.docx
+/AVL汽车电子可靠性测试规范.docx
+
+# 临时脚本/结果（开发调试过程产物）
+scoring-results.csv
+tavily-benchmark.ts
+
+# 旧文档目录（v2.5 前分层副本，仅参考不入库）
+文档/
+
 # 图片
 *.png
 *.jpg
