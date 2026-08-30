@@ -81,3 +81,16 @@ crm/
 benchmarks/
 deepseek-harness/
 agent-skills/
+
+# 参考项目目录（不入库，CodeGraph 自动排除）(R-3 方案A, 2026-08-30)
+/AI-Butler/
+/OpenHands/
+/Tavily+AnySearch+Bocha/
+/openocta/
+/opensquilla/
+/openworker/
+/v3/
+/crm/
+/benchmarks/
+/deepseek-harness/
+/agent-skills/
