@@ -131,7 +131,7 @@ npm run bench:devil-v25  # 122 条回归基准（耗时长，按需）
 | OpenAPI 待生成 | 当前用 `docs/engineering/api.md` | 交付期项 |
 | memory-core 外部依赖 | 仓库内仅有客户端 `src/memory/memorycore-store.ts` + 配置 | 外部只读项目 |
 | UI 组件未拆分 | `ui/prototype/src/` 未按 layouts/panels/modes 拆 | 已知 |
-| 未提交工作区 | E275-E284 未 commit；交付包应基于提交后的状态 | 待收口 |
+| 已收口（2026-08-30） | E275-E289 已提交 + 交付快照 tag 0.2b-audit-2026-08-30（收口后打）；交付包基于该 tag，不含未提交工作区 | ✅ |
 | 成本观察 | 08-29 单日 DeepSeek 账户 17.65 元归因（主因 Codex 调试会话） | 见 `docs/2026-08-30-progress-handoff.md` |
 
 ## 9. 审计报告输出要求（结论置信度声明）
