@@ -987,7 +987,8 @@ test('pipeline: 直接“写入 <路径>”走 project-writer', async () => {
     assert.equal(readFileSync(target, 'utf-8'), 'int main(void){return 0;}');
   } finally {
     process.env.SANDBOX_ALLOWED_DIRS = oldSandbox;
-    process.env.OPERATIONS_LOG_PATH = oldLog;
+    if (oldLog === undefined) delete process.env.OPERATIONS_LOG_PATH;
+    else process.env.OPERATIONS_LOG_PATH = oldLog;
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -1181,7 +1182,8 @@ test('pipeline: 撤销指令恢复最近写入备份', async () => {
     assert.ok(r.answer.includes('已回滚'));
     assert.equal(readFileSync(target, 'utf-8'), 'old');
   } finally {
-    process.env.OPERATIONS_LOG_PATH = oldLog;
+    if (oldLog === undefined) delete process.env.OPERATIONS_LOG_PATH;
+    else process.env.OPERATIONS_LOG_PATH = oldLog;
     process.env.SANDBOX_ALLOWED_DIRS = oldSandbox;
     rmSync(dir, { recursive: true, force: true });
   }
@@ -1199,7 +1201,8 @@ test('pipeline: 撤销无记录时诚实说明', async () => {
     );
     assert.ok(r.answer.includes('没有找到最近由我执行的写入操作'));
   } finally {
-    process.env.OPERATIONS_LOG_PATH = oldLog;
+    if (oldLog === undefined) delete process.env.OPERATIONS_LOG_PATH;
+    else process.env.OPERATIONS_LOG_PATH = oldLog;
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -1238,7 +1241,8 @@ test('pipeline: 撤销只作用于同一会话', async () => {
     assert.ok(same.answer.includes('已回滚'));
     assert.equal(existsSync(target), false);
   } finally {
-    process.env.OPERATIONS_LOG_PATH = oldLog;
+    if (oldLog === undefined) delete process.env.OPERATIONS_LOG_PATH;
+    else process.env.OPERATIONS_LOG_PATH = oldLog;
     process.env.SANDBOX_ALLOWED_DIRS = oldSandbox;
     rmSync(dir, { recursive: true, force: true });
   }

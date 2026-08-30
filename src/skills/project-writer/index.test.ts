@@ -86,7 +86,8 @@ test('project-writer: 覆盖前备份并写入新内容', async () => {
     assert.ok(logText.includes('main.c'));
   } finally {
     process.env.SANDBOX_ALLOWED_DIRS = old;
-    process.env.OPERATIONS_LOG_PATH = oldLog;
+    if (oldLog === undefined) delete process.env.OPERATIONS_LOG_PATH;
+    else process.env.OPERATIONS_LOG_PATH = oldLog;
     rmSync(dir, { recursive: true, force: true });
   }
 });
