@@ -37,6 +37,7 @@
 | 16 | 开发日志 / 计划文档 | ✅ 已有 | `docs/plans/` 与 `docs/plans/README.md` | 继续按现流程维护 |
 | 17 | CHANGELOG（附录 A） | ✅ 已有 | 需求文档附录 A（E 编号 + bench 联动） | 继续按文档宪法维护 |
 | 18 | 测试策略文档 | ✅ 已有 | `docs/engineering/testing-strategy.md` | 测试门禁变化时同步 |
+| 19 | v2.6+ 路线图 backlog | ✅ 已有 | `docs/roadmap.md` | 延后项拍板时登记，v2.6 推进时回写状态 |
 
 ## 四、交付期审核与交付物
 

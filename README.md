@@ -109,3 +109,11 @@ npm run score:v01           # [P-07] 评分判定（读取 bench/v01-scores.json
 |-----|------------|------|
 | `v2.4` | 迁移基线 | v2.4 快照（lint diff 基准） |
 | `v2.5` | `5d6c6c5` | 文档治理重构完成（阶段0-5 全绿，退出迁移期） |
+
+---
+
+## ⚠️ 已知风险（v2.5 交付前，owner 拍板 2026-08-30）
+
+- **写盘无沙箱**：calendar-skill / schematic-bom / office-daily / video-learner 输出仅走固定目录，未做路径前缀沙箱校验。纯本地单用户场景风险可控，按 owner 拍板延后 v2.6（backlog：`docs/roadmap.md` B1）。
+- **内网 datasheet 抓取受限（E292）**：浏览器抓取/下载已收紧——RFC1918 内网段（10.x / 172.16-31.x / 192.168.x）与回环/链路本地一律拦截，且禁止跟随 30x 重定向。嵌入式内网 datasheet 服务器不再可经浏览器抓取；公网 datasheet（如 szlcsc）不受影响。
+
