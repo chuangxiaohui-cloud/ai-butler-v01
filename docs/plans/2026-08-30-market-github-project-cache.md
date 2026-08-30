@@ -35,5 +35,5 @@ E284 残余项闭环：市场 Skill github-project 通道接入同一份 GitHub 
 
 - 验证：`npm run build` 绿；github-project 单测 5/5（含新增 E290 缓存命中 1 条）；全量单测 1127/1128（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN
 - 测试：单测 1127/1128（1 skip）+ 集成 32/32
-- 提交：`<hash>`
+- 提交：`cd62847`（2026-08-30）
 - 遗留事项：真实 CLI/市场冒烟复测待用户（成本纪律，不代跑）；commits `since` 秒级变动使该 URL 自动失效属设计内
