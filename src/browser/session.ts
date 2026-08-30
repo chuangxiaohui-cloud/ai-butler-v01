@@ -16,7 +16,7 @@ import {
   type BrowserType,
   type Page,
 } from 'playwright-core';
-import { assertSafeBrowserUrl } from '../security/url-safety.js';
+import { assertSafeBrowserUrl, isBlockedBrowserUrl } from '../security/url-safety.js';
 import { PARAMS } from '../config/params.js';
 
 export interface BrowserSessionOptions {
@@ -293,6 +293,14 @@ export class BrowserSessionManager {
     const context = await this.ensureContext();
     const page = await context.newPage();
     try {
+      // E292：拦截全部请求（含 30x 重定向目标），命中内网/非 http(s) 立即中止，防 SSRF
+      await page.route('**/*', async (route) => {
+        if (isBlockedBrowserUrl(route.request().url()).blocked) {
+          await route.abort('blockedbyclient').catch(() => undefined);
+          return;
+        }
+        await route.continue().catch(() => undefined);
+      });
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
       if (waitMs > 0) await page.waitForTimeout(waitMs);
       const [title, data, sessionDomains] = await Promise.all([
@@ -390,7 +398,11 @@ export class BrowserSessionManager {
     })();
     if (urlCheck) return { ok: false, size: 0, error: urlCheck };
     const context = await this.ensureContext();
-    const resp = await context.request.get(url, { headers, timeout: 30_000 });
+    const resp = await context.request.get(url, { headers, timeout: 30_000, maxRedirects: 0 });
+    // E292：禁止跟随 30x 重定向（防公网 → 内网跳转 SSRF）
+    if (resp.status() >= 300 && resp.status() < 400) {
+      return { ok: false, size: 0, error: `不允许跟随重定向（HTTP ${resp.status()}，SSRF 防护 E292）` };
+    }
     if (!resp.ok()) {
       return { ok: false, size: 0, error: `HTTP ${resp.status()}` };
     }

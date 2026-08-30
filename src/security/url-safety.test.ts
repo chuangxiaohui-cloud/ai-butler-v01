@@ -15,6 +15,12 @@ test('url-safety: 拒绝回环/未指定/链路本地/ULA 地址（S1）', () =>
     'http://[fe80::1]/',
     'http://[fc00::1]/',
     'http://[fd12:3456::1]/',
+    'http://10.0.0.5/manual.html',
+    'http://172.16.0.1/',
+    'http://172.31.255.254/',
+    'http://192.168.1.10/datasheet.pdf',
+    'http://2130706433:8420/',
+    'http://0x7f000001:8420/',
   ]) {
     const check = isBlockedBrowserUrl(url);
     assert.equal(check.blocked, true, `应拦截：${url}`);
@@ -29,13 +35,13 @@ test('url-safety: 拒绝非 http(s) 协议（S1）', () => {
   }
 });
 
-test('url-safety: 放行公网与局域网 datasheet（RFC1918 保留）', () => {
+test('url-safety: 放行公网地址（RFC1918 已收紧拦截，E292）', () => {
   for (const url of [
     'https://datasheet.szlcsc.com/stm32f103c8t6.pdf',
-    'http://192.168.1.10/datasheet.pdf',
-    'http://10.0.0.5/manual.html',
-    'http://172.16.0.1/',
     'https://example.com/path?q=1',
+    'http://172.32.0.1/',
+    'http://8.8.8.8/',
+    'http://134744072/',
   ]) {
     const check = isBlockedBrowserUrl(url);
     assert.equal(check.blocked, false, `应放行：${url}`);

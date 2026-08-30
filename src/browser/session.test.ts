@@ -7,6 +7,7 @@ import { test } from 'node:test';
 const cdpStateDir = mkdtempSync(join(tmpdir(), 'browser-cdp-test-'));
 
 const fakePage = {
+  route: async () => undefined,
   goto: async () => undefined,
   url: () => 'https://item.szlcsc.com/515651.html',
   title: async () => 'STM32F103C8T6 数据手册',
@@ -39,6 +40,7 @@ const fakeContext = {
   request: {
     get: async () => ({
       ok: () => true,
+      status: () => 200,
       body: async () => Buffer.from('pdf-content'),
     }),
   },
@@ -154,6 +156,72 @@ test('browser-session: downloadFile 拒绝回环地址（S1）', async () => {
   assert.equal(result.ok, false);
   assert.match(result.error ?? '', /安全策略拒绝/);
 });
+test('browser-session: fetchPage 拦截 30x 重定向到内网（E292）', async () => {
+  const routeHandlerHolder: { handler?: (route: unknown) => Promise<void> } = {};
+  const redirectPage = {
+    route: async (_pattern: string, handler: (route: unknown) => Promise<void>) => {
+      routeHandlerHolder.handler = handler;
+    },
+    goto: async () => {
+      // 模拟公网页 302 → 内网目标：请求 URL 命中 RFC1918，路由拦截中止
+      let aborted = false;
+      await routeHandlerHolder.handler?.({
+        request: () => ({ url: () => 'http://192.168.1.1/admin' }),
+        abort: async () => {
+          aborted = true;
+        },
+        continue: async () => undefined,
+      });
+      if (aborted) throw new Error('net::ERR_BLOCKED_BY_CLIENT');
+    },
+    url: () => 'https://example.com/',
+    title: async () => '',
+    evaluate: async () => ({ text: '', pdfLinks: [], links: [] }),
+    close: async () => undefined,
+  };
+  const redirectContext = {
+    cookies: async () => [],
+    newPage: async () => redirectPage,
+    close: async () => undefined,
+    browser: () => ({ isConnected: () => true }),
+    request: {
+      get: async () => ({ ok: () => true, status: () => 200, body: async () => Buffer.alloc(0) }),
+    },
+  };
+  const redirectLauncher = { launchPersistentContext: async () => redirectContext };
+  const manager = new (await import('./session.js')).BrowserSessionManager({
+    userDataDir: 'M:/tmp/browser-session-test',
+    executablePath: 'C:/fake/chrome.exe',
+    launcher: redirectLauncher as never,
+  });
+  await assert.rejects(() => manager.fetchPage('https://example.com/'), /ERR_BLOCKED_BY_CLIENT/);
+});
+
+test('browser-session: downloadFile 拒绝 3xx 重定向（E292）', async () => {
+  const redirectCtx = {
+    cookies: async () => [],
+    newPage: async () => fakePage,
+    close: async () => undefined,
+    browser: () => ({ isConnected: () => true }),
+    request: {
+      get: async () => ({
+        ok: () => false,
+        status: () => 302,
+        body: async () => Buffer.alloc(0),
+      }),
+    },
+  };
+  const redirectLauncher = { launchPersistentContext: async () => redirectCtx };
+  const manager = new (await import('./session.js')).BrowserSessionManager({
+    userDataDir: 'M:/tmp/browser-session-test',
+    executablePath: 'C:/fake/chrome.exe',
+    launcher: redirectLauncher as never,
+  });
+  const result = await manager.downloadFile('https://example.com/redirect', 'M:/tmp/x.pdf');
+  assert.equal(result.ok, false);
+  assert.match(result.error ?? '', /不允许跟随重定向/);
+});
+
 
 test('browser-session: CDP 状态过期后不再复用并清理（S2）', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'browser-cdp-expire-'));
