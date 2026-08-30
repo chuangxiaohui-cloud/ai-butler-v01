@@ -51,4 +51,5 @@
 - 验证：`npm run build` 绿；cache 4/4、github-reader 22/22、pipeline 53/53、llm 8/8、github-project 4/4；`npm run test:all` 退出码 0（集成 32/32）；`npm run doc-lint` 0 FAIL 0 WARN。
 - 测试：单测目标文件全绿 + 集成 32/32。
 - 提交：未提交（工作区含 E275-E284 大量未提交改动，提交前需 doc-lint + test:all 全绿）。
-- 遗留事项：真实 `npm run dev` 复测待用户（同一仓库二次解读 fetchMs 应回落 ~1-2s、答案数据不变）；市场通道 github-project 未接缓存（默认结构化模板路径，后续如需再补）；commits URL 的 `since` 参数每日变化，次日自动失效（正确行为）。
+- **复测结果（2026-08-30 下午）**：`npm run dev -- "https://github.com/deepseek-ai/deepseek-harness 这项目是做什么用的？"` 连跑两次——第 1 次（冷，缓存 TTL 已过期）fetchMs=9234.9ms，第 2 次（热）fetchMs=2817.8ms，回落约 3.3×；答案核心数据一致（健康分 84 / Star 203,611 / 提交 100 / 贡献者 29 / 最近推送 2 天前）。未完全落到 ~1-2s 的原因：commits `since` 参数按秒精度每次重算 → 该 URL 每次 miss 重抓；raw README/manifest 按设计不缓存。cache DB 验证 repo/contributors/releases 三端命中，仅 commits + raw 每次重抓。
+- 市场通道 github-project 未接缓存（默认结构化模板路径，后续如需再补，列入 v2.6+ 候选）。

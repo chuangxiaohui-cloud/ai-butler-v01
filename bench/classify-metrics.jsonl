@@ -128,3 +128,43 @@
 {"ts":"2026-08-29T18:51:30.687Z","id":"S02","query":"高血压 用药注意事项 禁忌","expected":"factual","intent":"factual","source":"rule","timedOut":false,"latencyMs":0}
 {"ts":"2026-08-29T18:51:30.688Z","id":"L05","query":"个人所得税 专项附加扣除 怎么申报","expected":"factual","intent":"factual","source":"rule","timedOut":false,"latencyMs":0}
 {"ts":"2026-08-29T18:51:32.432Z","id":"E16","query":"ESP32 I2C 通信失败 无应答","expected":"troubleshooting","intent":"troubleshooting","source":"llm","timedOut":false,"latencyMs":1744}
+{"ts":"2026-08-30T04:16:48.555Z","id":"E01","query":"STM32F103C8T6 最大主频是多少","expected":"factual","intent":"factual","source":"llm","timedOut":false,"latencyMs":1524}
+{"ts":"2026-08-30T04:16:50.045Z","id":"E02","query":"TPS5430 输入电压范围","expected":"factual","intent":"factual","source":"llm","timedOut":false,"latencyMs":1485}
+{"ts":"2026-08-30T04:16:51.074Z","id":"E04","query":"STM32F103 ADC 多通道采集 踩坑 经验","expected":"experience","intent":"experience","source":"llm","timedOut":false,"latencyMs":1029}
+{"ts":"2026-08-30T04:16:55.666Z","id":"E06","query":"MOSFET 栅极驱动电阻 选型 注意事项","expected":"experience","intent":"factual","source":"fallback","timedOut":false,"latencyMs":4591}
+{"ts":"2026-08-30T04:16:57.505Z","id":"E08","query":"KiCad 和 Altium Designer 对比 优缺点","expected":"comparison","intent":"comparison","source":"llm","timedOut":false,"latencyMs":1837}
+{"ts":"2026-08-30T04:17:01.972Z","id":"E11","query":"Keil MDK JTAG 配置 步骤","expected":"how_to","intent":"factual","source":"fallback","timedOut":false,"latencyMs":4465}
+{"ts":"2026-08-30T04:17:06.507Z","id":"E14","query":"STM32 HAL_UART_Transmit 阻塞 卡死","expected":"troubleshooting","intent":"factual","source":"fallback","timedOut":false,"latencyMs":4535}
+{"ts":"2026-08-30T04:17:06.508Z","id":"S02","query":"高血压 用药注意事项 禁忌","expected":"factual","intent":"factual","source":"rule","timedOut":false,"latencyMs":0}
+{"ts":"2026-08-30T04:17:06.508Z","id":"L05","query":"个人所得税 专项附加扣除 怎么申报","expected":"factual","intent":"factual","source":"rule","timedOut":false,"latencyMs":0}
+{"ts":"2026-08-30T04:17:11.112Z","id":"E16","query":"ESP32 I2C 通信失败 无应答","expected":"troubleshooting","intent":"factual","source":"fallback","timedOut":false,"latencyMs":4602}
+{"ts":"2026-08-30T05:43:46.830Z","id":"E01","query":"STM32F103C8T6 最大主频是多少","expected":"factual","intent":"factual","source":"llm","timedOut":false,"latencyMs":1819}
+{"ts":"2026-08-30T05:43:48.352Z","id":"E02","query":"TPS5430 输入电压范围","expected":"factual","intent":"factual","source":"llm","timedOut":false,"latencyMs":1520}
+{"ts":"2026-08-30T05:43:49.630Z","id":"E04","query":"STM32F103 ADC 多通道采集 踩坑 经验","expected":"experience","intent":"experience","source":"llm","timedOut":false,"latencyMs":1278}
+{"ts":"2026-08-30T05:43:51.117Z","id":"E06","query":"MOSFET 栅极驱动电阻 选型 注意事项","expected":"experience","intent":"experience","source":"llm","timedOut":false,"latencyMs":1487}
+{"ts":"2026-08-30T05:43:53.129Z","id":"E08","query":"KiCad 和 Altium Designer 对比 优缺点","expected":"comparison","intent":"comparison","source":"llm","timedOut":false,"latencyMs":2011}
+{"ts":"2026-08-30T05:43:57.954Z","id":"E11","query":"Keil MDK JTAG 配置 步骤","expected":"how_to","intent":"factual","source":"fallback","timedOut":false,"latencyMs":4824}
+{"ts":"2026-08-30T05:44:01.388Z","id":"E14","query":"STM32 HAL_UART_Transmit 阻塞 卡死","expected":"troubleshooting","intent":"factual","source":"fallback","timedOut":false,"latencyMs":3433}
+{"ts":"2026-08-30T05:44:01.389Z","id":"S02","query":"高血压 用药注意事项 禁忌","expected":"factual","intent":"factual","source":"rule","timedOut":false,"latencyMs":0}
+{"ts":"2026-08-30T05:44:01.390Z","id":"L05","query":"个人所得税 专项附加扣除 怎么申报","expected":"factual","intent":"factual","source":"rule","timedOut":false,"latencyMs":0}
+{"ts":"2026-08-30T05:44:03.092Z","id":"E16","query":"ESP32 I2C 通信失败 无应答","expected":"troubleshooting","intent":"troubleshooting","source":"llm","timedOut":false,"latencyMs":1702}
+{"ts":"2026-08-30T06:21:19.677Z","id":"E01","query":"STM32F103C8T6 最大主频是多少","expected":"factual","intent":"factual","source":"llm","timedOut":false,"latencyMs":1688}
+{"ts":"2026-08-30T06:21:21.427Z","id":"E02","query":"TPS5430 输入电压范围","expected":"factual","intent":"factual","source":"llm","timedOut":false,"latencyMs":1748}
+{"ts":"2026-08-30T06:21:23.126Z","id":"E04","query":"STM32F103 ADC 多通道采集 踩坑 经验","expected":"experience","intent":"experience","source":"llm","timedOut":false,"latencyMs":1698}
+{"ts":"2026-08-30T06:21:27.854Z","id":"E06","query":"MOSFET 栅极驱动电阻 选型 注意事项","expected":"experience","intent":"factual","source":"fallback","timedOut":false,"latencyMs":4727}
+{"ts":"2026-08-30T06:21:29.272Z","id":"E08","query":"KiCad 和 Altium Designer 对比 优缺点","expected":"comparison","intent":"comparison","source":"llm","timedOut":false,"latencyMs":1418}
+{"ts":"2026-08-30T06:21:34.276Z","id":"E11","query":"Keil MDK JTAG 配置 步骤","expected":"how_to","intent":"factual","source":"fallback","timedOut":false,"latencyMs":5003}
+{"ts":"2026-08-30T06:21:39.280Z","id":"E14","query":"STM32 HAL_UART_Transmit 阻塞 卡死","expected":"troubleshooting","intent":"factual","source":"fallback","timedOut":false,"latencyMs":5004}
+{"ts":"2026-08-30T06:21:39.283Z","id":"S02","query":"高血压 用药注意事项 禁忌","expected":"factual","intent":"factual","source":"rule","timedOut":false,"latencyMs":0}
+{"ts":"2026-08-30T06:21:39.284Z","id":"L05","query":"个人所得税 专项附加扣除 怎么申报","expected":"factual","intent":"factual","source":"rule","timedOut":false,"latencyMs":0}
+{"ts":"2026-08-30T06:21:44.242Z","id":"E16","query":"ESP32 I2C 通信失败 无应答","expected":"troubleshooting","intent":"factual","source":"fallback","timedOut":false,"latencyMs":4957}
+{"ts":"2026-08-30T09:19:05.948Z","id":"E01","query":"STM32F103C8T6 最大主频是多少","expected":"factual","intent":"factual","source":"llm","timedOut":false,"latencyMs":1692}
+{"ts":"2026-08-30T09:19:07.455Z","id":"E02","query":"TPS5430 输入电压范围","expected":"factual","intent":"factual","source":"llm","timedOut":false,"latencyMs":1502}
+{"ts":"2026-08-30T09:19:12.296Z","id":"E04","query":"STM32F103 ADC 多通道采集 踩坑 经验","expected":"experience","intent":"factual","source":"fallback","timedOut":false,"latencyMs":4840}
+{"ts":"2026-08-30T09:19:17.307Z","id":"E06","query":"MOSFET 栅极驱动电阻 选型 注意事项","expected":"experience","intent":"factual","source":"fallback","timedOut":false,"latencyMs":5011}
+{"ts":"2026-08-30T09:19:18.628Z","id":"E08","query":"KiCad 和 Altium Designer 对比 优缺点","expected":"comparison","intent":"comparison","source":"llm","timedOut":false,"latencyMs":1319}
+{"ts":"2026-08-30T09:19:20.539Z","id":"E11","query":"Keil MDK JTAG 配置 步骤","expected":"how_to","intent":"how_to","source":"llm","timedOut":false,"latencyMs":1911}
+{"ts":"2026-08-30T09:19:25.150Z","id":"E14","query":"STM32 HAL_UART_Transmit 阻塞 卡死","expected":"troubleshooting","intent":"factual","source":"fallback","timedOut":false,"latencyMs":4610}
+{"ts":"2026-08-30T09:19:25.151Z","id":"S02","query":"高血压 用药注意事项 禁忌","expected":"factual","intent":"factual","source":"rule","timedOut":false,"latencyMs":0}
+{"ts":"2026-08-30T09:19:25.152Z","id":"L05","query":"个人所得税 专项附加扣除 怎么申报","expected":"factual","intent":"factual","source":"rule","timedOut":false,"latencyMs":0}
+{"ts":"2026-08-30T09:19:26.706Z","id":"E16","query":"ESP32 I2C 通信失败 无应答","expected":"troubleshooting","intent":"troubleshooting","source":"llm","timedOut":false,"latencyMs":1553}

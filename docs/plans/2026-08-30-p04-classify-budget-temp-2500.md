@@ -42,4 +42,5 @@ R-1 回归（`docs/audit-t3/r1-regression.md`）复跑 classify:smoke 实测 lig
 - 验证：`npm run build` 绿；`npm run doc-lint` 0 FAIL 0 WARN；classify:smoke 复跑 **8/10 = 80%（达标）**，S02/L05 仍 rule 0ms
 - 测试：（待填）
 - 提交：待收口提交（E288 批）
-- 遗留事项：provider 抖动平息后按 E1 复验门回退定稿；[P-04] provisional@2026-08-30 待重定稿
+- 遗留事项：provider 抖动平息后按 E1 复验门回退定稿；[P-04] provisional@2026-08-30 待重定稿。
+- **owner 拍板记录（2026-08-30 下午）**：维持选项 A（2500ms，E288 已生效）。12:18 classify:smoke 单轮抽样 6/10、4/8 LLM 调用超 2500ms（4465-4602ms）→ provider 抖动未平息，回退 1750ms 将复现 5/10 降级；按审计矩阵 09-01（恢复 ≥7/10 → 进 E1 评估）/ 09-02（仍 ≥5/10 fallback → 确认维持 A）监控。审计方矩阵中 stageBudgets.classifyMs 为幽灵引用，真实修改点见 param-sample-30.md §3.4 勘误。

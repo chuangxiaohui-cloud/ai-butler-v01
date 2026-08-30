@@ -60,19 +60,32 @@
 | `519bcbe` | E287：R-5 评估——§6.6 分领域阈值暂不新增 P-NN，改契约化注释 |
 | `d8e524f` | E288：[P-04] 临时上调 2500ms（provider 抖动期）——classify:smoke 复跑 8/10 达标，转 provisional@2026-08-30 + bench:B-20260830-01 |
 | `f343793` | T+3 交付物 2+5/5（smoke-e2e / r5-evaluation）+ R-3 方案 A 落地（.gitignore 增补 11 参考目录）+ 审计报告状态同步 |
+| `4a9565b` | R-3 Plan A 落地：`.gitignore` 增补 11 个参考项目目录（双重忽略条目 line 85-96）|
+| `e91e6ba` | R-3 Plan B：benchmarks/ 黄标结论（一次性验证产物，不入库）|
+| `3708ce3` | R-3 完整决策记录归档（含 11 项目忽略 + benchmarks 结论 + 验证锚点）|
 
 - **T+3 交付物 5/5 全部完成**：param-sample-30（48e31bd）/ smoke-e2e-report / r1-regression / r3-codegraph / r5-evaluation（f343793 收口）。
-- **R-1 双问题闭环**：S02/L05 → rule 0ms 硬拦截（安全场景）；[P-04] 1750→2500ms 后 classify 5/10→8/10 达标（性能瓶颈）。[P-04] 现为 provisional@2026-08-30 临时值，provider 恢复后按 E1 复验门回退。
-- **R-3 方案 A 已执行**：11 个参考项目目录（AI-Butler/OpenHands/Tavily+AnySearch+Bocha/openocta/opensquilla/openworker/v3/crm/benchmarks/deepseek-harness/agent-skills）加入 .gitignore，git status 噪音从 120→26 项。
+- **T+3 周期收口报告**（2026-09-01）：`docs/audit-t3/closure-report.md`（周期收口 + 5 项交付物状态 + 3 项 owner 拍板 + E285~E289 changelog + bench 基准保护 + 残余项与下一阶段候选）。
+- **R-1 双问题闭环**：S02/L05 → rule 0ms 硬拦截（安全场景）；[P-04] 1750→2500ms 后 classify 5/10→8/10 达标（性能瓶颈）。[P-04] 现为 provisional@2026-08-30 临时值，provider 恢复后按 E1 复验门回退。**正式决策记录**：`docs/audit/decisions-R1.md`（决策人：老张，状态 provisional，选项 A 维持 2500ms）。
+- **R-3 方案 A 已执行**：11 个参考项目目录（AI-Butler/OpenHands/Tavily+AnySearch+Bocha/openocta/opensquilla/openworker/v3/crm/benchmarks/deepseek-harness/agent-skills）加入 .gitignore，git status 噪音从 120→26 项。**正式决策记录**：`docs/audit/decisions-R3.md`（Plan A 提交 `4a9565b` + Plan B benchmarks 提交 `e91e6ba` + 完整决策记录 `3708ce3` + 终端验证截图 `R3-terminal-proof.png`）。
 - **R-5 结论**：暂不新增分领域 P-NN（applyRule3 已覆盖 drug/tax/regulation/statistics 4 类），候选 P-148~P-150 列 v2.6+ 可选能力。
 - **并发会话发现**：2:50 前后另一会话生成了 r5-evaluation.md / smoke-e2e-report.md 并更新审计报告 T+3 状态，已审阅并入账（无冲突）。
 
-## 待办
+### 6. 24 项 Skill §10 信任域审查（2026-08-30 下午）
 
-1. **owner 侧冒烟 4/7**：search / tavily / desktop / 低置信 按 `docs/audit-t3/smoke-e2e-report.md` 清单实跑，回填结果（命令已在报告列出）。
-2. **E284 缓存复测**：同一仓库二次 fetchMs 应回落 ~1-2s、答案数据不变。
-3. **审计 ZIP 打包**：确认后由 agent 列装箱清单（checklist §11）。
-4. **P-95~P-104 到期拍板**：provisional@2026-08-13，截止 2026-09-10（剩 11 天），晋升定稿或下线。
-5. **[P-04] 回退**：provider 抖动平息后按 E1 复验门（n≥30 / 超时率 ≤10% / 准确率 ≥80% / p95×1.2）重定稿（当前临时 2500ms）。
-6. **误创建文件 `undefined`**（20KB 工具日志）删除确认。
-7. **v2.6+ 候选**：分领域阈值 P-148~P-150（r5-evaluation.md）、市场通道 github-project 接缓存（E284 残余）。
+- **核对范围**：`src/skills/registry.ts` 24 项（5 Legacy + 19 Executable）+ `src/skills/market/` 4 模块；与 `一人公司AI-Agent需求文档_v2.5.md` §10.5 五源信任域 + `market/types.ts` 5 类权限交叉对账。
+- **结论**：✅ 全部 Skill 落入 5 源信任域矩阵，无第六域穿透，无直接命令注入面。
+- **已落地防御**（5 项）：SkillDeps 依赖注入模式（19/19 Executable）；`project-writer`/`project-packager` §10.1 沙箱门 + logSandboxAudit；`mcp-agent` DANGEROUS_ARGS 默认拒绝（mode=kill）；`github-reader` URL 常量化（api.github.com/raw.githubusercontent.com/github.com）；Python 子进程路径全部 `fileURLToPath(import.meta.url)` 固定 + E251 input.txt 用户文本不入命令行。
+- **6 项 v2.6+ 缺口候选**（P-148~P-153 候选）：①`office-daily` SMTP 发送双闸（HIGH，2-3h）；② 4 项写盘 Skill 加沙箱（MEDIUM，3-4h）；③`video-learner` ASR/B站域白名单（MEDIUM，1-2h）；④`browser-session` URL SSRF 过滤（MEDIUM，1-2h）；⑤`market/installer` 安装日志（LOW，1h）；⑥ `market/github-project` 接缓存（LOW，1h）。
+- **交付物**：`docs/audit-t3/skill-trust-audit.md`（8 章节，含逐 Skill 矩阵 + 五源交叉表 + 修复路径成本估算）；交叉链接到 `architecture-audit-2026-08-30.md §11/§12` + `closure-report.md §6.2/§8`。
+- **预估成本(¥)**：¥0（纯静态审计；6 项缺口 v2.6+ 候选落地预算 ¥0~¥50，全部纯代码治理）。
+
+## 待办（2026-08-30 下午更新）
+
+1. ✅ **owner 侧冒烟 4/7 已回填**（agent 按报告 §3 代跑，结果见 `docs/audit-t3/smoke-e2e-report.md` §6）：search 10/10 双引擎 PASS；tavily 触发 6/6 正确但 2026-08 月配额 1000/1000 耗尽（环境原因，9/1 重置后复跑）；desktop PASS（DESKTOP_READY + gateway 拉起，exit=0）；低置信 PASS（先修脚本健壮性：跳过无 result 的 error 条目，如 C06 github 超时条目）。复盘输出：总数 57 / 无证据 5 / 弱证据 5 / 平均<0.5 9 / 含官方源 6。
+2. ✅ **E284 缓存复测完成**：deepseek-harness 同仓库连跑两次，fetchMs 9234.9ms → 2817.8ms（回落 3.3×），答案核心数据一致；未到 ~1-2s 因 commits `since` 按秒重算（每次 miss）+ raw 不缓存（设计内）。复测结果已写回计划文档 `docs/plans/2026-08-29-github-reader-http-cache.md`；证据 `e284-run1.json` / `e284-run2.json`（临时文件，确认后清理）。
+3. ⏳ **审计 ZIP 打包**：装箱清单草案已备（checklist §11 口径），待 owner 确认后打包；未确认前不打。
+4. ✅ **P-95~P-104 到期拍板（已晋升 E289）**：owner 2026-08-30 签认晋升——同批 20 项（P-82 / P-84~P-86 / P-89~P-104）§5 状态 provisional@2026-08-13 → 定稿，数值不变；附录 A E289 五条件对照 + C.4 证据登记 + 计划 docs/plans/2026-08-30-param-promote-route-batch.md；doc-lint 0 FAIL 0 WARN。08-13 批 provisional 债务清零；后续超期检查：09-09 P-105~P-107、09-21 P-10、09-25/26/27 08-28/29 批（P-132~P-142）。
+5. ⏳ **[P-04] 回退**：2026-08-30 12:18 抽样（classify:smoke 单轮）6/10、4 条 LLM 调用超 2500ms（E06/E11/E14/E16 → 4465-4602ms），provider 抖动未平息 → **维持 provisional 2500ms，暂不回退**；待稳定窗口 n≥30 / 超时率≤10% / 准确率≥80% 后按 p95×1.2 重定稿。**9/1 实测 6/10 = 60%（不达 80% 验收线），4/8 LLM 调用 4.7-5.0s 残余抖动** → owner 拍板维持选项 A 2500ms（回退 1750ms 会触发 fallback 降级，服务可用性劣化更严重）。**代码落点勘误**：[P-04] 实际生效点 `src/search/llm-registry.ts:115` `resolveTimeoutMs()` light 档默认 2500ms（env `LLM_CLASSIFY_TIMEOUT_MS` + 函数默认两路），非 `src/config/params.ts`（[P-04] 非 PARAMS key）。详见 `docs/audit-t3/param-sample-30.md §3.4`。**待 9/2 复测**：若 ≥7/10 启动回退评估（选项 B）；按 E1 复验门达标后定稿回退 1750ms。
+6. ⏳ **误创建文件 `undefined`**（20KB project-writer 工具日志，非源码非入库文件）：内容已确认，待 owner 点头后删除。
+7. 📌 **v2.6+ 候选**：P-148~P-150 分领域阈值（r5-evaluation.md 已登记，触发条件明确）；市场通道 github-project 接缓存（已列入计划文档遗留项）。两项均不阻塞 v2.5 交付，默认延后。

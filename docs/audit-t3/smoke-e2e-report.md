@@ -113,3 +113,23 @@ npm run review:low-confidence
 - **owner 侧执行后回填**：建议把 owner 实跑结果粘贴到本报告 §6「owner 实跑结果回填」附录（待业主确认后补）
 - **预估成本(¥)**：¥0（审计方仅做静态验证；owner 实跑成本由业主侧承担）
 - **回归影响**：bench:na（不涉及 §5/§6 数值变更）
+
+## 6. owner 实跑结果回填（2026-08-30 下午，agent 按 §3 命令清单代跑）
+
+### 6.1 search（`npm run search:smoke`）
+- 结果：**PASS 10/10**。10 条 query 双引擎均返回；Bocha 134–437ms、AnySearch 807–1986ms。
+- 验收线：10 条双引擎均返回结果（WP4）✅
+
+### 6.2 tavily（`npm run tavily:smoke`）
+- 结果：**❌ 环境原因失败（非代码）**。TAVILY_API_KEY 已配置（58 字符）；shouldTriggerTavily 触发判定 6/6 正确；真实调用 `tavily=fail(23ms) 日配额已用尽 结果=0`。
+- 依据：远端 /usage（权威，1948ms）usage=1000（100%）search=1000；本地计数 2026-08 已用 1000/1000。
+- 处置：2026-08 月度配额耗尽，9 月 1 日重置后复跑（与 08-26 E246 备忘一致）。
+
+### 6.3 desktop（`npm run desktop:smoke`）
+- 结果：**PASS**。Electron 启动 → gateway 拉起（http://127.0.0.1:8787，Bocha 余额 ¥2.80 约 777 次）→ `DESKTOP_READY` → 自动退出，exit=0。
+- 注：日志含 GPU/os_crypt Windows 常见噪音（非致命）。
+
+### 6.4 低置信（`npm run review:low-confidence`）
+- 结果：**PASS（先修脚本健壮性）**。原脚本对无 `result` 字段的 error 条目直接崩溃（`x.result.gate_triggered` undefined），已加一行守卫跳过 error 条目（`scripts/review-low-confidence.ts`）。
+- 数据：基于 2026-08-28 的 `bench/devil-v25/results.jsonl`（122 条，含 1 条 error 条目 C06：github 解读 zephyr 项目 timeout after 120000ms）。
+- 输出：low_confidence 总数=57；有证据=52 / 无证据=5（ET14/SM02/SM04/SM31/P03）；含<0.4 证据=5（ET20/SM15/SM19/EC16/EC21）；平均<0.5=9；含官方源=6。
