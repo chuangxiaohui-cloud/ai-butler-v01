@@ -24,7 +24,7 @@ const entries = readFileSync(resultsPath, 'utf-8')
   .filter(Boolean)
   .map((line) => JSON.parse(line) as BenchEntry);
 
-const low = entries.filter((x) => x.result.gate_triggered === 'low_confidence');
+const low = entries.filter((x) => x.result?.gate_triggered === 'low_confidence');
 const withEvidence = low.filter((x) => (x.result.evidence ?? []).length > 0);
 const noEvidence = low.filter((x) => (x.result.evidence ?? []).length === 0);
 const minBelow04 = withEvidence.filter((x) =>
