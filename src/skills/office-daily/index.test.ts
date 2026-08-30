@@ -2516,7 +2516,7 @@ test('office-daily: 发送邮件缺收件人 → 诚实提示', async () => {
   }
 });
 
-test('office-daily: 发送邮件（已配置凭据 + 假 SMTP 服务器）→ 真发成功', async () => {
+test('office-daily: 发送邮件（已配置凭据 + 假 SMTP 服务器）→ 先回执，确认发送后真发成功', async () => {
   const dir = tempDir();
   const fake = await startFakeSmtpServer();
   try {
@@ -2533,9 +2533,25 @@ test('office-daily: 发送邮件（已配置凭据 + 假 SMTP 服务器）→ �
       join(mailDir, 'mail-credentials.json'),
     );
     const skill = createOfficeDailySkill({ outDir: dir, mailDir });
-    const out = await skill.execute(
+    const receipt = await skill.execute(
       {
         query: '发送邮件给 rcpt@example.com，主题：测试主题，正文：你好，请查收。',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const receiptResult = receipt.result as { answer?: string };
+    assert.ok(receiptResult.answer?.includes('已保存为草稿'), receiptResult.answer);
+    assert.ok(receiptResult.answer?.includes('确认发送'), receiptResult.answer);
+    assert.ok(receiptResult.answer?.includes('rcpt@example.com'));
+    assert.ok(receiptResult.answer?.includes('测试主题'));
+    assert.ok(!receiptResult.answer?.includes('邮件已发送'), receiptResult.answer);
+    assert.ok(!fake.transcript.includes('RCPT TO:<rcpt@example.com>'));
+    const out = await skill.execute(
+      {
+        query: '确认发送',
         attachmentSignals: [],
         rawFiles: [],
         memory: null,
@@ -2550,7 +2566,7 @@ test('office-daily: 发送邮件（已配置凭据 + 假 SMTP 服务器）→ �
     assert.equal(result.from, 'you@qq.com');
     assert.equal(result.to, 'rcpt@example.com');
     assert.equal(result.subject, '测试主题');
-    assert.ok(fake.transcript.includes(`RCPT TO:<rcpt@example.com>`));
+    assert.ok(fake.transcript.includes('RCPT TO:<rcpt@example.com>'));
     assert.ok(fake.transcript.includes('DATA'));
   } finally {
     await fake.close();
@@ -2579,7 +2595,7 @@ test('office-daily: 写邮件发给客户 → 仍走草稿而非发送', async (
   }
 });
 
-test('office-daily: 写草稿 → 把刚才那封发出去（两段式发送）', async () => {
+test('office-daily: 写草稿 → 发出去回执 → 确认发送（三段式投递）', async () => {
   const dir = tempDir();
   const fake = await startFakeSmtpServer();
   try {
@@ -2607,9 +2623,23 @@ test('office-daily: 写草稿 → 把刚才那封发出去（两段式发送）'
     );
     const draftResult = draft.result as { answer?: string };
     assert.ok(draftResult.answer?.includes('回复邮件草稿'));
-    const out = await skill.execute(
+    const pending = await skill.execute(
       {
         query: '把刚才那封邮件发出去',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const pendingResult = pending.result as { answer?: string; to?: string };
+    assert.ok(pendingResult.answer?.includes('已保存为草稿'), pendingResult.answer);
+    assert.ok(pendingResult.answer?.includes('确认发送'), pendingResult.answer);
+    assert.ok(!pendingResult.answer?.includes('邮件已发送'), pendingResult.answer);
+    assert.ok(!fake.transcript.includes('RCPT TO:<rcpt@example.com>'));
+    const out = await skill.execute(
+      {
+        query: '确认发送',
         attachmentSignals: [],
         rawFiles: [],
         memory: null,
@@ -2619,7 +2649,7 @@ test('office-daily: 写草稿 → 把刚才那封发出去（两段式发送）'
     const result = out.result as { answer?: string; to?: string };
     assert.ok(result.answer?.includes('邮件已发送'), result.answer);
     assert.equal(result.to, 'rcpt@example.com');
-    assert.ok(fake.transcript.includes(`RCPT TO:<rcpt@example.com>`));
+    assert.ok(fake.transcript.includes('RCPT TO:<rcpt@example.com>'));
   } finally {
     await fake.close();
     rmSync(dir, { recursive: true, force: true });

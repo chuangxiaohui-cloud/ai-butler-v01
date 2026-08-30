@@ -181,7 +181,7 @@ function modeFrom(query: string): OfficeMode {
   if (/主动提醒|提醒我|设置提醒|提醒/.test(query)) return 'reminder';
   if (/考勤|模板|表格/.test(query)) return 'table';
   if (/占比|比例|汇总|统计|分析/.test(query)) return 'analyze';
-  if (/邮件|回复|写信|回复客户/.test(query)) return 'email';
+  if (/邮件|回复|写信|回复客户|确认发送|确定发送|确认发出|确定发出/.test(query)) return 'email';
   if (/压缩|减小|KB|体积/.test(query)) return 'image';
   return 'table';
 }
@@ -1100,7 +1100,7 @@ export function createOfficeDailySkill(opts?: {
       }
 
       if (mode === 'email') {
-        // E170：显式“发送/发出去/发给/发信”→ SMTP 发送（先取查询内信息，缺项回退最近草稿）
+        // E170+E291：发送意图 → 双闸：先落草稿回执，显式“确认发送”后才真正 SMTP 投递（先取查询内信息，缺项回退最近草稿）
         const isSendIntent =
           /发送|发出去|发出|发信/.test(input.query) ||
           (!/^(请|帮我|麻烦你)?(写|起草|生成|草拟)/.test(input.query) && /发给/.test(input.query));
@@ -1136,6 +1136,16 @@ export function createOfficeDailySkill(opts?: {
               },
               confidence: 0.4,
               followUpAction: '配置完成后再说“发送邮件给 …”即可发信。',
+            };
+          }
+          if (!/确认发送|确定发送|确认发出|确定发出/.test(input.query)) {
+            saveLatestDraft(mailDir, { to, subject, text });
+            return {
+              result: {
+                answer: `邮件已保存为草稿（收件人 ${to}，主题：${subject}），写入 ${join(mailDir, 'latest-draft.json')}。确认无误后回复「确认发送」即投递。`,
+              },
+              confidence: 0.7,
+              followUpAction: '回复「确认发送」即投递邮件，或告诉我要修改的内容。',
             };
           }
           try {

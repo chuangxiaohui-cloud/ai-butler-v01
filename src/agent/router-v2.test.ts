@@ -420,6 +420,17 @@ test('router-v2: 发送邮件 → office-daily（不再偏到 im_dispatch）', (
   }
 });
 
+test('router-v2: 确认发送（邮件双闸第二段）→ office-daily', () => {
+  const r = routeV2('确认发送');
+  assert.equal(r.features.actionType, 'office_daily');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'office_daily');
+    assert.equal(r.decision.selected.executor, 'office_daily');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
 test('router-v2: 发微信消息仍走 im_dispatch', () => {
   const r = routeV2('发消息给老张，说晚上一起吃饭');
   assert.equal(r.features.actionType, 'send');
