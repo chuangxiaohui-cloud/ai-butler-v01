@@ -166,13 +166,14 @@ npm run bench:devil-v25  # 122 条回归基准（耗时长，按需）
 - [ ] 提交后把提交号回填到各计划文档与附录 A
 
 ### 10.4 交付/审计前置
-- [ ] 收口后打 tag（如 v0.2b 快照），审计方以 tag 签收
-- [ ] 复核 `.env.example`（脱敏）、`bench/` 证据、报告归档齐备
-- [ ] §0.1 审计方资质自证签署件就绪
-- [ ] 按 §11 排除清单打包 ZIP
+- [x] 收口后打 tag（`v0.2b-audit-2026-08-30` @ 交付提交），审计方以 tag 签收
+- [x] 复核 `.env.example`（脱敏）、`bench/` 证据、报告归档齐备
+- [x] §0.1 审计方资质自证签署件就绪（模板 `docs/audit-package/attestation-template.md`）
+- [x] 按 §11 排除清单打包 ZIP（根目录 `ai-butler-audit-package-v0.2b-audit-2026-08-30.zip`，基于 tag）
 
 ## 11. 打包建议
 
 - 交付包 = 提交后打 tag 的仓库快照（前置：§10 提交前收口已闭环）+ 本清单 + `bench/` 证据 + `.env.example`（脱敏）+ 运行说明（§6 命令）+ 审计方资质自证（§0.1 签署件）。
 - 明确排除：`.env`、`data/`、`dist/`、`desktop/release/`、`desktop/resources/`、`desktop/src-tauri/target/`；以及根目录独立参考项目（`AI-Butler/`、`deepseek-harness/`、`OpenHands/` 等，只读不交付）。
 - 审计验收单：§0.1 资质自证 + §5.1 PARAM 对齐 + §6.1 冒烟通过 + §7 必查项逐条打勾 + §9 置信度声明，缺一项即验收不通过。
+- ✅ 已执行（2026-08-30 收口）：交付 ZIP 基于 tag `v0.2b-audit-2026-08-30` 生成（`ai-butler-audit-package-v0.2b-audit-2026-08-30.zip`），排除项逐项核验通过；T+3 闭环文档（decisions-R1/R3、closure-report、skill-trust-audit）已并入快照。
