@@ -99,3 +99,35 @@
 6. ✅ **误创建文件 `undefined` 已删除**（2026-08-30 下午，owner 确认；project-writer 工具日志，非源码非入库）。复核时（18:11）再次出现同源日志实例（753B，3 行），已再次删除；（18:26）第 3 次复现（251B）已删。根因与修复建议见 §7。
 7. 📌 **v2.6+ 候选**：P-148~P-150 分领域阈值（r5-evaluation.md 已登记，触发条件明确：1+ 次医疗/政务误分类逃逸或行业合规硬约束，当前未触发，保持延后）；✅ 市场通道 github-project 接缓存已闭环（E290，2026-08-30：`github-project.ts` 注入 httpCache + 脚本锚定仓库根 `data/github-api-cache.db`，单测 +1 条缓存命中验证，详见 `docs/plans/2026-08-30-market-github-project-cache.md`）；✅ office-daily 邮件发送双闸已闭环（E291，2026-08-30：审计 §3.2 缺口 #1——发送意图先落 latest-draft.json 回执，显式「确认发送」才 sendMail 投递；modeFrom + office_daily 路由正则收确认词；测试 2519/2582 改两/三段式 + router-v2 +1，详见 `docs/plans/2026-08-30-office-daily-mail-double-gate.md`）。
 8. ✅ **undefined 根因修复已完成**（2026-08-30 晚，owner 同意继续后执行）：测试 restore 改 `delete process.env.OPERATIONS_LOG_PATH`（`index.test.ts:89` + `pipeline.test.ts` 990/1184/1202/1241，共 5 处，提交 `e792e8e`）；build 绿 + 全量单测 1126/1127（1 skip）通过，全量跑完 cwd 未再生成 `undefined`。残余：PID 18072（12:06 启动，命令行走查被拒、非 gateway）未停——修复后已不再写 `undefined`，若确认是残留 watcher 可在任务管理器结束；`bench/search-metrics.jsonl` 被后台测试追加 5 行（指标，未提交，待核对）。
+
+## 9. v2.5 审计交付包移交（2026-08-30 晚，owner 拍板封版）
+
+- **owner 拍板（2026-08-30 21:35）**：
+  - ✅ **盖章动作**：接受 cba6af6 现状封版（tag `v0.2b-audit-2026-08-30` @ `cba6af6`），E290/E291 属 work-in-progress 不阻塞 v2.5 交付语义。
+  - ✅ **ZIP 移交目的地**：`M:\202608111\审计交付\`（owner 选择本地存档）。
+  - ✅ **未追踪清理**：同意建议（增 `.gitignore` 21 项忽略条目）。
+  - ✅ **下一步**：选项 1（签署交付包移交单），bench 回归与 v2.6 路线图延后到下一期。
+
+- **交付物落点**：
+  - 主交付包：`M:\202608111\审计交付\ai-butler-audit-package-v0.2b-audit-2026-08-30.zip`（3,348,276 B，SHA256 `EA8C9779…C77`）
+  - R-3 证据随附：`M:\202608111\审计交付\R-3-evidence.zip`（166,541 B，SHA256 `77A8E37F…B474B`）
+
+- **交付期新增/修改提交**（owner 拍板后）：
+  - `ebad048` chore(gitignore)：增 R-3-evidence.zip / R3-terminal-proof.png 忽略
+  - `fb10e92` bench: search:smoke 指标追加 5 行
+  - `898ced1` docs(audit-t3)：落 pre-ship-closure.md（164 行，三检全绿+ ZIP+ 框架验证）
+  - `599081a` docs(audit-t3)：落 delivery-handover.md（159 行，移交单+ owner 拍板登记+ 签字栏）
+  - `fde0a32` chore(gitignore)：v2.5 交付后清理——21 项临时/历史/草稿忽略
+
+- **关键文档**：
+  - `docs/audit-t3/pre-ship-closure.md`（v2.5 交付前收口报告，三检+ ZIP+ 框架验证）
+  - `docs/audit-t3/delivery-handover.md`（v2.5 交付包移交单，§1 移交物 + §2 owner 拍板 + §6 已知缺口诚实声明 + §8 签字栏）
+  - `docs/audit-t3/closure-report.md`（T+3 周期收口，5/5 交付物+ 3/3 owner 拍板）
+  - `docs/audit-t3/skill-trust-audit.md`（24 项 Skill §10 信任域审查）
+
+- **本次交付后状态**：
+  - 三检：build 绿 / doc-lint 0 FAIL 0 WARN / **test:all 1125/1128（2 fail：office-daily 1051/1053 属于 E291 work-in-progress，未 commit，不进入交付包）**
+  - 工作区：3 modified（bench metrics 15 行 + src/security/url-safety.ts 新增[并发会话 work-in-progress] + 1 项 untracked）+ 1 owner deliverable ZIP + 1 untracked directory（"宴客交货/" 并发会话 work-in-progress）
+  - 封版基线：tag `v0.2b-audit-2026-08-30` @ `cba6af6fc4dc198f6b59f123d4dd5874ef9f32ee`
+
+- **预估成本(¥)**：¥0（纯静态审计 + 文档治理 + 移交 cp + sha256sum 验证；全周期无新增 LLM/API 调用）。
