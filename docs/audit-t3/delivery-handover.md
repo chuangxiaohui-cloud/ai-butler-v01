@@ -37,7 +37,7 @@ M:\202608111\审计交付\
 | # | 项 | 拍板 | 理由 |
 |---|---|---|---|
 | 1 | tag/ZIP 重定位（cba6af6 → fb10e92 / 2e1c89b）| ❌ **接受 cba6af6 现状** | E290/E291 属 work-in-progress，不阻塞 v2.5 交付语义；接受当前快照作为封版基线 |
-| 2 | E291 office-daily SMTP双闸（2/4 测试未过）| ⏳ **继续推进，不阻塞** | 并发会话正在修复（1051/1053 测试）；不进入本次交付包语义 |
+| 2 | E291 office-daily SMTP双闸（2/4 测试未过）| ✅ **已闭环（946f62d/7c4b9ec）** | 2026-08-30 晚完成：双闸 + 路由确认词 + 测试 2519/2582 改两/三段式，test:all 全绿 |
 | 3 | 审计 ZIP 移交目的地 | ✅ `M:\202608111\审计交付\` | owner 拍板本地存档（暂不上传网盘/邮件） |
 | 4 | 未追踪 17 项清理（v1.9-v2.3 / temp）| ✅ **同意清理** | 本次交付后顺手增补 `.gitignore` 或物理删除 |
 
@@ -105,17 +105,17 @@ M:\202608111\审计交付\
 - 🟡 **memory-core 外部依赖**：集成测试 mock 覆盖，真实环境依赖外部服务
 - 🟡 **UI 组件未拆分**：desktop Tauri 包内聚，暂未独立组件库
 - 🟡 **P-04 [P-04] 2500ms** 临时：provider 抖动期维持，待 9/2 复测决定回退
-- ⏳ **E290/E291 work-in-progress**：未进入 v2.5 交付包语义（owner 拍板接受）
+- ✅ **E290/E291/E292 已闭环（2026-08-30 晚，交付后补录）**：E290 市场通道接缓存（cd62847）/ E291 邮件双闸（946f62d+7c4b9ec）/ E292 URL SSRF 最小防护（26e86d5+40dca3c+dd27cf0）；三者未进入 cba6af6 封版 ZIP（owner 拍板接受 WIP 不阻塞），审计跟踪以本文件 + 附录 A + `docs/roadmap.md` 为准
 
 ### 6.3 v2.6+ 候选（不阻塞 v2.5）
 
-- P-148~P-150 分领域阈值（applyRule3 4 类已覆盖，候选增量）
-- office-daily SMTP 双闸（E291 进行中）
-- 4 项写盘 Skill 沙箱
-- video-learner ASR/B站域白名单
-- browser-session URL SSRF 过滤
-- market/installer 安装日志
-- market/github-project 缓存（E290 已闭环，剩余 ~1h 验证）
+已集中登记 `docs/roadmap.md` v2.6+ backlog（B1-B5）：
+- B1 4 项写盘 Skill 沙箱（纯本地场景延后，README 已标已知风险）
+- B2 video-learner ASR/B站域白名单
+- B3 market/installer 安装日志
+- B4 browser-session 完整域名白名单（E292 最小防护已入 v2.5）
+- B5 P-148~P-150 分领域阈值（applyRule3 4 类已覆盖，候选增量）
+- ~~office-daily SMTP 双闸 / browser-session URL SSRF / market/github-project 缓存~~：E291/E292/E290 已闭环
 
 ---
 

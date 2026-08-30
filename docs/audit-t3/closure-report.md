@@ -3,7 +3,7 @@
 > 周期：2026-08-30 → 2026-09-01（审计中期检查）
 > 关联：`architecture-audit-2026-08-30.md` §9.1 + `audit-t3/` 五项交付物 + `audit/decisions-R1.md` + `audit/decisions-R3.md`
 > 框架依据：`架构师审计框架说明 v2.0.md` §0.3 / §4.2 / §4.3 / §5.2 / §5.3 / §5.4
-> 状态：✅ T+3 周期收口，下一阶段 v2.5 交付前收口 / T+6 follow-up
+> 状态：✅ T+3 周期收口，v2.5 已交付封版（tag `v0.2b-audit-2026-08-30` @ `cba6af6`），下一阶段 v2.6 pre-ship / T+6 owner 实跑 / 6mo 复评
 
 ---
 
@@ -110,22 +110,24 @@ T+3 = 审计基线（2026-08-30 `architecture-audit-2026-08-30.md` 定稿）后�
 | # | 项 | 来源 | 预计处理时间 |
 |---|---|---|---|
 | 1 | [P-04] 9/2 复测 | R-1 性能场景 | 9/2（post-event） |
-| 2 | 审计 ZIP 打包 | owner 决策后 | 待 owner 确认后 |
-| 3 | 误创建文件 `undefined`（20KB project-writer 工具日志） | 提交前收口 | 待 owner 点头后删除 |
-| 4 | v2.6+ 候选 P-148~P-150 分领域阈值 | R-5 评估延后 | v2.6+ 路线图 |
-| 5 | 市场通道 github-project 接缓存 | E284 闭环遗留 | v2.6+ |
+| 2 | ✅ 审计 ZIP 打包（已完成 2026-08-30） | owner 决策后 | ✅ 完成；ZIP 在 `M:\202608111\审计交付\ai-butler-audit-package-v0.2b-audit-2026-08-30.zip`（SHA256 `EA8C9779…C77`）|
+| 3 | ✅ 误创建文件 `undefined` 根因修复（`e792e8e`）| 提交前收口 | ✅ 完成；测试还原改 `delete process.env.OPERATIONS_LOG_PATH`（5 处）|
+| 4 | v2.6+ 候选 P-148~P-150 分领域阈值 | R-5 评估延后 | v2.6 pre-ship 范围（B5）|
+| 5 | ✅ 市场通道 github-project 接缓存（E290 已闭环）| E284 闭环遗留 | ✅ 完成；`github-project.ts` 注入 httpCache + 脚本锚定仓库根 `data/github-api-cache.db` |
 | 6 | 超期检查窗口 | 后续批次 | 09-09 P-105~P-107 / 09-21 P-10 / 09-25~27 P-132~P-142 |
+| 7 | ✅ E291 office-daily 邮件双闸 + E292 URL SSRF 最小防护 | 审计 §3.2 缺口 #1/#4 | ✅ 完成；E291 `946f62d`/`7c4b9ec`，E292 `26e86d5`/`40dca3c`/`dd27cf0`；写盘沙箱/ASR/安装日志/完整域名白名单登记 `docs/roadmap.md` B1-B4 |
 
 ### 6.2 下一阶段候选
 
 按"按顺序推进审计"原则，下一动作候选（任选其一）：
 
-| 候选 | 范围 | 预估成本 | 置信度 |
-|---|---|---|---|
-| **23 项 Skill 市场 §10 信任域审查** | 逐一核对 skills/registry.ts 23 项 Skill 的 source 标注 + sandbox 调用边界 + URL 白名单 | ¥0~¥50 | MEDIUM |
-| ✅ **Skill 信任域审查（已完成 2026-08-30）** | `docs/audit-t3/skill-trust-audit.md`——24 项全审（5 Legacy + 19 Executable + market/4）+ 五源信任域矩阵 + 6 项 v2.6+ 缺口候选 | ¥0（纯静态审计） | HIGH |
-| **v2.5 交付前收口** | 按 audit-package-checklist §10 执行最终收口（build/test/doc-lint 复核 + ZIP 打包 + owner 签字清单） | ¥0 | HIGH |
-| **T+6 follow-up** | bench:devil-v25 122 条 owner 侧全量回归 + 实际使用累积验证 + 6 个月稳定性问题复评 | ¥0（owner 实跑）| 待定 |
+| 候选 | 范围 | 预估成本 | 置信度 | 状态 |
+|---|---|---|---|---|
+| ✅ Skill 信任域审查（已完成 2026-08-30） | `docs/audit-t3/skill-trust-audit.md`——24 项全审（5 Legacy + 19 Executable + market/4）+ 五源信任域矩阵 + 6 项 v2.6+ 缺口候选 | ¥0（纯静态审计） | HIGH | ✅ |
+| ✅ v2.5 交付前收口（已完成 2026-08-30 21:35） | 按 audit-package-checklist §10 执行最终收口（build/test/doc-lint 复核 + ZIP 打包 + owner 签字清单） | ¥0 | HIGH | ✅ 封版 cba6af6 |
+| **v2.6 pre-ship**（owner 2026-08-30 拍板） | 开新委托，范围 = v2.6 增量 + B1~B4 + 6 项 Skill 信任域缺口 + P-148~P-150（B5）；先写 `docs/plans/2026-08-30-v26-pre-ship.md` 锁定 scope | ¥0~¥50（纯代码治理）| MEDIUM | 🟡 启动条件：owner 启动委托 |
+| **T+6 follow-up**（owner 2026-08-30 拍板） | bench:devil-v25 122 条 owner 侧全量回归 + 实际使用累积验证；提交物 `bench/B-2026MMDD-T6-owner-regression.md` | ¥0（owner 实跑）| 待定 | 🟡 启动条件：owner 提交结果 |
+| **6 个月稳定性复评** | 按路线图执行；窗口 2027-02-28 ± 1 月；复评范围 = v2.5 全量 §10 + T+6 + v2.6 累积；产物 `docs/audit-t6/closure-report.md` + `bench:B-20270228-01` | ¥0~¥100 | LOW（远期） | 🟡 启动条件：6mo 窗口到达 |
 
 ---
 
@@ -152,5 +154,10 @@ T+3 = 审计基线（2026-08-30 `architecture-audit-2026-08-30.md` 定稿）后�
 - **Skill 信任域审查** ✅ 完成（`docs/audit-t3/skill-trust-audit.md` 24 项全审 + 6 项 v2.6+ 缺口候选）
 - **bench 基准** ✅ 保护协议执行
 - **框架 v2.0 强制项** ✅ 7 项全部验证
+- **v2.5 交付前收口** ✅ 完成（2026-08-30 21:35 owner 拍板封版；tag `v0.2b-audit-2026-08-30` @ `cba6af6`；ZIP `EA8C9779…C77` 移交 `M:\202608111\审计交付\`）
 - **预估成本(¥)**：¥0（审计方纯静态/确定性验证；owner 实跑成本由业主侧承担；T+3 周期内无新增 LLM 调用）
 - **回归影响**：T+3 7 项变更中 6 项 bench:na + 1 项行为变更（applyRule3 仅命中关键词 query 生效，未命中路径与原行为一致）= 全周期 bench 净影响 ≈ 0
+- **下一阶段入口**：
+  - **v2.6 pre-ship**（owner 拍板开启）→ `docs/plans/2026-08-30-v26-pre-ship.md` 锁定 scope
+  - **T+6 follow-up**（owner 亲自跑 122 条 bench:devil-v25 全量回归）→ `bench/B-2026MMDD-T6-owner-regression.md`
+  - **6 个月稳定性复评**（2027-02-28 ± 1 月窗口）→ `docs/audit-t6/closure-report.md`

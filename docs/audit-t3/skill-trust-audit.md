@@ -157,6 +157,16 @@ HIGH_RISK_PERMISSIONS = `[filesystem, command, network, browser]`——除 `none
 | **`browser-session` URL 正则无 SSRF 过滤** | `browser-session` | 🟡 MEDIUM | URL 解析后过 `safeUrl()`——拒绝 localhost/127.0.0.1/192.168.*/10.*/file:// 等内网/本地 scheme |
 | **`market/installer` 远程包下载 + 写盘** | `market/installer.ts` | 🟡 MEDIUM | 已落地 manifest 校验 + confirm 门；建议加 install 日志（已安装包名 + SHA-256 + 时间），便于追溯 |
 | **市场通道 github-project 未接缓存** | `market/github-project.ts`（E284 闭环遗留） | 🟢 LOW | E284 已登记 `docs/plans/2026-08-29-github-reader-http-cache.md` 后续项；v2.6+ 候选 |
+### 3.2.1 缺口处置状态（2026-08-30 owner 拍板后）
+
+| 缺口 | 处置 | 凭证 |
+|---|---|---|
+| `office-daily` SMTP 无人工审批双闸 | ✅ 已闭环 | E291（`946f62d`/`7c4b9ec`）：发送意图先落 `latest-draft.json` 回执，显式「确认发送」才投递 |
+| 写盘类无沙箱校验 | 🕐 延后 v2.6 | owner 拍板纯本地单用户场景；README「已知风险」标注；backlog `docs/roadmap.md` B1 |
+| `video-learner` 多面外部入口 | 🕐 延后 v2.6 | backlog B2（ASR/B站域白名单） |
+| `browser-session` URL 无 SSRF 过滤 | ✅ 已闭环（最小防护） | E292（`26e86d5`）：RFC1918+回环拦截 + 数值 IP 归一化 + 禁 30x 重定向；完整域名白名单 v2.6 backlog B4 |
+| `market/installer` 安装日志 | 🕐 延后 v2.6 | backlog B3 |
+| 市场通道 github-project 未接缓存 | ✅ 已闭环 | E290（`cd62847`）：注入 httpCache + 脚本锚定仓库根缓存 DB |
 
 ### 3.3 ❌ 不符合项（零）
 
