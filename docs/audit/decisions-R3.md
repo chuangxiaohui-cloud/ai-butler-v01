@@ -1,7 +1,7 @@
 # R-3 决策记录：.gitignore 增补与资产处置
 
 - **决策事项**：R-3 (来源 r3-codegraph.md §3)
-- **拍板人**：[你的名字]
+- **拍板人**：老张
 - **时间**：2026-08-30
 - **分支**：v0.2b
 
@@ -31,7 +31,10 @@
 ## 验证锚点
 - `check-ignore -v 11/11` 命中新规 (86-96)。
 - 反向验证 `src/scripts/docs` 未被误伤 (exit=1)。
-- 提交 Commit: [这里填你刚才生成的哈希值 e91e6ba]
+- 提交 Commit:
+  - **Plan A（11 个参考项目目录忽略）**: `4a9565b chore(gitignore): exclude 11 reference project dirs (R-3 Plan A, audit decision 2026-08-30)`
+  - **Plan B（benchmarks/ 黄标结论）**: `e91e6ba docs(audit): R-3 benchmarks conclusion = own throwaway test scripts, not tracked (Plan B)`
+  - **完整决策记录归档**: `3708ce3 docs(audit): R-3 完整决策记录（含11个项目忽略及benchmarks结论）`
 
 ## 残留说明
 - 根目录自产 .md (AI-Butler...) 另行入库；CRLF warning 为环境表象，非代码错误。

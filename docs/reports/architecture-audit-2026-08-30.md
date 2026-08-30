@@ -228,11 +228,13 @@ WP3 冒烟：10 条基准 query，轻模型=deepseek-chat
 2. 中期 ¥50~¥150：Stage 2 输出前增加规则③关键词预检（如检测到药品/税率词，即使 Stage 2 误判，Stage 3 仍走严肃通道）
 3. 配套：§6.6 文字提及「分领域阈值」未落 §5 → 新增 P-NN（医疗 [P-17]+0.1 / 政务 +0.1 等）→ 见 R-5
 
-**修复落地状态（T+3）**：
+**修复落地状态（T+3，2026-08-30 → 09-01 跟踪）**：
 - ✅ 已落地：路径 2 — `src/search/stages/s2_classify.ts` 在 `classifyQuery()` 入口增加 `applyRule3(query).serious` 预检（line 95）。检测到药品/税率/法规/统计关键词 → 直接返回 `intent=factual / timeWindow=不限 / domain=官方优先 / source=rule`，跳过 LLM 调用，从根上避免 LLM 误分类 + 超时降级双失守
-- ✅ 已落地：路径 1 — `[P-04]` 由 1750ms 上调到 2500ms 暂不采纳（保留为后续 E-NN 候选，避免一次改两个变量影响归因）
+- ✅ 已落地：路径 1 — `[P-04]` 1750→2500ms 临时上调（E288 changelog 签认，provisional@2026-08-30）。**代码落点勘误**：`src/search/llm-registry.ts:115` `resolveTimeoutMs()` light 档默认 2500ms（非 `src/config/params.ts` PARAMS key——[P-04] 经 env `LLM_CLASSIFY_TIMEOUT_MS` 与函数默认两路生效；详见 `docs/audit-t3/param-sample-30.md §3.4`）
 - ✅ 已验证：`npm run build` 退出 0；`npm test` 1120/1121 pass / 1 skip / 0 fail（不破坏现有基线）
-- 🟡 待 T+3 验证：定向回归测试（5 条样例 e2e + 10 条 classify:smoke 复跑）确认 classify 准确率 ≥8/10 + S02/L05 命中 `source=rule` 走严肃通道
+- 🟡 9/1 实测：classify:smoke 复跑 **6/10 = 60%**（不达验收线 80%），4/8 LLM 调用 4.7-5.0s 残余抖动 → **owner 拍板维持 2500ms（选项 A 生效中）**：若回退 1750ms 将直接触发 fallback 降级，服务可用性劣化更严重
+- 🟡 待 9/2 复测：若 ≥7/10 启动回退评估（选项 B）；按 E1 复验门（n≥30 / 超时率 ≤10% / 准确率 ≥80% / p95×1.2）达标后重新定稿回退 1750ms
+- 📌 正式决策记录：`docs/audit/decisions-R1.md`（决策人：老张，状态：provisional，选项 A 生效中）
 - 🟡 见 R-5：路径 3 配套 P-NN 评估
 
 **端到端验证（必做，T+3）**：用 `典型问答样例_5条.md` 样例 2（延迟最低的数据库）+ 样例 3（中国 AI 大模型公司市值）做 e2e 复跑——这是 E278/E277/E279 修复链的最终验证。
@@ -262,7 +264,7 @@ WP3 冒烟：10 条基准 query，轻模型=deepseek-chat
 
 | ID | 等级 | 描述 | 置信度 | 修复路径 | 工时 | 预估成本(¥) | 回归影响（bench:devil-v25） |
 |---|---|---|---|---|---|---|---|
-| **R-1** | CRITICAL | classify:smoke 30% + S02/L05 误分类；规则③兜底有效性未端到端验证 | HIGH | 上调 [P-04] + Stage 2 前规则③预检；T+3 用样例 2/3 e2e 复跑 | ≤3 人天 | ¥0~¥150 | 122 条 baseline 已保护（T+3 走定向回归，未代跑全量，详见 §9 协议） |
+| **R-1** | CRITICAL | classify:smoke 30% + S02/L05 误分类；规则③兜底有效性未端到端验证 | HIGH | 上调 [P-04] + Stage 2 前规则③预检；T+3 用样例 2/3 e2e 复跑 | ≤3 人天 | ¥0~¥150 | 122 条 baseline 已保护（T+3 走定向回归，未代跑全量，详见 §9 协议）；正式决策 `docs/audit/decisions-R1.md`（选项 A 维持 2500ms，provisional@2026-08-30） |
 | **R-2** | HIGH | §5.5 漏登 P-95~P-104 共 10 项（违反 §0.2 数值单家） | HIGH | 补登 §5.5 + 附录 A 登记 E-NN | ≤0.5 人天 | ¥0（纯文档治理，无代码/数值变更） | bench:na 文档治理修复（E285 签认） |
 | **R-5** | MEDIUM | §6.6 分领域阈值文字提及未落 §5 PARAM | HIGH | 评估新增 P-NN（医疗/政务各 +0.1 偏置） | ≤0.5 人天 | ¥0~¥50（如新增 PARAM 走 E-NN 登记） | 评估后定向回归 S02/L05 类查询 |
 
@@ -272,7 +274,7 @@ WP3 冒烟：10 条基准 query，轻模型=deepseek-chat
 
 | ID | 等级 | 描述 | L1 判断 | 建议 | 预估成本(¥) |
 |---|---|---|---|---|---|
-| R-3 | LOW | CodeGraph 跨项目噪音 | 工具辅助问题，非运行时 | 隔离 `.codegraph/` 或 `-p src` 过滤 | ¥0~¥30（一次脚本成本） |
+| R-3 | LOW | CodeGraph 跨项目噪音 | 工具辅助问题，非运行时 | 隔离 `.codegraph/` 或 `-p src` 过滤 | ¥0~¥30（一次脚本成本）；方案 A 已执行（提交 `4a9565b`），详见 `docs/audit/decisions-R3.md` |
 | R-4 | LOW | v1 P-10 条件③（成熟度 L2）未达成 | 真实使用累积，非代码问题 | 按 E197 复验门 + 真实使用累积 | ¥0（需真实使用累积） |
 | R-6 | LOW | Tauri 备选壳 🔴 文档宣称但生产未跑 | 已冻结，不阻塞发布 | 与 P-10 条件③ 同步处理 | ¥0（已冻结） |
 | R-7 | LOW | E275-E284 未提交 | 业主交付前收口，非审计范围 | 按 E 编号分批提交 + 打 tag | ¥0（业主侧收口） |
@@ -311,10 +313,10 @@ WP3 冒烟：10 条基准 query，轻模型=deepseek-chat
 | T+3 交付 | 范围 | 实际交付状态（2026-08-30） |
 |---|---|---|
 | **PARAM 抽样 30 条** | 26 provisional + 4 定稿，验证值级对齐 + 状态机（4 周超期检查） | ✅ 已完成（`docs/audit-t3/param-sample-30.md`），27/30 一致，2 条 R-9 候选（P-85/P-86 §0.2 违规） |
-| **冒烟 5-7 条 e2e 复跑** | search/tavily/desktop/S02/L05/低置信/safety 全链路复跑 | 🟡 部分完成（`docs/audit-t3/smoke-e2e-report.md`）：S02/L05/safety 3/7 审计方闭环；4/7（search/tavily/desktop/低置信）owner 侧实跑清单已交付 |
-| **R-1 修复 + 回归** | `applyRule3` 预检 + classify ≥8/10 + P-04 ≤1750ms | ✅ 完成（`docs/audit-t3/r1-regression.md`）：代码修复 `s2_classify.ts:95` + 确定性测试 5/5；`[P-04]` 临时上调 2500ms（E288，bench:B-20260830-01）后 classify:smoke 复跑 **8/10 达标**，S02/L05 走 rule 0ms |
+| **冒烟 5-7 条 e2e 复跑** | search/tavily/desktop/S02/L05/低置信/safety 全链路复跑 | ✅ 完成（`docs/audit-t3/smoke-e2e-report.md` §6 owner 实跑回填）：3/7 审计方闭环（S02/L05/safety，applyRule3 预检）+ 4/7 owner 实跑（search 10/10 PASS / tavily 月度配额耗尽 9 月 1 日重置后复跑 / desktop PASS / 低置信 PASS 含 `scripts/review-low-confidence.ts` 健壮性补丁） |
+| **R-1 修复 + 回归** | `applyRule3` 预检 + classify ≥8/10 + P-04 ≤1750ms | ✅ 完成（`docs/audit-t3/r1-regression.md`）：代码修复 `s2_classify.ts:95` + 确定性测试 5/5；`[P-04]` 临时上调 2500ms（E288，bench:B-20260830-01，代码落点 `llm-registry.ts:115` 非 params.ts）后 08-30 classify:smoke 复跑 8/10 临时达标；**9/1 实测 6/10 = 60%**（provider 抖动 4.7-5.0s）→ owner 拍板维持选项 A 2500ms 不回退，S02/L05 仍走 rule 0ms |
 | **R-2 修复** | §5.5 P-95~P-104 补登 + 附录 A E-NN + doc-lint 0 FAIL | ✅ 已完成（E285 changelog 签认，`doc-lint` 0 FAIL） |
-| **R-3 CodeGraph 隔离** | 隔离 `.codegraph/` 或 `-p src` 过滤 + 依赖图重生成 | ✅ 方案 A 已执行（`.gitignore` 增补 11 个参考项目目录，CodeGraph 未来索引自动排除；见 `docs/audit-t3/r3-codegraph.md`） |
+| **R-3 CodeGraph 隔离** | 隔离 `.codegraph/` 或 `-p src` 过滤 + 依赖图重生成 | ✅ 方案 A 已执行并由 owner 验证（`.gitignore` 增补 11 个参考项目目录双重忽略条目 line 85-96，CodeGraph 索引噪音已消除；见 `docs/audit-t3/r3-codegraph.md`）；正式决策 `docs/audit/decisions-R3.md`（Plan A 提交 `4a9565b` + Plan B benchmarks 提交 `e91e6ba` + 完整决策记录 `3708ce3` + 终端验证截图 `R3-terminal-proof.png`） |
 | **R-5 评估** | §5 P-NN（医疗/政务分领域阈值）新增必要性评估 | ✅ 已完成（`docs/audit-t3/r5-evaluation.md` 结论「不修」+ E287 §6.6 契约化：值待步 3 产出领域阈值表后按 E-NN 登记 §5） |
 
 ### 9.2 附录交付（可选）
@@ -353,7 +355,7 @@ WP3 冒烟：10 条基准 query，轻模型=deepseek-chat
 |---|---|---|
 | 全量 32 条 integration 测试 | 时间约束，T+3 补 | T+3 |
 | 5 条样例 e2e 复跑 | 本次仅审阅样例文件，未实际运行 | T+3（重点）——已在 `s2_classify.ts:95` 落地 `applyRule3` 预检，待交付回归报告 |
-| `src/skills/registry.ts` 23 项 Skill 实现 | 仅读了 SKILL 文档 | T+3+ |
+| `src/skills/registry.ts` 23 项 Skill 实现 | 仅读了 SKILL 文档 | ✅ **已闭环**：`docs/audit-t3/skill-trust-audit.md`（24 项全审计 + 五源信任域矩阵 + 6 项缺口 v2.6+ 候选；计数勘误：实际 24 项 = 5 Legacy + 19 Executable）|
 | `ui/prototype/` React 三栏 | 文档已知缺口（§4.1.5 浏览器交互层待实现） | 非阻塞 |
 | `desktop/` Electron 壳 | 时间约束 | T+3+ |
 | `memory-core/` 外部项目 | 客户端已审，外部未审 | T+3+ 协作 |
@@ -373,8 +375,15 @@ WP3 冒烟：10 条基准 query，轻模型=deepseek-chat
 | 3 | `docs/audit-t3/r1-regression.md` | R-1 修复 + `[P-04]` 2500ms 后 8/10 达标（E288） | ✅ |
 | 4 | `docs/audit-t3/r3-codegraph.md` | R-3 隔离评估（方案 A 已执行：.gitignore 增补 11 个参考目录） | ✅ |
 | 5 | `docs/audit-t3/r5-evaluation.md` | R-5 P-NN 必要性评估（结论：不修） | ✅ |
+| 6 | `docs/audit-t3/closure-report.md` | T+3 周期收口报告（5 项交付物 + 3 项 owner 拍板 + E285~E289 + 残余项 + 下一阶段候选） | ✅ |
+| 7 | `docs/audit-t3/skill-trust-audit.md` | 24 项 Skill §10 五源信任域审查（5 Legacy + 19 Executable + market/4；6 项 v2.6+ 缺口） | ✅ |
 
-**下一动作**：
-- owner 侧：执行 §12 交付物 2 的 4 条 owner-side 冒烟命令（search / tavily / desktop / 低置信），回填结果
-- owner 侧：`[P-04]` provider 抖动平息后按 E1 复验门重新定稿回退（当前 provisional@2026-08-30）
-- owner 侧：E284 缓存复测、审计 ZIP 打包、P-95~P-104 到期拍板（截止 2026-09-10）
+**下一动作（owner 拍板回执 2026-09-01 已收齐，本节按回执更新）**：
+- ✅ 已闭环：4 条 owner-side 冒烟实跑（search 10/10 / desktop PASS / 低置信 PASS + 脚本健壮性补丁；tavily 8 月配额耗尽已登记 9 月 1 日重置后复跑）——见 `smoke-e2e-report.md §6`
+- ✅ 已闭环：R-3 方案 A（`.gitignore` 11 个参考项目目录双重忽略已验，CodeGraph 索引噪音消除）
+- ✅ 已闭环：23 项 Skill 市场 §10 信任域审查——`docs/audit-t3/skill-trust-audit.md`（24 项全审 + 6 项 v2.6+ 缺口候选）
+- 🟡 待 9/2 复测：`[P-04]` 维持 2500ms（选项 A 生效中，provisional@2026-08-30）。复测结果若 ≥7/10 启动回退评估（选项 B）；按 E1 复验门（n≥30 / 超时率 ≤10% / 准确率 ≥80% / p95×1.2）达标后定稿回退 1750ms
+- 🟡 待 owner：审计 ZIP 打包（checklist §11 装箱清单草案已备，待 owner 点头）；v2.5 交付前收口
+- 🟡 下一阶段候选（按"按顺序推进审计"原则任选其一）：① v2.5 交付前收口 ¥0 HIGH；② Skill 信任域 6 项缺口修复 ¥0~¥50 MEDIUM；③ T+6 follow-up（bench:devil-v25 全量回归 + 实际使用累积 + 6 个月稳定性复评）
+- 📌 T+3 周期收口报告：`docs/audit-t3/closure-report.md`（2026-09-01 闭环）
+- 📌 Skill 信任域审查报告：`docs/audit-t3/skill-trust-audit.md`（v2.5 后 v2.6+ 路线图）
