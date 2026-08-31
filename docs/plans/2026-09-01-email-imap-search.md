@@ -38,5 +38,6 @@
 - 验证：`npm run build` 绿；`npm run doc-lint` 0 FAIL 0 WARN。
 - 测试：新增单测 7 条——imap TLS 集成 2（主题 SEARCH 命令 + 中文本地兜底过滤 / 发件人、通用关键词 + 📎 标记）、office-daily 4（搜周报命中同格式 / 找 alice 发件人 / 无结果 / 无关键词引导）、router-v2 1（搜周报邮件 → office-daily）；imap+router-v2 109/109、office-daily 74/75（1 skip 为既有 PDF 用例）。
 - 冒烟修复（E301）：新增 pipeline 单测 2 条（直连本地 Skill 时 2 字触发词不抢 / 未直连时照常命中）；pipeline+nl-router 64/64。
+- 真实冒烟（owner 2026-09-01）：发件人搜索 `找 scutcxv138@outlook.com发的邮件` 命中 2 封 + 📎；主题搜索 `搜测试的邮件`/`搜直播的邮件`/`搜 NVIDIA 的邮件` 均命中；`搜周报的邮件` 诚实返回没搜到（E301 修复市场触发词抢占后）。
 - 提交：随当天收尾提交（commit 见 git log）。
-- 遗留：真实 QQ 搜信冒烟部分通过（发件人搜索命中 2 封 + 📎），主题搜索 E301 修复后复验待用户；多账号仍为 v2.6+ 候选。
+- 遗留：多账号仍为 v2.6+ 候选。
