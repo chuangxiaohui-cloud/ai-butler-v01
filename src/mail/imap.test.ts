@@ -15,6 +15,7 @@ import {
   fetchEmailAttachments,
   fetchEmailText,
   fetchRecentEmails,
+  searchEmails,
   parseAttachments,
   resolveImapConfig,
 } from './imap.js';
@@ -638,6 +639,78 @@ test('imap: TLS fetchRecentEmails BODYSTRUCTURE 附件标记（📎 判定）', 
     assert.equal(list[0].hasAttachment, true, 'alice（最新）含附件');
     assert.equal(list[1].hasAttachment, false, 'bob 无附件');
     assert.equal(fake.transcript.some((l) => l.includes('FETCH 1,2 (BODYSTRUCTURE)')), true);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: TLS searchEmails 主题关键词过滤（SEARCH 命令 + 中文本地兜底）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(SAMPLE_MESSAGES, certPath, keyPath);
+  try {
+    const port = fake.port;
+    const result = await searchEmails(
+      { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: true },
+      { subject: '周报' },
+      { timeoutMs: 8000, allowInsecureTls: true },
+    );
+    assert.equal(result.length, 1);
+    assert.equal(result[0].subject, '周报');
+    assert.equal(result[0].from, 'alice@example.com');
+    assert.ok(fake.transcript.some((l) => l.includes('SEARCH SUBJECT "周报"')), JSON.stringify(fake.transcript));
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: TLS searchEmails 发件人/通用关键词过滤 + 📎 标记', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const messages: FakeImapMessage[] = [
+    {
+      from: 'bob@example.com',
+      subject: 'Re: 方案',
+      date: 'Fri, 28 Aug 2026 18:30:00 +0800',
+      seen: true,
+      body: '方案收到，下周细聊。',
+    },
+    {
+      from: 'alice@example.com',
+      subject: '带附件周报',
+      date: 'Mon, 31 Aug 2026 09:00:00 +0800',
+      seen: false,
+      body: '正文',
+      bodyStructure:
+        '((("text/plain" "charset" "utf-8" NIL NIL "7bit" 10 0 NIL NIL NIL)' +
+        '("application/pdf" "pdf" NIL NIL "base64" 5025 NIL ("attachment" ("filename" "架构师审计框架说明.md")) NIL NIL)' +
+        ' "mixed")("text/html" "charset" "utf-8" NIL NIL "7bit" 20 0 NIL NIL NIL) "related" ("boundary" "r"))',
+    },
+  ];
+  const fake = await startFakeTlsImapServer(messages, certPath, keyPath);
+  try {
+    const port = fake.port;
+    const byFrom = await searchEmails(
+      { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: true },
+      { from: 'bob' },
+      { timeoutMs: 8000, allowInsecureTls: true },
+    );
+    assert.equal(byFrom.length, 1);
+    assert.equal(byFrom[0].subject, 'Re: 方案');
+    assert.ok(fake.transcript.some((l) => l.includes('SEARCH FROM "bob"')), JSON.stringify(fake.transcript));
+    const byKeyword = await searchEmails(
+      { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: true },
+      { keyword: '周报' },
+      { timeoutMs: 8000, allowInsecureTls: true },
+    );
+    assert.equal(byKeyword.length, 1);
+    assert.equal(byKeyword[0].hasAttachment, true, '命中 alice 带附件邮件（📎）');
+    assert.ok(
+      fake.transcript.some((l) => l.includes('SEARCH OR SUBJECT "周报" FROM "周报"')),
+      JSON.stringify(fake.transcript),
+    );
   } finally {
     await fake.close();
     rmSync(dir, { recursive: true, force: true });

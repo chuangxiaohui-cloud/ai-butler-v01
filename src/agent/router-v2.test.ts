@@ -442,6 +442,17 @@ test('router-v2: 查收件箱 → office-daily', () => {
   }
 });
 
+test('router-v2: 搜周报邮件 → office-daily', () => {
+  const r = routeV2('搜周报邮件');
+  assert.equal(r.features.actionType, 'office_daily');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'office_daily');
+    assert.equal(r.decision.selected.executor, 'office_daily');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
 test('router-v2: 读第 3 封 → office-daily', () => {
   const r = routeV2('读第 3 封');
   assert.equal(r.features.actionType, 'office_daily');
@@ -743,4 +754,3 @@ test('router-v2: 深度报告意图 → project_manager deep_report 且开搜索
     assert.equal(r.decision.selected.primaryLens, 'project_manager');
   }
 });
-

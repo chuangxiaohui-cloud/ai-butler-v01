@@ -23,7 +23,13 @@ import { parseTimeExpression, parseRepeatQuery } from '../../agent/time-expressi
 import { ReminderStore } from '../../reminder/reminder-store.js';
 import { guardSkillOutputPath } from '../../security/sandbox.js';
 import { loadCredentials } from '../../mail/credentials.js';
-import { fetchEmailAttachments, fetchEmailText, fetchRecentEmails } from '../../mail/imap.js';
+import {
+  fetchEmailAttachments,
+  fetchEmailText,
+  fetchRecentEmails,
+  searchEmails,
+  type ImapSearchCriteria,
+} from '../../mail/imap.js';
 import { sendMail } from '../../mail/smtp.js';
 import ExcelJS from 'exceljs';
 
@@ -187,7 +193,7 @@ function modeFrom(query: string): OfficeMode {
   if (/主动提醒|提醒我|设置提醒|提醒/.test(query)) return 'reminder';
   if (/考勤|模板|表格/.test(query)) return 'table';
   if (/占比|比例|汇总|统计|分析/.test(query)) return 'analyze';
-  if (/邮件|回复|写信|回复客户|收件箱|收邮件|查邮件|未读邮件|读第\s*\d+\s*封|下载.*附件|附件.*下载|保存.*附件|附件.*保存|确认发送|确定发送|确认发出|确定发出/.test(query)) return 'email';
+  if (/邮件|回复|写信|回复客户|收件箱|收邮件|查邮件|未读邮件|读第\s*\d+\s*封|下载.*附件|附件.*下载|保存.*附件|附件.*保存|确认发送|确定发送|确认发出|确定发出|搜信|搜.*邮件|找.*邮件|查找.*邮件|搜索.*邮件/.test(query)) return 'email';
   if (/压缩|减小|KB|体积/.test(query)) return 'image';
   return 'table';
 }
@@ -321,6 +327,38 @@ function extractMailBody(query: string): string {
 function extractReadSeq(query: string): number | null {
   const m = query.match(/(?:读|下载|保存)第\s*(\d+)\s*封/);
   return m ? Number(m[1]) : null;
+}
+
+/** E300：从查询中提取搜信条件——主题（主题是 X）/ 发件人（X 发的 / 来自 X）/ 通用关键词（搜 X）；无关键词返回 null */
+function extractSearchCriteria(query: string): ImapSearchCriteria | null {
+  const subjectM = query.match(/主题(?:是|为|含|包含)?\s*[“"「『]?([^“"」』，。！？；、\s]{1,40})/);
+  if (subjectM) {
+    const subject = subjectM[1].replace(/的?邮件$/, '').trim();
+    if (subject) return { subject };
+  }
+  const fromM = query.match(/(?:来自|发件人)[“"「『]?\s*([^“"」』，。！？；、\s]{1,40})/);
+  const fromM2 = query.match(/([\w.+-]+@[\w.-]+|\S{1,40}?)\s*发(?:来|的|给|过)/);
+  const from = (fromM?.[1] ?? fromM2?.[1] ?? '').replace(/[的，。！？]$/, '').trim();
+  if (from) return { from };
+  const kwM = query.match(/(?:搜|找|查|搜索|查找)(?:一下|一查)?\s*[“"「『]?([^“"」』，。！？；、\s]{1,40})/);
+  if (kwM) {
+    const keyword = kwM[1]
+      .replace(/^(?:邮件|信箱|收件箱)/, '')
+      .replace(/(?:邮件|的信|的邮件|的内容)$/, '')
+      .trim();
+    if (keyword) return { keyword };
+  }
+  return null;
+}
+
+/** E293/E300：查收件箱/搜信共用列表行（含 📎 附件标记） */
+function formatEmailList(list: { seen: boolean; from: string; subject: string; date: string; hasAttachment: boolean }[]): string {
+  return list
+    .map(
+      (m, i) =>
+        `${i + 1}. ${m.seen ? '已读' : '未读'}｜${m.from || '(无发件人)'}｜${m.subject || '(无主题)'}｜${m.date || ''}${m.hasAttachment ? '｜📎' : ''}`,
+    )
+    .join('\n');
 }
 
 /** E170：从草稿 Markdown 中解析标题（## 标题） */
@@ -1197,6 +1235,55 @@ export function createOfficeDailySkill(opts?: {
             };
           }
         }
+        // E300：搜信——搜邮件（主题/发件人/关键词），IMAP SEARCH + 中文解码本地兜底
+        const isSearchIntent = /搜信|搜.*邮件|找.*邮件|查找.*邮件|搜索.*邮件/.test(input.query);
+        if (isSearchIntent) {
+          const criteria = extractSearchCriteria(input.query);
+          if (!criteria) {
+            return {
+              result: {
+                answer: '想搜什么？可以这样说：「搜周报」「找 alice 发的邮件」「主题是周报的邮件」。',
+              },
+              confidence: 0.5,
+            };
+          }
+          const creds = loadCredentials(join(mailDir, 'mail-credentials.json'));
+          if (!creds) {
+            return {
+              result: {
+                answer:
+                  '还没配置邮箱账号，无法搜信。请先运行 npm run mail:config 配置 SMTP 服务器、账号与授权码；收件服务器默认由 SMTP 主机推导（smtp.qq.com → imap.qq.com，993 TLS），如不同可用 imapHost/imapPort/imapSecure 补充。',
+              },
+              confidence: 0.4,
+              followUpAction: '配置完成后再说“搜邮件”即可。',
+            };
+          }
+          try {
+            const results = await searchEmails(creds, criteria, { ...imapFetchOptions, limit: 10 });
+            if (results.length === 0) {
+              return {
+                result: { answer: '没搜到匹配的邮件。' },
+                confidence: 0.6,
+                followUpAction: '换个关键词，或说“查收件箱”看最近 10 封。',
+              };
+            }
+            return {
+              result: {
+                answer: `搜到 ${results.length} 封匹配邮件：\n${formatEmailList(results)}\n\n回复「读第 N 封」查看某封全文。`,
+              },
+              confidence: 0.75,
+              followUpAction: '说“读第 1 封”查看最新一封的正文（外部内容按 untrusted_data 处理）。',
+            };
+          } catch (err) {
+            return {
+              result: {
+                answer: `搜信失败：${err instanceof Error ? err.message : String(err)}`,
+              },
+              confidence: 0.2,
+              followUpAction: '请检查 data/mail/mail-credentials.json 的 IMAP 配置（imapHost/imapPort/imapSecure），或稍后重试。',
+            };
+          }
+        }
         // E293：收件箱/未读邮件/读第 N 封 → IMAP 只读收件（正文按 §10.5 untrusted_data 标记，防注入）
         const isReceiveIntent = /收件箱|收邮件|查邮件|未读邮件|读第\s*\d+\s*封/.test(input.query);
         if (isReceiveIntent) {
@@ -1249,13 +1336,9 @@ export function createOfficeDailySkill(opts?: {
                 confidence: 0.7,
               };
             }
-            const lines = list.map(
-              (m, i) =>
-                `${i + 1}. ${m.seen ? '已读' : '未读'}｜${m.from || '(无发件人)'}｜${m.subject || '(无主题)'}｜${m.date || ''}${m.hasAttachment ? '｜📎' : ''}`,
-            );
             return {
               result: {
-                answer: `收件箱最近 ${list.length} 封邮件：\n${lines.join('\n')}\n\n回复「读第 N 封」查看某封全文。`,
+                answer: `收件箱最近 ${list.length} 封邮件：\n${formatEmailList(list)}\n\n回复「读第 N 封」查看某封全文。`,
               },
               confidence: 0.75,
               followUpAction: '说“读第 1 封”查看最新一封的正文（外部内容按 untrusted_data 处理）。',
@@ -1777,6 +1860,3 @@ ${timeLabel}
     },
   };
 }
-
-
-

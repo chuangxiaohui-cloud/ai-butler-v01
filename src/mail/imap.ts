@@ -789,6 +789,58 @@ function parseHeaderTime(raw: string): number {
   return Number.isNaN(t) ? 0 : t;
 }
 
+/** E300：头部摘要（MIME 解码后），查收件箱/搜信共用排序、过滤与 📎 */
+interface HeaderSummary {
+  seq: number;
+  from: string;
+  subject: string;
+  date: string;
+  seen: boolean;
+  time: number;
+}
+
+/** E293/E300：取若干封的头部+已读标记（MIME 解码；不做排序/截断） */
+async function fetchHeaderSummaries(session: ImapSession, seqs: number[]): Promise<HeaderSummary[]> {
+  if (seqs.length === 0) return [];
+  const fetch = await session.command(
+    `FETCH ${seqs.join(',')} (FLAGS BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])`,
+    'OK',
+  );
+  return parseFetchUnits(fetch.parts).map((u) => {
+    const h = parseHeaderLiteral(u.literals.join('\n'));
+    return {
+      seq: u.seq,
+      from: decodeMimeHeader(h.from),
+      subject: decodeMimeHeader(h.subject),
+      date: h.date,
+      seen: u.flags.includes('\\Seen'),
+      time: parseHeaderTime(h.date),
+    };
+  });
+}
+
+/** E299/E300：为最终展示条数补 📎（只对结果发 BODYSTRUCTURE） */
+async function fetchAttachmentFlags(session: ImapSession, items: HeaderSummary[]): Promise<Map<number, boolean>> {
+  const out = new Map<number, boolean>();
+  if (items.length === 0) return out;
+  const bsFetch = await session.command(
+    `FETCH ${items.map((i) => i.seq).join(',')} (BODYSTRUCTURE)`,
+    'OK',
+  );
+  const bsMap = parseBodyStructureUnits(bsFetch.parts);
+  for (const it of items) out.set(it.seq, bodyStructureHasAttachment(bsMap.get(it.seq) ?? ''));
+  return out;
+}
+
+/** E293/E300：按 Date 倒序（最新在前）+ seq 倒序，截取 limit */
+function sortAndSlice(items: HeaderSummary[], limit: number): HeaderSummary[] {
+  return [...items].sort((a, b) => b.time - a.time || b.seq - a.seq).slice(0, limit);
+}
+
+function toSummary(m: HeaderSummary, hasAttachment: boolean): ImapMessageSummary {
+  return { seq: m.seq, from: m.from, subject: m.subject, date: m.date, seen: m.seen, hasAttachment };
+}
+
 /** E293：查收件箱最近 N 封（发件人/主题/日期/未读），按 Date 倒序（最新在前；QQ IMAP 的 seq 不保证按时间顺序） */
 export async function fetchRecentEmails(
   creds: {
@@ -807,35 +859,90 @@ export async function fetchRecentEmails(
     await session.command('SELECT INBOX', 'OK');
     const seqs = await searchRecentSeqs(session, limit);
     if (seqs.length === 0) return [];
-    const cand = seqs.slice(-limit * 3);
-    const fetch = await session.command(
-      `FETCH ${cand.join(',')} (FLAGS BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])`,
-      'OK',
-    );
-    // E299：BODYSTRUCTURE 判定每封是否含附件（查收件箱列表 📎 标记）
-    const bsFetch = await session.command(`FETCH ${cand.join(',')} (BODYSTRUCTURE)`, 'OK');
-    const bsMap = parseBodyStructureUnits(bsFetch.parts);
-    const parsed = parseFetchUnits(fetch.parts).map((u) => {
-      const h = parseHeaderLiteral(u.literals.join('\n'));
-      return {
-        seq: u.seq,
-        from: decodeMimeHeader(h.from),
-        subject: decodeMimeHeader(h.subject),
-        date: h.date,
-        seen: u.flags.includes('\\Seen'),
-        time: parseHeaderTime(h.date),
-        hasAttachment: bodyStructureHasAttachment(bsMap.get(u.seq) ?? ''),
-      };
-    });
-    parsed.sort((a, b) => b.time - a.time || b.seq - a.seq);
-    return parsed.slice(0, limit).map((m) => ({
-      seq: m.seq,
-      from: m.from,
-      subject: m.subject,
-      date: m.date,
-      seen: m.seen,
-      hasAttachment: m.hasAttachment,
-    }));
+    const headers = await fetchHeaderSummaries(session, seqs.slice(-limit * 3));
+    const top = sortAndSlice(headers, limit);
+    const bs = await fetchAttachmentFlags(session, top);
+    return top.map((m) => toSummary(m, bs.get(m.seq) ?? false));
+  } finally {
+    await quit(session);
+  }
+}
+
+/** E300：搜信条件——至少一项非空；keyword 匹配主题或发件人（服务器 OR + 本地解码过滤） */
+export interface ImapSearchCriteria {
+  /** 主题关键词（SEARCH SUBJECT） */
+  subject?: string;
+  /** 发件人关键词（SEARCH FROM；邮箱名/显示名均可） */
+  from?: string;
+  /** 通用关键词：主题或发件人任一命中 */
+  keyword?: string;
+}
+
+export interface ImapSearchOptions extends ImapFetchOptions {
+  limit?: number;
+  /** 中文 MIME 主题/发件人本地兜底窗口（最近 N 封；默认 200） */
+  searchWindow?: number;
+}
+
+const DEFAULT_SEARCH_WINDOW = 200;
+
+/** E300：搜信条件 → IMAP SEARCH 片段（多条件按 AND；keyword 用 OR SUBJECT/FROM） */
+function buildSearchParts(c: ImapSearchCriteria): string[] {
+  const parts: string[] = [];
+  if (c.subject) parts.push(`SUBJECT ${quoteString(c.subject)}`);
+  if (c.from) parts.push(`FROM ${quoteString(c.from)}`);
+  if (c.keyword) parts.push(`OR SUBJECT ${quoteString(c.keyword)} FROM ${quoteString(c.keyword)}`);
+  return parts;
+}
+
+/** E300：任一条件含非 ASCII（中文 MIME 头 `=?utf-8?B?...?=` 服务器 SEARCH 不命中）→ 需本地解码兜底 */
+function hasNonAscii(c: ImapSearchCriteria): boolean {
+  return [c.subject, c.from, c.keyword].some((v) => !!v && /[\u0080-\uFFFF]/.test(v));
+}
+
+/** E300：本地解码后按条件过滤（不区分大小写子串） */
+function matchCriteria(m: { from: string; subject: string }, c: ImapSearchCriteria): boolean {
+  const from = m.from.toLowerCase();
+  const subject = m.subject.toLowerCase();
+  if (c.subject && !subject.includes(c.subject.toLowerCase())) return false;
+  if (c.from && !from.includes(c.from.toLowerCase())) return false;
+  if (c.keyword && !subject.includes(c.keyword.toLowerCase()) && !from.includes(c.keyword.toLowerCase())) {
+    return false;
+  }
+  return true;
+}
+
+/** E300：搜信——按主题/发件人/关键词搜收件箱（服务器 SEARCH + 中文 MIME 本地兜底），结果与查收件箱同格式（Date 倒序 + 📎） */
+export async function searchEmails(
+  creds: {
+    host: string;
+    user: string;
+    pass: string;
+    imapHost?: string;
+    imapPort?: number;
+    imapSecure?: boolean;
+  },
+  criteria: ImapSearchCriteria,
+  options: ImapSearchOptions = {},
+): Promise<ImapMessageSummary[]> {
+  const parts = buildSearchParts(criteria);
+  if (parts.length === 0) return [];
+  const limit = options.limit ?? 10;
+  const searchWindow = options.searchWindow ?? DEFAULT_SEARCH_WINDOW;
+  const session = await openSession(creds, options);
+  try {
+    await session.command('SELECT INBOX', 'OK');
+    const serverSeqs = parseSearchSeqs((await session.command(`SEARCH ${parts.join(' ')}`, 'OK')).parts);
+    let candidates = serverSeqs.slice(-searchWindow);
+    if (hasNonAscii(criteria) || serverSeqs.length === 0) {
+      const windowSeqs = (await searchRecentSeqs(session, Math.max(limit, searchWindow))).slice(-searchWindow);
+      candidates = Array.from(new Set([...serverSeqs, ...windowSeqs])).slice(-searchWindow);
+    }
+    const headers = await fetchHeaderSummaries(session, candidates);
+    const filtered = headers.filter((m) => matchCriteria(m, criteria));
+    const top = sortAndSlice(filtered, limit);
+    const bs = await fetchAttachmentFlags(session, top);
+    return top.map((m) => toSummary(m, bs.get(m.seq) ?? false));
   } finally {
     await quit(session);
   }

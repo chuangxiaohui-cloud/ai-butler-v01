@@ -2885,6 +2885,89 @@ test('office-daily: 查收件箱列表带 📎 附件标记（E299）', { skip: 
   }
 });
 
+test('office-daily: 搜信（搜周报的邮件）→ 命中列表与查收件箱同格式', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(IMAP_MESSAGES, certPath, keyPath);
+  try {
+    const mailDir = join(dir, 'mail');
+    saveImapCredentials(mailDir, fake.port);
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir, imapOptions: { allowInsecureTls: true } });
+    const out = await skill.execute(
+      { query: '搜周报的邮件', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('搜到 1 封匹配邮件'), result.answer);
+    assert.ok(result.answer?.includes('1. 未读｜alice@example.com｜周报'), result.answer);
+    assert.ok(result.answer?.includes('读第 N 封'), result.answer);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 搜信按发件人（找 alice 发的邮件）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(IMAP_MESSAGES, certPath, keyPath);
+  try {
+    const mailDir = join(dir, 'mail');
+    saveImapCredentials(mailDir, fake.port);
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir, imapOptions: { allowInsecureTls: true } });
+    const out = await skill.execute(
+      { query: '找 alice 发的邮件', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('搜到 1 封匹配邮件'), result.answer);
+    assert.ok(result.answer?.includes('alice@example.com'), result.answer);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 搜信无结果 → 诚实提示', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(IMAP_MESSAGES, certPath, keyPath);
+  try {
+    const mailDir = join(dir, 'mail');
+    saveImapCredentials(mailDir, fake.port);
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir, imapOptions: { allowInsecureTls: true } });
+    const out = await skill.execute(
+      { query: '搜周报不存在的邮件', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('没搜到匹配的邮件'), result.answer);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 搜信无关键词 → 引导话术', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(IMAP_MESSAGES, certPath, keyPath);
+  try {
+    const mailDir = join(dir, 'mail');
+    saveImapCredentials(mailDir, fake.port);
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir, imapOptions: { allowInsecureTls: true } });
+    const out = await skill.execute(
+      { query: '搜邮件', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('想搜什么'), result.answer);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('office-daily: 读第 1 封 → 正文带 untrusted_data 防护标记', { skip: !HAS_CRYPTOGRAPHY }, async () => {
   const dir = tempDir();
   const { certPath, keyPath } = genCert(dir);
