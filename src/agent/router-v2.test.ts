@@ -453,6 +453,17 @@ test('router-v2: 读第 3 封 → office-daily', () => {
   }
 });
 
+test('router-v2: 下载第 2 封的附件 → office-daily', () => {
+  const r = routeV2('下载第 2 封的附件');
+  assert.equal(r.features.actionType, 'office_daily');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'office_daily');
+    assert.equal(r.decision.selected.executor, 'office_daily');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
 test('router-v2: 发微信消息仍走 im_dispatch', () => {
   const r = routeV2('发消息给老张，说晚上一起吃饭');
   assert.equal(r.features.actionType, 'send');
@@ -732,5 +743,4 @@ test('router-v2: 深度报告意图 → project_manager deep_report 且开搜索
     assert.equal(r.decision.selected.primaryLens, 'project_manager');
   }
 });
-
 

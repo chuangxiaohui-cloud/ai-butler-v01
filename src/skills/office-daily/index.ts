@@ -23,7 +23,7 @@ import { parseTimeExpression, parseRepeatQuery } from '../../agent/time-expressi
 import { ReminderStore } from '../../reminder/reminder-store.js';
 import { guardSkillOutputPath } from '../../security/sandbox.js';
 import { loadCredentials } from '../../mail/credentials.js';
-import { fetchEmailText, fetchRecentEmails } from '../../mail/imap.js';
+import { fetchEmailAttachments, fetchEmailText, fetchRecentEmails } from '../../mail/imap.js';
 import { sendMail } from '../../mail/smtp.js';
 import ExcelJS from 'exceljs';
 
@@ -187,7 +187,7 @@ function modeFrom(query: string): OfficeMode {
   if (/主动提醒|提醒我|设置提醒|提醒/.test(query)) return 'reminder';
   if (/考勤|模板|表格/.test(query)) return 'table';
   if (/占比|比例|汇总|统计|分析/.test(query)) return 'analyze';
-  if (/邮件|回复|写信|回复客户|收件箱|收邮件|查邮件|未读邮件|读第\s*\d+\s*封|确认发送|确定发送|确认发出|确定发出/.test(query)) return 'email';
+  if (/邮件|回复|写信|回复客户|收件箱|收邮件|查邮件|未读邮件|读第\s*\d+\s*封|下载.*附件|附件.*下载|保存.*附件|附件.*保存|确认发送|确定发送|确认发出|确定发出/.test(query)) return 'email';
   if (/压缩|减小|KB|体积/.test(query)) return 'image';
   return 'table';
 }
@@ -317,9 +317,9 @@ function extractMailBody(query: string): string {
     .trim();
 }
 
-/** E293：从查询中提取要读的邮件位次（“读第 N 封”，1=最新一封）；无返回 null */
+/** E293/E298：从查询中提取邮件位次（“读/下载/保存第 N 封”，1=最新一封）；无返回 null */
 function extractReadSeq(query: string): number | null {
-  const m = query.match(/读第\s*(\d+)\s*封/);
+  const m = query.match(/(?:读|下载|保存)第\s*(\d+)\s*封/);
   return m ? Number(m[1]) : null;
 }
 
@@ -432,6 +432,11 @@ function safeName(name: string): string {
   return name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '_') || 'file';
 }
 
+/** E298：附件落盘文件名——去路径分隔符/控制字符/首尾点，保留中文与扩展名（附件名面向用户，不能像内部临时文件那样全角转下划线）；空名回退 file */
+function attachmentFileName(name: string): string {
+  return name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').replace(/^\.+|\.+$/g, '').trim() || 'file';
+}
+
 const THEME_COLORS: Record<string, string> = {
   蓝色: '#4472C4',
   blue: '#4472C4',
@@ -512,8 +517,10 @@ export function tableMergesNote(merges: TableMerge[]): string {
 export function createOfficeDailySkill(opts?: {
   outDir?: string;
   mailDir?: string;
+  /** E298 测试注入：附件落盘目录（显式注入跳过沙箱，与 outDir 同语义） */
+  attachmentDir?: string;
   /** E293 测试注入：IMAP 连接选项（仅测试环境放行自签证书） */
-  imapOptions?: { allowInsecureTls?: boolean; timeoutMs?: number; maxBodyBytes?: number };
+  imapOptions?: { allowInsecureTls?: boolean; timeoutMs?: number; maxBodyBytes?: number; maxMessageBytes?: number };
 }): ExecutableSkill {
   return {
     name: 'office-daily',
@@ -1125,6 +1132,71 @@ export function createOfficeDailySkill(opts?: {
       }
 
       if (mode === 'email') {
+        // E298：下载/保存附件 → IMAP BODY.PEEK[] 取整封 → 解析附件 → 落盘 data/mail-attachments（B1 沙箱门禁）
+        const isAttachmentIntent = /下载.*附件|附件.*下载|保存.*附件|附件.*保存/.test(input.query);
+        if (isAttachmentIntent) {
+          const readSeq = extractReadSeq(input.query);
+          const attachmentDir = opts?.attachmentDir ?? join(process.cwd(), 'data', 'mail-attachments');
+          const attachGate = guardSkillOutputPath(attachmentDir, { explicit: Boolean(opts?.attachmentDir) });
+          if (!attachGate.allowed) {
+            return {
+              result: { answer: `附件目录不在沙箱白名单内，未执行：${attachmentDir}` },
+              confidence: 0.2,
+            };
+          }
+          const creds = loadCredentials(join(mailDir, 'mail-credentials.json'));
+          if (!creds) {
+            return {
+              result: {
+                answer:
+                  '还没配置邮箱账号，无法下载附件。请先运行 npm run mail:config 配置 SMTP 服务器、账号与授权码；收件服务器默认由 SMTP 主机推导（smtp.qq.com → imap.qq.com，993 TLS），如不同可用 imapHost/imapPort/imapSecure 补充。',
+              },
+              confidence: 0.4,
+              followUpAction: '配置完成后再说“下载附件”即可。',
+            };
+          }
+          try {
+            const recent = await fetchRecentEmails(creds, { ...imapFetchOptions, limit: 10 });
+            if (recent.length === 0) {
+              return { result: { answer: '收件箱里目前没有邮件。' }, confidence: 0.7 };
+            }
+            const target = readSeq !== null ? recent[readSeq - 1] : recent[0];
+            if (!target) {
+              return {
+                result: { answer: `收件箱里没有第 ${readSeq} 封（当前显示最近 ${recent.length} 封）。` },
+                confidence: 0.6,
+              };
+            }
+            const attachments = await fetchEmailAttachments(creds, target.seq, imapFetchOptions);
+            if (attachments.length === 0) {
+              return {
+                result: { answer: `收件箱第 ${readSeq ?? 1} 封（${target.subject || '无主题'}）没有附件。` },
+                confidence: 0.7,
+              };
+            }
+            mkdirSync(attachmentDir, { recursive: true });
+            const saved = attachments.map((a) => {
+              const fileName = attachmentFileName(a.filename);
+              writeFileSync(join(attachmentDir, fileName), a.content);
+              return `${fileName}（${a.size} 字节）`;
+            });
+            return {
+              result: {
+                answer: `已下载收件箱第 ${readSeq ?? 1} 封的 ${attachments.length} 个附件：\n${saved.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n保存位置：${attachmentDir}`,
+              },
+              confidence: 0.8,
+              followUpAction: '说“查收件箱”可返回列表；附件已按原文保存。',
+            };
+          } catch (err) {
+            return {
+              result: {
+                answer: `附件下载失败：${err instanceof Error ? err.message : String(err)}`,
+              },
+              confidence: 0.2,
+              followUpAction: '请检查 data/mail/mail-credentials.json 的 IMAP 配置（imapHost/imapPort/imapSecure），或稍后重试。',
+            };
+          }
+        }
         // E293：收件箱/未读邮件/读第 N 封 → IMAP 只读收件（正文按 §10.5 untrusted_data 标记，防注入）
         const isReceiveIntent = /收件箱|收邮件|查邮件|未读邮件|读第\s*\d+\s*封/.test(input.query);
         if (isReceiveIntent) {
@@ -1705,9 +1777,6 @@ ${timeLabel}
     },
   };
 }
-
-
-
 
 
 

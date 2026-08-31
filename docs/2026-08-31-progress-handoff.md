@@ -25,9 +25,20 @@
 - **后续修复（owner 拍板 2026-08-31，`docs/plans/2026-08-31-email-imap-recent-by-date.md`）**：QQ IMAP 的 seq 不按时间顺序（INTERNALDATE 证实 2019-2022 老邮件 seq 2248-2984 大于 8/31 上午邮件 2247，授权码昨日重建后触发重排），「最后 N 个 seq」≠「最近 N 封」；`fetchRecentEmails` 改为 `SEARCH SINCE` 逐档放宽取候选 + 本地按 Date 排序；真实冒烟通过（列表按日期、`读第 1 封`=最新一封）。
 - **后续修复（owner 拍板 2026-08-31，`docs/plans/2026-08-31-email-mime-header-decode.md`）**：主题/发件人显示名 RFC 2047 MIME 解码——`decodeMimeHeader`（B/Q、相邻编码词合并、TextDecoder 字符集 + utf-8 回退），`fetchRecentEmails` 返回前应用；真实样本（utf-8/gb2312 B、Q、拼接段）验证通过；单测 +9（`decodeMimeHeader` 8 断言 + TLS fake 集成 1 条），imap 10/10、office-daily 66/67 全绿。
 
+### 3. 收件箱附件下载 E298（owner 指令 2026-08-31「附件下载」）
+
+- **代码**：
+  - `src/mail/imap.ts`：`EmailAttachment` 接口 + `parseAttachments(raw)`（整封原始邮件 MIME 递归解析——顶层 multipart 边界 + 嵌套 multipart 下钻；附件判定 `Content-Disposition: attachment` 或有 filename 且非 inline；文件名 `filename*=`（RFC 2231）→ `filename=` → RFC 2047 MIME 词解码 → 占位「附件」；内容 base64 / quoted-printable 还原字节）+ `fetchEmailAttachments(creds, seq, options)`（`FETCH N BODY.PEEK[]<0.maxMessageBytes>` 不置已读，默认上限 10MB）；解析入口统一去 `\r`（JS 正则 `$` 锚点对行尾孤立 `\r` 不匹配，否则顶层 Content-Type 头解析失败）。
+  - `src/skills/office-daily/index.ts`：email 模式新增附件下载分支（「下载/保存 + 附件」意图；「下载第 N 封附件」按列表位次定位、缺省最新一封）；落盘 `data/mail-attachments/`（`attachmentDir` 测试注入，走 B1 `guardSkillOutputPath` 门禁，文件名清洗保留中文与扩展名、去路径分隔符）；无凭据 / 空收件箱 / 无附件 / 越界诚实提示；`modeFrom`、`extractReadSeq` 补下载关键词。
+  - `src/agent/intent-feature.ts`：office_daily 特征正则补「下载.*附件 / 附件.*下载 / 保存.*附件 / 附件.*保存」→ 下载附件直连 office-daily。
+  - `src/security/sandbox.ts`：`SKILL_OUTPUT_DIRS` 增 `data/mail-attachments`。
+- **验证**：`npm run build` 绿；新增单测 11 条（imap 6 + office-daily 3 + router-v2 1 + sandbox 1）全绿——imap 24/24、router-v2 81/81、sandbox 13/13（合并 118/118）、office-daily 69/70（1 skip 为既有 PDF 用例）；doc-lint 0 FAIL 0 WARN（提交前复核）。
+- **文档**：`docs/plans/2026-08-31-email-imap-attachment-download.md`；附录 A E298；`docs/roadmap.md` E293-后「附件下载」改已完成（E298）。
+- **遗留**：搜信（SEARCH 条件）/ 多账号仍为 v2.6+ 候选；真实 QQ IMAP 附件下载冒烟待用户（成本纪律）。
+
 ## 工作区遗留（未提交，非本次 E293 范围）
 
-### 3. v2.6 B1~B4 安全治理（E294~E297，owner 指令 2026-08-31「按 B1~B4 安全治理」）
+### 4. v2.6 B1~B4 安全治理（E294~E297，owner 指令 2026-08-31「按 B1~B4 安全治理」）
 
 - **B1 写盘沙箱（E294）**：`src/security/sandbox.ts` 新增 Skill 应用数据目录二级白名单 `isSkillOutputAllowed`（`data/{office,learned-videos,boms,calendar}`）+ `guardSkillOutputPath` 门禁（显式注入 outDir 的测试/受信调用方跳过，生产默认路径必须过白名单 + 审计日志）；`calendar-skill` / `schematic-bom` / `office-daily` / `video-learner` 四处写盘点接入。sandbox 单测 +5；office-daily 118/119（1 skip）等全绿。
 - **B2 video-learner 域白名单（E295）**：`videoLearnAllowedHosts()`（`VIDEO_LEARN_ALLOWED_HOSTS` env 追加，默认 bilibili/bilivideo/hdslb 域）+ `isVideoLearnUrlAllowed()`（http(s)+子域）；B站响应 untrusted 字幕/媒体 URL 下载前校验，透传 session `allowedHosts`。单测 +2；既有 B站兜底 fixture 改真实 B站域名。

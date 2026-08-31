@@ -12,8 +12,10 @@ import {
   decodeMimeHeader,
   extractPlainText,
   htmlToText,
+  fetchEmailAttachments,
   fetchEmailText,
   fetchRecentEmails,
+  parseAttachments,
   resolveImapConfig,
 } from './imap.js';
 
@@ -49,6 +51,8 @@ interface FakeImapMessage {
   date: string;
   seen: boolean;
   body: string;
+  /** E298：整封原始 MIME 消息（BODY.PEEK[] 响应用；缺省回退 body） */
+  raw?: string;
 }
 
 const SAMPLE_MESSAGES: FakeImapMessage[] = [
@@ -102,7 +106,7 @@ function handleImapSocket(
           } else {
             const partial = cmd.match(/<0\.(\d+)>/);
             const maxBytes = partial ? Number(partial[1]) : Number.POSITIVE_INFINITY;
-            const body = Buffer.from(msg.body, 'utf8').subarray(0, maxBytes).toString('utf8');
+            const body = Buffer.from(msg.raw ?? msg.body, 'utf8').subarray(0, maxBytes).toString('utf8');
             socket.write(`* ${seq} FETCH (BODY[TEXT] {${Buffer.byteLength(body)}}\r\n`);
             socket.write(`${body}\r\n`);
             socket.write(')\r\n');
@@ -290,6 +294,108 @@ test('imap: extractPlainText URL 前冒号补空格', () => {
   );
 });
 
+test('imap: parseAttachments 提取 base64 附件（filename=）', () => {
+  const raw =
+    'From: sender@example.com\r\n' +
+    'Subject: 带附件\r\n' +
+    'Content-Type: multipart/mixed; boundary="b"\r\n' +
+    '\r\n' +
+    '--b\r\n' +
+    'Content-Type: text/plain; charset="utf-8"\r\n' +
+    '\r\n' +
+    '正文\r\n' +
+    '--b\r\n' +
+    'Content-Type: application/pdf\r\n' +
+    'Content-Disposition: attachment; filename="report.pdf"\r\n' +
+    'Content-Transfer-Encoding: base64\r\n' +
+    '\r\n' +
+    Buffer.from('%PDF-1.4 测试', 'utf8').toString('base64') +
+    '\r\n--b--\r\n';
+  const atts = parseAttachments(raw);
+  assert.equal(atts.length, 1);
+  assert.equal(atts[0].filename, 'report.pdf');
+  assert.equal(atts[0].contentType, 'application/pdf');
+  assert.equal(atts[0].size, Buffer.byteLength('%PDF-1.4 测试', 'utf8'));
+  assert.equal(atts[0].content.toString('utf8'), '%PDF-1.4 测试');
+});
+
+test('imap: parseAttachments RFC 2231 filename*= 优先解码', () => {
+  const raw =
+    'Content-Type: multipart/mixed; boundary="b"\r\n' +
+    '\r\n' +
+    '--b\r\n' +
+    'Content-Type: application/octet-stream\r\n' +
+    'Content-Disposition: attachment; filename*=UTF-8\x27\x27%E6%B5%8B%E8%AF%95%E6%8A%A5%E5%91%8A.pdf\r\n' +
+    'Content-Transfer-Encoding: base64\r\n' +
+    '\r\n' +
+    Buffer.from('hello', 'utf8').toString('base64') +
+    '\r\n--b--\r\n';
+  const atts = parseAttachments(raw);
+  assert.equal(atts.length, 1);
+  assert.equal(atts[0].filename, '测试报告.pdf');
+  assert.equal(atts[0].content.toString('utf8'), 'hello');
+});
+
+test('imap: parseAttachments RFC 2047 MIME 词文件名解码', () => {
+  const raw =
+    'Content-Type: multipart/mixed; boundary="b"\r\n' +
+    '\r\n' +
+    '--b\r\n' +
+    'Content-Type: text/plain\r\n' +
+    'Content-Disposition: attachment; filename="=?utf-8?B?5rWL6K+V5Li76aKYLnR4dA==?="\r\n' +
+    'Content-Transfer-Encoding: base64\r\n' +
+    '\r\n' +
+    Buffer.from('内容', 'utf8').toString('base64') +
+    '\r\n--b--\r\n';
+  const atts = parseAttachments(raw);
+  assert.equal(atts.length, 1);
+  assert.equal(atts[0].filename, '测试主题.txt');
+  assert.equal(atts[0].content.toString('utf8'), '内容');
+});
+
+test('imap: parseAttachments 嵌套 multipart 递归收集', () => {
+  const raw =
+    'Content-Type: multipart/mixed; boundary="outer"\r\n' +
+    '\r\n' +
+    '--outer\r\n' +
+    'Content-Type: multipart/related; boundary="inner"\r\n' +
+    '\r\n' +
+    '--inner\r\n' +
+    'Content-Type: text/plain\r\n' +
+    '\r\n' +
+    '正文\r\n' +
+    '--inner\r\n' +
+    'Content-Type: image/png\r\n' +
+    'Content-Disposition: attachment; filename="logo.png"\r\n' +
+    'Content-Transfer-Encoding: base64\r\n' +
+    '\r\n' +
+    Buffer.from('PNGDATA', 'utf8').toString('base64') +
+    '\r\n--inner--\r\n' +
+    '--outer\r\n' +
+    'Content-Type: text/plain\r\n' +
+    'Content-Disposition: attachment; filename="note.txt"\r\n' +
+    '\r\n' +
+    'note\r\n' +
+    '--outer--\r\n';
+  const atts = parseAttachments(raw);
+  assert.deepEqual(atts.map((a) => a.filename), ['logo.png', 'note.txt']);
+});
+
+test('imap: parseAttachments 无附件 / inline 图片排除', () => {
+  assert.deepEqual(parseAttachments('From: a@b.c\r\nSubject: x\r\n\r\nplain body'), []);
+  const raw =
+    'Content-Type: multipart/mixed; boundary="b"\r\n' +
+    '\r\n' +
+    '--b\r\n' +
+    'Content-Type: image/png; name="logo.png"\r\n' +
+    'Content-Disposition: inline; filename="logo.png"\r\n' +
+    'Content-Transfer-Encoding: base64\r\n' +
+    '\r\n' +
+    Buffer.from('PNGDATA', 'utf8').toString('base64') +
+    '\r\n--b--\r\n';
+  assert.deepEqual(parseAttachments(raw), []);
+});
+
 test('imap: decodeMimeHeader RFC 2047 解码（B/Q/拼接段/回退）', () => {
   // B 编码 utf-8 主题
   assert.equal(decodeMimeHeader('=?utf-8?B?5rWL6K+V5Li76aKY?='), '测试主题');
@@ -450,6 +556,42 @@ test('imap: TLS maxBodyBytes 部分抓取 → truncated 标记', { skip: !HAS_CR
     );
     assert.equal(truncated, true);
     assert.equal(text, 'A'.repeat(50));
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: TLS fetchEmailAttachments BODY.PEEK[] 整封解析不置已读', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const attachMsg: FakeImapMessage = {
+    from: 'sender@example.com',
+    subject: '带附件',
+    date: 'Mon, 31 Aug 2026 09:00:00 +0800',
+    seen: false,
+    body: '正文',
+    raw:
+      'From: sender@example.com\r\nSubject: 带附件\r\nContent-Type: multipart/mixed; boundary="b"\r\n' +
+      '\r\n' +
+      '--b\r\nContent-Type: text/plain\r\n\r\n正文\r\n' +
+      '--b\r\nContent-Type: application/zip\r\nContent-Disposition: attachment; filename="数据.zip"\r\n' +
+      'Content-Transfer-Encoding: base64\r\n\r\n' +
+      Buffer.from('ZIPBYTES', 'utf8').toString('base64') +
+      '\r\n--b--\r\n',
+  };
+  const fake = await startFakeTlsImapServer([attachMsg], certPath, keyPath);
+  try {
+    const port = fake.port;
+    const atts = await fetchEmailAttachments(
+      { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: true },
+      1,
+      { timeoutMs: 8000, allowInsecureTls: true },
+    );
+    assert.equal(atts.length, 1);
+    assert.equal(atts[0].filename, '数据.zip');
+    assert.equal(atts[0].content.toString('utf8'), 'ZIPBYTES');
+    assert.equal(fake.transcript.some((l) => l.includes('FETCH 1 BODY.PEEK[]')), true);
   } finally {
     await fake.close();
     rmSync(dir, { recursive: true, force: true });

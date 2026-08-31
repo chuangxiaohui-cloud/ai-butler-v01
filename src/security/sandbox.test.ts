@@ -113,6 +113,7 @@ test('sandbox: isSkillOutputAllowed 放行 data 应用数据目录（B1）', () 
   assert.equal(isSkillOutputAllowed('data/learned-videos/learn-1/video.json', root).allowed, true);
   assert.equal(isSkillOutputAllowed('data/boms/BOM-1.csv', root).allowed, true);
   assert.equal(isSkillOutputAllowed('data/calendar/backup.db', root).allowed, true);
+  assert.equal(isSkillOutputAllowed('data/mail-attachments/report.pdf', root).allowed, true);
   // 默认沙箱根仍放行（project-writer 等不受影响）
   assert.equal(isSkillOutputAllowed('projects/app/main.c', root).allowed, true);
 });

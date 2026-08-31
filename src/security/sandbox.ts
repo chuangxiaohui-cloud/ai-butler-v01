@@ -30,6 +30,7 @@ const SKILL_OUTPUT_DIRS = [
   'data/learned-videos',
   'data/boms',
   'data/calendar',
+  'data/mail-attachments',
 ];
 
 /**

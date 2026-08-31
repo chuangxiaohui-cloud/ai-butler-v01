@@ -9,6 +9,7 @@ import { test } from 'node:test';
 
 import { ReminderStore } from '../../reminder/reminder-store.js';
 import { saveCredentials } from '../../mail/credentials.js';
+import { guardSkillOutputPath } from '../../security/sandbox.js';
 import ExcelJS from 'exceljs';
 import { accentFromQuery, createOfficeDailySkill, tableMergesNote, tableWarningsNote } from './index.js';
 
@@ -2497,6 +2498,8 @@ interface FakeImapMessage {
   date: string;
   seen: boolean;
   body: string;
+  /** E298：整封原始 MIME 消息（BODY.PEEK[] 响应用；缺省回退 body） */
+  raw?: string;
 }
 
 /** E293：fake TLS IMAP 服务器共用的命令处理（LOGIN/SELECT/SEARCH/FETCH 头部+正文字面量/LOGOUT） */
@@ -2539,7 +2542,7 @@ function handleFakeImapSocket(socket: Socket, messages: FakeImapMessage[], trans
           } else {
             const partial = cmd.match(/<0\.(\d+)>/);
             const maxBytes = partial ? Number(partial[1]) : Number.POSITIVE_INFINITY;
-            const body = Buffer.from(msg.body, 'utf8').subarray(0, maxBytes).toString('utf8');
+            const body = Buffer.from(msg.raw ?? msg.body, 'utf8').subarray(0, maxBytes).toString('utf8');
             socket.write(`* ${seq} FETCH (BODY[TEXT] {${Buffer.byteLength(body)}}\r\n`);
             socket.write(`${body}\r\n`);
             socket.write(')\r\n');
@@ -2928,6 +2931,96 @@ test('office-daily: 空收件箱 → 诚实提示', { skip: !HAS_CRYPTOGRAPHY },
     assert.ok(result.answer?.includes('没有邮件'), result.answer);
   } finally {
     await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/** E298：含附件原始 MIME 的收件 fixture（alice 最新一封带附件，bob 无） */
+const ATTACH_MESSAGES: FakeImapMessage[] = [
+  {
+    from: 'bob@example.com',
+    subject: 'Re: 方案',
+    date: 'Fri, 28 Aug 2026 18:30:00 +0800',
+    seen: true,
+    body: '方案收到，下周细聊。',
+  },
+  {
+    from: 'alice@example.com',
+    subject: '周报（含附件）',
+    date: 'Mon, 31 Aug 2026 09:00:00 +0800',
+    seen: false,
+    body: '本周完成收件功能。',
+    raw:
+      'From: alice@example.com\r\nSubject: 周报（含附件）\r\nContent-Type: multipart/mixed; boundary="b"\r\n' +
+      '\r\n' +
+      '--b\r\nContent-Type: text/plain\r\n\r\n本周完成收件功能。\r\n' +
+      '--b\r\nContent-Type: application/pdf\r\nContent-Disposition: attachment; filename="=?utf-8?B?5rWL6K+V5Li76aKYLnBkZg==?="\r\n' +
+      'Content-Transfer-Encoding: base64\r\n\r\n' +
+      Buffer.from('%PDF-1.4 demo', 'utf8').toString('base64') +
+      '\r\n--b--\r\n',
+  },
+];
+
+test('office-daily: 下载第 1 封附件 → MIME 解码 + 中文名落盘', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(ATTACH_MESSAGES, certPath, keyPath);
+  try {
+    const mailDir = join(dir, 'mail');
+    saveImapCredentials(mailDir, fake.port);
+    const attachmentDir = join(dir, 'attachments');
+    const skill = createOfficeDailySkill({
+      outDir: dir,
+      mailDir,
+      attachmentDir,
+      imapOptions: { allowInsecureTls: true },
+    });
+    const out = await skill.execute(
+      { query: '下载第 1 封的附件', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('已下载收件箱第 1 封的 1 个附件'), result.answer);
+    assert.ok(result.answer?.includes('测试主题.pdf'), result.answer);
+    const file = join(attachmentDir, '测试主题.pdf');
+    assert.equal(existsSync(file), true);
+    assert.equal(readFileSync(file, 'utf8'), '%PDF-1.4 demo');
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 下载附件（最新一封无附件）→ 诚实提示', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(IMAP_MESSAGES, certPath, keyPath);
+  try {
+    const mailDir = join(dir, 'mail');
+    saveImapCredentials(mailDir, fake.port);
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir, imapOptions: { allowInsecureTls: true } });
+    const out = await skill.execute(
+      { query: '下载附件', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('没有附件'), result.answer);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 附件目录沙箱拒绝（data 白名单外/前缀相似不误放）', () => {
+  const dir = tempDir();
+  const logPath = join(dir, 'audit.jsonl');
+  try {
+    const ok = guardSkillOutputPath(join(dir, 'data', 'mail-attachments'), { workspaceRoot: dir, logPath });
+    assert.equal(ok.allowed, true);
+    const reject = guardSkillOutputPath(join(dir, 'data', 'mail-attachments-2'), { workspaceRoot: dir, logPath });
+    assert.equal(reject.allowed, false);
+    assert.match(reject.reason ?? '', /越界/);
+  } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });

@@ -21,16 +21,28 @@ export interface ImapMessageSummary {
   seen: boolean;
 }
 
+/** E298：解析出的邮件附件（内容已解码，可直接落盘） */
+export interface EmailAttachment {
+  filename: string;
+  contentType: string;
+  /** 解码后字节数 */
+  size: number;
+  content: Buffer;
+}
+
 export interface ImapFetchOptions {
   timeoutMs?: number;
   /** 测试用：TLS 证书校验失败时允许放行（仅测试环境） */
   allowInsecureTls?: boolean;
   /** 正文最大抓取字节（协议级 BODY.PEEK[TEXT]<0.N> 部分抓取） */
   maxBodyBytes?: number;
+  /** E298：整封原始邮件最大抓取字节（附件下载 BODY.PEEK[]） */
+  maxMessageBytes?: number;
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_MAX_BODY_BYTES = 200_000;
+const DEFAULT_MAX_MESSAGE_BYTES = 10 * 1024 * 1024;
 const CRLF = '\r\n';
 
 /** E293：smtp.qq.com → imap.qq.com（Gmail/163 同理）；无 smtp. 前缀原样返回 */
@@ -635,6 +647,71 @@ export function extractPlainText(raw: string): string {
   return finalizeBodyText(text.trim());
 }
 
+/** E298：从部件头提取附件文件名——filename*= 优先（RFC 2231），其次 filename=；无文件名但有 attachment 声明给占位名 */
+function attachmentName(headerRaw: string): string | null {
+  const disposition = headerRaw.match(/^content-disposition:[^\r\n]*/im)?.[0] ?? '';
+  const dispositionType = /^content-disposition:\s*([^;\s]+)/i.exec(disposition)?.[1]?.toLowerCase() ?? '';
+  const hasFilename = /filename\s*=/i.test(headerRaw);
+  // 排除正文内嵌图片（inline + filename / content-id 场景）：仅显式 attachment 或 有 filename 且未声明 inline
+  if (dispositionType !== 'attachment' && (!hasFilename || dispositionType === 'inline')) return null;
+  const star = headerRaw.match(/filename\*\s*=\s*([^;\s]+)/i)?.[1];
+  if (star) {
+    const idx = star.indexOf("''");
+    const value = idx >= 0 ? star.slice(idx + 2) : star;
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return star;
+    }
+  }
+  const plain = headerRaw.match(/filename\s*=\s*(?:"([^"]*)"|([^;\s]+))/i);
+  const name = (plain?.[1] ?? plain?.[2] ?? '').trim();
+  if (name) return decodeMimeHeader(name);
+  return dispositionType === 'attachment' ? '附件' : null;
+}
+
+/** E298：按传输编码把附件内容还原为字节 */
+function decodeAttachment(content: string, encoding?: string): Buffer {
+  if (encoding === 'base64') return Buffer.from(content.replace(/\s+/g, ''), 'base64');
+  if (encoding === 'quoted-printable') return decodeQuotedPrintableBody(content);
+  return Buffer.from(content, 'utf8');
+}
+
+/** E298：递归收集 multipart 部件中的附件（嵌套 multipart 继续下钻） */
+function collectAttachments(body: string, boundary: string): EmailAttachment[] {
+  const out: EmailAttachment[] = [];
+  for (const part of splitByBoundary(body, boundary)) {
+    const h = parseMimePartHeader(part.header);
+    const name = attachmentName(part.header);
+    if (name) {
+      out.push({
+        filename: name,
+        contentType: h.contentType || 'application/octet-stream',
+        size: 0,
+        content: decodeAttachment(part.content, h.encoding),
+      });
+    } else if (h.boundary) {
+      out.push(...collectAttachments(part.content, h.boundary));
+    }
+  }
+  return out;
+}
+
+/** E298：从整封原始邮件（BODY.PEEK[]）解析附件列表；非 multipart 或无附件返回空数组 */
+export function parseAttachments(raw: string): EmailAttachment[] {
+  // 统一行尾：JS 正则 $ 锚点对行尾孤立 \r 不匹配（LineTerminator 语义），先去 \r 再按 \n 拆分
+  const text = raw.replace(/\r/g, '');
+  const lines = text.split('\n');
+  const blank = lines.findIndex((l) => l.trim() === '');
+  const top = parseMimePartHeader(blank > 0 ? lines.slice(0, blank).join('\n') : '');
+  if (!top.boundary) return [];
+  const bodyStart = blank >= 0 && blank < lines.length ? blank + 1 : 0;
+  return collectAttachments(lines.slice(bodyStart).join('\n'), top.boundary).map((a) => ({
+    ...a,
+    size: a.content.length,
+  }));
+}
+
 async function quit(session: ImapSession): Promise<void> {
   try {
     await session.command('LOGOUT', 'OK');
@@ -738,6 +815,33 @@ export async function fetchEmailText(
     const unit = units.find((u) => u.seq === seq) ?? units[0];
     const raw = unit?.literals.join('\n') ?? '';
     return { text: extractPlainText(raw), truncated: raw.length >= maxBodyBytes };
+  } finally {
+    await quit(session);
+  }
+}
+
+/** E298：读指定封的附件（BODY.PEEK[] 整封原始邮件 → MIME 解析，不置已读） */
+export async function fetchEmailAttachments(
+  creds: {
+    host: string;
+    user: string;
+    pass: string;
+    imapHost?: string;
+    imapPort?: number;
+    imapSecure?: boolean;
+  },
+  seq: number,
+  options: ImapFetchOptions = {},
+): Promise<EmailAttachment[]> {
+  const maxBytes = options.maxMessageBytes ?? DEFAULT_MAX_MESSAGE_BYTES;
+  const session = await openSession(creds, options);
+  try {
+    await session.command('SELECT INBOX', 'OK');
+    const fetch = await session.command(`FETCH ${seq} BODY.PEEK[]<0.${maxBytes}>`, 'OK');
+    const units = parseFetchUnits(fetch.parts);
+    const unit = units.find((u) => u.seq === seq) ?? units[0];
+    const raw = unit?.literals.join('\n') ?? '';
+    return parseAttachments(raw);
   } finally {
     await quit(session);
   }
