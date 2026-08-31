@@ -316,7 +316,7 @@ function extractMailBody(query: string): string {
     .trim();
 }
 
-/** E293：从查询中提取要读的邮件序号（“读第 N 封”）；无返回 null */
+/** E293：从查询中提取要读的邮件位次（“读第 N 封”，1=最新一封）；无返回 null */
 function extractReadSeq(query: string): number | null {
   const m = query.match(/读第\s*(\d+)\s*封/);
   return m ? Number(m[1]) : null;
@@ -1131,7 +1131,19 @@ export function createOfficeDailySkill(opts?: {
           }
           try {
             if (readSeq !== null) {
-              const { text, truncated } = await fetchEmailText(creds, readSeq, imapFetchOptions);
+              // E293 缺陷修复：N 是列表位次（1=最新在前），真实邮箱的 IMAP seq 从 1 累计到最新、与位次不同，须先按位次定位真实 seq
+              const recent = await fetchRecentEmails(creds, { ...imapFetchOptions, limit: 10 });
+              if (recent.length === 0) {
+                return { result: { answer: '收件箱里目前没有邮件。' }, confidence: 0.7 };
+              }
+              const target = recent[readSeq - 1];
+              if (!target) {
+                return {
+                  result: { answer: `收件箱里没有第 ${readSeq} 封（当前显示最近 ${recent.length} 封）。` },
+                  confidence: 0.6,
+                };
+              }
+              const { text, truncated } = await fetchEmailText(creds, target.seq, imapFetchOptions);
               if (!text.trim()) {
                 return {
                   result: { answer: `收件箱第 ${readSeq} 封邮件没有可显示的正文。` },
@@ -1155,8 +1167,8 @@ export function createOfficeDailySkill(opts?: {
               };
             }
             const lines = list.map(
-              (m) =>
-                `${m.seq}. ${m.seen ? '已读' : '未读'}｜${m.from || '(无发件人)'}｜${m.subject || '(无主题)'}｜${m.date || ''}`,
+              (m, i) =>
+                `${i + 1}. ${m.seen ? '已读' : '未读'}｜${m.from || '(无发件人)'}｜${m.subject || '(无主题)'}｜${m.date || ''}`,
             );
             return {
               result: {
@@ -1682,7 +1694,6 @@ ${timeLabel}
     },
   };
 }
-
 
 
 

@@ -9,6 +9,7 @@ import { test } from 'node:test';
 
 import {
   deriveImapHost,
+  decodeMimeHeader,
   extractPlainText,
   fetchEmailText,
   fetchRecentEmails,
@@ -226,6 +227,24 @@ test('imap: extractPlainText 简单正文直返 / multipart 只取第一个部�
   assert.equal(extractPlainText(multipart), '正文第一段');
 });
 
+test('imap: decodeMimeHeader RFC 2047 解码（B/Q/拼接段/回退）', () => {
+  // B 编码 utf-8 主题
+  assert.equal(decodeMimeHeader('=?utf-8?B?5rWL6K+V5Li76aKY?='), '测试主题');
+  // B 编码 gb2312 主题（TextDecoder 别名）
+  assert.equal(decodeMimeHeader('=?gb2312?B?wLTX1HFxLmNvbbXEzcvQxQ==?='), '来自qq.com的退信');
+  // Q 编码
+  assert.equal(decodeMimeHeader('=?utf-8?Q?hello_world?='), 'hello world');
+  assert.equal(decodeMimeHeader('=?gb2312?Q?=C0=B4=D7=D4qq=2Ecom=B5=C4=CD=CB=D0=C5?='), '来自qq.com的退信');
+  // 拼接段：相邻编码词之间空白丢弃
+  assert.equal(decodeMimeHeader('=?utf-8?B?W0FdIGFiYw==?= =?utf-8?B?ZGVm?='), '[A] abcdef');
+  // 无编码词原样返回
+  assert.equal(decodeMimeHeader('plain subject'), 'plain subject');
+  // 发件人显示名：只解码编码词，地址保留
+  assert.equal(decodeMimeHeader('"=?utf-8?B?5rWL6K+V5Li76aKY?=" a@b.com'), '"测试主题" a@b.com');
+  // 未知字符集回退 utf-8
+  assert.equal(decodeMimeHeader('=?x-unknown?B?5rWL6K+V5Li76aKY?='), '测试主题');
+});
+
 test('imap: 明文连接不支持 STARTTLS → 拒绝 LOGIN（H4，不发送凭据）', async () => {
   const fake = await startFakeImapServer(SAMPLE_MESSAGES);
   try {
@@ -254,13 +273,39 @@ test('imap: TLS 查收件箱 → 最新在前 + 未读标记 + 中文头部解�
       { timeoutMs: 8000, allowInsecureTls: true },
     );
     assert.equal(list.length, 3);
-    assert.deepEqual(list.map((m) => m.seq), [3, 2, 1], '最新在前');
-    assert.equal(list[0].subject, '会议邀请');
-    assert.equal(list[0].from, 'carol@example.com');
-    assert.equal(list[0].seen, true);
-    assert.equal(list[2].subject, '周报');
-    assert.equal(list[2].seen, false);
+    assert.deepEqual(list.map((m) => m.seq), [1, 2, 3], '按日期最新在前');
+    assert.equal(list[0].subject, '周报');
+    assert.equal(list[0].from, 'alice@example.com');
+    assert.equal(list[0].seen, false);
+    assert.equal(list[2].subject, '会议邀请');
+    assert.equal(list[2].seen, true);
     assert.equal(fake.transcript.some((l) => l.includes(' LOGIN ')), true);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: TLS MIME 编码主题/发件人解码后返回', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const mimeMsg: FakeImapMessage = {
+    from: '"=?utf-8?B?5rWL6K+V5Li76aKY?=" a@example.com',
+    subject: '=?utf-8?B?W0FdIGFiYw==?= =?utf-8?B?ZGVm?=',
+    date: 'Mon, 31 Aug 2026 09:00:00 +0800',
+    seen: false,
+    body: '正文',
+  };
+  const fake = await startFakeTlsImapServer([mimeMsg], certPath, keyPath);
+  try {
+    const port = fake.port;
+    const list = await fetchRecentEmails(
+      { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: true },
+      { timeoutMs: 8000, allowInsecureTls: true },
+    );
+    assert.equal(list.length, 1);
+    assert.equal(list[0].subject, '[A] abcdef');
+    assert.equal(list[0].from, '"测试主题" a@example.com');
   } finally {
     await fake.close();
     rmSync(dir, { recursive: true, force: true });
@@ -278,8 +323,8 @@ test('imap: TLS limit 只取最新 N 封', { skip: !HAS_CRYPTOGRAPHY }, async ()
       { timeoutMs: 8000, allowInsecureTls: true, limit: 1 },
     );
     assert.equal(list.length, 1);
-    assert.equal(list[0].seq, 3);
-    assert.equal(fake.transcript.some((l) => l.startsWith('A') && l.includes('FETCH 3 (')), true);
+    assert.equal(list[0].seq, 1);
+    assert.equal(fake.transcript.some((l) => l.startsWith('A') && l.includes('FETCH 1,2,3 (')), true);
   } finally {
     await fake.close();
     rmSync(dir, { recursive: true, force: true });

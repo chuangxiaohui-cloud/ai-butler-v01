@@ -22,8 +22,8 @@
 
 | 编号 | 项 | 来源 | 状态/触发 | 备注 |
 |---|---|---|---|---|
-| E293 | 收邮件 IMAP 只读收件箱（查最近 N 封 + 读第 N 封全文，正文 untrusted_data 防护） | owner 指令 2026-08-31「收邮件也一起实现」 | 实现完成（v2.6 pre-ship 候选；提交归属待 owner 拍板） | `src/mail/imap.ts` + office-daily 收件分支；真实 QQ/Gmail IMAP 冒烟待用户（QQ 需开 IMAP 服务 + 授权码） |
-| E293-后 | IMAP 增量：MIME 解码 / 附件下载 / 搜信（SEARCH 条件）/ 多账号 | E293 遗留 | v2.6+ 候选 | 当前 BODY.PEEK[TEXT] 只取 text/plain 首个部件；HTML 不清洗、附件不下载 |
+| E293 | 收邮件 IMAP 只读收件箱（查最近 N 封 + 读第 N 封全文，正文 untrusted_data 防护） | owner 指令 2026-08-31「收邮件也一起实现」 | 实现完成（v2.6 pre-ship 候选；提交归属待 owner 拍板） | `src/mail/imap.ts` + office-daily 收件分支；真实 QQ IMAP 冒烟已通过（2026-08-31，按日期排序）；Gmail 未测 |
+| E293-后 | IMAP 增量：附件下载 / 搜信（SEARCH 条件）/ 多账号 | E293 遗留 | v2.6+ 候选 | 主题/发件人 RFC 2047 MIME 解码已完成（2026-08-31，`docs/plans/2026-08-31-email-mime-header-decode.md`）；正文 base64 / HTML 清洗、附件下载未做；BODY.PEEK[TEXT] 只取 text/plain 首个部件 |
 
 ## 收口约定
 

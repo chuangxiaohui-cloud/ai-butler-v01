@@ -385,6 +385,52 @@ function parseHeaderLiteral(raw: string): { from: string; subject: string; date:
   };
 }
 
+/** E293：RFC 2047 Q 编码解码（_→空格、=XX→字节） */
+function decodeQuotedPrintable(text: string): Buffer {
+  const bytes: number[] = [];
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === '_') {
+      bytes.push(0x20);
+    } else if (ch === '=' && i + 2 < text.length) {
+      const hex = text.slice(i + 1, i + 3);
+      if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+        bytes.push(parseInt(hex, 16));
+        i += 2;
+      } else {
+        bytes.push(ch.charCodeAt(0));
+      }
+    } else {
+      bytes.push(ch.charCodeAt(0));
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+/** E293：RFC 2047 MIME 编码词解码（主题/发件人显示名）。B=base64、Q=quoted-printable；相邻编码词之间空白按规范丢弃；charset 交给 TextDecoder（utf-8/gbk/gb18030/gb2312/big5 等），未知字符集回退 utf-8，再失败原样保留。 */
+export function decodeMimeHeader(raw: string): string {
+  if (!raw.includes('=?')) return raw;
+  const wordRe = /=\?([^?\s]+)\?([BbQq])\?([^?]*)\?=/g;
+  const joined = raw.replace(
+    /(=\?[^?\s]+\?[BbQq]\?[^?]*\?=)\s+(?==\?[^?\s]+\?[BbQq]\?[^?]*\?=)/g,
+    '$1',
+  );
+  return joined.replace(wordRe, (whole, charset: string, encoding: string, text: string) => {
+    const bytes =
+      encoding.toUpperCase() === 'B'
+        ? Buffer.from(text, 'base64')
+        : decodeQuotedPrintable(text);
+    for (const cs of [charset, 'utf-8']) {
+      try {
+        return new TextDecoder(cs).decode(bytes);
+      } catch {
+        // 未知字符集标签，尝试下一候选
+      }
+    }
+    return whole;
+  });
+}
+
 /** E293：从 FETCH BODY[TEXT] 原始正文提取可读文本——text/plain 直返；multipart 只取第一个部件正文（去部件头与 boundary）。不做 HTML 清洗/base64 解码（v2.6 候选）。 */
 export function extractPlainText(raw: string): string {
   let text = raw.replace(/^\r?\n/, '').replace(/\r\n/g, '\n');
@@ -410,7 +456,32 @@ async function quit(session: ImapSession): Promise<void> {
   session.close();
 }
 
-/** E293：查收件箱最近 N 封（发件人/主题/日期/未读），按 seq 倒序（最新在前） */
+const IMAP_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** E293 修复：按 INTERNALDATE 从近到远逐档搜索候选（SEARCH SINCE 窗口不足则放宽到 ~5 年封顶），避免依赖 QQ 不保证按时间的 seq 顺序 */
+async function searchRecentSeqs(session: ImapSession, limit: number): Promise<number[]> {
+  const MAX_DAYS = 5 * 366;
+  let days = 7;
+  let seqs: number[] = [];
+  for (;;) {
+    if (days > MAX_DAYS) break;
+    const since = new Date(Date.now() - days * 86_400_000);
+    const dateStr = `${String(since.getUTCDate()).padStart(2, '0')}-${IMAP_MONTHS[since.getUTCMonth()]}-${since.getUTCFullYear()}`;
+    const search = await session.command(`SEARCH SINCE ${dateStr}`, 'OK');
+    seqs = parseSearchSeqs(search.parts);
+    if (seqs.length >= limit) break;
+    days *= 4;
+  }
+  return seqs;
+}
+
+/** E293 修复：解析 Date 头为时间戳（去掉尾部时区注释如 (CST)/(GMT+08:00)）；解析失败按 0 处理 */
+function parseHeaderTime(raw: string): number {
+  const t = Date.parse(raw.replace(/\s*\([^)]*\)\s*$/, ''));
+  return Number.isNaN(t) ? 0 : t;
+}
+
+/** E293：查收件箱最近 N 封（发件人/主题/日期/未读），按 Date 倒序（最新在前；QQ IMAP 的 seq 不保证按时间顺序） */
 export async function fetchRecentEmails(
   creds: {
     host: string;
@@ -426,25 +497,32 @@ export async function fetchRecentEmails(
   const session = await openSession(creds, options);
   try {
     await session.command('SELECT INBOX', 'OK');
-    const search = await session.command('SEARCH ALL', 'OK');
-    const seqs = parseSearchSeqs(search.parts).slice(-limit);
+    const seqs = await searchRecentSeqs(session, limit);
     if (seqs.length === 0) return [];
+    const cand = seqs.slice(-limit * 3);
     const fetch = await session.command(
-      `FETCH ${seqs.join(',')} (FLAGS BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])`,
+      `FETCH ${cand.join(',')} (FLAGS BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])`,
       'OK',
     );
-    return parseFetchUnits(fetch.parts)
-      .map((u) => {
-        const h = parseHeaderLiteral(u.literals.join('\n'));
-        return {
-          seq: u.seq,
-          from: h.from,
-          subject: h.subject,
-          date: h.date,
-          seen: u.flags.includes('\\Seen'),
-        };
-      })
-      .sort((a, b) => b.seq - a.seq);
+    const parsed = parseFetchUnits(fetch.parts).map((u) => {
+      const h = parseHeaderLiteral(u.literals.join('\n'));
+      return {
+        seq: u.seq,
+        from: decodeMimeHeader(h.from),
+        subject: decodeMimeHeader(h.subject),
+        date: h.date,
+        seen: u.flags.includes('\\Seen'),
+        time: parseHeaderTime(h.date),
+      };
+    });
+    parsed.sort((a, b) => b.time - a.time || b.seq - a.seq);
+    return parsed.slice(0, limit).map((m) => ({
+      seq: m.seq,
+      from: m.from,
+      subject: m.subject,
+      date: m.date,
+      seen: m.seen,
+    }));
   } finally {
     await quit(session);
   }

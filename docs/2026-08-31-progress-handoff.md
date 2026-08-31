@@ -16,6 +16,15 @@
 - **owner 拍板（2026-08-31）**：① 并入 v0.2b（提交 `b18174c`，11 文件）；② `npm run mail:config` 不扩展收件参数（QQ 默认推导 imap.qq.com + 993 TLS 够用）。
 - **文档**：`docs/plans/2026-08-31-email-imap-receive.md`；附录 A E293；`docs/roadmap.md`（E293 + E293-后 MIME/附件/搜信/多账号 v2.6+ 候选）；本交接。
 
+### 2. 真实收件/发信冒烟核对（2026-08-31 收尾，owner 实测 + 核对）
+
+- **收件（E293）**：`npm run dev -- "查收件箱"` 连通真实 QQ IMAP，返回最近 10 封（未读/已读、发件人、主题、日期，最新在前），`mode: life`、`gate_triggered: none`；`读第 1 封` 返回正文且按 §10.5 包 untrusted_data 分隔符，未置已读（BODY.PEEK）。
+- **已知限制（与计划一致，v2.6 候选）**：HTML-only 邮件返回原始 HTML 源码（`extractPlainText` 不做 HTML 清洗，正文 base64 未解码）。
+- **缺陷已修复（owner 拍板 2026-08-31，`docs/plans/2026-08-31-email-imap-read-seq-fix.md`）**：「读第 N 封」序号错位——原实现列表显示 IMAP `seq`、`extractReadSeq` 直接把 N 当 seq 取，「读第 1 封」实际读到最老一封（2020 QQ 安全中心邮件）而非最新；已改为列表按位次编号 1..N、读信先按位次定位真实 seq；单测 +2（读第 2 封按位次 / 读第 99 封诚实提示）。
+- **发信（E170+E291 双闸实测）**：两步流程（草稿回执 → `确认发送`）真实 SMTP 投递成功：`104735796@qq.com` → `scutcxv138@outlook.com`，主题「AI-Butler 测试邮件」，收件端已确认收到。
+- **后续修复（owner 拍板 2026-08-31，`docs/plans/2026-08-31-email-imap-recent-by-date.md`）**：QQ IMAP 的 seq 不按时间顺序（INTERNALDATE 证实 2019-2022 老邮件 seq 2248-2984 大于 8/31 上午邮件 2247，授权码昨日重建后触发重排），「最后 N 个 seq」≠「最近 N 封」；`fetchRecentEmails` 改为 `SEARCH SINCE` 逐档放宽取候选 + 本地按 Date 排序；真实冒烟通过（列表按日期、`读第 1 封`=最新一封）。
+- **后续修复（owner 拍板 2026-08-31，`docs/plans/2026-08-31-email-mime-header-decode.md`）**：主题/发件人显示名 RFC 2047 MIME 解码——`decodeMimeHeader`（B/Q、相邻编码词合并、TextDecoder 字符集 + utf-8 回退），`fetchRecentEmails` 返回前应用；真实样本（utf-8/gb2312 B、Q、拼接段）验证通过；单测 +9（`decodeMimeHeader` 8 断言 + TLS fake 集成 1 条），imap 10/10、office-daily 66/67 全绿。
+
 ## 工作区遗留（未提交，非本次 E293 范围）
 
 - `docs/2026-08-30-progress-handoff.md` §11（v2.5 封版后 owner 拍板记录，先前遗留未提交）+ 我更新过的 §12 末行（已记录拍板）。
@@ -24,10 +33,10 @@
 
 ## 明日待办（接续点）
 
-1. **真实 QQ IMAP 冒烟（owner 已配好 SMTP 凭据，无需再配授权码）**：`npm run dev -- "查收件箱"` → `npm run dev -- "读第 1 封"`，输出贴回由我核对。
+1. ✅ **真实 QQ IMAP 冒烟**：已由 owner 跑 `npm run dev -- "查收件箱"` → `"读第 1 封"` 并核对完毕（结果见今日完成 §2）；「读第 N 封」序号错位缺陷已修复（见 `docs/plans/2026-08-31-email-imap-read-seq-fix.md`）。
 2. **E284 缓存复测**：同一仓库二次解读 fetchMs 回落 ~1-2s、答案数据不变（待用户）。
 3. **[P-04] 9/2 复测**：`classify:smoke` ≥7/10 启动回退评估（E1 复验门：n≥30 / 超时率≤10% / 准确率≥80% / p95×1.2）。
 4. **owner 侧冒烟 4/7 回填**（search / tavily / desktop / 低置信，待 Tavily 额度恢复）。
 5. **遗留未提交文件处置**：由 owner 决定是否随当天收尾一并提交（审计 ZIP 打包已有 `审计交付/` 目录）。
 
-**预估成本(¥)**：¥0（本日全部为本地实现 + 离线单测 + 文档，无 LLM/API/网络调用）。
+**预估成本(¥)**：¥0（本日全部为本地实现 + 离线单测 + 文档 + 真实 IMAP/SMTP 冒烟；无 LLM/API 付费调用）。
