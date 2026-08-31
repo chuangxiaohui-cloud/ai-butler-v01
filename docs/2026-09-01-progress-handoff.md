@@ -17,12 +17,12 @@
   - `src/mail/imap.ts`：`ImapMessageSummary` 增 `hasAttachment`；`fetchRecentEmails` 头部 FETCH 后追加 `FETCH N (BODYSTRUCTURE)`，新增 `parseBodyStructureUnits`（按 `* N FETCH` 单元 + 括号深度收集 BODYSTRUCTURE 原文，兼容 literal 片段）与 `bodyStructureHasAttachment`（扫描 `"attachment"` disposition 关键词；inline 图片/正文部件不算）。
   - `src/skills/office-daily/index.ts`：查收件箱列表行尾有附件时追加 `｜📎`。
 - **验证**：`npm run build` 绿；新增单测 2 条（imap 1：BODYSTRUCTURE 有/无附件标记；office-daily 1：列表带 📎 且无附件行不标）；imap+sandbox+router-v2 119/119、office-daily 70/71（1 skip 为既有 PDF 用例）；`npm run doc-lint` 0 FAIL 0 WARN。
+- **真实冒烟**（owner 实测 2026-09-01）：`npm run dev -- "查收件箱"` → 第 1 封「附件测试」行尾 `｜📎`，无附件邮件不标；E299 收口完成。
 - **文档**：`docs/plans/2026-09-01-email-list-attachment-flag.md`；附录 A E299；`docs/roadmap.md` E293-后补「附件标记」。
 - **提交**：commit 见 git log。
 
 ## 明日待办（接续点）
 
-1. **真实 QQ 查收件箱 📎 冒烟**：`npm run dev -- "查收件箱"` 应看到带附件邮件行尾 `｜📎`（如自测的「架构师审计框架说明.md」那封）。
-2. **搜信（SEARCH 条件）/ 多账号**：仍为 v2.6+ 候选（roadmap E293-后 剩余项）。
+1. **搜信（SEARCH 条件）/ 多账号**：仍为 v2.6+ 候选（roadmap E293-后 剩余项）。
 
 **预估成本(¥)**：¥0（本日全部为本地实现 + 离线单测 + 文档 + 真实 IMAP 冒烟；无 LLM/API 付费调用）。

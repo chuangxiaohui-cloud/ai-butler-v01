@@ -17,7 +17,7 @@
 **验收标准**
 
 - `npm run build` 绿；imap / office-daily 相关单测全绿。
-- 查收件箱列表对带附件邮件显示 📎、无附件不显示；真实 QQ 冒烟待用户（成本纪律）。
+- 查收件箱列表对带附件邮件显示 📎、无附件不显示；真实 QQ 冒烟已通过（2026-09-01 owner 实测：「附件测试」行尾 `｜📎`，无附件邮件不标）。
 - doc-lint 0 FAIL 0 WARN。
 
 ## 执行过程
@@ -35,4 +35,4 @@
 - 验证：`npm run build` 绿；`npm run doc-lint` 0 FAIL 0 WARN（提交前复核）。
 - 测试：新增单测 2 条——imap 1（BODYSTRUCTURE 有/无附件标记 + FETCH 命令断言）、office-daily 1（查收件箱列表带 📎 且无附件行不标）；imap+sandbox+router-v2 119/119、office-daily 70/71（1 skip 为既有 PDF 用例）。
 - 提交：随当天收尾提交（commit 见 git log）。
-- 遗留：真实 QQ 查收件箱 📎 冒烟待用户；搜信 / 多账号仍为 v2.6+ 候选。
+- 遗留：搜信 / 多账号仍为 v2.6+ 候选。
