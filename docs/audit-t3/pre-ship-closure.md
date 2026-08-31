@@ -162,4 +162,4 @@
 - **下一步候选**（任选其一）：
   1. **owner 拍板 + tag/zip 重打**：将 tag `v0.2b-audit-2026-08-30` 移至 fb10e92 并重打 ZIP，§6 待办 1
   2. **T+6 follow-up**：bench:devil-v25 122 条 owner 侧全量回归 + 实际使用累积验证 + 6 个月稳定性问题复评
-  3. **v2.6+ 路线图**：已登记 `docs/roadmap.md` backlog（B1-B5）——写盘沙箱 / ASR 白名单 / 安装日志 / 完整域名白名单 / P-148~P-150；原 6 项缺口中的 office-daily 双闸（E291）、URL SSRF（E292）、github-project 缓存（E290）已闭环
+  3. **v2.6+ 路线图**：`docs/roadmap.md` backlog——B1~B4 已完成（E294~E297，2026-08-31，见 `docs/plans/2026-08-31-v26-b1-b4-security.md`）；P-148~P-150（B5）未触发保持延后；原 6 项 Skill 信任域缺口已全部闭环（E290 / E291 / E292 / E294 / E295 / E296 / E297）

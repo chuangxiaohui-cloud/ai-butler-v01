@@ -114,6 +114,5 @@ npm run score:v01           # [P-07] 评分判定（读取 bench/v01-scores.json
 
 ## ⚠️ 已知风险（v2.5 交付前，owner 拍板 2026-08-30）
 
-- **写盘无沙箱**：calendar-skill / schematic-bom / office-daily / video-learner 输出仅走固定目录，未做路径前缀沙箱校验。纯本地单用户场景风险可控，按 owner 拍板延后 v2.6（backlog：`docs/roadmap.md` B1）。
+- ~~**写盘无沙箱**~~（✅ 已闭环 E294，2026-08-31）：calendar-skill / schematic-bom / office-daily / video-learner 原输出仅走固定目录、无路径前缀沙箱校验；B1 已落地 `isSkillOutputAllowed` 应用数据目录二级白名单 + `guardSkillOutputPath` 门禁 + 审计日志（见 `docs/plans/2026-08-31-v26-b1-b4-security.md`）。
 - **内网 datasheet 抓取受限（E292）**：浏览器抓取/下载已收紧——RFC1918 内网段（10.x / 172.16-31.x / 192.168.x）与回环/链路本地一律拦截，且禁止跟随 30x 重定向。嵌入式内网 datasheet 服务器不再可经浏览器抓取；公网 datasheet（如 szlcsc）不受影响。
-
