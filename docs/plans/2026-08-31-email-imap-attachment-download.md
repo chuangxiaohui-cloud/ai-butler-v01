@@ -36,4 +36,4 @@
 - 验证：`npm run build` 绿；`npm run doc-lint` 0 FAIL 0 WARN（提交前复核）。
 - 测试：新增单测 11 条——imap 6（`parseAttachments` 5 + `fetchEmailAttachments` TLS 集成 1）、office-daily 3（下载落盘 + 中文名保留 / 无附件诚实提示 / 附件目录沙箱拒绝）、router-v2 1（下载附件 → office-daily）、sandbox 1（`data/mail-attachments` 放行）；imap 24/24、router-v2 81/81、sandbox 13/13（合并 118/118）、office-daily 69/70（1 skip 为既有 PDF 用例）。
 - 提交：随当天收尾提交（commit 见 git log）。
-- 遗留事项：搜信 / 多账号仍为 v2.6+ 候选；真实 QQ IMAP 附件下载冒烟待用户。
+- 遗留事项：搜信 / 多账号仍为 v2.6+ 候选；真实 QQ IMAP 附件下载冒烟已通过（2026-09-01：`下载第 1 封的附件` → 中文名 md 附件解码落盘 `data/mail-attachments/`，5025 字节与原文一致）。

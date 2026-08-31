@@ -34,7 +34,8 @@
   - `src/security/sandbox.ts`：`SKILL_OUTPUT_DIRS` 增 `data/mail-attachments`。
 - **验证**：`npm run build` 绿；新增单测 11 条（imap 6 + office-daily 3 + router-v2 1 + sandbox 1）全绿——imap 24/24、router-v2 81/81、sandbox 13/13（合并 118/118）、office-daily 69/70（1 skip 为既有 PDF 用例）；doc-lint 0 FAIL 0 WARN（提交前复核）。
 - **文档**：`docs/plans/2026-08-31-email-imap-attachment-download.md`；附录 A E298；`docs/roadmap.md` E293-后「附件下载」改已完成（E298）。
-- **遗留**：搜信（SEARCH 条件）/ 多账号仍为 v2.6+ 候选；真实 QQ IMAP 附件下载冒烟待用户（成本纪律）。
+- **遗留**：搜信（SEARCH 条件）/ 多账号仍为 v2.6+ 候选。
+- **真实冒烟（2026-09-01，owner 实测）**：`npm run dev -- "下载第 1 封的附件"` → 已下载收件箱第 1 封的 1 个附件 `架构师审计框架说明.md`（5025 字节）到 `data/mail-attachments/`；本地复核解码内容与原文一致（UTF-8 中文 Markdown，中文文件名保留）。
 
 ## 工作区遗留（未提交，非本次 E293 范围）
 
