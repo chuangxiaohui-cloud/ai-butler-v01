@@ -740,6 +740,52 @@ test('pipeline: github_analysis 不被市场 Skill 触发词截走（E242 主链
   }
 });
 
+test('pipeline: 直连本地 Skill 时 2 字触发词不抢（考勤表模板 → office-daily，E301）', async () => {
+  const r = await pipeline(
+    '帮我做一个考勤表模板',
+    {
+      ...deps,
+      llm: undefined,
+      skillDeps: { callVLM: async () => '' },
+      marketSkillRunner: {
+        listInstalledWithTriggers: () => [{ name: 'template-writer', triggers: ['模板'] }],
+        run: () => {
+          throw new Error('2 字触发词「模板」不应截走直连的 office-daily');
+        },
+      },
+    },
+    { userId: 'u1' },
+  );
+  assert.ok(r.answer.includes('考勤表模板'), r.answer);
+  assert.ok(!r.answer.includes('不应截走'), r.answer);
+});
+
+test('pipeline: 未直连本地 Skill 时 2 字触发词照常命中市场 Skill（周报 → docx 模板，E301）', async () => {
+  const r = await pipeline(
+    '周报',
+    {
+      ...deps,
+      llm: undefined,
+      skillDeps: { callVLM: async () => '' },
+      marketSkillRunner: {
+        listInstalledWithTriggers: () => [{ name: 'docx-write', triggers: ['周报'] }],
+        run: (name: string) =>
+          name === 'docx-write'
+            ? {
+                ok: true,
+                name: 'docx-write',
+                version: '0.1.0',
+                results: [{ step: 'write', ok: true, status: 0, stdout: '已生成周报模板', stderr: '' }],
+                durationMs: 3,
+              }
+            : { ok: false, name, version: '', results: [], error: 'not found', durationMs: 0 },
+      },
+    },
+    { userId: 'u1' },
+  );
+  assert.ok(r.answer.includes('已生成周报模板'), r.answer);
+});
+
 test('pipeline: github-reader 直连透传 evidence 与 skill confidence（P3）', async () => {
   const originalFetch = globalThis.fetch;
   const readme = `# OpenClaw

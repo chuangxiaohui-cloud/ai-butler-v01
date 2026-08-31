@@ -29,11 +29,13 @@
   - `src/agent/intent-feature.ts`：office_daily 特征正则补搜信关键词 → 搜信直连 office-daily。
 - **验证**：`npm run build` 绿；新增单测 7 条（imap TLS 2：主题 SEARCH 命令 + 中文本地兜底 / 发件人、通用关键词 + 📎；office-daily 4：搜周报命中同格式 / 找 alice 发件人 / 无结果 / 无关键词引导；router-v2 1：搜周报邮件 → office-daily）；imap+router-v2 109/109、office-daily 74/75（1 skip 为既有 PDF 用例）；`npm run doc-lint` 0 FAIL 0 WARN。
 - **文档**：`docs/plans/2026-09-01-email-imap-search.md`；附录 A E300；`docs/roadmap.md` E293-后「搜信」改已完成。
-- **遗留**：真实 QQ 搜信冒烟待用户（`npm run dev -- "搜周报的邮件"` / `"找 xx 发的邮件"`）；多账号仍为 v2.6+ 候选。
+- **真实冒烟**（owner 2026-09-01）：`找 scutcxv138@outlook.com发的邮件` → 命中 2 封 + 📎（发件人搜索 OK）；`搜周报的邮件` 被市场 Skill docx-write 触发词「周报」抢占生成无关 docx → **E301 修复**。
+- **E301 修复**：`src/search/pipeline.ts` 市场触发命中前按路由决定门槛——路由 decision 为 direct（已直连本地 Skill）时 `minTriggerLength` 提到 3，2 字泛触发词不抢专属意图；≥3 字定向触发词照常覆盖。新增 pipeline 单测 2 条；pipeline+nl-router 64/64；附录 A E301。
+- **遗留**：主题搜信复验待用户（`npm run dev -- "搜周报的邮件"`）；多账号仍为 v2.6+ 候选。
 
 ## 明日待办（接续点）
 
-1. **真实 QQ 搜信冒烟**：`npm run dev -- "搜周报的邮件"` / `"找 alice 发的邮件"`，确认中文主题/发件人命中。
+1. **主题搜信复验**：`npm run dev -- "搜周报的邮件"`，确认不再被市场 docx-write 抢占、返回搜信列表。
 2. **多账号**：仍为 v2.6+ 候选（roadmap E293-后 剩余项）。
 
 **预估成本(¥)**：¥0（本日全部为本地实现 + 离线单测 + 文档 + 真实 IMAP 冒烟；无 LLM/API 付费调用）。

@@ -681,9 +681,13 @@ export async function pipeline(
   // E243 收口：市场 Skill 自然语言路由（命中已安装 Skill 触发词 → 直连执行，绕开搜索）
   // 安全/专用意图已在前面短路返回；deep_report 走深度报告专用链路，不拦截。
   if (deps.marketSkillRunner && routeSelected.intent !== 'deep_report' && routeSelected.intent !== 'github_analysis') {
+    // E301：路由已直连本地 Skill（如 office-daily 搜信）时，2 字泛触发词（周报/日报/模板等）不抢专属意图；
+    // ≥3 字定向触发词（周报模板/生成周报/会议纪要等）仍视为明确意图，可覆盖本地路由。
+    const minTriggerLength = route.decision.type === 'direct' ? 3 : 2;
     const skillHit = matchInstalledSkillTrigger(
       prepared.cleanQuery,
       deps.marketSkillRunner.listInstalledWithTriggers(),
+      minTriggerLength,
     );
     if (skillHit) {
       safeArtifact({ skill: skillHit.skillName, state: 'generating' });
