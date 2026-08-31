@@ -53,7 +53,13 @@ interface FakeImapMessage {
   body: string;
   /** E298：整封原始 MIME 消息（BODY.PEEK[] 响应用；缺省回退 body） */
   raw?: string;
+  /** E299：BODYSTRUCTURE 响应（缺省为无附件结构） */
+  bodyStructure?: string;
 }
+
+/** E299：缺省 BODYSTRUCTURE——multipart/alternative 正文，无附件 */
+const DEFAULT_BODY_STRUCTURE =
+  '(("text/plain" "charset" "utf-8" NIL NIL "7bit" 12 0 NIL NIL NIL) "alternative" ("boundary" "b"))';
 
 const SAMPLE_MESSAGES: FakeImapMessage[] = [
   { from: 'alice@example.com', subject: '周报', date: 'Mon, 31 Aug 2026 09:00:00 +0800', seen: false, body: '本周完成收件功能。' },
@@ -103,6 +109,8 @@ function handleImapSocket(
             socket.write(`* ${seq} FETCH (FLAGS (${flags}) BODY[HEADER.FIELDS (FROM SUBJECT DATE)] {${Buffer.byteLength(header)}}\r\n`);
             socket.write(`${header}\r\n`);
             socket.write(')\r\n');
+          } else if (cmd.includes('BODYSTRUCTURE')) {
+            socket.write(`* ${seq} FETCH (BODYSTRUCTURE ${msg.bodyStructure ?? DEFAULT_BODY_STRUCTURE})\r\n`);
           } else {
             const partial = cmd.match(/<0\.(\d+)>/);
             const maxBytes = partial ? Number(partial[1]) : Number.POSITIVE_INFINITY;
@@ -592,6 +600,44 @@ test('imap: TLS fetchEmailAttachments BODY.PEEK[] 整封解析不置已读', { s
     assert.equal(atts[0].filename, '数据.zip');
     assert.equal(atts[0].content.toString('utf8'), 'ZIPBYTES');
     assert.equal(fake.transcript.some((l) => l.includes('FETCH 1 BODY.PEEK[]')), true);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: TLS fetchRecentEmails BODYSTRUCTURE 附件标记（📎 判定）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const attachMsg: FakeImapMessage = {
+    from: 'alice@example.com',
+    subject: '带附件周报',
+    date: 'Mon, 31 Aug 2026 09:00:00 +0800',
+    seen: false,
+    body: '正文',
+    bodyStructure:
+      '((("text/plain" "charset" "utf-8" NIL NIL "7bit" 10 0 NIL NIL NIL)' +
+      '("application/pdf" "pdf" NIL NIL "base64" 5025 NIL ("attachment" ("filename" "架构师审计框架说明.md")) NIL NIL)' +
+      ' "mixed")("text/html" "charset" "utf-8" NIL NIL "7bit" 20 0 NIL NIL NIL) "related" ("boundary" "r"))',
+  };
+  const plainMsg: FakeImapMessage = {
+    from: 'bob@example.com',
+    subject: '无附件',
+    date: 'Fri, 28 Aug 2026 18:30:00 +0800',
+    seen: true,
+    body: '正文',
+  };
+  const fake = await startFakeTlsImapServer([attachMsg, plainMsg], certPath, keyPath);
+  try {
+    const port = fake.port;
+    const list = await fetchRecentEmails(
+      { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: true },
+      { timeoutMs: 8000, allowInsecureTls: true },
+    );
+    assert.equal(list.length, 2);
+    assert.equal(list[0].hasAttachment, true, 'alice（最新）含附件');
+    assert.equal(list[1].hasAttachment, false, 'bob 无附件');
+    assert.equal(fake.transcript.some((l) => l.includes('FETCH 1,2 (BODYSTRUCTURE)')), true);
   } finally {
     await fake.close();
     rmSync(dir, { recursive: true, force: true });

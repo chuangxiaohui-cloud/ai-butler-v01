@@ -19,6 +19,8 @@ export interface ImapMessageSummary {
   subject: string;
   date: string;
   seen: boolean;
+  /** E299：该邮件是否含附件（BODYSTRUCTURE disposition 判定，inline 图片不算） */
+  hasAttachment: boolean;
 }
 
 /** E298：解析出的邮件附件（内容已解码，可直接落盘） */
@@ -340,6 +342,47 @@ function parseSearchSeqs(parts: ResponsePart[]): number[] {
     seqs.push(...nums);
   }
   return seqs.filter((n) => Number.isInteger(n) && n > 0);
+}
+
+/** E299：BODYSTRUCTURE 原文是否含 attachment 部件——disposition 关键词 `"attachment"`（inline 图片/正文部件不标） */
+function bodyStructureHasAttachment(text: string): boolean {
+  return /"attachment"\s*(?:\(|NIL)/i.test(text);
+}
+
+/** E299：解析 BODYSTRUCTURE FETCH 响应 → seq → 结构原文（按 * N FETCH 单元 + 括号深度，含 literal 片段） */
+function parseBodyStructureUnits(parts: ResponsePart[]): Map<number, string> {
+  const out = new Map<number, string>();
+  let currentSeq: number | null = null;
+  let depth = 0;
+  let texts: string[] = [];
+  const flush = (): void => {
+    if (currentSeq !== null) out.set(currentSeq, texts.join(' '));
+    texts = [];
+  };
+  for (const p of parts) {
+    if (p.kind === 'line') {
+      const m = p.text.match(/^\* (\d+) FETCH/);
+      if (m) {
+        flush();
+        currentSeq = Number(m[1]);
+        depth = 0;
+      }
+      if (currentSeq === null) continue;
+      texts.push(p.text);
+      for (const ch of p.text) {
+        if (ch === '(') depth += 1;
+        else if (ch === ')') depth -= 1;
+      }
+      if (depth <= 0) {
+        flush();
+        currentSeq = null;
+      }
+    } else if (currentSeq !== null) {
+      texts.push(p.text);
+    }
+  }
+  flush();
+  return out;
 }
 
 interface FetchUnit {
@@ -769,6 +812,9 @@ export async function fetchRecentEmails(
       `FETCH ${cand.join(',')} (FLAGS BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])`,
       'OK',
     );
+    // E299：BODYSTRUCTURE 判定每封是否含附件（查收件箱列表 📎 标记）
+    const bsFetch = await session.command(`FETCH ${cand.join(',')} (BODYSTRUCTURE)`, 'OK');
+    const bsMap = parseBodyStructureUnits(bsFetch.parts);
     const parsed = parseFetchUnits(fetch.parts).map((u) => {
       const h = parseHeaderLiteral(u.literals.join('\n'));
       return {
@@ -778,6 +824,7 @@ export async function fetchRecentEmails(
         date: h.date,
         seen: u.flags.includes('\\Seen'),
         time: parseHeaderTime(h.date),
+        hasAttachment: bodyStructureHasAttachment(bsMap.get(u.seq) ?? ''),
       };
     });
     parsed.sort((a, b) => b.time - a.time || b.seq - a.seq);
@@ -787,6 +834,7 @@ export async function fetchRecentEmails(
       subject: m.subject,
       date: m.date,
       seen: m.seen,
+      hasAttachment: m.hasAttachment,
     }));
   } finally {
     await quit(session);

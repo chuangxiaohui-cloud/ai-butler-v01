@@ -2500,7 +2500,13 @@ interface FakeImapMessage {
   body: string;
   /** E298：整封原始 MIME 消息（BODY.PEEK[] 响应用；缺省回退 body） */
   raw?: string;
+  /** E299：BODYSTRUCTURE 响应（缺省为无附件结构） */
+  bodyStructure?: string;
 }
+
+/** E299：缺省 BODYSTRUCTURE——multipart/alternative 正文，无附件 */
+const DEFAULT_BODY_STRUCTURE =
+  '(("text/plain" "charset" "utf-8" NIL NIL "7bit" 12 0 NIL NIL NIL) "alternative" ("boundary" "b"))';
 
 /** E293：fake TLS IMAP 服务器共用的命令处理（LOGIN/SELECT/SEARCH/FETCH 头部+正文字面量/LOGOUT） */
 function handleFakeImapSocket(socket: Socket, messages: FakeImapMessage[], transcript: string[]): void {
@@ -2539,6 +2545,8 @@ function handleFakeImapSocket(socket: Socket, messages: FakeImapMessage[], trans
             socket.write(`* ${seq} FETCH (FLAGS (${flags}) BODY[HEADER.FIELDS (FROM SUBJECT DATE)] {${Buffer.byteLength(header)}}\r\n`);
             socket.write(`${header}\r\n`);
             socket.write(')\r\n');
+          } else if (cmd.includes('BODYSTRUCTURE')) {
+            socket.write(`* ${seq} FETCH (BODYSTRUCTURE ${msg.bodyStructure ?? DEFAULT_BODY_STRUCTURE})\r\n`);
           } else {
             const partial = cmd.match(/<0\.(\d+)>/);
             const maxBytes = partial ? Number(partial[1]) : Number.POSITIVE_INFINITY;
@@ -2852,6 +2860,31 @@ test('office-daily: 查收件箱（假 TLS IMAP）→ 列表含未读标记与�
   }
 });
 
+test('office-daily: 查收件箱列表带 📎 附件标记（E299）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(ATTACH_MESSAGES, certPath, keyPath);
+  try {
+    const mailDir = join(dir, 'mail');
+    saveImapCredentials(mailDir, fake.port);
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir, imapOptions: { allowInsecureTls: true } });
+    const out = await skill.execute(
+      { query: '查收件箱', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('1. 未读｜alice@example.com｜周报（含附件）'), result.answer);
+    assert.ok(result.answer?.includes('📎'), result.answer);
+    assert.ok(result.answer?.includes('2. 已读｜bob@example.com｜Re: 方案'), result.answer);
+    // bob 无附件，行尾不应带 📎
+    const bobLine = result.answer?.split('\n').find((l) => l.includes('bob@example.com')) ?? '';
+    assert.ok(!bobLine.includes('📎'), bobLine);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('office-daily: 读第 1 封 → 正文带 untrusted_data 防护标记', { skip: !HAS_CRYPTOGRAPHY }, async () => {
   const dir = tempDir();
   const { certPath, keyPath } = genCert(dir);
@@ -2950,6 +2983,10 @@ const ATTACH_MESSAGES: FakeImapMessage[] = [
     date: 'Mon, 31 Aug 2026 09:00:00 +0800',
     seen: false,
     body: '本周完成收件功能。',
+    bodyStructure:
+      '((("text/plain" "charset" "utf-8" NIL NIL "7bit" 10 0 NIL NIL NIL)' +
+      '("application/pdf" "pdf" NIL NIL "base64" 5025 NIL ("attachment" ("filename" "测试主题.pdf")) NIL NIL)' +
+      ' "mixed")',
     raw:
       'From: alice@example.com\r\nSubject: 周报（含附件）\r\nContent-Type: multipart/mixed; boundary="b"\r\n' +
       '\r\n' +

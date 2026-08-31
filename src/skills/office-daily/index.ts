@@ -1251,7 +1251,7 @@ export function createOfficeDailySkill(opts?: {
             }
             const lines = list.map(
               (m, i) =>
-                `${i + 1}. ${m.seen ? '已读' : '未读'}｜${m.from || '(无发件人)'}｜${m.subject || '(无主题)'}｜${m.date || ''}`,
+                `${i + 1}. ${m.seen ? '已读' : '未读'}｜${m.from || '(无发件人)'}｜${m.subject || '(无主题)'}｜${m.date || ''}${m.hasAttachment ? '｜📎' : ''}`,
             );
             return {
               result: {
@@ -1777,7 +1777,6 @@ ${timeLabel}
     },
   };
 }
-
 
 
 

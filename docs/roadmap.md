@@ -23,7 +23,7 @@
 | 编号 | 项 | 来源 | 状态/触发 | 备注 |
 |---|---|---|---|---|
 | E293 | 收邮件 IMAP 只读收件箱（查最近 N 封 + 读第 N 封全文，正文 untrusted_data 防护） | owner 指令 2026-08-31「收邮件也一起实现」 | 实现完成（v2.6 pre-ship 候选；提交归属待 owner 拍板） | `src/mail/imap.ts` + office-daily 收件分支；真实 QQ IMAP 冒烟已通过（2026-08-31，按日期排序）；Gmail 未测 |
-| E293-后 | IMAP 增量：附件下载 / 搜信（SEARCH 条件）/ 多账号 | E293 遗留 | 附件下载已完成；搜信 / 多账号 v2.6+ 候选 | 主题/发件人 MIME 解码（`docs/plans/2026-08-31-email-mime-header-decode.md`）、正文可读性 base64/QP+HTML 清洗（`docs/plans/2026-08-31-email-body-readable.md`）、附件下载（E298，`docs/plans/2026-08-31-email-imap-attachment-download.md`）已完成（2026-08-31）；真实 QQ IMAP 附件下载冒烟已通过（2026-09-01，中文名 md 附件解码落盘）；搜信 / 多账号未做 |
+| E293-后 | IMAP 增量：附件下载 / 搜信（SEARCH 条件）/ 多账号 | E293 遗留 | 附件下载 + 列表 📎 标记已完成；搜信 / 多账号 v2.6+ 候选 | 主题/发件人 MIME 解码（`docs/plans/2026-08-31-email-mime-header-decode.md`）、正文可读性 base64/QP+HTML 清洗（`docs/plans/2026-08-31-email-body-readable.md`）、附件下载（E298，`docs/plans/2026-08-31-email-imap-attachment-download.md`）已完成（2026-08-31）；真实 QQ IMAP 附件下载冒烟已通过（2026-09-01，中文名 md 附件解码落盘）；查收件箱 📎 附件标记（E299，`docs/plans/2026-09-01-email-list-attachment-flag.md`）已完成（2026-09-01）；搜信 / 多账号未做 |
 
 ## 收口约定
 
