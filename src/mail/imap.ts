@@ -431,20 +431,208 @@ export function decodeMimeHeader(raw: string): string {
   });
 }
 
-/** E293：从 FETCH BODY[TEXT] 原始正文提取可读文本——text/plain 直返；multipart 只取第一个部件正文（去部件头与 boundary）。不做 HTML 清洗/base64 解码（v2.6 候选）。 */
-export function extractPlainText(raw: string): string {
-  let text = raw.replace(/^\r?\n/, '').replace(/\r\n/g, '\n');
-  const isMultipart = /boundary=|^Content-Type:/im.test(text);
-  if (!isMultipart) return text.trim();
-  const lines = text.split('\n');
-  // 去掉首个空行前的 MIME 部件头
+/** E293-后：HTML → 可读文本（无外部依赖：去 script/style、块级标签换行、剥标签、常用与数字实体解码） */
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*(script|style)\s*>/gi, '')
+    .replace(/<\s*(br|p|div|li|tr|table|section|article|blockquote|ul|ol|pre|h[1-6])[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#(\d+);/g, (_m, n) => {
+      const code = Number(n);
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_m, h) => {
+      const code = parseInt(h, 16);
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
+    })
+    .replace(/&amp;/gi, '&')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+}
+
+/** E293-后：按字符集把字节解码为文本（显式 charset 优先；否则 utf-8，出现替换符回退 gbk） */
+function decodeBytes(bytes: Buffer, charset?: string): string {
+  const tryDecode = (cs: string): string => new TextDecoder(cs).decode(bytes);
+  if (charset) {
+    try {
+      return tryDecode(charset);
+    } catch {
+      // 未知字符集标签，走回退链
+    }
+  }
+  for (const cs of ['utf-8', 'gbk']) {
+    try {
+      const s = tryDecode(cs);
+      if (cs === 'utf-8' && s.includes('\uFFFD')) continue; // utf-8 出替换符 → 试 gbk
+      return s;
+    } catch {
+      // 下一候选
+    }
+  }
+  return bytes.toString('utf8');
+}
+
+/** E293-后：quoted-printable 正文 → 字节（行尾 = 为软换行续行；=XX → 字节；正文中 _ 原样，与头部 Q 编码不同） */
+function decodeQuotedPrintableBody(encoded: string): Buffer {
+  const t = encoded.replace(/=\r?\n/g, '');
+  const bytes: number[] = [];
+  for (let i = 0; i < t.length; i += 1) {
+    const ch = t[i];
+    if (ch === '=' && i + 2 < t.length) {
+      const hex = t.slice(i + 1, i + 3);
+      if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+        bytes.push(parseInt(hex, 16));
+        i += 2;
+      } else {
+        bytes.push(ch.charCodeAt(0));
+      }
+    } else {
+      bytes.push(ch.charCodeAt(0));
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+/** E293-后：解析 MIME 部件头（Content-Type/charset/boundary/Content-Transfer-Encoding） */
+function parseMimePartHeader(raw: string): {
+  contentType: string;
+  charset?: string;
+  boundary?: string;
+  encoding?: string;
+} {
+  const headers = new Map<string, string>();
+  let current: string | null = null;
+  for (const rawLine of raw.replace(/\r\n/g, '\n').split('\n')) {
+    if (/^[\t ]/.test(rawLine) && current) {
+      headers.set(current, `${headers.get(current) ?? ''} ${rawLine.trim()}`);
+      continue;
+    }
+    const m = rawLine.match(/^([^:\s]+):\s*(.*)$/);
+    if (m) {
+      current = m[1].toLowerCase();
+      headers.set(current, m[2].trim());
+    } else {
+      current = null;
+    }
+  }
+  const ct = headers.get('content-type') ?? '';
+  return {
+    contentType: /^([^;\s]+)/.exec(ct)?.[1] ?? '',
+    charset: /charset=["']?([^;"'\s]+)/i.exec(ct)?.[1],
+    boundary: /boundary=["']?([^;"'\s]+)/i.exec(ct)?.[1],
+    encoding: (headers.get('content-transfer-encoding') ?? '').trim().toLowerCase() || undefined,
+  };
+}
+
+/** E293-后：按 boundary 拆分 multipart 部件（去分隔行与结束标记） */
+function splitByBoundary(body: string, boundary: string): { header: string; content: string }[] {
+  const parts: { header: string; content: string }[] = [];
+  for (const chunk of body.split('--' + boundary)) {
+    const t = chunk.replace(/^\r?\n/, '').replace(/\r\n/g, '\n');
+    if (t.startsWith('--')) continue; // --boundary-- 结束标记
+    const lines = t.split('\n');
+    const blank = lines.findIndex((l) => l.trim() === '');
+    const header = blank > 0 ? lines.slice(0, blank).join('\n') : '';
+    const content = blank >= 0 ? lines.slice(blank + 1).join('\n') : t;
+    if (header.trim() || content.trim()) parts.push({ header, content });
+  }
+  return parts;
+}
+
+/** E293-后：按部件头解码正文（base64/QP → 字节 → charset 解码；text/html 再清洗） */
+function decodeAndRead(content: string, contentType: string, charset?: string, encoding?: string): string {
+  let text = content;
+  if (encoding === 'base64') {
+    text = decodeBytes(Buffer.from(content.replace(/\s+/g, ''), 'base64'), charset);
+  } else if (encoding === 'quoted-printable') {
+    text = decodeBytes(decodeQuotedPrintableBody(content), charset);
+  }
+  if (/^text\/html/i.test(contentType)) return htmlToText(text);
+  return text.trim();
+}
+
+/** E293-后：MIME 正文 → 可读文本（multipart 优先 text/plain，其次 html 清洗；无 boundary 按单部件头部解析） */
+function extractMimeBody(raw: string): string {
+  const lines = raw.replace(/^\r?\n/, '').split('\n');
+  // 找首个真实分隔行：--X 且同款分隔符在后续再次出现（排除 --X-- 结束标记）
+  const boundaryLineIdx = lines.findIndex((l, i) => {
+    const t = l.trim();
+    if (!t.startsWith('--') || t.length < 3) return false;
+    return lines.slice(i + 1).join('\n').includes('--' + t.slice(2));
+  });
+  if (boundaryLineIdx >= 0) {
+    const boundary = lines[boundaryLineIdx].trim().slice(2);
+    const parsed = splitByBoundary(lines.slice(boundaryLineIdx).join('\n'), boundary).map((p) => {
+      const h = parseMimePartHeader(p.header);
+      return { ...h, content: p.content };
+    });
+    const target =
+      parsed.find((p) => /^text\/plain/i.test(p.contentType)) ??
+      parsed.find((p) => /^text\/html/i.test(p.contentType)) ??
+      parsed.find((p) => p.content.trim()) ??
+      parsed[0];
+    if (!target) return '';
+    return decodeAndRead(target.content, target.contentType, target.charset, target.encoding);
+  }
   const blank = lines.findIndex((l) => l.trim() === '');
+  const h = parseMimePartHeader(blank > 0 ? lines.slice(0, blank).join('\n') : '');
   const bodyStart = blank > 0 && blank < lines.length ? blank + 1 : 0;
-  const bodyLines = lines.slice(bodyStart);
-  // 只取第一个部件：到下一个 boundary 行为止
-  const boundaryIdx = bodyLines.findIndex((l) => l.trim().startsWith('--') && l.trim().length > 3);
-  const content = boundaryIdx >= 0 ? bodyLines.slice(0, boundaryIdx) : bodyLines;
-  return content.join('\n').trim();
+  return decodeAndRead(lines.slice(bodyStart).join('\n'), h.contentType, h.charset, h.encoding);
+}
+
+/** E293-后：启发式识别 HTML 正文（含 <html/<body/<!doctype 或任意闭合标签） */
+function looksLikeHtml(s: string): boolean {
+  return /<!doctype html|<html[\s>]|<body[\s>]/i.test(s) || /<\/[a-z]/i.test(s);
+}
+
+/** E293-后：启发式识别 base64 正文（BODY[TEXT] 无消息头时只有编码文本） */
+function looksLikeBase64(s: string): boolean {
+  const t = s.replace(/\s+/g, '');
+  return t.length >= 24 && t.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(t);
+}
+
+/** E293-后：文本含可读字符（ASCII 词/空白/CJK/全角）才算可读，排除纯控制字符乱码 */
+function isReadableText(s: string): boolean {
+  return /[\w\s\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/.test(s);
+}
+
+/** E293-后：还原正文中的 markdown 链接 [label](url)——label 为 URL（或含 URL）时只留 label，否则保留为 label（url） */
+function cleanMarkdownLinks(s: string): string {
+  return s.replace(/\[([^\]]*)\]\(([^)\s]*)\)/g, (_m, label: string, url: string) => {
+    const l = label.trim();
+    const u = url.trim();
+    if (!u) return l;
+    if (/^https?:\/\//i.test(l) || l.includes(u)) return l || u;
+    return `${l}（${u}）`;
+  });
+}
+
+/** E293-后：正文收尾——还原 markdown 链接，并为 URL 前的冒号补空格（emails:http:// → emails: http://） */
+function finalizeBodyText(s: string): string {
+  return cleanMarkdownLinks(s).replace(/:(?=https?:\/\/)/g, ': ');
+}
+
+/** E293-后：从 FETCH BODY[TEXT] 原始正文提取可读文本——multipart 按 boundary 拆部件、优先 text/plain；base64/QP 按 charset 解码；text/html 清洗；单部件无消息头时启发式识别 HTML/base64。 */
+export function extractPlainText(raw: string): string {
+  const text = raw.replace(/^\r?\n/, '').replace(/\r\n/g, '\n');
+  const firstLine = text.split('\n').find((l) => l.trim() !== '')?.trim() ?? '';
+  const isMultipart = /boundary=|^Content-Type:/im.test(text) || /^--[\w.-]+$/.test(firstLine);
+  if (isMultipart) return finalizeBodyText(extractMimeBody(text));
+  if (looksLikeHtml(text)) return finalizeBodyText(htmlToText(text));
+  if (looksLikeBase64(text)) {
+    const decoded = decodeBytes(Buffer.from(text.replace(/\s+/g, ''), 'base64'));
+    if (!decoded.includes('\uFFFD') && isReadableText(decoded)) {
+      if (looksLikeHtml(decoded)) return finalizeBodyText(htmlToText(decoded));
+      return finalizeBodyText(decoded.trim());
+    }
+  }
+  return finalizeBodyText(text.trim());
 }
 
 async function quit(session: ImapSession): Promise<void> {

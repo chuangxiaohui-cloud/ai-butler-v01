@@ -19,7 +19,7 @@
 ### 2. 真实收件/发信冒烟核对（2026-08-31 收尾，owner 实测 + 核对）
 
 - **收件（E293）**：`npm run dev -- "查收件箱"` 连通真实 QQ IMAP，返回最近 10 封（未读/已读、发件人、主题、日期，最新在前），`mode: life`、`gate_triggered: none`；`读第 1 封` 返回正文且按 §10.5 包 untrusted_data 分隔符，未置已读（BODY.PEEK）。
-- **已知限制（与计划一致，v2.6 候选）**：HTML-only 邮件返回原始 HTML 源码（`extractPlainText` 不做 HTML 清洗，正文 base64 未解码）。
+- **后续修复（owner 拍板 2026-08-31，`docs/plans/2026-08-31-email-body-readable.md`）**：正文可读性——`extractPlainText` 重写为 MIME 正文→可读文本：multipart 按 boundary 拆部件、优先 text/plain；base64/quoted-printable 按 charset 解码（utf-8 出替换符回退 gbk）；text/html 走 `htmlToText`（去 script/style、块级换行、实体解码）；`finalizeBodyText` 收尾：还原正文自带的 `[url](url)` 链接 + URL 前冒号补空格；单部件无消息头时启发式识别 HTML/base64。真实 QQ 安全中心 HTML 邮件清洗为可读文本、elecfans 兜底邮件输出纯 URL（`emails: http://...` 带空格）；单测 +10（`htmlToText` 3 + `extractPlainText` 7），imap 18/18、office-daily 66/67 全绿。
 - **缺陷已修复（owner 拍板 2026-08-31，`docs/plans/2026-08-31-email-imap-read-seq-fix.md`）**：「读第 N 封」序号错位——原实现列表显示 IMAP `seq`、`extractReadSeq` 直接把 N 当 seq 取，「读第 1 封」实际读到最老一封（2020 QQ 安全中心邮件）而非最新；已改为列表按位次编号 1..N、读信先按位次定位真实 seq；单测 +2（读第 2 封按位次 / 读第 99 封诚实提示）。
 - **发信（E170+E291 双闸实测）**：两步流程（草稿回执 → `确认发送`）真实 SMTP 投递成功：`104735796@qq.com` → `scutcxv138@outlook.com`，主题「AI-Butler 测试邮件」，收件端已确认收到。
 - **后续修复（owner 拍板 2026-08-31，`docs/plans/2026-08-31-email-imap-recent-by-date.md`）**：QQ IMAP 的 seq 不按时间顺序（INTERNALDATE 证实 2019-2022 老邮件 seq 2248-2984 大于 8/31 上午邮件 2247，授权码昨日重建后触发重排），「最后 N 个 seq」≠「最近 N 封」；`fetchRecentEmails` 改为 `SEARCH SINCE` 逐档放宽取候选 + 本地按 Date 排序；真实冒烟通过（列表按日期、`读第 1 封`=最新一封）。

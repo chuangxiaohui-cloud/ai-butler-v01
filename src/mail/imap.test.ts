@@ -11,6 +11,7 @@ import {
   deriveImapHost,
   decodeMimeHeader,
   extractPlainText,
+  htmlToText,
   fetchEmailText,
   fetchRecentEmails,
   resolveImapConfig,
@@ -225,6 +226,68 @@ test('imap: extractPlainText 简单正文直返 / multipart 只取第一个部�
     '<p>html</p>\r\n' +
     '--boundary123--\r\n';
   assert.equal(extractPlainText(multipart), '正文第一段');
+});
+
+test('imap: htmlToText 清洗 HTML（去 script/style、块级换行、实体解码）', () => {
+  assert.equal(htmlToText('<div>第一行</div><p>第二<b>行</b></p><br/>第三行'), '第一行\n第二行\n第三行');
+  assert.equal(htmlToText('<html><body>你好&nbsp;世界 &amp; 更多</body></html>'), '你好 世界 & 更多');
+  assert.equal(htmlToText('<style>p{color:red}</style><script>alert(1)</script><p>内容</p>'), '内容');
+});
+
+test('imap: extractPlainText HTML-only 正文 → 清洗文本', () => {
+  assert.equal(extractPlainText('<html><body><p>你好，世界</p></body></html>'), '你好，世界');
+});
+
+test('imap: extractPlainText 单部件 base64 正文（无消息头）→ 解码', () => {
+  const html = '<p>第一段</p>';
+  assert.equal(extractPlainText(Buffer.from(html, 'utf8').toString('base64')), '第一段');
+});
+
+test('imap: extractPlainText multipart base64 优先 text/plain', () => {
+  const mp =
+    '--b\r\nContent-Type: text/plain; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n' +
+    Buffer.from('周报内容', 'utf8').toString('base64') +
+    '\r\n--b\r\nContent-Type: text/html; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n' +
+    Buffer.from('<p>周报内容</p>', 'utf8').toString('base64') +
+    '\r\n--b--\r\n';
+  assert.equal(extractPlainText(mp), '周报内容');
+});
+
+test('imap: extractPlainText multipart 仅 html（base64）→ 清洗', () => {
+  const mp =
+    '--b\r\nContent-Type: text/html; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n' +
+    Buffer.from('<p>活动报名</p>', 'utf8').toString('base64') +
+    '\r\n--b--\r\n';
+  assert.equal(extractPlainText(mp), '活动报名');
+});
+
+test('imap: extractPlainText multipart quoted-printable gb2312 → 解码', () => {
+  const mp =
+    '--b\r\nContent-Type: text/plain; charset="gb2312"\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n' +
+    '=B2=E2=CA=D4=D6=F7=CC=E2\r\n--b--\r\n';
+  assert.equal(extractPlainText(mp), '测试主题');
+});
+
+test('imap: extractPlainText 还原正文中的 markdown 链接', () => {
+  const body =
+    'Your email client cannot read this email.\n' +
+    'To view it online, please go here:\n' +
+    '[http://sub.elecfans.top/display.php?M=1&C=2](http://sub.elecfans.top/display.php?M=1&C=2)\n' +
+    'To stop: [退订](http://api.elecfans.net/u?code=x)';
+  assert.equal(
+    extractPlainText(body),
+    'Your email client cannot read this email.\n' +
+      'To view it online, please go here:\n' +
+      'http://sub.elecfans.top/display.php?M=1&C=2\n' +
+      'To stop: 退订（http://api.elecfans.net/u?code=x）',
+  );
+});
+
+test('imap: extractPlainText URL 前冒号补空格', () => {
+  assert.equal(
+    extractPlainText('To stop receiving these\nemails:http://api.elecfans.net/u?code=x'),
+    'To stop receiving these\nemails: http://api.elecfans.net/u?code=x',
+  );
 });
 
 test('imap: decodeMimeHeader RFC 2047 解码（B/Q/拼接段/回退）', () => {
