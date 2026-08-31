@@ -6,6 +6,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { guardSkillOutputPath } from '../../security/sandbox.js';
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 import type { RawFileLike, SkillDeps } from '../deps.js';
 import {
@@ -188,6 +189,16 @@ export function createSchematicBomSkill(): ExecutableSkill {
         }
         const csv = buildBomCsv(rows);
         const dir = join(process.cwd(), 'data', 'boms');
+        // B1：写盘沙箱门禁（默认 data/boms 必须过白名单 + 审计日志）
+        const gate = guardSkillOutputPath(dir);
+        if (!gate.allowed) {
+          return {
+            result: {
+              answer: `输出目录不在沙箱白名单内，未生成 BOM：${dir}`,
+            },
+            confidence: 0.2,
+          };
+        }
         mkdirSync(dir, { recursive: true });
         const outPath = join(dir, `${safeName(file.name)}-${Date.now()}.csv`);
         writeFileSync(outPath, csv, 'utf-8');

@@ -19,8 +19,10 @@ import {
   extractBiliBvid,
   extractVideoUrl,
   isSafeYtDlpUrl,
+  isVideoLearnUrlAllowed,
   normalizeProtocolRelativeUrl,
   parseBiliSubtitle,
+  videoLearnAllowedHosts,
 } from './index.js';
 
 function tempDir(): string {
@@ -173,7 +175,9 @@ test('video-learner: B站浏览器会话兜底生成 Skill', async () => {
           code: 0,
           data: {
             subtitle: {
-              subtitles: [{ lan: 'zh', subtitle_url: 'https://sub.example/x.json' }],
+              subtitles: [
+                { lan: 'zh', subtitle_url: 'https://aisubtitle.hdslb.com/bfs/ai_subtitle/x.json' },
+              ],
             },
           },
         }),
@@ -188,8 +192,8 @@ test('video-learner: B站浏览器会话兜底生成 Skill', async () => {
           code: 0,
           data: {
             dash: {
-              audio: [{ baseUrl: 'https://audio.example/a.m4s' }],
-              video: [{ id: 16, baseUrl: 'https://video.example/v.m4s' }],
+              audio: [{ baseUrl: 'https://upos-sz-mirror.bilivideo.com/a.m4s' }],
+              video: [{ id: 16, baseUrl: 'https://upos-sz-mirror.bilivideo.com/v.m4s' }],
             },
           },
         }),
@@ -265,4 +269,34 @@ test('video-learner: 无字幕时诚实提示', async () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// v2.6 B2：B站域白名单
+test('video-learner: 默认白名单含 B站/CDN 域，env 可追加（B2）', () => {
+  const previous = process.env.VIDEO_LEARN_ALLOWED_HOSTS;
+  try {
+    delete process.env.VIDEO_LEARN_ALLOWED_HOSTS;
+    const hosts = videoLearnAllowedHosts();
+    assert.ok(hosts.includes('bilibili.com'));
+    assert.ok(hosts.includes('bilivideo.com'));
+    assert.ok(hosts.includes('bilivideo.cn'));
+    assert.ok(hosts.includes('hdslb.com'));
+    process.env.VIDEO_LEARN_ALLOWED_HOSTS = 'example.com, custom.cn; example.org';
+    const extended = videoLearnAllowedHosts();
+    assert.ok(extended.includes('example.com'));
+    assert.ok(extended.includes('custom.cn'));
+    assert.ok(extended.includes('example.org'));
+  } finally {
+    if (previous === undefined) delete process.env.VIDEO_LEARN_ALLOWED_HOSTS;
+    else process.env.VIDEO_LEARN_ALLOWED_HOSTS = previous;
+  }
+});
+
+test('video-learner: untrusted 字幕/媒体 URL 必须命中 B站域白名单（B2）', () => {
+  assert.equal(isVideoLearnUrlAllowed('https://aisubtitle.hdslb.com/bfs/ai_subtitle/x.json'), true);
+  assert.equal(isVideoLearnUrlAllowed('https://upos-sz-mirror.bilivideo.com/upgcx/x.m4s'), true);
+  assert.equal(isVideoLearnUrlAllowed('https://api.bilibili.com/x/player/playurl'), true);
+  assert.equal(isVideoLearnUrlAllowed('https://evil.example.com/steal.m4s'), false);
+  assert.equal(isVideoLearnUrlAllowed('//evil.example.com/x.m4s'), false);
+  assert.equal(isVideoLearnUrlAllowed('ftp://bilibili.com/x'), false);
 });

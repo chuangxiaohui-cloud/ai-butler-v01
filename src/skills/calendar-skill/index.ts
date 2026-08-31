@@ -11,6 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { parseTimeExpression, parseRepeatQuery } from '../../agent/time-expression.js';
 import { ReminderStore } from '../../reminder/reminder-store.js';
+import { guardSkillOutputPath } from '../../security/sandbox.js';
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 import type { SkillDeps } from '../deps.js';
 
@@ -395,6 +396,14 @@ export function createCalendarSkill(
               result: '暂无日程可导出，未生成 ICS 文件。',
               confidence: 0.7,
               followUpAction: '先告诉我需要安排的日程，例如“明天上午十点开会”。',
+            };
+          }
+          // B1：写盘沙箱门禁（显式注入 outDir 的测试/受信调用方跳过）
+          const gate = guardSkillOutputPath(outDir, { explicit: Boolean(opts?.outDir) });
+          if (!gate.allowed) {
+            return {
+              result: `输出目录不在沙箱白名单内，未导出：${outDir}`,
+              confidence: 0.2,
             };
           }
           mkdirSync(outDir, { recursive: true });

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
-import { isPathAllowed, logSandboxAudit } from './sandbox.js';
+import { guardSkillOutputPath, isPathAllowed, isSkillOutputAllowed, logSandboxAudit } from './sandbox.js';
 
 test('sandbox: 白名单根目录内放行', () => {
   const root = 'M:\\workspace';
@@ -101,6 +101,68 @@ test('sandbox: SANDBOX_ALLOWED_DIRS 越出 workspaceRoot 必须拒绝', () => {
       if (previous === undefined) delete process.env.SANDBOX_ALLOWED_DIRS;
       else process.env.SANDBOX_ALLOWED_DIRS = previous;
     }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// v2.6 B1：Skill 写盘应用数据目录二级白名单
+test('sandbox: isSkillOutputAllowed 放行 data 应用数据目录（B1）', () => {
+  const root = 'M:\\workspace';
+  assert.equal(isSkillOutputAllowed('data/office/日历-1.ics', root).allowed, true);
+  assert.equal(isSkillOutputAllowed('data/learned-videos/learn-1/video.json', root).allowed, true);
+  assert.equal(isSkillOutputAllowed('data/boms/BOM-1.csv', root).allowed, true);
+  assert.equal(isSkillOutputAllowed('data/calendar/backup.db', root).allowed, true);
+  // 默认沙箱根仍放行（project-writer 等不受影响）
+  assert.equal(isSkillOutputAllowed('projects/app/main.c', root).allowed, true);
+});
+
+test('sandbox: isSkillOutputAllowed 拒绝 data 白名单外路径（B1）', () => {
+  const root = 'M:\\workspace';
+  assert.equal(isSkillOutputAllowed('C:\\Windows\\system32\\test.txt', root).allowed, false);
+  assert.equal(isSkillOutputAllowed('data/other/out.bin', root).allowed, false);
+  assert.equal(isSkillOutputAllowed('data/office-2/out.bin', root).allowed, false, '前缀相似目录不误放');
+  assert.equal(isSkillOutputAllowed('~/secrets.txt', root).allowed, false);
+});
+
+test('sandbox: guardSkillOutputPath 显式注入 outDir 视为受信跳过（B1）', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sandbox-guard-skip-'));
+  try {
+    const check = guardSkillOutputPath(join(dir, 'out'), { explicit: true });
+    assert.equal(check.allowed, true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('sandbox: guardSkillOutputPath 默认 data 路径放行并写审计日志（B1）', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sandbox-guard-ok-'));
+  const logPath = join(dir, 'audit.jsonl');
+  try {
+    const check = guardSkillOutputPath(join(dir, 'data', 'office'), {
+      workspaceRoot: dir,
+      logPath,
+    });
+    assert.equal(check.allowed, true);
+    const entry = JSON.parse(readFileSync(logPath, 'utf-8').trim()) as { allowed: boolean };
+    assert.equal(entry.allowed, true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('sandbox: guardSkillOutputPath 越界拒绝并写审计日志（B1）', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sandbox-guard-reject-'));
+  const logPath = join(dir, 'audit.jsonl');
+  try {
+    const check = guardSkillOutputPath('C:\\Windows\\system32\\test.txt', {
+      workspaceRoot: dir,
+      logPath,
+    });
+    assert.equal(check.allowed, false);
+    assert.match(check.reason ?? '', /越界/);
+    const entry = JSON.parse(readFileSync(logPath, 'utf-8').trim()) as { allowed: boolean };
+    assert.equal(entry.allowed, false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

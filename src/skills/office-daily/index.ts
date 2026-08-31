@@ -21,6 +21,7 @@ import type { RawFileLike, SkillDeps } from '../deps.js';
 import { extractTimeExpression } from '../../agent/intent-feature.js';
 import { parseTimeExpression, parseRepeatQuery } from '../../agent/time-expression.js';
 import { ReminderStore } from '../../reminder/reminder-store.js';
+import { guardSkillOutputPath } from '../../security/sandbox.js';
 import { loadCredentials } from '../../mail/credentials.js';
 import { fetchEmailText, fetchRecentEmails } from '../../mail/imap.js';
 import { sendMail } from '../../mail/smtp.js';
@@ -534,6 +535,16 @@ export function createOfficeDailySkill(opts?: {
     async execute(input: SkillInput, deps: SkillDeps): Promise<SkillOutput> {
       const outDir = opts?.outDir ?? join(process.cwd(), 'data', 'office');
       const mailDir = opts?.mailDir ?? join(process.cwd(), 'data', 'mail');
+      // B1：写盘沙箱门禁（显式注入 outDir 的测试/受信调用方跳过）
+      const outGate = guardSkillOutputPath(outDir, { explicit: Boolean(opts?.outDir) });
+      if (!outGate.allowed) {
+        return {
+          result: {
+            answer: `输出目录不在沙箱白名单内，未执行：${outDir}`,
+          },
+          confidence: 0.2,
+        };
+      }
       mkdirSync(outDir, { recursive: true });
       const mode = modeFrom(input.query);
       const imapFetchOptions = opts?.imapOptions ?? {};
@@ -1694,7 +1705,6 @@ ${timeLabel}
     },
   };
 }
-
 
 
 

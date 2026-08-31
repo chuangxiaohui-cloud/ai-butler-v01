@@ -222,6 +222,58 @@ test('browser-session: downloadFile 拒绝 3xx 重定向（E292）', async () =>
   assert.match(result.error ?? '', /不允许跟随重定向/);
 });
 
+// v2.6 B4：完整域名白名单
+test('browser-session: fetchPage 拒绝非白名单域名（B4）', async () => {
+  const manager = new (await import('./session.js')).BrowserSessionManager({
+    userDataDir: 'M:/tmp/browser-session-test',
+    executablePath: 'C:/fake/chrome.exe',
+    launcher: fakeChromium as never,
+  });
+  await assert.rejects(
+    () => manager.fetchPage('https://evil.example.com/', 30_000, 0, ['szlcsc.com']),
+    /域名不在白名单内/,
+  );
+});
+
+test('browser-session: downloadFile 拒绝非白名单域名（B4）', async () => {
+  const manager = new (await import('./session.js')).BrowserSessionManager({
+    userDataDir: 'M:/tmp/browser-session-test',
+    executablePath: 'C:/fake/chrome.exe',
+    launcher: fakeChromium as never,
+  });
+  const result = await manager.downloadFile(
+    'https://evil.example.com/x.pdf',
+    'M:/tmp/b4-reject.pdf',
+    undefined,
+    ['szlcsc.com'],
+  );
+  assert.equal(result.ok, false);
+  assert.match(result.error ?? '', /域名不在白名单内/);
+});
+
+test('browser-session: 白名单命中子域放行下载（B4）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'browser-b4-allow-'));
+  try {
+    const manager = new (await import('./session.js')).BrowserSessionManager({
+      userDataDir: join(dir, 'profile'),
+      executablePath: 'C:/fake/chrome.exe',
+      launcher: fakeChromium as never,
+    });
+    const dest = join(dir, 'stm32.pdf');
+    const result = await manager.downloadFile(
+      'https://so.szlcsc.com/stm32f103c8t6.pdf',
+      dest,
+      undefined,
+      ['szlcsc.com'],
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.size, 'pdf-content'.length);
+    assert.equal(existsSync(dest), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 
 test('browser-session: CDP 状态过期后不再复用并清理（S2）', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'browser-cdp-expire-'));

@@ -17,6 +17,14 @@ import {
   type Page,
 } from 'playwright-core';
 import { assertSafeBrowserUrl, isBlockedBrowserUrl } from '../security/url-safety.js';
+import { hostOfUrl, isDomainMatch } from '../security/domain-auth.js';
+
+/** B4：完整域名白名单——allowedHosts 提供时，host 必须命中其一（含子域） */
+function isHostAllowed(rawUrl: string, allowedHosts: string[]): boolean {
+  const host = hostOfUrl(rawUrl);
+  if (!host) return false;
+  return allowedHosts.some((pattern) => isDomainMatch(pattern, host));
+}
 import { PARAMS } from '../config/params.js';
 
 export interface BrowserSessionOptions {
@@ -288,8 +296,17 @@ export class BrowserSessionManager {
   }
 
   /** 带会话状态抓取网页正文；登录后会话域内页面可直接读取。 */
-  async fetchPage(url: string, timeoutMs = 30_000, waitMs = 0): Promise<FetchPageResult> {
+  async fetchPage(
+    url: string,
+    timeoutMs = 30_000,
+    waitMs = 0,
+    allowedHosts?: string[],
+  ): Promise<FetchPageResult> {
     assertSafeBrowserUrl(url); // S1：拒绝回环/链路本地/非 http(s)，防 SSRF
+    // B4：完整域名白名单（提供时 host 必须命中其一）
+    if (allowedHosts && !isHostAllowed(url, allowedHosts)) {
+      throw new Error(`域名不在白名单内：${hostOfUrl(url) ?? url}`);
+    }
     const context = await this.ensureContext();
     const page = await context.newPage();
     try {
@@ -387,10 +404,14 @@ export class BrowserSessionManager {
     url: string,
     destPath: string,
     headers?: Record<string, string>,
+    allowedHosts?: string[],
   ): Promise<{ ok: boolean; size: number; error?: string }> {
     const urlCheck = (() => {
       try {
         assertSafeBrowserUrl(url); // S1：拒绝回环/链路本地/非 http(s)，防 SSRF
+        if (allowedHosts && !isHostAllowed(url, allowedHosts)) {
+          return `域名不在白名单内：${hostOfUrl(url) ?? url}`;
+        }
         return null;
       } catch (err) {
         return err instanceof Error ? err.message : 'URL 被安全策略拒绝';

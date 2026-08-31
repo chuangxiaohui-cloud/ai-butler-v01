@@ -7,10 +7,10 @@
 
 | 编号 | 项 | 来源 | 状态/触发 | 备注 |
 |---|---|---|---|---|
-| B1 | 写盘类 4 项 Skill 加沙箱（calendar-skill ICS / schematic-bom CSV / office-daily 16 模式输出 / video-learner JSON） | 审计 §3.2 缺口 #2 | 延后 v2.6（owner 2026-08-30：纯本地单用户场景，README 已标注已知风险） | 方案：扩展 `isPathAllowed` 接受 `data/{office,learned-videos,boms,calendar}/**`；或 `sandbox.ts` 应用数据目录二级白名单 |
-| B2 | `video-learner` ASR/B站域白名单 | 审计 §3.2 缺口 #3 | 延后 v2.6 | 1-2h |
-| B3 | `market/installer` 安装日志（包名 + SHA-256 + 时间 + manifest 快照） | 审计 §3.2 缺口 #5 | 延后 v2.6 | 写 `data/market-skills/.install-log.json`，1h |
-| B4 | `browser-session` 完整域名白名单（E292 已完成最小防护） | 审计 §3.2 缺口 #4 升级项 | 延后 v2.6 | 最小防护已入 v2.5：协议白名单 + 内网段黑名单 + 禁 30x 重定向 |
+| B1 | 写盘类 4 项 Skill 加沙箱（calendar-skill ICS / schematic-bom CSV / office-daily 16 模式输出 / video-learner JSON） | 审计 §3.2 缺口 #2 | ✅ 已完成（E294，2026-08-31，见 [`docs/plans/2026-08-31-v26-b1-b4-security.md`](docs/plans/2026-08-31-v26-b1-b4-security.md)） | `isSkillOutputAllowed` 二级白名单（`data/{office,learned-videos,boms,calendar}`）+ `guardSkillOutputPath` 门禁 + 审计日志；显式注入 outDir 的测试/受信调用方跳过 |
+| B2 | `video-learner` ASR/B站域白名单 | 审计 §3.2 缺口 #3 | ✅ 已完成（E295，2026-08-31，同上） | `VIDEO_LEARN_ALLOWED_HOSTS` 白名单（默认 bilibili/bilivideo/hdslb 域）；B站响应 untrusted 字幕/媒体 URL 下载前校验 |
+| B3 | `market/installer` 安装日志（包名 + SHA-256 + 时间 + manifest 快照） | 审计 §3.2 缺口 #5 | ✅ 已完成（E296，2026-08-31，同上） | `MarketInstallRecord.manifestSnapshot` 快照落 JSONL 安装记录 |
+| B4 | `browser-session` 完整域名白名单（E292 已完成最小防护） | 审计 §3.2 缺口 #4 升级项 | ✅ 已完成（E297，2026-08-31，同上） | fetchPage/downloadFile 可选 `allowedHosts`（`isDomainMatch` 含子域）；缺省保持 E292 SSRF-only；video-learner 已透传其域白名单 |
 
 ## 能力候选（R-5 评估延后）
 

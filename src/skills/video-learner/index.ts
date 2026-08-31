@@ -14,6 +14,8 @@ import {
 } from 'node:fs';
 import { basename, join } from 'node:path';
 
+import { isDomainMatch } from '../../security/domain-auth.js';
+import { guardSkillOutputPath } from '../../security/sandbox.js';
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 import type { SkillDeps } from '../deps.js';
 
@@ -43,6 +45,34 @@ export function extractBiliBvid(url: string): string | null {
 
 export function normalizeProtocolRelativeUrl(url: string): string {
   return url.startsWith('//') ? `https:${url}` : url;
+}
+
+/** B2：B站域白名单——untrusted 字幕/媒体 URL 下载前必须命中；VIDEO_LEARN_ALLOWED_HOSTS 可追加（逗号/分号分隔） */
+const DEFAULT_VIDEO_LEARN_HOSTS = [
+  'bilibili.com',
+  'bilivideo.com',
+  'bilivideo.cn',
+  'hdslb.com',
+];
+
+export function videoLearnAllowedHosts(): string[] {
+  const extra = (process.env.VIDEO_LEARN_ALLOWED_HOSTS ?? '')
+    .split(/[,;]/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return [...DEFAULT_VIDEO_LEARN_HOSTS, ...extra];
+}
+
+/** B2：URL host 必须命中 B站域白名单（含子域），未命中拒绝 */
+export function isVideoLearnUrlAllowed(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    if (!/^https?:$/.test(parsed.protocol)) return false;
+    const host = parsed.hostname.toLowerCase().replace(/^\./, '');
+    return videoLearnAllowedHosts().some((pattern) => isDomainMatch(pattern, host));
+  } catch {
+    return false;
+  }
 }
 
 /** H10：yt-dlp 的 URL 必须是 http(s) 且不以 '-' 开头，避免被解析为选项 */
@@ -262,7 +292,7 @@ async function fetchBiliJson(
 ): Promise<unknown | null> {
   const result = await browser.downloadFile(url, dest, {
     Referer: 'https://www.bilibili.com',
-  });
+  }, videoLearnAllowedHosts());
   if (!result.ok || result.size === 0) return null;
   try {
     return JSON.parse(readFileSync(dest, 'utf-8')) as unknown;
@@ -329,10 +359,12 @@ async function getBiliSubtitle(
   const sub = subs.find((item) => /^zh/i.test(item.lan ?? '')) ?? subs[0];
   if (!sub?.subtitle_url) return '';
   const subtitleUrl = normalizeProtocolRelativeUrl(sub.subtitle_url);
+  // B2：B站响应里的字幕 URL 属 untrusted_data，必须过域白名单
+  if (!isVideoLearnUrlAllowed(subtitleUrl)) return '';
   const dest = join(dir, 'bili-subtitle.json');
   const result = await browser.downloadFile(subtitleUrl, dest, {
     Referer: `https://www.bilibili.com/video/${bvid}`,
-  });
+  }, videoLearnAllowedHosts());
   if (!result.ok || result.size === 0) return '';
   try {
     return parseBiliSubtitle(JSON.parse(readFileSync(dest, 'utf-8')) as unknown);
@@ -391,18 +423,19 @@ async function downloadBiliMedia(
 ): Promise<BiliMediaPaths> {
   const info = await getBiliPlayInfo(browser, bvid, cid, dir);
   const out: BiliMediaPaths = { videoPath: '', audioPath: '' };
-  if (info?.audioUrl) {
+  // B2：playurl 响应里的媒体 URL 属 untrusted_data，必须过域白名单
+  if (info?.audioUrl && isVideoLearnUrlAllowed(info.audioUrl)) {
     const dest = join(dir, 'bili-audio.m4s');
     const result = await browser.downloadFile(info.audioUrl, dest, {
       Referer: 'https://www.bilibili.com',
-    });
+    }, videoLearnAllowedHosts());
     if (result.ok && result.size > 0) out.audioPath = dest;
   }
-  if (info?.videoUrl) {
+  if (info?.videoUrl && isVideoLearnUrlAllowed(info.videoUrl)) {
     const dest = join(dir, 'bili-video.m4s');
     const result = await browser.downloadFile(info.videoUrl, dest, {
       Referer: 'https://www.bilibili.com',
-    });
+    }, videoLearnAllowedHosts());
     if (result.ok && result.size > 0) out.videoPath = dest;
   }
   return out;
@@ -579,6 +612,17 @@ export function createVideoLearnerSkill(opts?: {
         if (inline) transcript = inline.trim();
       }
 
+      // B1：写盘沙箱门禁（显式注入 outDir 的测试/受信调用方跳过）
+      const outputRoot = opts?.outDir ?? join(process.cwd(), 'data', 'learned-videos');
+      const outGate = guardSkillOutputPath(outputRoot, { explicit: Boolean(opts?.outDir) });
+      if (!outGate.allowed) {
+        return {
+          result: {
+            answer: `输出目录不在沙箱白名单内，未执行：${outputRoot}`,
+          },
+          confidence: 0.2,
+        };
+      }
       const workDir = createLearnerWorkDir(opts?.outDir);
       try {
         let biliMedia: BiliMediaPaths | null = null;

@@ -138,6 +138,7 @@ export class MarketInstaller {
         checksum,
         permissions: manifest.permissions,
         status: 'installed',
+        manifestSnapshot: manifest,
       };
       this.store.record(record);
       return { ok: true, record };

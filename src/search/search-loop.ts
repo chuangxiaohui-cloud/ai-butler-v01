@@ -34,6 +34,8 @@ export interface BrowserFetcher {
     url: string,
     timeoutMs?: number,
     waitMs?: number,
+    /** B4：完整域名白名单——提供时 host 必须命中其一（含子域）；缺省保持 SSRF-only */
+    allowedHosts?: string[],
   ): Promise<{ url: string; title: string; text: string }>;
   searchWeb?(
     query: string,
@@ -43,6 +45,7 @@ export interface BrowserFetcher {
     url: string,
     destPath: string,
     headers?: Record<string, string>,
+    allowedHosts?: string[],
   ): Promise<{ ok: boolean; size: number; error?: string }>;
 }
 

@@ -24,6 +24,13 @@ const DEFAULT_ROOTS = ['projects', 'sandbox', 'outputs'];
 const IS_WIN = process.platform === 'win32';
 // NUL (0x00) 与 C0 控制字符 (0x01–0x1F) + DEL (0x7F)
 const NUL_OR_CTRL = /[\x00-\x1F\x7F]/;
+/** v2.6 B1：Skill 写盘应用数据目录二级白名单（§10.1，写盘类 Skill 统一走此白名单） */
+const SKILL_OUTPUT_DIRS = [
+  'data/office',
+  'data/learned-videos',
+  'data/boms',
+  'data/calendar',
+];
 
 /**
  * 解析 symlink + 父目录链；不存在时降级到 resolve() + 实父目录 realpath，
@@ -68,9 +75,11 @@ function parseExtraRoots(workspaceRoot: string): { path: string; reason?: string
   return out;
 }
 
-export function isPathAllowed(
+/** 共享判定：白名单根 = 默认根 + SANDBOX_ALLOWED_DIRS + 追加相对根 */
+function checkAgainstRoots(
   requestedPath: string,
-  workspaceRoot = process.cwd(),
+  workspaceRoot: string,
+  relativeRoots: string[],
 ): SandboxCheck {
   if (typeof requestedPath !== 'string' || requestedPath.length === 0) {
     return { allowed: false, reason: '路径为空' };
@@ -85,14 +94,49 @@ export function isPathAllowed(
 
   const defaultRoots = DEFAULT_ROOTS.map((r) => safeRealpath(join(realRoot, r)));
   const extras = parseExtraRoots(realRoot).filter((e) => !e.reason);
+  const extraRoots = relativeRoots.map((r) => safeRealpath(join(realRoot, r)));
 
-  const insideDefault = defaultRoots.some((r) => isInside(realResolved, r));
-  const insideExtra = extras.some((e) => isInside(realResolved, e.path));
-
-  if (insideDefault || insideExtra) {
+  const inside = [...defaultRoots, ...extras.map((e) => e.path), ...extraRoots].some((r) =>
+    isInside(realResolved, r),
+  );
+  if (inside) {
     return { allowed: true, resolved: realResolved };
   }
   return { allowed: false, reason: '越界路径（不在白名单根目录内）' };
+}
+
+export function isPathAllowed(
+  requestedPath: string,
+  workspaceRoot = process.cwd(),
+): SandboxCheck {
+  return checkAgainstRoots(requestedPath, workspaceRoot, []);
+}
+
+/** B1：Skill 写盘应用数据目录白名单（data/{office,learned-videos,boms,calendar}） */
+export function isSkillOutputAllowed(
+  requestedPath: string,
+  workspaceRoot = process.cwd(),
+): SandboxCheck {
+  return checkAgainstRoots(requestedPath, workspaceRoot, SKILL_OUTPUT_DIRS);
+}
+
+/**
+ * B1：Skill 写盘门禁——显式注入 outDir（测试/受信调用方）视为受信跳过；
+ * 生产默认 data/** 路径必须过白名单，并写审计日志（logSandboxAudit）。
+ */
+export function guardSkillOutputPath(
+  outDir: string,
+  opts?: { explicit?: boolean; workspaceRoot?: string; logPath?: string },
+): SandboxCheck {
+  if (opts?.explicit) return { allowed: true };
+  const check = isSkillOutputAllowed(outDir, opts?.workspaceRoot ?? process.cwd());
+  logSandboxAudit({
+    requestedPath: outDir,
+    allowed: check.allowed,
+    reason: check.reason,
+    ts: new Date().toISOString(),
+  }, opts?.logPath);
+  return check;
 }
 
 export function logSandboxAudit(

@@ -27,6 +27,15 @@
 
 ## 工作区遗留（未提交，非本次 E293 范围）
 
+### 3. v2.6 B1~B4 安全治理（E294~E297，owner 指令 2026-08-31「按 B1~B4 安全治理」）
+
+- **B1 写盘沙箱（E294）**：`src/security/sandbox.ts` 新增 Skill 应用数据目录二级白名单 `isSkillOutputAllowed`（`data/{office,learned-videos,boms,calendar}`）+ `guardSkillOutputPath` 门禁（显式注入 outDir 的测试/受信调用方跳过，生产默认路径必须过白名单 + 审计日志）；`calendar-skill` / `schematic-bom` / `office-daily` / `video-learner` 四处写盘点接入。sandbox 单测 +5；office-daily 118/119（1 skip）等全绿。
+- **B2 video-learner 域白名单（E295）**：`videoLearnAllowedHosts()`（`VIDEO_LEARN_ALLOWED_HOSTS` env 追加，默认 bilibili/bilivideo/hdslb 域）+ `isVideoLearnUrlAllowed()`（http(s)+子域）；B站响应 untrusted 字幕/媒体 URL 下载前校验，透传 session `allowedHosts`。单测 +2；既有 B站兜底 fixture 改真实 B站域名。
+- **B3 installer 安装日志（E296）**：`MarketInstallRecord` 增 `manifestSnapshot`，`confirmAndPersist` 落盘快照。installer 单测 +1 断言。
+- **B4 browser-session 域名白名单（E297）**：`fetchPage`/`downloadFile` 增可选 `allowedHosts`（`isDomainMatch` 含子域），缺省保持 E292 SSRF-only；`BrowserFetcher` 接口同步。session 单测 +3。
+- **验证**：`npm run build` 绿；相关单测全绿；全量单测与 doc-lint 见当日收尾（文档按 `docs/plans/2026-08-31-v26-b1-b4-security.md` 落地）。
+- **文档**：`docs/plans/2026-08-31-v26-b1-b4-security.md`；附录 A E294~E297；`docs/roadmap.md` B1~B4 改已完成并链接。
+
 - `docs/2026-08-30-progress-handoff.md` §11（v2.5 封版后 owner 拍板记录，先前遗留未提交）+ 我更新过的 §12 末行（已记录拍板）。
 - `bench/classify-metrics.jsonl`（先前遗留）。
 - 审计交付相关：`ai-butler-audit-package-v0.2b-audit-2026-08-30.zip`、`docs/audit-t3/v25-audit-closure.md`、`docs/audit-t3/v25-findings-and-remediation.md`、`docs/plans/2026-08-30-v26-pre-ship.md`、`审计交付/`（未跟踪，先前遗留）。

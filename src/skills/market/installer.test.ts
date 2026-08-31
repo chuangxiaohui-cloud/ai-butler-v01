@@ -54,6 +54,10 @@ test('market-installer: 无高风险权限直接安装成功（落盘 manifest +
     assert.equal(outcome.ok, true);
     assert.equal(outcome.record?.status, 'installed');
     assert.equal(outcome.record?.checksum.length, 64);
+    // B3：安装记录含 manifest 快照（包名/版本/触发词）
+    assert.equal(outcome.record?.manifestSnapshot?.name, 'pcb-helper');
+    assert.equal(outcome.record?.manifestSnapshot?.version, '0.1.0');
+    assert.deepEqual(outcome.record?.manifestSnapshot?.triggers, ['PCB 布线']);
     const onDisk = JSON.parse(readFileSync(join(h.installRoot, 'pcb-helper', 'manifest.json'), 'utf-8'));
     assert.equal(onDisk.name, 'pcb-helper');
     assert.equal(h.store.statusOf('pcb-helper'), 'installed');

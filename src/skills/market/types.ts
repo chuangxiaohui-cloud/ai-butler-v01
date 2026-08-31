@@ -52,4 +52,6 @@ export interface MarketInstallRecord {
   checksum: string;
   permissions: SkillPermission[];
   status: MarketInstallStatus;
+  /** B3：安装时点 manifest 快照（追溯安装内容，v2.6 B3） */
+  manifestSnapshot?: MarketSkillManifest;
 }
