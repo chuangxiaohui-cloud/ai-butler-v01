@@ -1,4 +1,4 @@
-# 进度交接 2026-09-01（收件链路 E293-后 全链收口：E298/E299 冒烟通过 + 搜信 E300/E301 冒烟通过 + 多账号 E302）
+# 进度交接 2026-09-01（收件链路 E293-后 全链收口：E298/E299 冒烟通过 + 搜信 E300/E301 冒烟通过 + 多账号 E302 + 163 兼容 E303）
 
 > 当前分支：v0.2b｜本轮收口：收件链路 E293-后 全部收口——附件下载（E298）→ 📎 标记（E299）→ 搜信（E300/E301），真实 QQ 冒烟全部通过。
 > 上一份交接见 `docs/2026-08-31-progress-handoff.md`（收邮件 E293 实现 + E298 附件下载实现）。
@@ -46,9 +46,18 @@
 - **文档**：`docs/plans/2026-09-01-email-multi-account.md`；附录 A E302；`docs/roadmap.md` E293-后「多账号」改已完成——收件链路 E293-后 全链收口。
 - **提交**：`f35de2b`。
 
+### 5. 163 收件兼容 E303（多账号冒烟发现，owner 反馈确认 2026-09-01）
+
+- **背景**：E302 冒烟配置 163 账号（netease）后「查收件箱」报 `NO SELECT Unsafe Login. Please contact kefu@188.com for help`。owner 确认登录时 163 仅提示「邮箱在其他设备登录」、未要求短信验证码 → 授权码有效；根因是网易 163/126 IMAP 要求客户端登录后发送 `ID` 命令（RFC 2971）声明身份，否则 SELECT 阶段拒绝。
+- **代码**：`src/mail/imap.ts` `openSession()` LOGIN 成功后、首个 SELECT 前，对网易系 SMTP 主机（`/163\.com$|126\.com$/i`）发送 `ID ("name" "ai-butler-v01" "version" "0.1.0")`；非网易服务器不发送（老服务器对非标准 ID 命令可能回 BAD，避免影响既有收件）。
+- **验证**：`npm run build` 绿；imap 29/29（新增 2 条：163 主机 LOGIN 后发 ID / 非网易主机不发）、office-daily 78/79（1 skip 为既有 PDF 用例）；`npm run doc-lint` 0 FAIL 0 WARN。
+- **文档**：`docs/plans/2026-09-01-email-imap-id.md`；附录 A E303。
+- **真实冒烟待用户**：`npm run dev -- "用 163 邮箱查收件箱"`（active 已为 netease），预期不再 Unsafe Login。
+
 ## 明日待办（接续点）
 
 1. 收件链路 E293-后 已全链收口（收件/读信/附件下载/搜信/多账号）。下一项按 owner 拍板：v2.6 pre-ship 启动门或 v1.0 大章节。
+2. E303 真实 163 冒烟待 owner：`npm run dev -- "用 163 邮箱查收件箱"`，预期不再 Unsafe Login。
 
 ## 后续候选（owner 拍板后启动）
 

@@ -283,6 +283,11 @@ function quoteString(s: string): string {
   return `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
+/** E303：网易 163/126 邮箱要求 IMAP 客户端登录后发送 ID 命令（RFC 2971）声明身份，否则 SELECT 被拒（Unsafe Login） */
+function needsImapId(host: string): boolean {
+  return /163\.com$|126\.com$/i.test(host);
+}
+
 async function openSession(
   creds: {
     host: string;
@@ -320,6 +325,9 @@ async function openSession(
       await session.upgradeToTls(cfg.host, options.allowInsecureTls ?? false);
     }
     await session.command(`LOGIN ${quoteString(creds.user)} ${quoteString(creds.pass)}`, 'OK');
+    if (needsImapId(creds.host)) {
+      await session.command('ID ("name" "ai-butler-v01" "version" "0.1.0")', 'OK');
+    }
     return session;
   } catch (err) {
     session.close();

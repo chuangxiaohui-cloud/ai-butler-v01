@@ -93,6 +93,8 @@ function handleImapSocket(
         socket.write(`* OK Begin TLS negotiation now\r\n${tag} OK Begin TLS negotiation\r\n`);
       } else if (cmd.startsWith('LOGIN')) {
         socket.write(`${tag} OK LOGIN completed\r\n`);
+      } else if (cmd.startsWith('ID')) {
+        socket.write(`* ID ("name" "ai-butler-v01" "version" "0.1.0")\r\n${tag} OK ID completed\r\n`);
       } else if (cmd.startsWith('SELECT')) {
         socket.write(`* ${messages.length} EXISTS\r\n* 0 RECENT\r\n${tag} OK [READ-WRITE] SELECT completed\r\n`);
       } else if (cmd.startsWith('SEARCH')) {
@@ -458,6 +460,52 @@ test('imap: TLS 查收件箱 → 最新在前 + 未读标记 + 中文头部解�
     assert.equal(list[2].subject, '会议邀请');
     assert.equal(list[2].seen, true);
     assert.equal(fake.transcript.some((l) => l.includes(' LOGIN ')), true);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: 网易 163 主机 LOGIN 后发送 ID 声明客户端身份（E303）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(SAMPLE_MESSAGES, certPath, keyPath);
+  try {
+    const port = fake.port;
+    await fetchRecentEmails(
+      {
+        host: 'smtp.163.com',
+        user: 'you@163.com',
+        pass: 'secret',
+        imapHost: '127.0.0.1',
+        imapPort: port,
+        imapSecure: true,
+      },
+      { timeoutMs: 8000, allowInsecureTls: true },
+    );
+    const loginIdx = fake.transcript.findIndex((l) => l.includes(' LOGIN '));
+    const idIdx = fake.transcript.findIndex((l) => l.includes(' ID ('));
+    assert.ok(loginIdx >= 0, '应先 LOGIN');
+    assert.ok(idIdx >= 0, '163 主机应发送 ID');
+    assert.ok(idIdx > loginIdx, 'ID 应在 LOGIN 之后');
+    assert.match(fake.transcript[idIdx], /ID \("name" "ai-butler-v01" "version" "0\.1\.0"\)/);
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: 非网易主机不发送 ID（E303）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(SAMPLE_MESSAGES, certPath, keyPath);
+  try {
+    const port = fake.port;
+    await fetchRecentEmails(
+      { ...IMAP_CREDS, imapHost: '127.0.0.1', imapPort: port, imapSecure: true },
+      { timeoutMs: 8000, allowInsecureTls: true },
+    );
+    assert.equal(fake.transcript.some((l) => l.includes(' ID (')), false, '非网易主机不得发送 ID');
   } finally {
     await fake.close();
     rmSync(dir, { recursive: true, force: true });

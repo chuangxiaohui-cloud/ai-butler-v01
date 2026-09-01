@@ -2528,6 +2528,8 @@ function handleFakeImapSocket(socket: Socket, messages: FakeImapMessage[], trans
         socket.write(`* OK Begin TLS negotiation now\r\n${tag} OK Begin TLS negotiation\r\n`);
       } else if (cmd.startsWith('LOGIN')) {
         socket.write(`${tag} OK LOGIN completed\r\n`);
+      } else if (cmd.startsWith('ID')) {
+        socket.write(`* ID ("name" "ai-butler-v01" "version" "0.1.0")\r\n${tag} OK ID completed\r\n`);
       } else if (cmd.startsWith('SELECT')) {
         socket.write(`* ${messages.length} EXISTS\r\n* 0 RECENT\r\n${tag} OK [READ-WRITE] SELECT completed\r\n`);
       } else if (cmd.startsWith('SEARCH')) {
