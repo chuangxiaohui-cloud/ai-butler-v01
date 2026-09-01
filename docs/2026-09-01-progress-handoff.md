@@ -43,7 +43,7 @@
   - `src/agent/intent-feature.ts`：office_daily 特征正则补切账号关键词 → 直连 office-daily。
 - **验证**：`npm run build` 绿；新增单测 10 条（credentials 3 / office-daily 4 / router-v2 3）；credentials+router-v2+imap 119/119、office-daily 78/79（1 skip 为既有 PDF 用例）；`npm run test:all` 退出码 0（单测 1197/1198 含 1 skip + 集成 32/32）；doc-lint 0 FAIL 0 WARN。
 - **文档**：`docs/plans/2026-09-01-email-multi-account.md`；附录 A E302；`docs/roadmap.md` E293-后「多账号」改已完成——收件链路 E293-后 全链收口。
-- **提交**：待提交。
+- **提交**：`f35de2b`。
 
 ## 明日待办（接续点）
 
