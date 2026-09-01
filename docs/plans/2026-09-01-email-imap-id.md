@@ -49,4 +49,4 @@ ID ("name" "ai-butler-v01" "version" "0.1.0")，其他服务器不发送（老�
 ### 验证
 
 - `npm run build` 绿；imap 29/29、office-daily 78/79（1 skip 为既有 PDF 用例）；`npm run doc-lint` 0 FAIL 0 WARN。
-- 真实 163 冒烟待 owner：`npm run dev -- "用 163 邮箱查收件箱"`（active=netease）。
+- 真实 163 冒烟（owner 实测 2026-09-01，已通过）：`npm run dev -- "查收件箱"` 正常列出 163 收件箱 3 封（网易邮箱安全管家 / 新设备登录提醒 / Google 登录提醒），不再报 `Unsafe Login`。

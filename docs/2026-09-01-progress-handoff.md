@@ -52,12 +52,11 @@
 - **代码**：`src/mail/imap.ts` `openSession()` LOGIN 成功后、首个 SELECT 前，对网易系 SMTP 主机（`/163\.com$|126\.com$/i`）发送 `ID ("name" "ai-butler-v01" "version" "0.1.0")`；非网易服务器不发送（老服务器对非标准 ID 命令可能回 BAD，避免影响既有收件）。
 - **验证**：`npm run build` 绿；imap 29/29（新增 2 条：163 主机 LOGIN 后发 ID / 非网易主机不发）、office-daily 78/79（1 skip 为既有 PDF 用例）；`npm run doc-lint` 0 FAIL 0 WARN。
 - **文档**：`docs/plans/2026-09-01-email-imap-id.md`；附录 A E303。
-- **真实冒烟待用户**：`npm run dev -- "用 163 邮箱查收件箱"`（active 已为 netease），预期不再 Unsafe Login。
+- **真实冒烟**（owner 实测 2026-09-01，已通过）：`npm run dev -- "查收件箱"` 正常列出 163 收件箱 3 封（网易邮箱安全管家 / 网易邮箱账号安全「新设备登录提醒」/ Google 登录提醒），不再报 `Unsafe Login`。
 
 ## 明日待办（接续点）
 
 1. 收件链路 E293-后 已全链收口（收件/读信/附件下载/搜信/多账号）。下一项按 owner 拍板：v2.6 pre-ship 启动门或 v1.0 大章节。
-2. E303 真实 163 冒烟待 owner：`npm run dev -- "用 163 邮箱查收件箱"`，预期不再 Unsafe Login。
 
 ## 后续候选（owner 拍板后启动）
 
