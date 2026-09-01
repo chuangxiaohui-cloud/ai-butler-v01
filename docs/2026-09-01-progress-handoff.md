@@ -67,8 +67,16 @@
 - **结论**：v1.0 大章节技术面已全绿——S1-S8 + 真实协议接入（E220-E227/E240-E244）全部落地，08-26 全量验收（E246）四技术条件通过；唯一阻塞仍是 **P-10 条件③ 成熟度 §12.4 L2+**（真实使用累积，非代码缺口）。
 - **本次推进**：新建 `docs/reports/v1-acceptance-delta-2026-09-01.md`（P-10 复评快照）+ 附录 A E304。三检全绿（build / test:all 1199/1200+32/32 / doc-lint 0 FAIL 0 WARN）。
 - **成熟度现状**（`npm run maturity:check`）：等级 L1——用户累积 Skill 32/50+（08-26 为 0，E250 通道累积 32）、验收通过率 73.9%（n=23，需 ≥80% 且 n≥30）、复用率 18.6%（目标 60%）。
-- **复用率根因观察**（轨迹数据分析 2026-09-01）：answer 921 / search 729 / skill 171（direct 169 + market_trigger 仅 2）；已装 32 个市场 Skill 基本未真实派发——触发词为命令式短语（如 datasheet-fetch 认「datasheet 下载」不认「XXX datasheet 供电 主频」），真实问法落搜索。扩触发词属路由行为变更（E301 有误触发先例），待 owner 拍板后按 E-NN 流程落地；详见 `docs/reports/v1-acceptance-delta-2026-09-01.md`。
+- **复用率根因观察**（轨迹数据分析 2026-09-01，已校正）：answer 921 / search 729 / skill 171（direct 169 + market_trigger 仅 2）；8-15~18 的「漏派发」样例早于市场路由上线（E243，08-26），非触发词窄证据；08-27+ 的 151 条搜索中明确缺口仅「日报/周报 模板带空格」一类（`cleanQuery` 不删单空格，不命中「日报模板」）；datasheet 自然问法搜索管道已能良好处理且市场 Skill 输入为整句 query，强塞降质量故不扩。详见 `docs/reports/v1-acceptance-delta-2026-09-01.md`。
 - **L2 达标路径（owner 侧）**：① 市场 Skill 50+——本地市场源 `configs/market-skills/` 现有 32 包已全部安装，50+ 需按 v2.5 需求持续新增市场 Skill 包（需求驱动，不批量乱装）；② 反馈样本补到 n≥30 且通过率 ≥80%（差 7 条）；③ 真实对话多用 Skill 派发（复用率 18.6%→60%）。达标后按 E197 复验门重跑 P-10 全量。
+
+### 8. 市场 Skill 触发词自然问法扩展 E305（owner 指令 2026-09-01「1」）
+
+- **背景**：复用率根因观察确认市场路由上线后唯一明确触发缺口 = 日报/周报 模板带空格问法不命中「日报模板」触发词；owner 拍板扩高频市场 Skill 触发词（前提：需求相关、补单测防误触）。
+- **代码**：`configs/market-skills/docx-write/manifest.json` 触发词补自然问法——`日报 模板` / `周报 模板` / `生成 日报` / `生成 周报` / `写日报` / `写周报`（均 ≥3 字，E301 直连路由下仍生效）；重装更新运行时副本 `data/market-skills/docx-write/manifest.json`。
+- **不扩项（诚实登记）**：`datasheet-fetch`（自然问法搜索管道已能处理，整句 query 强塞反降质量）；BOM/报价/会议/月度——既有触发词已覆盖或样例早于路由上线。
+- **验证**：新增单测 5 条——nl-router 4（「日报 模板」命中 / 「写日报」≥3 字命中 / 「搜周报的邮件」E301 回归不抢 / 「如何解析 datasheet 表格」防误触不命中）+ pipeline 1（「日报 模板」→ docx-write 市场触发）；`npm run build` 绿；nl-router+pipeline 69/69。
+- **文档**：`docs/plans/2026-09-01-market-trigger-natural.md`；附录 A E305。
 
 ## 明日待办（接续点）
 

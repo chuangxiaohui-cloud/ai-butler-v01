@@ -786,6 +786,37 @@ test('pipeline: 未直连本地 Skill 时 2 字触发词照常命中市场 Skill
   assert.ok(r.answer.includes('已生成周报模板'), r.answer);
 });
 
+test('pipeline: 自然问法「日报 模板」命中 docx-write 市场 Skill（E305）', async () => {
+  const r = await pipeline(
+    '日报 模板',
+    {
+      ...deps,
+      llm: undefined,
+      skillDeps: { callVLM: async () => '' },
+      marketSkillRunner: {
+        listInstalledWithTriggers: () => [
+          {
+            name: 'docx-write',
+            triggers: ['日报模板', '周报模板', '生成日报', '生成周报', '日报 模板', '周报 模板', '生成 日报', '生成 周报', '写日报', '写周报', '日报', '周报'],
+          },
+        ],
+        run: (name: string) =>
+          name === 'docx-write'
+            ? {
+                ok: true,
+                name: 'docx-write',
+                version: '0.1.0',
+                results: [{ step: 'write', ok: true, status: 0, stdout: '已生成日报模板', stderr: '' }],
+                durationMs: 3,
+              }
+            : { ok: false, name, version: '', results: [], error: 'not found', durationMs: 0 },
+      },
+    },
+    { userId: 'u1' },
+  );
+  assert.ok(r.answer.includes('已生成日报模板'), r.answer);
+});
+
 test('pipeline: github-reader 直连透传 evidence 与 skill confidence（P3）', async () => {
   const originalFetch = globalThis.fetch;
   const readme = `# OpenClaw

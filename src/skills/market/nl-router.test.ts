@@ -41,6 +41,36 @@ test('matchInstalledSkillTrigger：minTriggerLength 守卫过滤短触发词', (
   assert.ok(matchInstalledSkillTrigger('abc', short, 1));
 });
 
+const DOCX_WRITE_TRIGGERS: InstalledSkillWithTriggers[] = [
+  {
+    name: 'docx-write',
+    triggers: ['日报模板', '周报模板', '生成日报', '生成周报', '日报 模板', '周报 模板', '生成 日报', '生成 周报', '写日报', '写周报', '日报', '周报', 'docx 排版', '文本转 docx'],
+  },
+];
+
+test('matchInstalledSkillTrigger：自然问法带空格命中「日报 模板」（E305）', () => {
+  const hit = matchInstalledSkillTrigger('帮我生成 日报 模板', DOCX_WRITE_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'docx-write');
+  assert.equal(hit?.triggerLength, '日报 模板'.length);
+});
+
+test('matchInstalledSkillTrigger：「写日报」命中（≥3 字，直连路由下仍生效）（E305）', () => {
+  const hit = matchInstalledSkillTrigger('帮我写日报', DOCX_WRITE_TRIGGERS, 3);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'docx-write');
+});
+
+test('matchInstalledSkillTrigger：「搜周报的邮件」不被 2 字「周报」抢占（E301 回归 + E305 新触发词）', () => {
+  const hit = matchInstalledSkillTrigger('搜周报的邮件', DOCX_WRITE_TRIGGERS, 3);
+  assert.equal(hit, null);
+});
+
+test('matchInstalledSkillTrigger：「如何解析 datasheet 表格」不命中 docx-write（E305 防误触）', () => {
+  const hit = matchInstalledSkillTrigger('如何解析 PDF datasheet 表格', DOCX_WRITE_TRIGGERS, 2);
+  assert.equal(hit, null);
+});
+
 test('renderMarketSkillAnswer：拼接步骤 stdout 并有界截断', () => {
   const answer = renderMarketSkillAnswer({
     name: 'bom-diff',
