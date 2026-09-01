@@ -42,6 +42,6 @@
 
 - 验证：`npm run build` 绿；`npm run doc-lint` 0 FAIL 0 WARN；`npm run test:all` 退出码 0（单测 1197/1198 含 1 skip + 集成 32/32）。
 - 测试：新增单测 10 条——credentials 3（多账号容器建号/切换/摘要、旧单账号格式自动迁移、setActiveAccount 未知账号返回 false + 无 key 保存更新 active）、office-daily 4（切到未配置账号诚实提示、裸「切换账号」引导、双假 TLS IMAP 服务器切到 outlook 后查收件箱走 outlook LOGIN 与列表 + 多账号列表标注 active、用 qq 邮箱查收件箱一条命令切换+列表且持久化）、router-v2 3（切账号关键词 → office-daily）；credentials+router-v2+imap 119/119、office-daily 78/79（1 skip 为既有 PDF 用例）。
-- 真实冒烟：待 owner 用两个真实邮箱验证——`npm run mail:config -- --account qq ...` / `--account outlook ...` / `--set-active outlook`，然后「切到 outlook 邮箱」「用 qq 邮箱查收件箱」。
+- 真实冒烟（owner 2026-09-01）：`切到 outlook 邮箱` 切换成功；`用 qq 邮箱查收件箱` 正常列出 QQ 收件箱 10 封（含 📎）；active=outlook 时 `查收件箱` 被微软拒绝（`NO Basic authentication is disabled.`）——Outlook.com 已停用账号密码基本认证，非代码问题；Outlook 需 OAuth2（XOAUTH2）支持（登记候选）；多账号功能本体验证通过。
 - 提交：`f35de2b`。
 - 遗留事项：真实多账号 IMAP 冒烟待 owner 验证（命令见下「真实冒烟」）；Windows DPAPI 凭据加密仍为候选（既有 E170 候选）。

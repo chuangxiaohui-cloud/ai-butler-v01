@@ -42,6 +42,7 @@
   - `src/skills/office-daily/index.ts`：email 模式最前新增切账号分支——「切到 xx 邮箱」「用 xx 账号查收件箱」按 key/邮箱定位，未配置诚实提示并列出已有账号；纯切换只回结果，带收/搜/附件/发意图则切换后继续执行；多账号（≥2）时收件/搜信列表标注 active 账号；`modeFrom` 补切账号关键词。
   - `src/agent/intent-feature.ts`：office_daily 特征正则补切账号关键词 → 直连 office-daily。
 - **验证**：`npm run build` 绿；新增单测 10 条（credentials 3 / office-daily 4 / router-v2 3）；credentials+router-v2+imap 119/119、office-daily 78/79（1 skip 为既有 PDF 用例）；`npm run test:all` 退出码 0（单测 1197/1198 含 1 skip + 集成 32/32）；doc-lint 0 FAIL 0 WARN。
+- **真实冒烟**（owner 2026-09-01）：`切到 outlook 邮箱` 切换成功；`用 qq 邮箱查收件箱` 正常列出 QQ 收件箱 10 封（含 📎）；active=outlook 时 `查收件箱` 被微软拒绝（`NO Basic authentication is disabled.`）——Outlook.com 已停用账号密码基本认证，非代码问题；Outlook 需 OAuth2（XOAUTH2）支持，登记为后续候选。
 - **文档**：`docs/plans/2026-09-01-email-multi-account.md`；附录 A E302；`docs/roadmap.md` E293-后「多账号」改已完成——收件链路 E293-后 全链收口。
 - **提交**：`f35de2b`。
 
@@ -51,7 +52,7 @@
 
 ## 后续候选（owner 拍板后启动）
 
-- **v2.6 pre-ship**：`docs/plans/2026-08-30-v26-pre-ship.md` 有启动门（owner 启动委托 → 开 `v2.6-pre-ship` 分支），scope 已锁定 = v2.6 增量 + B1~B4（已完成）+ P-148~P-150（按需触发）。
+- **Outlook OAuth2（XOAUTH2）**：Outlook.com 已停用 IMAP 账号密码基本认证（实测 `NO Basic authentication is disabled.`）`NO Basic authentication is disabled.`），若要用 Outlook 做第二邮箱需实现 OAuth2 IMAP（Azure 应用注册 + 令牌刷新），登记为候选。`n- **v2.6 pre-ship**：`docs/plans/2026-08-30-v26-pre-ship.md` 有启动门（owner 启动委托 → 开 `v2.6-pre-ship` 分支），scope 已锁定 = v2.6 增量 + B1~B4（已完成）+ P-148~P-150（按需触发）。
 - **v1.0 大章节**：MCP 子 Agent、证据链 UI、远程对话通道、代码托管联动等，见 §4.4 里程碑表与 P-10 验收口径。
 
 **预估成本(¥)**：¥0（本日全部为本地实现 + 离线单测 + 文档 + 真实 IMAP 冒烟；无 LLM/API 付费调用）。
