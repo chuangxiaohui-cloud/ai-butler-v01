@@ -6,6 +6,7 @@
  *     --user you@qq.com --pass <授权码> --from you@qq.com
  *   npm run mail:config -- --account outlook --host smtp.office365.com --port 587 --secure 0 \
  *     --user you@outlook.com --pass <授权码> --from you@outlook.com   （E302：按账号保存）
+ *   （可选）--imap-host <收件服务器> --imap-port <993> --imap-secure <0|1>  覆盖收件服务器（如 outlook.com 用 outlook.office365.com）
  *   npm run mail:config -- --set-active outlook                         （E302：切换 active）
  *   npm run mail:config -- --list                                       （E302：列出账号）
  *   npm run mail:config -- --help
@@ -38,6 +39,7 @@ if (args.includes('--help') || args.includes('-h')) {
   console.log(`用法：
   npm run mail:config -- --host <smtp主机> --port <端口> --secure <0|1> --user <账号> --pass <授权码> --from <发件人地址>
   npm run mail:config -- --account <账号名> --host ... --from ...   （保存到指定账号并切换为 active）
+  npm run mail:config -- --imap-host <收件服务器> --imap-port <993> --imap-secure <0|1>   （可选：覆盖收件服务器）
   npm run mail:config -- --set-active <账号名>                       （仅切换当前生效账号）
   npm run mail:config -- --list                                      （列出已配置账号）
 说明：
@@ -80,6 +82,9 @@ const user = argValue('--user');
 const pass = argValue('--pass');
 const from = argValue('--from');
 const accountKey = argValue('--account');
+const imapHost = argValue('--imap-host');
+const imapPortRaw = argValue('--imap-port');
+const imapSecureRaw = argValue('--imap-secure');
 
 const missing: string[] = [];
 if (!host) missing.push('--host');
@@ -100,6 +105,9 @@ const creds = {
   user: user as string,
   pass: pass as string,
   from: from as string,
+  ...(imapHost ? { imapHost } : {}),
+  ...(imapPortRaw ? { imapPort: Number(imapPortRaw) } : {}),
+  ...(imapSecureRaw !== undefined ? { imapSecure: imapSecureRaw === '1' || imapSecureRaw === 'true' } : {}),
 };
 
 try {

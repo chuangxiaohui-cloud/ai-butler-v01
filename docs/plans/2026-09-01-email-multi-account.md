@@ -27,7 +27,7 @@
 ### 改动
 
 - `src/mail/credentials.ts`：`CredentialsStore { active, accounts }` 容器 + `saveCredentials`（accountKey 参数）/`loadCredentials`（返回 active）/`loadCredentialsStore`/`setActiveAccount`/`listAccountSummaries`；旧单账号格式自动迁移。
-- `scripts/mail-config.ts`：`--account <名称>` / `--set-active <名称>` / `--list`。
+- `scripts/mail-config.ts`：`--account <名称>` / `--set-active <名称>` / `--list`；另增 `--imap-host`/`--imap-port`/`--imap-secure`（可选覆盖收件服务器，outlook.com 需用 outlook.office365.com）。
 - `src/skills/office-daily/index.ts`：email 模式切账号分支（`resolveAccountSwitch`/`findAccountKey`/`activeAccountLabel`），收件/搜信列表多账号标注 active；`modeFrom` 补切账号关键词。
 - `src/agent/intent-feature.ts`：office_daily 特征正则补切账号关键词。
 - 测试：`src/mail/credentials.test.ts` +3、`src/skills/office-daily/index.test.ts` +4（含 `startFakeTlsImapServer` 暴露 transcript）、`src/agent/router-v2.test.ts` +3。
@@ -44,4 +44,4 @@
 - 测试：新增单测 10 条——credentials 3（多账号容器建号/切换/摘要、旧单账号格式自动迁移、setActiveAccount 未知账号返回 false + 无 key 保存更新 active）、office-daily 4（切到未配置账号诚实提示、裸「切换账号」引导、双假 TLS IMAP 服务器切到 outlook 后查收件箱走 outlook LOGIN 与列表 + 多账号列表标注 active、用 qq 邮箱查收件箱一条命令切换+列表且持久化）、router-v2 3（切账号关键词 → office-daily）；credentials+router-v2+imap 119/119、office-daily 78/79（1 skip 为既有 PDF 用例）。
 - 真实冒烟：待 owner 用两个真实邮箱验证——`npm run mail:config -- --account qq ...` / `--account outlook ...` / `--set-active outlook`，然后「切到 outlook 邮箱」「用 qq 邮箱查收件箱」。
 - 提交：`f35de2b`。
-- 遗留事项：真实多账号 IMAP 冒烟待 owner 验证；Windows DPAPI 凭据加密仍为候选（既有 E170 候选）。
+- 遗留事项：真实多账号 IMAP 冒烟待 owner 验证（命令见下「真实冒烟」）；Windows DPAPI 凭据加密仍为候选（既有 E170 候选）。
