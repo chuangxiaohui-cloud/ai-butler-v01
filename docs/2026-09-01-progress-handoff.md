@@ -1,4 +1,4 @@
-# 进度交接 2026-09-01（收件链路 E293-后 收口：E298/E299 冒烟通过 + 搜信 E300/E301 冒烟通过）
+# 进度交接 2026-09-01（收件链路 E293-后 全链收口：E298/E299 冒烟通过 + 搜信 E300/E301 冒烟通过 + 多账号 E302）
 
 > 当前分支：v0.2b｜本轮收口：收件链路 E293-后 全部收口——附件下载（E298）→ 📎 标记（E299）→ 搜信（E300/E301），真实 QQ 冒烟全部通过。
 > 上一份交接见 `docs/2026-08-31-progress-handoff.md`（收邮件 E293 实现 + E298 附件下载实现）。
@@ -34,13 +34,23 @@
 - **遗留**：多账号仍为 v2.6+ 候选。
 - **提交**：E300 `356d58b`；E301 `3c02d64`；冒烟通过文档 `ab70482`。
 
+### 4. 收邮件多账号 E302（owner 指令 2026-09-01「继续」）——roadmap E293-后 最后一项
+
+- **代码**：
+  - `src/mail/credentials.ts`：新增 `CredentialsStore { active, accounts }` 容器——`saveCredentials` 写容器并置 active（`--account` 缺省沿用 active/「default」），`loadCredentials` 返回 active 账号（旧单账号文件读取自动迁移），新增 `loadCredentialsStore` / `setActiveAccount` / `listAccountSummaries`。
+  - `scripts/mail-config.ts`：增 `--account <名称>`（保存到指定账号并置 active）/ `--set-active <名称>`（纯切换）/ `--list`（列出账号与 active 标记）。
+  - `src/skills/office-daily/index.ts`：email 模式最前新增切账号分支——「切到 xx 邮箱」「用 xx 账号查收件箱」按 key/邮箱定位，未配置诚实提示并列出已有账号；纯切换只回结果，带收/搜/附件/发意图则切换后继续执行；多账号（≥2）时收件/搜信列表标注 active 账号；`modeFrom` 补切账号关键词。
+  - `src/agent/intent-feature.ts`：office_daily 特征正则补切账号关键词 → 直连 office-daily。
+- **验证**：`npm run build` 绿；新增单测 10 条（credentials 3 / office-daily 4 / router-v2 3）；credentials+router-v2+imap 119/119、office-daily 78/79（1 skip 为既有 PDF 用例）；`npm run test:all` 退出码 0（单测 1197/1198 含 1 skip + 集成 32/32）；doc-lint 0 FAIL 0 WARN。
+- **文档**：`docs/plans/2026-09-01-email-multi-account.md`；附录 A E302；`docs/roadmap.md` E293-后「多账号」改已完成——收件链路 E293-后 全链收口。
+- **提交**：待提交。
+
 ## 明日待办（接续点）
 
-1. **多账号**：仍为 v2.6+ 候选（roadmap E293-后 剩余项）。
+1. 收件链路 E293-后 已全链收口（收件/读信/附件下载/搜信/多账号）。下一项按 owner 拍板：v2.6 pre-ship 启动门或 v1.0 大章节。
 
 ## 后续候选（owner 拍板后启动）
 
-- **多账号**：E293-后 唯一剩余项，涉及多账号配置/切换设计（如「切到 xx 邮箱」「按账号查收件箱」），开工前先写计划文档。
 - **v2.6 pre-ship**：`docs/plans/2026-08-30-v26-pre-ship.md` 有启动门（owner 启动委托 → 开 `v2.6-pre-ship` 分支），scope 已锁定 = v2.6 增量 + B1~B4（已完成）+ P-148~P-150（按需触发）。
 - **v1.0 大章节**：MCP 子 Agent、证据链 UI、远程对话通道、代码托管联动等，见 §4.4 里程碑表与 P-10 验收口径。
 

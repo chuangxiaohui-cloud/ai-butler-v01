@@ -2595,7 +2595,7 @@ function startFakeTlsImapServer(
   messages: FakeImapMessage[],
   certPath: string,
   keyPath: string,
-): Promise<{ port: number; close(): Promise<void> }> {
+): Promise<{ port: number; transcript: string[]; close(): Promise<void> }> {
   const transcript: string[] = [];
   const server = createTlsServer(
     { cert: readFileSync(certPath), key: readFileSync(keyPath) },
@@ -2610,6 +2610,7 @@ function startFakeTlsImapServer(
       const port = typeof address === 'object' && address ? address.port : 0;
       resolve({
         port,
+        transcript,
         close: async () => {
           server.close();
         },
@@ -2804,6 +2805,11 @@ const IMAP_MESSAGES: FakeImapMessage[] = [
   { from: 'alice@example.com', subject: '周报', date: 'Mon, 31 Aug 2026 09:00:00 +0800', seen: false, body: '本周完成收件功能。' },
 ];
 
+/** E302：第二个账号的收件箱 fixture（与 IMAP_MESSAGES 区分，多账号测试用） */
+const IMAP_MESSAGES_B: FakeImapMessage[] = [
+  { from: 'carol@b.com', subject: 'B 账号邮件', date: 'Tue, 01 Sep 2026 09:00:00 +0800', seen: false, body: '这是 B 账号收件箱。' },
+];
+
 function saveImapCredentials(mailDir: string, imapPort: number): void {
   saveCredentials(
     {
@@ -2818,6 +2824,25 @@ function saveImapCredentials(mailDir: string, imapPort: number): void {
       imapSecure: true,
     },
     join(mailDir, 'mail-credentials.json'),
+  );
+}
+
+/** E302：保存带账号 key 的凭据（多账号测试用） */
+function saveImapAccount(mailDir: string, key: string, imapPort: number, user: string): void {
+  saveCredentials(
+    {
+      host: 'smtp.example.com',
+      port: 465,
+      secure: true,
+      user,
+      pass: 'authcode',
+      from: user,
+      imapHost: '127.0.0.1',
+      imapPort,
+      imapSecure: true,
+    },
+    join(mailDir, 'mail-credentials.json'),
+    key,
   );
 }
 
@@ -3047,6 +3072,120 @@ test('office-daily: 空收件箱 → 诚实提示', { skip: !HAS_CRYPTOGRAPHY },
     assert.ok(result.answer?.includes('没有邮件'), result.answer);
   } finally {
     await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 切到未配置账号 → 诚实提示并列出已有账号（E302）', async () => {
+  const dir = tempDir();
+  try {
+    const mailDir = join(dir, 'mail');
+    saveImapAccount(mailDir, 'a', 1, 'you@a.com');
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir });
+    const out = await skill.execute(
+      { query: '切到 gmail 邮箱', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('gmail'), result.answer);
+    assert.ok(result.answer?.includes('you@a.com'), result.answer);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 切换账号（无目标）→ 引导选择已有账号（E302）', async () => {
+  const dir = tempDir();
+  try {
+    const mailDir = join(dir, 'mail');
+    saveImapCredentials(mailDir, 1);
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir });
+    const out = await skill.execute(
+      { query: '切换账号', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('要切到哪个邮箱'), result.answer);
+    assert.ok(result.answer?.includes('you@example.com'), result.answer);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 多账号——切到 b 邮箱后查收件箱走 b 账号 IMAP（E302）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fakeA = await startFakeTlsImapServer(IMAP_MESSAGES, certPath, keyPath);
+  const fakeB = await startFakeTlsImapServer(IMAP_MESSAGES_B, certPath, keyPath);
+  try {
+    const mailDir = join(dir, 'mail');
+    saveImapAccount(mailDir, 'qq', fakeA.port, 'you@qq.com');
+    saveImapAccount(mailDir, 'outlook', fakeB.port, 'you@outlook.com');
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir, imapOptions: { allowInsecureTls: true } });
+
+    // 初始 active 是最后保存的 outlook → 先切到 qq
+    const switchA = await skill.execute(
+      { query: '切到 qq 邮箱', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    assert.ok((switchA.result as { answer?: string }).answer?.includes('已切换到邮箱账号「qq」'));
+    const listA = await skill.execute(
+      { query: '查收件箱', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    const listAResult = listA.result as { answer?: string };
+    assert.ok(listAResult.answer?.includes('周报'), listAResult.answer);
+    assert.ok(listAResult.answer?.includes('收件箱（you@qq.com）最近 2 封邮件'), listAResult.answer);
+    assert.ok(fakeA.transcript.some((l) => l.includes('LOGIN "you@qq.com"')), fakeA.transcript.join('\n'));
+
+    // 切到 outlook → 查收件箱走 outlook
+    const switchB = await skill.execute(
+      { query: '切到 outlook 邮箱', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    assert.ok((switchB.result as { answer?: string }).answer?.includes('已切换到邮箱账号「outlook」'));
+    const listB = await skill.execute(
+      { query: '查收件箱', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    const listBResult = listB.result as { answer?: string };
+    assert.ok(listBResult.answer?.includes('B 账号邮件'), listBResult.answer);
+    assert.ok(listBResult.answer?.includes('收件箱（you@outlook.com）最近 1 封邮件'), listBResult.answer);
+    assert.ok(fakeB.transcript.some((l) => l.includes('LOGIN "you@outlook.com"')), fakeB.transcript.join('\n'));
+  } finally {
+    await fakeA.close();
+    await fakeB.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('office-daily: 用 a 邮箱查收件箱 → 切换后直接返回 a 收件箱（E302）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fakeA = await startFakeTlsImapServer(IMAP_MESSAGES, certPath, keyPath);
+  const fakeB = await startFakeTlsImapServer(IMAP_MESSAGES_B, certPath, keyPath);
+  try {
+    const mailDir = join(dir, 'mail');
+    saveImapAccount(mailDir, 'qq', fakeA.port, 'you@qq.com');
+    saveImapAccount(mailDir, 'outlook', fakeB.port, 'you@outlook.com');
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir, imapOptions: { allowInsecureTls: true } });
+    const out = await skill.execute(
+      { query: '用 qq 邮箱查收件箱', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string };
+    assert.ok(result.answer?.includes('周报'), result.answer);
+    assert.ok(result.answer?.includes('收件箱（you@qq.com）最近 2 封邮件'), result.answer);
+    assert.ok(fakeA.transcript.some((l) => l.includes('LOGIN "you@qq.com"')), fakeA.transcript.join('\n'));
+    // 切换已持久化：后续查收件箱仍走 qq
+    const again = await skill.execute(
+      { query: '查收件箱', attachmentSignals: [], rawFiles: [], memory: null },
+      { callVLM: async () => '' },
+    );
+    assert.ok((again.result as { answer?: string }).answer?.includes('周报'));
+  } finally {
+    await fakeA.close();
+    await fakeB.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });

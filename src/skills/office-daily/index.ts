@@ -22,7 +22,12 @@ import { extractTimeExpression } from '../../agent/intent-feature.js';
 import { parseTimeExpression, parseRepeatQuery } from '../../agent/time-expression.js';
 import { ReminderStore } from '../../reminder/reminder-store.js';
 import { guardSkillOutputPath } from '../../security/sandbox.js';
-import { loadCredentials } from '../../mail/credentials.js';
+import {
+  loadCredentials,
+  loadCredentialsStore,
+  setActiveAccount,
+  type CredentialsStore,
+} from '../../mail/credentials.js';
 import {
   fetchEmailAttachments,
   fetchEmailText,
@@ -193,7 +198,7 @@ function modeFrom(query: string): OfficeMode {
   if (/主动提醒|提醒我|设置提醒|提醒/.test(query)) return 'reminder';
   if (/考勤|模板|表格/.test(query)) return 'table';
   if (/占比|比例|汇总|统计|分析/.test(query)) return 'analyze';
-  if (/邮件|回复|写信|回复客户|收件箱|收邮件|查邮件|未读邮件|读第\s*\d+\s*封|下载.*附件|附件.*下载|保存.*附件|附件.*保存|确认发送|确定发送|确认发出|确定发出|搜信|搜.*邮件|找.*邮件|查找.*邮件|搜索.*邮件/.test(query)) return 'email';
+  if (/邮件|回复|写信|回复客户|收件箱|收邮件|查邮件|未读邮件|读第\s*\d+\s*封|下载.*附件|附件.*下载|保存.*附件|附件.*保存|确认发送|确定发送|确认发出|确定发出|搜信|搜.*邮件|找.*邮件|查找.*邮件|搜索.*邮件|切换.*(?:邮箱|账号|收件箱|邮件)|切(?:到|成).*(?:邮箱|账号|收件箱|邮件)|换成.*(?:邮箱|账号|邮件)|用.*(?:邮箱|账号).*(?:查|看|收件|搜|发)/.test(query)) return 'email';
   if (/压缩|减小|KB|体积/.test(query)) return 'image';
   return 'table';
 }
@@ -349,6 +354,88 @@ function extractSearchCriteria(query: string): ImapSearchCriteria | null {
     if (keyword) return { keyword };
   }
   return null;
+}
+
+/** E302：按 token（账号 key / 邮箱地址 / 子串）定位账号 key；找不到返回 null */
+function findAccountKey(store: CredentialsStore, token: string): string | null {
+  const t = token.toLowerCase().trim();
+  if (store.accounts[t]) return t;
+  for (const [key, acc] of Object.entries(store.accounts)) {
+    const from = (acc.from ?? '').toLowerCase();
+    const user = (acc.user ?? '').toLowerCase();
+    if (from === t || user === t || key.toLowerCase() === t) return key;
+  }
+  // 子串兜底：如「切到 outlook」命中 from 里的 outlook.com
+  for (const [key, acc] of Object.entries(store.accounts)) {
+    const from = (acc.from ?? '').toLowerCase();
+    const user = (acc.user ?? '').toLowerCase();
+    if (from.includes(t) || user.includes(t) || key.toLowerCase().includes(t)) return key;
+  }
+  return null;
+}
+
+/** E302：解析「切到 xx 邮箱」「用 xx 账号查收件箱」等切换意图；无切换意图返回 requested:false */
+function resolveAccountSwitch(
+  query: string,
+  mailDir: string,
+): { requested: boolean; switched: boolean; answer?: string } {
+  const m =
+    query.match(/切(?:换|到|成)\s*(?:到)?\s*([A-Za-z0-9_.@-]{2,40})\s*(?:邮箱|账号|收件箱|邮件)?/) ||
+    query.match(/用\s*([A-Za-z0-9_.@-]{2,40})\s*(?:邮箱|账号|邮件)?\s*(?:查|看|收|搜|找|下载|读|发)/) ||
+    query.match(/换成\s*([A-Za-z0-9_.@-]{2,40})\s*(?:邮箱|账号|邮件)?/);
+  const store = loadCredentialsStore(join(mailDir, 'mail-credentials.json'));
+  if (!m) {
+    if (/切换.*(?:账号|邮箱)|切账号|换账号|换邮箱/.test(query)) {
+      if (!store) {
+        return {
+          requested: true,
+          switched: false,
+          answer: '还没配置任何邮箱账号，无法切换。请先运行 npm run mail:config 配置账号（多账号可加 --account <名称>）。',
+        };
+      }
+      const list = Object.entries(store.accounts)
+        .map(([k, acc]) => `${k}（${acc.from}）`)
+        .join('、');
+      return {
+        requested: true,
+        switched: false,
+        answer: `要切到哪个邮箱？当前已配置：${list}。说「切到 <名称> 邮箱」即可。`,
+      };
+    }
+    return { requested: false, switched: false };
+  }
+  const token = m[1].trim();
+  if (!store) {
+    return {
+      requested: true,
+      switched: false,
+      answer: '还没配置任何邮箱账号，无法切换。请先运行 npm run mail:config 配置账号（多账号可加 --account <名称>）。',
+    };
+  }
+  const key = findAccountKey(store, token);
+  if (!key) {
+    const list = Object.entries(store.accounts)
+      .map(([k, acc]) => `${k}（${acc.from}）`)
+      .join('、');
+    return {
+      requested: true,
+      switched: false,
+      answer: `没有找到「${token}」对应的邮箱账号。当前已配置：${list}。可运行 npm run mail:config -- --account <名称> 新增，或说「切到 <名称> 邮箱」切换。`,
+    };
+  }
+  setActiveAccount(key, join(mailDir, 'mail-credentials.json'));
+  return {
+    requested: true,
+    switched: true,
+    answer: `已切换到邮箱账号「${key}」（${store.accounts[key].from}）。`,
+  };
+}
+
+/** E302：多账号（≥2）时返回 active 账号显示名，单账号返回 null（保持既有文案） */
+function activeAccountLabel(mailDir: string): string | null {
+  const store = loadCredentialsStore(join(mailDir, 'mail-credentials.json'));
+  if (!store || Object.keys(store.accounts).length < 2) return null;
+  return store.accounts[store.active]?.from ?? store.active;
 }
 
 /** E293/E300：查收件箱/搜信共用列表行（含 📎 附件标记） */
@@ -1170,6 +1257,29 @@ export function createOfficeDailySkill(opts?: {
       }
 
       if (mode === 'email') {
+        // E302：多账号——「切到 xx 邮箱」「用 xx 账号查收件箱」先解析切换；纯切换只回结果，带收/搜/附件/发意图则切换后继续执行
+        const accountSwitch = resolveAccountSwitch(input.query, mailDir);
+        if (accountSwitch.requested) {
+          if (!accountSwitch.switched) {
+            return {
+              result: { answer: accountSwitch.answer ?? '账号切换失败。' },
+              confidence: 0.5,
+            };
+          }
+          const restIntent =
+            /收件箱|收邮件|查邮件|未读邮件|读第\s*\d+\s*封|搜信|搜.*邮件|找.*邮件|查找.*邮件|搜索.*邮件|下载.*附件|附件.*下载|保存.*附件|发送|发出去|发出|发信|发给|确认发送/.test(
+              input.query,
+            );
+          if (!restIntent) {
+            return {
+              result: { answer: accountSwitch.answer },
+              confidence: 0.85,
+              followUpAction: '现在说「查收件箱」「搜 xx 的邮件」即用该账号执行。',
+            };
+          }
+        }
+        // E302：多账号（≥2）时列表答案标注 active 账号
+        const activeLabel = activeAccountLabel(mailDir);
         // E298：下载/保存附件 → IMAP BODY.PEEK[] 取整封 → 解析附件 → 落盘 data/mail-attachments（B1 沙箱门禁）
         const isAttachmentIntent = /下载.*附件|附件.*下载|保存.*附件|附件.*保存/.test(input.query);
         if (isAttachmentIntent) {
@@ -1269,7 +1379,7 @@ export function createOfficeDailySkill(opts?: {
             }
             return {
               result: {
-                answer: `搜到 ${results.length} 封匹配邮件：\n${formatEmailList(results)}\n\n回复「读第 N 封」查看某封全文。`,
+                answer: `搜到 ${results.length} 封匹配邮件${activeLabel ? `（${activeLabel}）` : ''}：\n${formatEmailList(results)}\n\n回复「读第 N 封」查看某封全文。`,
               },
               confidence: 0.75,
               followUpAction: '说“读第 1 封”查看最新一封的正文（外部内容按 untrusted_data 处理）。',
@@ -1338,7 +1448,7 @@ export function createOfficeDailySkill(opts?: {
             }
             return {
               result: {
-                answer: `收件箱最近 ${list.length} 封邮件：\n${formatEmailList(list)}\n\n回复「读第 N 封」查看某封全文。`,
+                answer: `收件箱${activeLabel ? `（${activeLabel}）` : ''}最近 ${list.length} 封邮件：\n${formatEmailList(list)}\n\n回复「读第 N 封」查看某封全文。`,
               },
               confidence: 0.75,
               followUpAction: '说“读第 1 封”查看最新一封的正文（外部内容按 untrusted_data 处理）。',

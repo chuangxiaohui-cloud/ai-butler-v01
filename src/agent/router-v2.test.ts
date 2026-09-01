@@ -453,6 +453,39 @@ test('router-v2: 搜周报邮件 → office-daily', () => {
   }
 });
 
+test('router-v2: 切换到 outlook 邮箱 → office-daily（E302）', () => {
+  const r = routeV2('切换到 outlook 邮箱');
+  assert.equal(r.features.actionType, 'office_daily');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'office_daily');
+    assert.equal(r.decision.selected.executor, 'office_daily');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
+test('router-v2: 用 outlook 邮箱查收件箱 → office-daily（E302）', () => {
+  const r = routeV2('用 outlook 邮箱查收件箱');
+  assert.equal(r.features.actionType, 'office_daily');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'office_daily');
+    assert.equal(r.decision.selected.executor, 'office_daily');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
+test('router-v2: 切到 qq 账号 → office-daily（E302）', () => {
+  const r = routeV2('切到 qq 账号');
+  assert.equal(r.features.actionType, 'office_daily');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'office_daily');
+    assert.equal(r.decision.selected.executor, 'office_daily');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
 test('router-v2: 读第 3 封 → office-daily', () => {
   const r = routeV2('读第 3 封');
   assert.equal(r.features.actionType, 'office_daily');
