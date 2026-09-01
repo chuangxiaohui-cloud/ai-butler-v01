@@ -54,13 +54,23 @@
 - **文档**：`docs/plans/2026-09-01-email-imap-id.md`；附录 A E303。
 - **真实冒烟**（owner 实测 2026-09-01，已通过）：`npm run dev -- "查收件箱"` 正常列出 163 收件箱 3 封（网易邮箱安全管家 / 网易邮箱账号安全「新设备登录提醒」/ Google 登录提醒），不再报 `Unsafe Login`。
 
+### 6. v2.6 pre-ship 收口（owner 指令 2026-09-01「继续下一步」）
+
+- **背景**：`docs/plans/2026-08-30-v26-pre-ship.md` scope 内全部落地——v2.6 增量 E293~E303（收件链路全链）+ roadmap B1~B4（E294~E297，2026-08-31）；B5（P-148~P-150）未触发保持延后。剩余 Phase 4 收口。
+- **收口报告**：新建 `docs/audit-t6/pre-ship-closure.md`（复用 v2.5 pre-ship-closure 模板）——20 笔收口期提交清单、三检全绿、ZIP 排除清单核验、框架 v2.0 强制项 7 项验证。
+- **三检**：`npm run build` ✅；`npm run test:all` ✅（单测 1199/1200 含 1 skip + 集成 32/32）；`npm run doc-lint` ✅ 0 FAIL 0 WARN。
+- **交付物**：tag `v2.6-pre-ship-2026-09-01`（指向 `4f757bd`）+ ZIP `ai-butler-v2.6-pre-ship-2026-09-01.zip`（3,384,131 B，SHA256 `D52C3422D331B3754493A9DFE20706CC33AF12787A8C69DAE8DDED41A3D03257`，`git archive` 口径）。
+- **待 owner 确认**：封版确认、移交方式、下一步（v1.0 大章节或新方向），见收口报告 §6。
+
 ## 明日待办（接续点）
 
-1. 收件链路 E293-后 已全链收口（收件/读信/附件下载/搜信/多账号）。下一项按 owner 拍板：v2.6 pre-ship 启动门或 v1.0 大章节。
+1. v2.6 pre-ship 收口已完成（tag + ZIP 就绪），待 owner 封版确认（`docs/audit-t6/pre-ship-closure.md` §6）。
+2. 封版后下一项按 owner 拍板：v1.0 大章节（MCP 子 Agent / 证据链 UI / 远程对话通道 / 代码托管联动）或新方向。
 
 ## 后续候选（owner 拍板后启动）
 
-- **Outlook OAuth2（XOAUTH2）**：Outlook.com 已停用 IMAP 账号密码基本认证（实测 `NO Basic authentication is disabled.`）`NO Basic authentication is disabled.`），若要用 Outlook 做第二邮箱需实现 OAuth2 IMAP（Azure 应用注册 + 令牌刷新），登记为候选。`n- **v2.6 pre-ship**：`docs/plans/2026-08-30-v26-pre-ship.md` 有启动门（owner 启动委托 → 开 `v2.6-pre-ship` 分支），scope 已锁定 = v2.6 增量 + B1~B4（已完成）+ P-148~P-150（按需触发）。
+- **Outlook OAuth2（XOAUTH2）**：Outlook.com 已停用 IMAP 账号密码基本认证（实测 `NO Basic authentication is disabled.`），若要用 Outlook 做第二邮箱需实现 OAuth2 IMAP（Azure 应用注册 + 令牌刷新），登记为候选。
+- **v2.6 pre-ship 封版确认**：tag `v2.6-pre-ship-2026-09-01` + ZIP 已生成，待 owner 封版（收口报告 §6）。
 - **v1.0 大章节**：MCP 子 Agent、证据链 UI、远程对话通道、代码托管联动等，见 §4.4 里程碑表与 P-10 验收口径。
 
 **预估成本(¥)**：¥0（本日全部为本地实现 + 离线单测 + 文档 + 真实 IMAP 冒烟；无 LLM/API 付费调用）。
