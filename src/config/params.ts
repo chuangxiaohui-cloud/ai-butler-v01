@@ -18,6 +18,12 @@ export const PARAMS = {
   subSearchLoopCap: 5,
   /** P-86 子搜索覆盖度下限（search-loop 默认兜底） */
   subSearchCoverageFloor: 5,
+  /** P-47 连续失败停止阈值（§4.3.1 困难升级） */
+  failureEscalationThreshold: 3,
+  /** P-48 用户纠正停止阈值（§4.3.1 困难升级） */
+  correctionEscalationThreshold: 2,
+  /** P-16 综合分丢弃阈值（§4.3.1 诚实低置信） */
+  confidenceDropThreshold: 0.4,
   /** P-89 wrapLegacySkill 包装旧 handler 的默认置信度 */
   legacySkillConfidence: 0.8,
   /** P-90 长期事实注入 prompt 的最低置信度 */
@@ -80,6 +86,16 @@ export const PARAMS = {
   watchdogTimeoutRatio: 0.2,
   /** P-142 GitHub API JSON 缓存 TTL（E284：只缓存 repo/contributors/commits/releases 元数据；raw README/manifest 不缓存） */
   githubApiCacheTtlMs: 300_000,
+  /** P-143 AI 运营日预算默认（§COST §14.3：owner 2026-09-02 拍板启用，老板可经 data/usage-budget.json 覆写；null=显式关闭） */
+  aiOpsDailyBudgetDefaultCny: 5,
+  /** P-144 AI 运营月预算默认（§COST §14.3，老板可覆写） */
+  aiOpsMonthlyBudgetDefaultCny: 150,
+  /** P-145 AI 运营黄色提醒阈值（日消耗/日预算，§COST C-4） */
+  aiOpsWarnPct: 50,
+  /** P-146 AI 运营红色警告阈值（日消耗/日预算，§COST C-4） */
+  aiOpsAlertPct: 80,
+  /** P-147 AI 运营用尽/硬停阈值（日消耗/日预算，§COST C-4） */
+  aiOpsStopPct: 100,
   /** P-117 低置信二次取证总预算（对齐单目标抓取 8s 超时） */
   secondPassBudgetMs: 8_000,
   /** P-118 取证 PDF 解析大小上限 */
@@ -152,6 +168,9 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   fallbackDiscount: 'P-84',
   subSearchLoopCap: 'P-85',
   subSearchCoverageFloor: 'P-86',
+  failureEscalationThreshold: 'P-47',
+  correctionEscalationThreshold: 'P-48',
+  confidenceDropThreshold: 'P-16',
   legacySkillConfidence: 'P-89',
   injectMinConfidence: 'P-90',
   injectMaxFacts: 'P-91',
@@ -183,6 +202,11 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   watchdogWindowMs: 'P-140',
   watchdogTimeoutRatio: 'P-141',
   githubApiCacheTtlMs: 'P-142',
+  aiOpsDailyBudgetDefaultCny: 'P-143',
+  aiOpsMonthlyBudgetDefaultCny: 'P-144',
+  aiOpsWarnPct: 'P-145',
+  aiOpsAlertPct: 'P-146',
+  aiOpsStopPct: 'P-147',
   secondPassBudgetMs: 'P-117',
   pdfParseMaxBytes: 'P-118',
   calibrationWindowDays: 'P-119',

@@ -1,0 +1,23 @@
+{
+  "name": "prd-template",
+  "version": "0.1.0",
+  "triggers": [
+    "PRD模板",
+    "PRD 模板",
+    "生成PRD",
+    "写PRD",
+    "产品需求文档模板",
+    "需求文档模板"
+  ],
+  "description": "PRD 模板（E307+E310/E251）：生成 PRD 产品需求文档 docx 模板（背景与目标/用户与场景/功能需求/非功能需求/验收标准/里程碑与排期 六章节 + §9.1 证据链），复用 docx-write 底座",
+  "steps": [
+    "npm run market:prd:template -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

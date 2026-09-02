@@ -1,0 +1,27 @@
+{
+  "name": "milestone-review",
+  "version": "0.1.0",
+  "triggers": [
+    "里程碑复盘模板",
+    "生成里程碑复盘",
+    "写里程碑复盘",
+    "里程碑复盘生成",
+    "做里程碑复盘",
+    "里程碑复盘一下",
+    "复盘模板",
+    "生成复盘",
+    "写复盘",
+    "阶段复盘模板"
+  ],
+  "description": "里程碑复盘模板（E312/E251）：项目经理里程碑复盘自动触发的复盘文档——Markdown + YAML Frontmatter，含 里程碑信息/完成情况/验收结果/问题与风险/经验沉淀（L2 记忆）/后续行动；plan-validation 检测到全部子任务 Done 时自动触发；触发词不含裸「里程碑/复盘」防抢知识问答",
+  "steps": [
+    "npm run market:milestone:review -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

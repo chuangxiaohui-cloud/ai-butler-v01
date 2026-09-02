@@ -13,6 +13,8 @@ export interface PlanTask {
   verification: string[];
   dependencies: string[];
   files: string[];
+  /** E312：子任务执行状态（done/已完成 = 完成；缺省视为未完成，用于里程碑自动复盘触发检测） */
+  status?: string;
 }
 
 export interface PlanValidationFinding {
@@ -26,9 +28,33 @@ export interface PlanValidationResult {
   verdict: 'pass' | 'needs_review' | 'invalid';
   taskCount: number;
   findings: PlanValidationFinding[];
+  /** E312：里程碑复盘自动触发信号——全部子任务状态为 done/已完成 */
+  milestoneDone?: boolean;
 }
 
 const MAX_FILES_PER_TASK = 5;
+
+export interface MilestoneDoneCheck {
+  allDone: boolean;
+  doneCount: number;
+  totalCount: number;
+  pendingTitles: string[];
+}
+
+/** E312：里程碑复盘自动触发检测——全部子任务状态为 done/已完成 时 allDone=true */
+export function checkMilestoneDone(tasks: PlanTask[]): MilestoneDoneCheck {
+  const done = (task: PlanTask): boolean => {
+    const status = (task.status ?? '').trim().toLowerCase();
+    return status === 'done' || status === '已完成';
+  };
+  const pendingTitles = tasks.filter((task) => !done(task)).map((task) => task.title);
+  return {
+    allDone: tasks.length > 0 && pendingTitles.length === 0,
+    doneCount: tasks.length - pendingTitles.length,
+    totalCount: tasks.length,
+    pendingTitles,
+  };
+}
 
 export function validatePlanTasks(tasks: PlanTask[]): PlanValidationResult {
   const findings: PlanValidationFinding[] = [];
@@ -39,6 +65,7 @@ export function validatePlanTasks(tasks: PlanTask[]): PlanValidationResult {
       findings: [
         { severity: 'critical', message: '计划为空：至少需要一个可执行任务。' },
       ],
+      milestoneDone: false,
     };
   }
 
@@ -103,10 +130,12 @@ export function validatePlanTasks(tasks: PlanTask[]): PlanValidationResult {
 
   const hasCritical = findings.some((f) => f.severity === 'critical');
   const hasWarning = findings.some((f) => f.severity === 'warning');
+  const milestone = checkMilestoneDone(tasks);
   return {
     verdict: hasCritical ? 'invalid' : hasWarning ? 'needs_review' : 'pass',
     taskCount: tasks.length,
     findings,
+    milestoneDone: milestone.allDone,
   };
 }
 
@@ -115,6 +144,9 @@ export function formatPlanValidation(result: PlanValidationResult): string {
     `计划校验：${result.verdict === 'pass' ? '通过' : result.verdict === 'needs_review' ? '需人工复核' : '不通过'}`,
     `任务数：${result.taskCount}`,
   ];
+  if (result.milestoneDone) {
+    lines.push('✅ 里程碑全部子任务已完成 → 自动触发里程碑复盘（生成 milestone_review.md 存入 L2 记忆）。');
+  }
   if (result.findings.length === 0) {
     lines.push('未发现结构问题。');
   } else {
@@ -161,6 +193,7 @@ function normalizeTasks(raw: unknown): PlanTask[] {
           verification: strArray(task.verification),
           dependencies: strArray(task.dependencies),
           files: strArray(task.files),
+          status: typeof task.status === 'string' ? task.status : undefined,
         };
       }
       return {
@@ -169,6 +202,7 @@ function normalizeTasks(raw: unknown): PlanTask[] {
         verification: strArray(task.verification),
         dependencies: strArray(task.dependencies),
         files: strArray(task.files),
+        status: typeof task.status === 'string' ? task.status : undefined,
       };
     })
     .filter((task): task is PlanTask => task !== null);
@@ -197,7 +231,9 @@ export function createPlanValidationSkill(): ExecutableSkill {
           confidence: validation.verdict === 'pass' ? 0.85 : 0.7,
           followUpAction:
             validation.verdict === 'pass'
-              ? '计划结构完整，可进入执行。'
+              ? validation.milestoneDone
+                ? '里程碑全部子任务已完成，已自动触发里程碑复盘：回复「生成里程碑复盘」生成 milestone_review.md。'
+                : '计划结构完整，可进入执行。'
               : '修复 Critical/Warning 后重新校验，再进入执行。',
         };
       };

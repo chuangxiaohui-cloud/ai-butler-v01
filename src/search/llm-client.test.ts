@@ -1,11 +1,16 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   LLMLengthTruncatedError,
   OpenAiCompatibleClient,
   stripThinkBlock,
 } from './llm-client.js';
+import { writeUsageBudget } from '../config/usage-budget.js';
+import { readUsage, recordUsage } from '../usage/usage-store.js';
 
 describe('llm-client: stripThinkBlock（deepseek 思考块剥离，E238）', () => {
   it('剥离前导 <think> 推理块', () => {
@@ -205,6 +210,109 @@ describe('llm-client: 流式输出（onToken，P0）', () => {
       assert.ok(!bodies[1].includes('"stream":true'));
     } finally {
       globalThis.fetch = original;
+    }
+  });
+});
+
+describe('llm-client: §COST 日预算硬停门禁（预调用拦截，未配置零影响）', () => {
+  const makeClient = (extra: Record<string, string>) =>
+    new OpenAiCompatibleClient({
+      baseUrl: 'http://127.0.0.1:1/v1',
+      apiKey: 'sk-test',
+      model: 'deepseek-v4-flash',
+      timeoutMs: 30_000,
+      provider: 'deepseek',
+      ...extra,
+    });
+
+  it('hardStop 且今日消耗已达日预算时，发请求前抛 AI_OPS_BUDGET_EXCEEDED', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'llm-cost-gate-'));
+    const usageFile = join(dir, 'usage.jsonl');
+    const budgetFile = join(dir, 'usage-budget.json');
+    const original = globalThis.fetch;
+    try {
+      recordUsage(
+        { ts: Date.now(), provider: 'deepseek', model: 'deepseek-v4-flash', promptTokens: 2_000_000, completionTokens: 0 },
+        usageFile,
+      );
+      writeUsageBudget(
+        { budgetYuan: null, degradeAtPercent: 90, dailyBudgetCny: 0.1, monthlyBudgetCny: null, hardStop: true },
+        budgetFile,
+      );
+      let fetchCalled = false;
+      globalThis.fetch = (async () => {
+        fetchCalled = true;
+        return new Response('{}', { status: 500 });
+      }) as typeof fetch;
+      const client = makeClient({ usageLogFile: usageFile, usageBudgetFile: budgetFile });
+      await assert.rejects(
+        () => client.complete([{ role: 'user', content: 'hi' }]),
+        (err: unknown) => err instanceof Error && /AI_OPS_BUDGET_EXCEEDED|🚫/.test(err.message),
+      );
+      assert.equal(fetchCalled, false);
+    } finally {
+      globalThis.fetch = original;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('hardStop=false 或未配置预算时正常放行', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'llm-cost-gate-open-'));
+    const budgetFile = join(dir, 'usage-budget.json');
+    const original = globalThis.fetch;
+    try {
+      writeUsageBudget(
+        { budgetYuan: null, degradeAtPercent: 90, dailyBudgetCny: 0.1, monthlyBudgetCny: null, hardStop: false },
+        budgetFile,
+      );
+      globalThis.fetch = (async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }],
+            usage: { prompt_tokens: 1, completion_tokens: 1 },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )) as typeof fetch;
+      const client = makeClient({ usageBudgetFile: budgetFile });
+      const text = await client.complete([{ role: 'user', content: 'hi' }]);
+      assert.equal(text, 'ok');
+    } finally {
+      globalThis.fetch = original;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('响应带 DeepSeek 缓存拆分时写入 usage 记录（分档计价数据源）', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'llm-cost-cache-'));
+    const usageFile = join(dir, 'usage.jsonl');
+    const original = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }],
+            usage: {
+              prompt_tokens: 10,
+              completion_tokens: 2,
+              prompt_cache_hit_tokens: 7,
+              prompt_cache_miss_tokens: 3,
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )) as typeof fetch;
+      const client = makeClient({ usageLogFile: usageFile });
+      const text = await client.complete([{ role: 'user', content: 'hi' }]);
+      assert.equal(text, 'ok');
+      const records = readUsage(usageFile);
+      assert.equal(records.length, 1);
+      assert.equal(records[0].model, 'deepseek-v4-flash');
+      assert.equal(records[0].promptTokens, 10);
+      assert.equal(records[0].completionTokens, 2);
+      assert.equal(records[0].cacheHitTokens, 7);
+      assert.equal(records[0].cacheMissTokens, 3);
+    } finally {
+      globalThis.fetch = original;
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

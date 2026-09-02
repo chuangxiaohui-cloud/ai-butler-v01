@@ -1,0 +1,26 @@
+{
+  "name": "notification-hub",
+  "version": "0.1.0",
+  "triggers": [
+    "通知汇总",
+    "消息聚合",
+    "每日简报",
+    "通知中心",
+    "看看有什么通知",
+    "聚合通知",
+    "汇总通知",
+    "秘书日报",
+    "通知简报"
+  ],
+  "description": "通知枢纽（E314/E251）：聚合五个角色输出事件按优先级分组生成每日摘要（§11.3 秘书日报 / §4.1 右栏通知区）——🔴 紧急 风险裁决/阻塞，🟡 普通 PRD 完成/选型建议，🟢 低 日常进度",
+  "steps": [
+    "npm run market:notification:hub -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

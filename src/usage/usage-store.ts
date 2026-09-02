@@ -12,6 +12,10 @@ export interface UsageRecord {
   model: string;
   promptTokens: number;
   completionTokens: number;
+  /** DeepSeek usage 缓存命中输入 token（旧记录/他方 provider 可能缺省） */
+  cacheHitTokens?: number;
+  /** DeepSeek usage 缓存未命中输入 token（旧记录/他方 provider 可能缺省） */
+  cacheMissTokens?: number;
 }
 
 export function usagePath(root = process.cwd()): string {
@@ -38,6 +42,8 @@ function parseUsageLine(line: string): UsageRecord | null {
       model: typeof raw.model === 'string' ? raw.model : 'unknown',
       promptTokens: raw.promptTokens,
       completionTokens: raw.completionTokens,
+      cacheHitTokens: typeof raw.cacheHitTokens === 'number' ? raw.cacheHitTokens : undefined,
+      cacheMissTokens: typeof raw.cacheMissTokens === 'number' ? raw.cacheMissTokens : undefined,
     };
   } catch {
     return null;

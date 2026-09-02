@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import {
+  checkMilestoneDone,
   createPlanValidationSkill,
   formatPlanValidation,
   validatePlanTasks,
@@ -116,4 +117,67 @@ test('plan-validation: 格式化输出可读', () => {
   const text = formatPlanValidation(validatePlanTasks([completeTask]));
   assert.ok(text.includes('任务数：1'));
   assert.ok(text.includes('未发现结构问题'));
+});
+
+test('plan-validation: 全部子任务 done → milestoneDone 自动触发复盘（E312）', () => {
+  const result = validatePlanTasks([
+    { ...completeTask, status: 'done' },
+    { ...completeTask, title: '实现退出接口', status: 'done' },
+  ]);
+  assert.equal(result.milestoneDone, true);
+  const text = formatPlanValidation(result);
+  assert.ok(text.includes('自动触发里程碑复盘'));
+});
+
+test('plan-validation: 存在未完成子任务 → milestoneDone false（E312）', () => {
+  const result = validatePlanTasks([
+    { ...completeTask, status: 'done' },
+    { ...completeTask, title: '实现退出接口', status: 'todo' },
+  ]);
+  assert.equal(result.milestoneDone, false);
+  assert.ok(!formatPlanValidation(result).includes('自动触发'));
+});
+
+test('plan-validation: 中文已完成 识别 + checkMilestoneDone 汇总（E312）', () => {
+  const result = validatePlanTasks([
+    { ...completeTask, status: '已完成' },
+    { ...completeTask, title: '实现退出接口' },
+  ]);
+  assert.equal(result.milestoneDone, false);
+  const allDone = checkMilestoneDone([
+    { ...completeTask, status: '已完成' },
+    { ...completeTask, title: '实现退出接口', status: 'done' },
+  ]);
+  assert.equal(allDone.allDone, true);
+  assert.equal(allDone.doneCount, 2);
+  assert.equal(allDone.totalCount, 2);
+  assert.deepEqual(allDone.pendingTitles, []);
+  const mixed = checkMilestoneDone([
+    { ...completeTask, status: 'done' },
+    { ...completeTask, title: '实现退出接口', status: 'todo' },
+  ]);
+  assert.equal(mixed.allDone, false);
+  assert.deepEqual(mixed.pendingTitles, ['实现退出接口']);
+  assert.equal(checkMilestoneDone([]).allDone, false);
+});
+
+test('plan-validation: 全部 done 时 followUpAction 提示自动触发复盘（E312）', async () => {
+  const skill = createPlanValidationSkill();
+  const out = await skill.execute(
+    {
+      query: JSON.stringify({
+        tasks: [
+          { ...completeTask, status: 'done' },
+          { ...completeTask, title: '实现退出接口', status: 'done' },
+        ],
+      }),
+      attachmentSignals: [],
+      rawFiles: [],
+      memory: null,
+    },
+    { callVLM: async () => '' },
+  );
+  const result = out.result as { text: string };
+  assert.ok(result.text.includes('自动触发里程碑复盘'));
+  assert.ok((out.followUpAction ?? '').includes('里程碑复盘'));
 });

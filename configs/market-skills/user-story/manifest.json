@@ -1,0 +1,24 @@
+{
+  "name": "user-story",
+  "version": "0.1.0",
+  "triggers": [
+    "用户故事模板",
+    "生成用户故事",
+    "写用户故事",
+    "写个用户故事",
+    "拆用户故事",
+    "故事拆解模板",
+    "拆解用户故事"
+  ],
+  "description": "用户故事模板（E310/E251）：生成 Markdown + YAML Frontmatter 用户故事 md（用户故事/验收标准 AC/任务拆解/证据链），供项目经理 project-writer 直接读取；触发词不含裸「用户故事/故事」防抢知识问答",
+  "steps": [
+    "npm run market:user:story -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

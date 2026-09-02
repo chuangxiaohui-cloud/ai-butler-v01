@@ -1,0 +1,25 @@
+{
+  "name": "proactive-assistant",
+  "version": "0.1.0",
+  "triggers": [
+    "主动提醒",
+    "有什么建议",
+    "主动建议",
+    "帮我看看要注意什么",
+    "看看有什么要注意",
+    "预判一下",
+    "有什么要留意的",
+    "有眼力见"
+  ],
+  "description": "主动预判（E313/E251）：§2.5「有眼力见儿」——命中 日期+地点/报销/开会/连续工作≥2h 规则后附加建议，仅建议不自动执行（§2.3 人类裁决）；触发词避让 reminder「提醒我」防抢",
+  "steps": [
+    "npm run market:proactive:assistant -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

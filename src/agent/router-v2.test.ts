@@ -138,12 +138,26 @@ test('router-v2: 芯片行情 → search/web_search 直接路由', () => {
 });
 
 test('router-v2: 常识问答 → secretary/web_search 不再兜底澄清', () => {
-  for (const query of ['什么是状态机？', 'Python是什么语言', '嵌入式里的定时器是什么？']) {
+  // E306：08-13 的 6 条「X是什么」reject 样本复验（R016 08-14 上线后已修复，防回归）
+  for (const query of [
+    '什么是状态机？',
+    'Python是什么语言',
+    '嵌入式里的定时器是什么？',
+    'codex是什么',
+    'FreeCAD是什么软件',
+    'kimi是什么',
+    'MIT协议是什么',
+    'Linux是什么',
+    '函数指针是什么',
+  ]) {
     const r = routeV2(query);
     assert.notEqual(r.decision.type, 'must_clarify');
     assert.equal(r.candidates[0].primaryLens, 'secretary');
     assert.equal(r.candidates[0].intent, 'web_search');
     assert.equal(r.candidates[0].searchNeed, true);
+    if (r.decision.type === 'direct') {
+      assert.equal(r.decision.selected.intent, 'web_search');
+    }
   }
 });
 

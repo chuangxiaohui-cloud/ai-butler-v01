@@ -30,6 +30,15 @@ import { executorStatus } from '../agent/executors.js';
 import { extractPartNumber, getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
 import { PARAMS } from '../config/params.js';
+import { DecisionLog } from '../escalation/decision-log.js';
+import { EscalationState } from '../escalation/escalation-state.js';
+import { NotificationStore } from '../notifications/notification-store.js';
+import {
+  correctionEscalationMessage,
+  countConsecutiveCorrections,
+  failureEscalationMessage,
+  lowConfidenceHonestMessage,
+} from '../escalation/escalation.js';
 import { fetchSecondPassTargets } from './second-pass-fetch.js';
 import { checkEvidenceReadiness } from './answer-readiness.js';
 import { classifyPredicate } from './answer-readiness.js';
@@ -178,6 +187,13 @@ export interface PipelineDeps {
   };
   trajectory?: TrajectoryLogLike;
   sessionContext?: Pick<SessionContextStore, 'load' | 'append' | 'compactIfNeeded'>;
+  /** E309：困难升级/人类裁决（判定与记录；测试可注入内存实现，缺省共享真实单例） */
+  escalation?: {
+    decisionLog?: Pick<DecisionLog, 'record'>;
+    state?: Pick<EscalationState, 'recordFailure' | 'recordSuccess' | 'consecutiveFailures'>;
+  };
+  /** E315：通知枢纽自动写入（§11.3 秘书日报；测试可注入内存实现，缺省共享真实单例 data/notifications.jsonl） */
+  notificationStore?: Pick<NotificationStore, 'add'>;
   browserSession?: BrowserFetcher;
   /** v1.0 S2：深度报告任务状态存储（取消恢复；测试可注入内存实现） */
   deepReportStore?: DeepReportStoreLike;
@@ -210,6 +226,36 @@ let sharedSessionContext: SessionContextStore | null = null;
 function defaultSessionContext(): SessionContextStore {
   sharedSessionContext ??= new SessionContextStore();
   return sharedSessionContext;
+}
+
+let sharedDecisionLog: DecisionLog | null = null;
+function defaultDecisionLog(): DecisionLog {
+  sharedDecisionLog ??= new DecisionLog();
+  return sharedDecisionLog;
+}
+
+let sharedEscalationState: EscalationState | null = null;
+function defaultEscalationState(): EscalationState {
+  sharedEscalationState ??= new EscalationState();
+  return sharedEscalationState;
+}
+
+let sharedNotificationStore: NotificationStore | null = null;
+function defaultNotificationStore(): Pick<NotificationStore, 'add'> {
+  sharedNotificationStore ??= new NotificationStore();
+  return sharedNotificationStore;
+}
+
+/** E315：通知写入失败不阻塞主对话 */
+function safeNotify(
+  log: Pick<NotificationStore, 'add'>,
+  event: Parameters<NotificationStore['add']>[0],
+): void {
+  try {
+    log.add(event);
+  } catch {
+    // 通知写入失败不阻塞主对话
+  }
 }
 
 let sharedDeepReportStore: DeepReportStore | null = null;
@@ -459,6 +505,55 @@ export async function pipeline(
 
   // 主 Agent 意图路由（三层：特征 → 规则表 → 置信度门控；携带工作记忆做上下文消歧）
   // E264：身份问答确定性硬规则优先（免 LLM 分类，秒回“你现在是什么模型”等；routeSelected 分支兜底）
+  // E309：§4.3.1 困难升级入口检查——连续纠正 [P-48] / 连续失败 [P-47] 时停止当前方向
+  const escalationLog = deps.escalation?.decisionLog ?? defaultDecisionLog();
+  const escalationState = deps.escalation?.state ?? defaultEscalationState();
+  const notificationLog = deps.notificationStore ?? defaultNotificationStore();
+  if (conversationId) {
+    if (
+      sessionCtx &&
+      countConsecutiveCorrections(sessionCtx.turns) >= PARAMS.correctionEscalationThreshold
+    ) {
+      const answer = correctionEscalationMessage();
+      escalationLog.record({
+        trigger: 'escalation',
+        question: answer,
+        decision: 'escalate',
+        note: 'user_correction',
+        conversationId,
+      });
+      safeNotify(notificationLog, { role: '秘书', kind: 'escalation', title: '连续纠正升级', detail: answer });
+      return {
+        query,
+        answer,
+        confidence: 0.5,
+        evidence: [],
+        gate_triggered: 'none',
+        elapsed_ms: Date.now() - start,
+      };
+    }
+    if (
+      escalationState.consecutiveFailures(conversationId) >= PARAMS.failureEscalationThreshold
+    ) {
+      const answer = failureEscalationMessage();
+      escalationLog.record({
+        trigger: 'escalation',
+        question: answer,
+        decision: 'escalate',
+        note: 'consecutive_failure',
+        conversationId,
+      });
+      safeNotify(notificationLog, { role: '秘书', kind: 'escalation', title: '连续失败升级', detail: answer });
+      return {
+        query,
+        answer,
+        confidence: 0.3,
+        evidence: [],
+        gate_triggered: 'low_confidence',
+        elapsed_ms: Date.now() - start,
+      };
+    }
+  }
   const ruleFeatures = extractIntentFeatureRuleBased(routeQuery, processed.attachmentSignals);
   if (ruleFeatures.actionType === 'self_identity') {
     safeProgress('stage2');
@@ -521,6 +616,30 @@ export async function pipeline(
       route.decision.type === 'option_clarify'
         ? `\n${route.decision.options.map((o) => `${o.id}. ${o.label} - ${o.description}`).join('\n')}`
         : '';
+    // E309：人类裁决记录（§2.3）——摆了什么选项给用户（decision=pending，批准/否决留待用户答复时回填）
+    if (conversationId) {
+      try {
+        escalationLog.record({
+          trigger: 'human_arbitration',
+          question: route.decision.question,
+          options:
+            route.decision.type === 'option_clarify'
+              ? route.decision.options.map((o) => o.label)
+              : undefined,
+          decision: 'pending',
+          conversationId,
+          confidence: route.confidence,
+        });
+        safeNotify(notificationLog, {
+          role: '老板',
+          kind: 'risk_decision',
+          title: '待你裁决',
+          detail: route.decision.question,
+        });
+      } catch {
+        // 裁决记录失败不阻塞回答
+      }
+    }
     return {
       query,
       answer: `${route.decision.question}${options}`,
@@ -1385,6 +1504,26 @@ export async function pipeline(
   // v1.0 S1/S2：深度报告（§4.3.2）——搜索证据基础上分阶段生成结构化报告 + 证据附录；
   // 取消后同 query 再次触发自动恢复上次已生成分节（状态持久化，逐节落盘）
   let finalAnswerText = synthesized.answer + videoBlock;
+  // E309：综合分 < [P-16] 时明确「我不确定」（§4.3.1 诚实低置信），并记录
+  if (gate === 'low_confidence' && confidence < PARAMS.confidenceDropThreshold) {
+    finalAnswerText = `${lowConfidenceHonestMessage(confidence)}\n\n${finalAnswerText}`;
+    if (conversationId) {
+      escalationLog.record({
+        trigger: 'low_confidence',
+        question: lowConfidenceHonestMessage(confidence),
+        decision: 'resolved',
+        note: 'below_confidence_floor',
+        conversationId,
+        confidence,
+      });
+      safeNotify(notificationLog, {
+        role: '秘书',
+        kind: 'low_confidence',
+        title: '低置信答复',
+        detail: lowConfidenceHonestMessage(confidence),
+      });
+    }
+  }
   if (routeSelected.intent === 'deep_report') {
     const reportStore = deps.deepReportStore ?? defaultDeepReportStore();
     const resumed = reportStore.findResumable(prepared.cleanQuery);
@@ -1458,6 +1597,12 @@ export async function pipeline(
   }
 
   await recordSessionTurns(query, final.answer);
+  // E309：§4.3.1 [P-47] 会话级连续失败计数（搜索全空或合成失败记失败，成功归零）
+  if (conversationId) {
+    const pipelineFailed = search.results.length === 0 || synthesized.synthesisFailed === true;
+    if (pipelineFailed) escalationState.recordFailure(conversationId);
+    else escalationState.recordSuccess(conversationId);
+  }
   return {
     query,
     answer: final.answer,

@@ -27,3 +27,27 @@ test('usage-store: 记账并按今日/近7天/本月聚合', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('usage-store: DeepSeek 缓存拆分字段读写保留（§COST 分档计价用）', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'usage-cache-'));
+  const file = join(dir, 'usage.jsonl');
+  try {
+    recordUsage(
+      {
+        ts: Date.now(),
+        provider: 'deepseek',
+        model: 'deepseek-v4-flash',
+        promptTokens: 10,
+        completionTokens: 5,
+        cacheHitTokens: 7,
+        cacheMissTokens: 3,
+      },
+      file,
+    );
+    const parsed = readUsage(file)[0];
+    assert.equal(parsed.cacheHitTokens, 7);
+    assert.equal(parsed.cacheMissTokens, 3);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

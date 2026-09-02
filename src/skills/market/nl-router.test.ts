@@ -48,6 +48,184 @@ const DOCX_WRITE_TRIGGERS: InstalledSkillWithTriggers[] = [
   },
 ];
 
+const B11_TRIGGERS: InstalledSkillWithTriggers[] = [
+  {
+    name: 'prd-template',
+    triggers: ['PRD模板', 'PRD 模板', '生成PRD', '写PRD', '产品需求文档模板', '需求文档模板'],
+  },
+  {
+    name: 'tech-selection',
+    triggers: ['选型模板', '选型对比模板', '技术选型模板', '生成选型对比', '选型对比表', '方案对比模板'],
+  },
+];
+
+const BUDGET_TRIGGERS: InstalledSkillWithTriggers[] = [
+  {
+    name: 'expense-tracker',
+    triggers: ['记账', '记一笔', '记个账', '查预算', '查一下预算', '查查预算', '看看预算', '预算查询', '预算还剩', '剩余预算', '预算余额', '拨款', '花销', '支出'],
+  },
+];
+
+const USER_STORY_TRIGGERS: InstalledSkillWithTriggers[] = [
+  {
+    name: 'user-story',
+    triggers: ['用户故事模板', '生成用户故事', '写用户故事', '写个用户故事', '拆用户故事', '故事拆解模板', '拆解用户故事'],
+  },
+];
+
+const INTERFACE_CONTRACT_TRIGGERS: InstalledSkillWithTriggers[] = [
+  {
+    name: 'interface-contract',
+    triggers: ['接口契约模板', '生成接口契约', '写接口契约', '接口契约生成', '契约模板', '生成C头文件', '生成c头文件', '生成头文件', '生成JSON Schema', '生成json schema'],
+  },
+];
+
+const MILESTONE_REVIEW_TRIGGERS: InstalledSkillWithTriggers[] = [
+  {
+    name: 'milestone-review',
+    triggers: ['里程碑复盘模板', '生成里程碑复盘', '写里程碑复盘', '里程碑复盘生成', '做里程碑复盘', '里程碑复盘一下', '复盘模板', '生成复盘', '写复盘', '阶段复盘模板'],
+  },
+];
+
+const PROACTIVE_TRIGGERS: InstalledSkillWithTriggers[] = [
+  {
+    name: 'proactive-assistant',
+    triggers: ['主动提醒', '有什么建议', '主动建议', '帮我看看要注意什么', '看看有什么要注意', '预判一下', '有什么要留意的', '有眼力见'],
+  },
+];
+
+const NOTIFICATION_HUB_TRIGGERS: InstalledSkillWithTriggers[] = [
+  {
+    name: 'notification-hub',
+    triggers: ['通知汇总', '消息聚合', '每日简报', '通知中心', '看看有什么通知', '聚合通知', '汇总通知', '秘书日报', '通知简报'],
+  },
+];
+
+test('matchInstalledSkillTrigger：查预算命中 expense-tracker（E308）', () => {
+  const hit = matchInstalledSkillTrigger('帮我查一下预算', BUDGET_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'expense-tracker');
+});
+
+test('matchInstalledSkillTrigger：用户故事模板命中 user-story（E310）', () => {
+  const hit = matchInstalledSkillTrigger('帮我生成一个网关告警推送的用户故事模板', USER_STORY_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'user-story');
+});
+
+test('matchInstalledSkillTrigger：写个用户故事 命中 user-story（E310 自然问法）', () => {
+  const hit = matchInstalledSkillTrigger('帮我写个用户故事', USER_STORY_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'user-story');
+});
+
+test('matchInstalledSkillTrigger：知识问法不抢——用户故事是什么 不命中（E310 防误触）', () => {
+  assert.equal(matchInstalledSkillTrigger('用户故事是什么', USER_STORY_TRIGGERS), null);
+  assert.equal(matchInstalledSkillTrigger('如何写故事', USER_STORY_TRIGGERS), null);
+});
+
+test('matchInstalledSkillTrigger：接口契约模板命中 interface-contract（E311）', () => {
+  const hit = matchInstalledSkillTrigger('帮我生成一个STM32与蓝牙模块的接口契约模板', INTERFACE_CONTRACT_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'interface-contract');
+});
+
+test('matchInstalledSkillTrigger：生成C头文件 命中 interface-contract（E311 自然问法）', () => {
+  const hit = matchInstalledSkillTrigger('生成C头文件', INTERFACE_CONTRACT_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'interface-contract');
+});
+
+test('matchInstalledSkillTrigger：知识问法不抢——接口契约是什么 不命中（E311 防误触）', () => {
+  assert.equal(matchInstalledSkillTrigger('接口契约是什么', INTERFACE_CONTRACT_TRIGGERS), null);
+  assert.equal(matchInstalledSkillTrigger('什么是接口定义', INTERFACE_CONTRACT_TRIGGERS), null);
+});
+
+test('matchInstalledSkillTrigger：生成里程碑复盘 命中 milestone-review（E312）', () => {
+  const hit = matchInstalledSkillTrigger('帮我生成一个智能网关项目的里程碑复盘模板', MILESTONE_REVIEW_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'milestone-review');
+});
+
+test('matchInstalledSkillTrigger：做里程碑复盘 命中 milestone-review（E312 自然问法）', () => {
+  const hit = matchInstalledSkillTrigger('帮我们做里程碑复盘', MILESTONE_REVIEW_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'milestone-review');
+});
+
+test('matchInstalledSkillTrigger：知识问法不抢——里程碑复盘是什么 不命中（E312 防误触）', () => {
+  assert.equal(matchInstalledSkillTrigger('里程碑复盘是什么', MILESTONE_REVIEW_TRIGGERS), null);
+  assert.equal(matchInstalledSkillTrigger('什么是复盘', MILESTONE_REVIEW_TRIGGERS), null);
+  assert.equal(matchInstalledSkillTrigger('阶段复盘怎么做', MILESTONE_REVIEW_TRIGGERS), null);
+});
+
+test('matchInstalledSkillTrigger：主动提醒 命中 proactive-assistant（E313）', () => {
+  const hit = matchInstalledSkillTrigger('帮我主动提醒一下', PROACTIVE_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'proactive-assistant');
+});
+
+test('matchInstalledSkillTrigger：有什么建议 命中 proactive-assistant（E313 自然问法）', () => {
+  const hit = matchInstalledSkillTrigger('我最近有什么建议吗', PROACTIVE_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'proactive-assistant');
+});
+
+test('matchInstalledSkillTrigger：提醒我 不抢 reminder 专属意图（E313 避让）', () => {
+  assert.equal(matchInstalledSkillTrigger('提醒我明天开会', PROACTIVE_TRIGGERS), null);
+});
+
+test('matchInstalledSkillTrigger：通知汇总 命中 notification-hub（E314）', () => {
+  const hit = matchInstalledSkillTrigger('帮我做今天的通知汇总', NOTIFICATION_HUB_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'notification-hub');
+});
+
+test('matchInstalledSkillTrigger：秘书日报 最长触发词优先于 docx-write 日报（E314）', () => {
+  const combined = [...DOCX_WRITE_TRIGGERS, ...NOTIFICATION_HUB_TRIGGERS];
+  const hit = matchInstalledSkillTrigger('生成今天的秘书日报', combined);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'notification-hub');
+});
+
+test('matchInstalledSkillTrigger：知识问法不抢——通知是什么 不命中（E314 防误触）', () => {
+  assert.equal(matchInstalledSkillTrigger('通知是什么', NOTIFICATION_HUB_TRIGGERS), null);
+  assert.equal(matchInstalledSkillTrigger('日报怎么写', NOTIFICATION_HUB_TRIGGERS), null);
+});
+
+test('matchInstalledSkillTrigger：裸「预算」不命中 expense-tracker（E308 防误触）', () => {
+  assert.equal(matchInstalledSkillTrigger('项目预算怎么算', BUDGET_TRIGGERS), null);
+  assert.equal(matchInstalledSkillTrigger('预算是什么', BUDGET_TRIGGERS), null);
+});
+
+test('matchInstalledSkillTrigger：生成 PRD 模板命中 prd-template（E307）', () => {
+  const hit = matchInstalledSkillTrigger('帮我生成智能家居网关 PRD 模板', B11_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'prd-template');
+});
+
+test('matchInstalledSkillTrigger：写PRD 命中 prd-template（E307）', () => {
+  const hit = matchInstalledSkillTrigger('帮我写PRD', B11_TRIGGERS, 3);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'prd-template');
+});
+
+test('matchInstalledSkillTrigger：选型对比模板命中 tech-selection（E307）', () => {
+  const hit = matchInstalledSkillTrigger('生成 STM32 vs ESP32 选型对比模板', B11_TRIGGERS);
+  assert.ok(hit);
+  assert.equal(hit?.skillName, 'tech-selection');
+});
+
+test('matchInstalledSkillTrigger：知识问法不抢——PRD是什么 不命中（E307 防误触）', () => {
+  assert.equal(matchInstalledSkillTrigger('PRD是什么', B11_TRIGGERS), null);
+  assert.equal(matchInstalledSkillTrigger('产品需求文档是什么', B11_TRIGGERS), null);
+});
+
+test('matchInstalledSkillTrigger：知识问法不抢——选型对比 不命中（E307 防误触）', () => {
+  assert.equal(matchInstalledSkillTrigger('STM32 vs ESP32 选型对比', B11_TRIGGERS), null);
+  assert.equal(matchInstalledSkillTrigger('技术选型怎么做', B11_TRIGGERS), null);
+});
+
 test('matchInstalledSkillTrigger：自然问法带空格命中「日报 模板」（E305）', () => {
   const hit = matchInstalledSkillTrigger('帮我生成 日报 模板', DOCX_WRITE_TRIGGERS);
   assert.ok(hit);

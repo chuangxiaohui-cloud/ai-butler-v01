@@ -1,0 +1,31 @@
+{
+  "name": "expense-tracker",
+  "version": "0.1.0",
+  "triggers": [
+    "记账",
+    "记一笔",
+    "记个账",
+    "查预算",
+    "查一下预算",
+    "查查预算",
+    "看看预算",
+    "预算查询",
+    "预算还剩",
+    "剩余预算",
+    "预算余额",
+    "拨款",
+    "花销",
+    "支出"
+  ],
+  "description": "预算记账（E308/E251）：查预算/记一笔支出/拨款设预算，共用 data/budget.db 账本（老板查预算与秘书记账同一份），余额 = 拨款 - 支出",
+  "steps": [
+    "npm run market:expense:tracker -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

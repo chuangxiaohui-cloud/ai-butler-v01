@@ -1,0 +1,27 @@
+{
+  "name": "interface-contract",
+  "version": "0.1.0",
+  "triggers": [
+    "接口契约模板",
+    "生成接口契约",
+    "写接口契约",
+    "接口契约生成",
+    "契约模板",
+    "生成C头文件",
+    "生成c头文件",
+    "生成头文件",
+    "生成JSON Schema",
+    "生成json schema"
+  ],
+  "description": "接口契约模板（E311/E251）：生成机器可读接口契约——默认 C Header（.h，供 Keil/MDK 编译与子 Agent 校验），query 含 JSON/Schema 时输出 JSON Schema（.json）；触发词不含裸「接口契约/契约/接口定义」防抢知识问答",
+  "steps": [
+    "npm run market:interface:contract -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

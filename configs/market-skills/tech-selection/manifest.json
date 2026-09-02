@@ -1,0 +1,23 @@
+{
+  "name": "tech-selection",
+  "version": "0.1.0",
+  "triggers": [
+    "选型模板",
+    "选型对比模板",
+    "技术选型模板",
+    "生成选型对比",
+    "选型对比表",
+    "方案对比模板"
+  ],
+  "description": "技术选型对比模板（E307/E251）：生成技术选型对比 docx 模板（选型背景/候选方案/对比维度/评分与结论/决策记录 五章节），复用 docx-write 底座",
+  "steps": [
+    "npm run market:tech:selection -- @input"
+  ],
+  "verify": [
+    "git status --short"
+  ],
+  "permissions": [
+    "command"
+  ],
+  "input": "query"
+}

@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 
 import type { ChatMessage, LLMClient } from './llm.js';
-import type { SessionContext, SessionContextStore } from '../memory/session-context.js';
+import type { SessionContext, SessionContextStore, SessionTurn } from '../memory/session-context.js';
 import type { QuotaStoreLike } from './quota.js';
 import type { MemoryRecord, MemoryStore } from '../memory/store.js';
 import type { SearchProvider, SearchProviderResult, SearchResultItem } from './providers/types.js';
@@ -296,15 +296,22 @@ class FakeSessionContextStore
   implements Pick<SessionContextStore, 'load' | 'append' | 'compactIfNeeded'>
 {
   summary: string | null;
+  turns: SessionTurn[];
   appendCalls: Array<{ conversationId: string; role: 'user' | 'assistant'; text: string }> = [];
 
-  constructor(summary: string | null = null) {
+  constructor(summary: string | null = null, turns: SessionTurn[] = []) {
     this.summary = summary;
+    this.turns = turns;
   }
 
   async load(conversationId: string): Promise<SessionContext | null> {
-    return this.summary
-      ? { conversationId, turns: [], summary: this.summary, updatedAt: new Date().toISOString() }
+    return this.summary || this.turns.length > 0
+      ? {
+          conversationId,
+          turns: this.turns,
+          summary: this.summary,
+          updatedAt: new Date().toISOString(),
+        }
       : null;
   }
 
@@ -317,12 +324,54 @@ class FakeSessionContextStore
   }
 }
 
+/** E309：困难升级/人类裁决假实现（内存记录，隔离真实 data/ 文件） */
+function makeEscalationFake(initFailures: Record<string, number> = {}) {
+  type EscalationDep = NonNullable<NonNullable<Parameters<typeof pipeline>[1]>['escalation']>;
+  const records: Array<Record<string, unknown>> = [];
+  const failures: Record<string, number> = { ...initFailures };
+  const fake: EscalationDep = {
+    decisionLog: {
+      record: (entry) => {
+        const full = { ...entry, id: entry.id ?? 'fake-id', createdAt: entry.createdAt ?? 0 };
+        records.push(full as unknown as Record<string, unknown>);
+        return full;
+      },
+    },
+    state: {
+      recordFailure: (conversationId) => {
+        failures[conversationId] = (failures[conversationId] ?? 0) + 1;
+      },
+      recordSuccess: (conversationId) => {
+        failures[conversationId] = 0;
+      },
+      consecutiveFailures: (conversationId) => failures[conversationId] ?? 0,
+    },
+  };
+  return { ...fake, records, failures };
+}
+
+/** E315：通知库假实现（内存记录，隔离真实 data/ 文件） */
+function makeNotificationFake() {
+  type NotificationDep = NonNullable<NonNullable<Parameters<typeof pipeline>[1]>['notificationStore']>;
+  type NotifyEvent = Parameters<NonNullable<NotificationDep['add']>>[0];
+  const events: Array<Record<string, unknown>> = [];
+  const fake: NotificationDep = {
+    add: (event: NotifyEvent) => {
+      const full = { ...event, id: 'notify-id', createdAt: 0 };
+      events.push(full as unknown as Record<string, unknown>);
+      return full as ReturnType<NonNullable<NotificationDep['add']>>;
+    },
+  };
+  return { ...fake, events };
+}
+
 const deps = {
   llm: new FakeLLM(),
   providers: [new FakeProvider()],
   quota: new FakeQuota(),
   memoryStore: new FakeMemoryStore(),
   sessionContext: new FakeSessionContextStore(),
+  escalation: makeEscalationFake(),
 };
 
 function pipelineOkJson(obj: unknown) {
@@ -1667,4 +1716,118 @@ test('pipeline: 知识问答无浏览器会话也能走 P0 抓正文路径（P-Y
   });
   assert.equal(r.gate_triggered, 'none');
   assert.ok(r.answer.length > 0);
+});
+
+test('pipeline: E309 连续纠正 [P-48] 触发停止当前方向并记录裁决', async () => {
+  const session = new FakeSessionContextStore(null, [
+    { id: '1', role: 'user', text: '帮我写个周报模板', ts: '' },
+    { id: '2', role: 'assistant', text: '好的，这是模板…', ts: '' },
+    { id: '3', role: 'user', text: '不对', ts: '' },
+    { id: '4', role: 'assistant', text: '抱歉，我调整一下…', ts: '' },
+    { id: '5', role: 'user', text: '还是不对', ts: '' },
+  ]);
+  const esc = makeEscalationFake();
+  const r = await pipeline(
+    '还是不对',
+    { ...deps, sessionContext: session, escalation: esc },
+    { conversationId: 'conv-e309-correction' },
+  );
+  assert.match(r.answer, /你已经连续 2 次说不对/);
+  assert.equal(esc.records.length, 1);
+  assert.equal(esc.records[0]?.trigger, 'escalation');
+  assert.equal(esc.records[0]?.decision, 'escalate');
+  assert.equal(esc.records[0]?.note, 'user_correction');
+});
+
+test('pipeline: E309 连续失败 [P-47] 触发停止重试建议求助', async () => {
+  const esc = makeEscalationFake({ 'conv-e309-failure': 3 });
+  const r = await pipeline(
+    '帮我解决一个很复杂的问题',
+    { ...deps, escalation: esc },
+    { conversationId: 'conv-e309-failure' },
+  );
+  assert.match(r.answer, /已连续 3 次尝试失败/);
+  assert.equal(r.gate_triggered, 'low_confidence');
+  assert.equal(esc.records.length, 1);
+  assert.equal(esc.records[0]?.note, 'consecutive_failure');
+});
+
+test('pipeline: E309 澄清问题记录 human_arbitration pending', async () => {
+  const esc = makeEscalationFake();
+  const r = await pipeline(
+    '帮我写一段代码，但我现在不方便说功能，你先写个通用的。',
+    { ...deps, llm: { complete: async () => '根据证据，这是一个测试答案。' }, escalation: esc },
+    { conversationId: 'conv-e309-clarify' },
+  );
+  assert.ok(r.answer.length > 0);
+  assert.equal(esc.records.length, 1);
+  assert.equal(esc.records[0]?.trigger, 'human_arbitration');
+  assert.equal(esc.records[0]?.decision, 'pending');
+});
+
+test('pipeline: E315 待裁决自动写入通知（老板 risk_decision）', async () => {
+  const esc = makeEscalationFake();
+  const notify = makeNotificationFake();
+  const r = await pipeline(
+    '帮我写一段代码，但我现在不方便说功能，你先写个通用的。',
+    {
+      ...deps,
+      llm: { complete: async () => '根据证据，这是一个测试答案。' },
+      escalation: esc,
+      notificationStore: notify,
+    },
+    { conversationId: 'conv-e315-clarify' },
+  );
+  assert.ok(r.answer.length > 0);
+  assert.ok(
+    notify.events.some((e) => e.role === '老板' && e.kind === 'risk_decision' && e.title === '待你裁决'),
+    '应写入 老板 risk_decision 通知事件',
+  );
+});
+
+test('pipeline: E309 搜索全空记失败、低置信 [P-16] 诚实声明并记录', async () => {
+  const provider: SearchProvider = {
+    id: 'bocha',
+    async search() {
+      return { provider: 'bocha', ok: false, results: [], latencyMs: 1, error: 'HTTP 500' };
+    },
+  };
+  const esc = makeEscalationFake();
+  const r = await pipeline(
+    '中国AI大模型公司中市值较高的是哪几家',
+    { ...deps, llm: new FakeLLM(), providers: [provider], escalation: esc },
+    { conversationId: 'conv-e309-failcount' },
+  );
+  assert.match(r.answer, /综合分低于诚实阈值/);
+  assert.equal(esc.failures['conv-e309-failcount'], 1);
+  assert.ok(esc.records.some((x) => x.trigger === 'low_confidence'));
+});
+
+test('pipeline: E315 低置信答复自动写入通知（秘书 low_confidence）', async () => {
+  const provider: SearchProvider = {
+    id: 'bocha',
+    async search() {
+      return { provider: 'bocha', ok: false, results: [], latencyMs: 1, error: 'HTTP 500' };
+    },
+  };
+  const esc = makeEscalationFake();
+  const notify = makeNotificationFake();
+  const r = await pipeline(
+    '中国AI大模型公司中市值较高的是哪几家',
+    { ...deps, llm: new FakeLLM(), providers: [provider], escalation: esc, notificationStore: notify },
+    { conversationId: 'conv-e315-lowconf' },
+  );
+  assert.match(r.answer, /综合分低于诚实阈值/);
+  assert.ok(notify.events.some((e) => e.kind === 'low_confidence'), '应写入 low_confidence 通知事件');
+});
+
+test('pipeline: E309 成功回答清零连续失败计数', async () => {
+  const esc = makeEscalationFake({ 'conv-e309-ok': 2 });
+  const r = await pipeline(
+    'STM32F103C8T6 最大主频是多少',
+    { ...deps, llm: new FakeLLM(), escalation: esc },
+    { conversationId: 'conv-e309-ok' },
+  );
+  assert.ok(r.answer.length > 0);
+  assert.equal(esc.failures['conv-e309-ok'], 0);
 });

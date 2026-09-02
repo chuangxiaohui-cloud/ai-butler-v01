@@ -487,6 +487,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     };
     const current = readUsageBudget();
     const next: typeof current = {
+      ...current,
       budgetYuan:
         typeof body.budgetYuan === 'number' && body.budgetYuan >= 0
           ? body.budgetYuan

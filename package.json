@@ -76,6 +76,7 @@
     "test": "node --test dist/**/*.test.js",
     "test:integration": "node --import tsx --test tests/integration/**/*.test.ts",
     "test:all": "npm run test && npm run test:integration",
+    "cost:today": "tsx scripts/ai-ops-cost.ts",
     "maturity:check": "tsx scripts/maturity-check.ts",
     "browser:auth": "tsx scripts/browser-domain-auth.ts",
     "market:pdf:text": "tsx scripts/market-pdf-text.ts",
@@ -102,6 +103,14 @@
     "market:purchase:request": "tsx scripts/market-purchase-request.ts",
     "market:meeting:invitation": "tsx scripts/market-meeting-invitation.ts",
     "market:notice:announcement": "tsx scripts/market-notice-announcement.ts",
+    "market:prd:template": "tsx scripts/market-prd-template.ts",
+    "market:tech:selection": "tsx scripts/market-tech-selection.ts",
+    "market:expense:tracker": "tsx scripts/market-expense-tracker.ts",
+    "market:user:story": "tsx scripts/market-user-story.ts",
+    "market:interface:contract": "tsx scripts/market-interface-contract.ts",
+    "market:milestone:review": "tsx scripts/market-milestone-review.ts",
+    "market:proactive:assistant": "tsx scripts/market-proactive-assistant.ts",
+    "market:notification:hub": "tsx scripts/market-notification-hub.ts",
     "bench:answer-readiness": "tsx scripts/bench-answer-readiness.ts"
   },
   "keywords": [

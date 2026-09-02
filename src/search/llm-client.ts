@@ -3,6 +3,7 @@
  */
 
 import { recordUsage } from '../usage/usage-store.js';
+import { assertAiOpsGate } from '../usage/cost.js';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -31,6 +32,29 @@ export interface OpenAiCompatibleClientOptions {
   model: string;
   timeoutMs: number;
   provider?: string;
+  /** §COST 预算/用量文件覆盖（测试注入；缺省 data/usage-budget.json 与 data/usage.jsonl）。
+   * usageLogFile 同时作为本客户端 usage 记账的输出路径。 */
+  usageBudgetFile?: string;
+  usageLogFile?: string;
+}
+
+interface UsageWithCache {
+  prompt_tokens?: unknown;
+  completion_tokens?: unknown;
+  prompt_cache_hit_tokens?: unknown;
+  prompt_cache_miss_tokens?: unknown;
+}
+
+/** DeepSeek usage 缓存拆分（OpenAI 兼容响应可选字段；缺省返回空对象） */
+function toCacheTokens(usage: UsageWithCache): {
+  cacheHitTokens?: number;
+  cacheMissTokens?: number;
+} {
+  return {
+    cacheHitTokens: typeof usage.prompt_cache_hit_tokens === 'number' ? usage.prompt_cache_hit_tokens : undefined,
+    cacheMissTokens:
+      typeof usage.prompt_cache_miss_tokens === 'number' ? usage.prompt_cache_miss_tokens : undefined,
+  };
 }
 
 /**
@@ -110,6 +134,8 @@ export class OpenAiCompatibleClient implements LLMClient {
     opts.signal?.addEventListener('abort', onExternalAbort, { once: true });
     const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs);
     try {
+      // §COST C-5：日预算硬停门禁（仅 hardStop 且日预算已配置时生效，未配置零影响）
+      assertAiOpsGate(this.opts.usageLogFile, this.opts.usageBudgetFile);
       const body: Record<string, unknown> = {
         model: this.opts.model,
         messages,
@@ -141,7 +167,7 @@ export class OpenAiCompatibleClient implements LLMClient {
           message?: { content?: unknown };
           finish_reason?: string;
         }>;
-        usage?: { prompt_tokens?: unknown; completion_tokens?: unknown };
+        usage?: UsageWithCache;
       };
       const content = data.choices?.[0]?.message?.content;
       if (typeof content !== 'string' || !content.trim()) throw new Error('LLM 返回空内容');
@@ -156,7 +182,8 @@ export class OpenAiCompatibleClient implements LLMClient {
             model: this.opts.model,
             promptTokens: data.usage.prompt_tokens,
             completionTokens: data.usage.completion_tokens,
-          });
+            ...toCacheTokens(data.usage),
+          }, this.opts.usageLogFile);
         } catch {
           // 记账失败不阻塞回复
         }
@@ -179,7 +206,7 @@ export class OpenAiCompatibleClient implements LLMClient {
     const emitVisible = makeVisibleDeltaEmitter(opts.onToken!);
     let content = '';
     let finishReason: string | undefined;
-    let usage: { prompt_tokens?: number; completion_tokens?: number } | undefined;
+    let usage: { prompt_tokens?: number; completion_tokens?: number } & ReturnType<typeof toCacheTokens> | undefined;
     let buffer = '';
     let finished = false;
     try {
@@ -203,7 +230,7 @@ export class OpenAiCompatibleClient implements LLMClient {
                 delta?: { content?: unknown };
                 finish_reason?: string | null;
               }>;
-              usage?: { prompt_tokens?: unknown; completion_tokens?: unknown };
+              usage?: UsageWithCache;
             };
             const delta = chunk.choices?.[0]?.delta?.content;
             if (typeof delta === 'string' && delta) {
@@ -220,6 +247,7 @@ export class OpenAiCompatibleClient implements LLMClient {
               usage = {
                 prompt_tokens: chunk.usage.prompt_tokens,
                 completion_tokens: chunk.usage.completion_tokens,
+                ...toCacheTokens(chunk.usage),
               };
             }
           } catch {
@@ -237,7 +265,7 @@ export class OpenAiCompatibleClient implements LLMClient {
             model: this.opts.model,
             promptTokens: usage.prompt_tokens!,
             completionTokens: usage.completion_tokens!,
-          });
+          }, this.opts.usageLogFile);
         } catch {
           // 记账失败不阻塞回复
         }
