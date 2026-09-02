@@ -64,6 +64,19 @@
 | ZIP SHA256 | `D52C3422D331B3754493A9DFE20706CC33AF12787A8C69DAE8DDED41A3D03257` |
 | ZIP 口径 | `git archive`（tag 提交，不含未提交工作区；排除清单见 §4.2） |
 
+### 4.1b 增补批次（2026-09-02：E306-E317）
+
+> owner 2026-09-02 拍板「E306-E317 统一提交 + v2.6 pre-ship 重打 tag/ZIP」。
+
+| 字段 | 值 |
+|---|---|
+| tag 名 | `v2.6-pre-ship-2026-09-02` |
+| 指向提交 | `d0eb7cc`（3 笔提交：`1290959` 代码 / `0756133` 文档 / `d0eb7cc` bench） |
+| ZIP 文件 | `ai-butler-v2.6-pre-ship-2026-09-02.zip` |
+| ZIP 大小 | 3,506,237 B（≈ 3.3 MB） |
+| ZIP SHA256 | `7C4C4B735376A1A6C4480B7FBBB1A4E32C0770E59366E5596F30D63B421C90B3` |
+| ZIP 口径 | `git archive`（tag 提交，不含未提交工作区；排除清单见 §4.2） |
+
 ### 4.2 ZIP 排除清单核验（audit-package-checklist §11）
 
 | 项 | 是否在 ZIP 内 | 验证方式 |
@@ -78,11 +91,10 @@
 ### 5.1 已纳入版本管理
 
 - ✅ v2.6 收口期 20 笔全部 commit（HEAD = `4f757bd`）。
+- ✅ v2.6 增补批次（E306-E317，2026-09-02）：`1290959` 代码 + `0756133` 文档 + `d0eb7cc` bench，HEAD = `d0eb7cc`。
 
 ### 5.2 未追踪/未提交但**非交付**（按用户 2026-09-01 指示暂不提交）
 
-- `bench/classify-metrics.jsonl` / `bench/search-metrics.jsonl`（机器运行指标，用户指示暂缓）
-- `docs/2026-08-30-progress-handoff.md`（8-30 交接补充，用户指示暂缓）
 - `ai-butler-audit-package-v0.2b-audit-2026-08-30.zip`、`docs/audit-t3/v25-audit-closure.md`、`docs/plans/2026-08-30-v26-pre-ship.md`、`审计交付/`（v2.5 审计交付物，不入库）
 
 全部不影响 v2.6 pre-ship 交付包语义（archive 基于 tag，不含工作区）。
