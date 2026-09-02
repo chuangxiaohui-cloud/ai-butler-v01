@@ -2393,3 +2393,78 @@
 {"ts":"2026-08-30T14:50:13.528Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
 {"ts":"2026-08-30T14:50:13.529Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
 {"ts":"2026-08-30T14:50:13.529Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:47:36.435Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:47:36.450Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:47:36.450Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:47:36.452Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:47:36.453Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:52:23.753Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:52:23.754Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:52:23.755Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:52:23.756Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:52:23.756Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:55:55.683Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:55:55.684Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:55:55.684Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:55:55.685Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:55:55.685Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:30.085Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:30.086Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:30.086Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:30.086Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:30.087Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:32.785Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:32.787Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:32.787Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:32.787Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:32.788Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:47.512Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:47.522Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:47.522Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:47.523Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T04:59:47.523Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T11:08:28.204Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T11:08:28.206Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T11:08:28.207Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T11:08:28.208Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T11:08:28.208Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T11:24:22.811Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T11:24:22.817Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T11:24:22.818Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T11:24:22.819Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T11:24:22.819Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T13:58:59.598Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T13:58:59.601Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T13:58:59.601Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T13:58:59.602Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T13:58:59.604Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T14:03:57.105Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T14:03:57.115Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T14:03:57.116Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T14:03:57.117Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-01T14:03:57.117Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T10:43:56.472Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T10:43:56.473Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T10:43:56.473Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T10:43:56.474Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T10:43:56.474Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T10:44:17.194Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T10:44:17.199Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T10:44:17.200Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T10:44:17.200Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T10:44:17.201Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:25:24.261Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:25:24.263Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:25:24.264Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:25:24.265Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:25:24.265Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:27:22.469Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:27:22.473Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:27:22.474Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:27:22.476Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:27:22.476Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:48:12.157Z","query":"STM32F103C8T6 主频","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:48:12.166Z","query":"STM32F103C8T6 主频 site:st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:48:12.166Z","query":"STM32F103C8T6 主频 site:community.st.com","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:48:12.167Z","query":"STM32F103C8T6 site:st.com datasheet","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
+{"ts":"2026-09-02T12:48:12.168Z","query":"STM32F103C8T6 st.com 官方 数据手册","bocha_ms":1,"bocha_ok":true,"anysearch_ms":null,"anysearch_ok":false,"timeout":false,"degraded":false,"cacheEngines":"single"}
