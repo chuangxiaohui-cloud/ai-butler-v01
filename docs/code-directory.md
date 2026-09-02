@@ -52,16 +52,18 @@
 | `src/memory/` | `session-context.ts` | 会话上下文持久化与逐字窗口压缩（§8.3，E193） | ✅ |
 | `src/slash/` | `slash-commands.ts` | 斜杠命令层：`/compact` 手动压缩 + `/context` 会话状态（§8.3，E204） | ✅ |
 | `src/reminder/` | `reminder-store.ts` | 主动提醒 SQLite 存储与到期轮询 | ✅ |
+| `src/budget/` | `budget-store.ts` | 预算账本 SQLite（append-only allocate/spend 事件，余额=拨款-支出，§2.1/§5，E308，`data/budget.db`） | ✅ |
+| `src/escalation/` | `decision-log.ts`、`escalation.ts`、`escalation-state.ts` | 困难升级与人类裁决记录（§4.3.1 [P-47]/[P-48]/[P-16] + §2.3 裁决记录，E309，`data/decision-log.jsonl` + `data/escalation-state.jsonl`） | ✅ |
 | `src/gateway/` | `app.ts`、`server.ts` | 单一 TurnLoop Express gateway | ✅ |
 | `src/gateway/` | `rate-limit.ts` | 限速桶（P16 [P-114]）+ 并发闸门（[P-115]） | ✅ |
 | `src/gateway/` | `attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts` | 附件、终端、文件、SSE 事件 | ✅ |
 | `src/browser/` | `session.ts`、`dom-observe.ts`、`operations.ts`、`driver.ts` | 浏览器会话、CDP 持久化、页面抓取；浏览器操作（E252 §4.1.5：AX 树观察 [P-126] 有界 + DSL 交互层 [P-124]/[P-125] + 真实 CDP 驱动） | ✅ |
 | `src/config/` | `params.ts`、`env.ts` | PARAM 登记与环境解析 | ✅ |
 | `src/config/` | `model-catalog.ts`、`provider-order.ts` | 模型目录与 provider 顺序 | ✅ |
-| `src/config/` | `security-config.ts`、`skills-config.ts`、`usage-budget.ts` | 安全、Skill、Token 预算持久化 | ✅ |
+| `src/config/` | `security-config.ts`、`skills-config.ts`、`usage-budget.ts`、`model-pricing.ts` | 安全、Skill、Token 预算持久化、AI 运营分档单价表（缓存命中/未命中 × 高峰/空闲，§COST C-3） | ✅ |
 | `src/trajectory/` | `trajectory-log.ts` | append-only 轨迹日志 | ✅ |
 | `src/log/` | `jsonl.ts` | JSONL 追加/轮转（.1 归档）/缓存读（P15） | ✅ |
-| `src/usage/` | `usage-store.ts` | Token 计量与聚合 | ✅ |
+| `src/usage/` | `usage-store.ts`、`cost.ts` | Token 计量与聚合（含缓存拆分）、AI 运营成本估算/阈值/硬停门禁/报告（§COST v1） | ✅ |
 | `src/security/` | `sandbox.ts`、`operation-log.ts`、`url-safety.ts`、`browser-actions.ts`、`domain-auth.ts` | 文件沙箱白名单、审计、Agent 操作日志与回滚、浏览器抓取 URL 安全（S1）；浏览器动作白名单/高风险标记与域名授权持久化（E252，§10.2/§4.1.5） | ✅ |
 | `src/postprocess/` | `cultural-reply.ts` | 文化梗回复后处理 | ✅ |
 | `src/wiki/` | `index.ts` | 冷启动知识种子 | ✅ |
@@ -94,6 +96,7 @@
 | `scripts/office_image_ocr.py` | 图片/PDF 表格 OCR（E168-E201：TSR 结构、跨页拼接、页脚过滤、三通道文本融合、编号模式纠正、词典纠正；`--selftest`/`--dict`/`--table`/`--batch`） | ✅ |
 | scripts/datasheet.ts | 官方 datasheet 下载与校验 | ✅ |
 | scripts/tavily-smoke.ts | Tavily 触发冒烟 + 配额监控 + 远端用量对比（E195/E228） | ✅ |
+| scripts/ai-ops-cost.ts | AI 运营成本报告 CLI（`npm run cost:today`，§COST v1） | ✅ |
 | scripts/deep-report-bench.ts | 深度报告 [P-13] 复测工具（dry-run/LLM 模式，E229） | ✅ |
 | `scripts/migrate-to-memorycore.ts` | 历史记忆迁移 | ✅ |
 | `scripts/distill-worker.ts` | L1 蒸馏 worker | ✅ |

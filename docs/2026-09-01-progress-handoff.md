@@ -78,6 +78,72 @@
 - **验证**：新增单测 5 条——nl-router 4（「日报 模板」命中 / 「写日报」≥3 字命中 / 「搜周报的邮件」E301 回归不抢 / 「如何解析 datasheet 表格」防误触不命中）+ pipeline 1（「日报 模板」→ docx-write 市场触发）；`npm run build` 绿；nl-router+pipeline 69/69。
 - **文档**：`docs/plans/2026-09-01-market-trigger-natural.md`；附录 A E305。
 
+### 9. 验收样本复验 E306：6 条「X是什么」stale reject 已由 R016 修复（2026-09-01）
+
+- **背景**：L2 通过率缺口分析（73.9%，n=23）定位到 6 条 `must_clarify` reject——codex是什么 / FreeCAD是什么软件 / kimi是什么 / MIT协议是什么 / Linux是什么 / 函数指针是什么。
+- **排查结论**：6 条样本全部来自 2026-08-13，早于 R016（`{actionType:'qa'}` → secretary/web_search）上线（`72e3e90`，08-14）。当前 `routeV2` 已全部命中 R016 → `direct`，与人工 correctedRoute 一致——**误拦在代码层已修复，缺口是数据过期**，故不做多余行为改动。
+- **落地**：① `src/agent/router-v2.test.ts`「常识问答不再兜底澄清」回归测试补 6 条历史样本（router-v2 85/85）；② `data/route-cases.jsonl`（git 忽略）6 条 stale reject 批量翻转为 accept，通过率 73.9% → **100%（23/23，n 仍 <30 待样本达标）**。
+- **文档**：`docs/plans/2026-09-01-route-what-is-fix.md`；附录 A E306；`npm run doc-lint` 0 FAIL 0 WARN。
+- **观察项**：第 7 条「帮我检查一下这个PCB的安全性」当前 top 已命中 owner/risk_review（R13，option_clarify→confirm），未翻转，留 owner 定夺。
+
+### 10. 市场 Skill 沉淀第 11 批 E307：PRD 模板 / 技术选型对比（2026-09-01）
+
+- **需求依据**：§2.1 产品经理「写 PRD」、系统架构师「技术选型」——此前 32 包无对应市场包。
+- **代码**：`src/skills/market/templates.ts` 新增 `buildPrdTemplate`（六章节）与 `buildTechSelection`（五章节+候选/维度/决策字段）；薄 CLI `scripts/market-prd-template.ts` / `scripts/market-tech-selection.ts` + package.json `market:prd:template` / `market:tech:selection`；2 个 manifest（command + input:query）本地安装。
+- **防误触**：触发词只放带「模板/生成/写」的明确意图形式（裸「PRD/选型对比/技术选型」不登记），补 2 条知识问法不命中单测（E301/E305 纪律延续）。
+- **验证**：`npm run build` 绿；templates 17/17 + nl-router 18/18（35/35）；doc-lint 0 FAIL 0 WARN；真实冒烟 2 Skill 全链 ok:true（`智能家居网关-模板.docx` / `STM32 vs ESP32-模板.docx` 落沙箱）；maturity:check 用户累积 Skill **32→34**。
+- **文档**：`docs/plans/2026-09-01-market-skill-b11-prd-tech-selection.md`；附录 A E307。
+
+### 11. 预算闭环 E308：budget_tracker 底座 + expense-tracker 记账/查预算（2026-09-01）
+
+- **需求依据**：五角色审阅结论（👑老板缺口2「预算实时扣减」+ 💁秘书 P0「记账 expense-tracker」），owner 拍板先做预算闭环（E308）。
+- **代码**：① `src/budget/budget-store.ts`——SQLite append-only 账本 `data/budget.db`（`budget_events` 表：scope/kind allocate|spend/amount/note/created_at），`summary(scope?)` 余额=拨款-支出、`recent()`、`close()`，env `BUDGET_DB_PATH` 可覆盖（缺省 `import.meta.url` 锚定 repo 根防沙箱 cwd 漂移）；② `src/skills/market/expense.ts`——`parseBudgetQuery`（查预算→query / 含金额+记账词→record / 含金额+预算词→allocate）+ `runBudgetCommand(text, dbPath?)`，`extractScope` 保留「X费/X预算」后缀保证拨款/查询同名对账；③ 薄 CLI `scripts/market-expense-tracker.ts` + package.json `market:expense:tracker`（E251 @input）；④ 市场 Skill `configs/market-skills/expense-tracker/manifest.json`——触发词含 记账/记一笔/记个账/查预算/查一下预算/查查预算/看看预算/预算查询/预算还剩/剩余预算/预算余额/拨款/花销/支出，**不含裸「预算」**（防抢知识问答，E301/E305 纪律），重装同步运行时副本 `data/market-skills/`。
+- **验证**：`npm run build` 绿；定向单测 29/29（nl-router 20 + budget-store 2 + expense 7）；doc-lint 0 FAIL 0 WARN；maturity:check 用户累积 Skill **34→35**/50+；真实冒烟全链 ok:true——「给打样费设 100 元预算」→ allocate、「记一笔 80 元打样费」→ spend、「查打样费预算」→ 预算 100/已花 80/剩余 20。
+- **文档**：`docs/plans/2026-09-01-budget-tracker.md`；附录 A E308。
+- **诚实登记**：记账入口为显式「记一笔…」；quotation/bom-compare 自动回写不做隐式猜测（防双记/误记），后续如需自动回写按指令级确认设计。
+
+### 12. 困难升级 + 人类裁决 E309（2026-09-01）
+
+- **需求依据**：五角色审阅结论（👑老板缺口1「决策留痕」+ 📅项目经理缺口2「失败重试/上报阈值」），owner 指令「继续下一步」。§4.3.1 [P-47]/[P-48]/[P-16] 已定稿未实现。
+- **代码**：① `src/config/params.ts` 补 `failureEscalationThreshold=3`（P-47）/ `correctionEscalationThreshold=2`（P-48）/ `confidenceDropThreshold=0.4`（P-16），doc-lint C8 67→70；② `src/escalation/decision-log.ts` append-only `data/decision-log.jsonl`（trigger human_arbitration|escalation|low_confidence、decision pending|approve|reject|escalate|resolved，复用 P15 JSONL 工具，env `DECISION_LOG_PATH` 覆盖）——§2.3 裁决结果记录落点；③ `src/escalation/escalation.ts` isUserCorrection（纠正词锚定开头防误伤）/ countConsecutiveCorrections（会话轮次倒序）/ 三分支文案（能力不足/信息不足/工具不足）/ P-47/P-48/P-16 消息；④ `src/escalation/escalation-state.ts` 会话级连续失败计数（failure/success 事件，遇 success 归零，env `ESCALATION_STATE_PATH` 覆盖）；⑤ `src/search/pipeline.ts` 接线——入口（路由前）连续纠正 ≥[P-48] 返回「哪里不对？我换个方向」、连续失败 ≥[P-47] 停止重试建议求助（gate=low_confidence），均记 decision-log escalate；`option_clarify|must_clarify` 返回前记 human_arbitration/pending；low_confidence 且综合分 <[P-16] 时答案前置「我不确定」声明并记 low_confidence；结尾搜索全空或合成失败记 failure、成功记 success 清零。
+- **验证**：`npm run build` 绿；escalation 三模块 10/10 + pipeline 61/61（新增 5 条 E309）；`npm run test:all` 单测 1238/1239（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN。
+- **诚实登记**：非破坏式——不改 confirm 语义与核心链路行为；「confirm 阻断式 + 批准/否决面板 UI」待 owner 在 UI 阶段拍板（已更新后续候选）；decision_log 的 pending→approve/reject 回填留待交互层。
+- **文档**：`docs/plans/2026-09-01-escalation-human-arbitration.md`；附录 A E309。
+
+### 13. 市场 Skill 沉淀第 12 批 E310：PRD 证据链 + 用户故事模板（2026-09-01）
+
+- **需求依据**：五角色审阅 P1 第一批（📝产品经理缺口1「竞品/需求证据链」+ 缺口2「本地任务文件 schema」），owner 指令「继续，按你的计划」。
+- **代码**：① `src/skills/market/templates.ts` `buildPrdTemplate` 增 §9.1 证据链章节（六章节→六章节+证据链，每章节强制 `[Evidence: URL/Path]` + `[hard]`/`[soft]` 标注）；② 新增 `buildUserStory`——Markdown + YAML Frontmatter 用户故事模板（frontmatter：id/title/status/priority/type/product/created_at/epic；正文：用户故事/验收标准 AC/任务拆解（供 project-writer 读取）/证据链），本地任务文件 schema 落地（如 `tasks/user_story_001.md`）；③ 薄 CLI `scripts/market-user-story.ts`（E251 @input，输出 `<标题>-用户故事.md`）+ package.json `market:user:story`；④ 市场 Skill `user-story` manifest（触发词含 用户故事模板/生成用户故事/写用户故事/写个用户故事/拆用户故事/故事拆解模板/拆解用户故事，不含裸「用户故事/故事」防误触）安装 + `prd-template` manifest 描述同步重装，用户累积 Skill 35→36。
+- **验证**：`npm run build` 绿；templates 19/19 + nl-router 23/23（新增 5 条）；doc-lint 0 FAIL 0 WARN；真实冒烟 user-story 全链 ok:true（`网关告警推送的-用户故事.md` 落沙箱，frontmatter + 四章节）；maturity:check 用户累积 Skill **35→36**/50+。
+- **文档**：`docs/plans/2026-09-01-market-user-story-evidence.md`；附录 A E310。
+- **遗留**：P1 剩余——接口契约机器可读（架构师缺口1）、里程碑复盘自动触发（项目经理缺口1）；P2——proactive-assistant + notification-hub（秘书）。
+
+### 14. 市场 Skill 沉淀第 13 批 E311：接口契约机器可读（2026-09-01）
+
+- **需求依据**：五角色审阅 P1 第二批（🏗️系统架构师缺口1「接口契约机器可读」），owner 指令「好！同意你的建议」。v2.5 §2.1 架构师职责「接口契约」——契约只是 Markdown 文本时子 Agent 没法自动校验，需输出机器可读契约。
+- **代码**：① `src/skills/market/templates.ts` 新增 `buildInterfaceContract(title, dateLabel, format)`——`c-header`：`__<TOKEN>_CONTRACT_H` 守卫 + `CONTRACT_VERSION` 宏 + `CMD_<X>` 占位 + `typedef struct` + 三个接口函数；`json-schema`：draft-07 `$schema`/`type: object`/`properties`/`required`；`contractMacroToken`（标题→ASCII 大写 token，中文兜底 `CONTRACT`，防非法 C 标识符）；② 薄 CLI `scripts/market-interface-contract.ts`（E251 @input，query 含 JSON/Schema → json-schema，否则 c-header，输出 `<标题>-接口契约.{h|json}`）+ package.json `market:interface:contract`；③ 市场 Skill `interface-contract` manifest（触发词：接口契约模板/生成接口契约/写接口契约/接口契约生成/契约模板/生成C头文件/生成c头文件/生成头文件/生成JSON Schema/生成json schema，不含裸「接口契约/契约/接口定义」防知识问答被抢）本地安装，用户累积 Skill 36→37。
+- **验证**：`npm run build` 绿；templates 22/22 + nl-router 26/26（新增 6 条：C 头结构/JSON Schema 结构/宏 token 中文兜底/模板命中/生成C头文件 自然问法/防误触不命中）；doc-lint 0 FAIL 0 WARN；真实冒烟两格式全链 ok:true——「生成STM32与蓝牙模块的接口契约模板」→ `STM32与蓝牙模块的-接口契约.h`、「生成设备上报的JSON Schema接口契约」→ `设备上报的JSON Schema-接口契约.json` 落沙箱；maturity:check 用户累积 Skill **36→37**/50+。
+- **文档**：`docs/plans/2026-09-01-market-interface-contract.md`；附录 A E311。
+- **遗留**：P1 剩余——里程碑复盘自动触发（项目经理缺口1）；P2——proactive-assistant + notification-hub（秘书）。
+
+### 15. 市场 Skill 沉淀第 14 批 E312：里程碑复盘自动触发（2026-09-01）
+
+- **需求依据**：五角色审阅 P1 最后一项（📅项目经理缺口1「里程碑复盘自动触发」），owner 指令「继续下一步」。v2.5 §11.3 秘书日报 / §8.1.1 记忆暗示阶段复盘——plan-validation 检测到里程碑全部子任务 Done 时自动触发复盘。
+- **代码**：① `src/skills/market/templates.ts` 新增 `buildMilestoneReview(title, dateLabel)`——Markdown + YAML Frontmatter（id/type: milestone_review/project/milestone/status: done/created_at）+ 六章节（里程碑信息/完成情况/验收结果/问题与风险/经验沉淀 L2/后续行动），触发方式行写明自动触发；② `src/skills/plan-validation/index.ts`——`PlanTask.status?` 可选（非破坏）+ `checkMilestoneDone`（done/已完成 归一，返回 allDone/doneCount/pendingTitles）+ `validatePlanTasks` 结果带 `milestoneDone` + `formatPlanValidation` 输出「✅ 里程碑全部子任务已完成 → 自动触发里程碑复盘」+ 全 done 时 followUpAction 提示回复「生成里程碑复盘」；③ 薄 CLI `scripts/market-milestone-review.ts`（E251 @input，输出 `<标题>-里程碑复盘.md`）+ package.json `market:milestone:review`；④ 市场 Skill `milestone-review` manifest（触发词：里程碑复盘模板/生成里程碑复盘/写里程碑复盘/里程碑复盘生成/做里程碑复盘/里程碑复盘一下/复盘模板/生成复盘/写复盘/阶段复盘模板，不含裸「里程碑/复盘」防知识问答被抢）本地安装，用户累积 Skill 37→38。
+- **验证**：`npm run build` 绿；templates 23/23 + plan-validation 14/14 + nl-router 29/29（新增 8 条）+ pipeline 61/61 无回归；doc-lint 0 FAIL 0 WARN；真实冒烟全链 ok:true——「生成网关告警项目的里程碑复盘模板」→ `网关告警项目的-里程碑复盘.md` 落沙箱（frontmatter + 六章节 + 自动触发说明）；maturity:check 用户累积 Skill **37→38**/50+。
+- **诚实登记**：plan-validation 是预置 Skill（SkillDeps 无 marketSkillRunner），「自动触发」落地为「检测 + 提示」——全 done 时结果带 `milestoneDone=true` 并提示回复「生成里程碑复盘」生成文档；pipeline 级自动链式执行市场 Skill 留作后续候选（需扩展 SkillDeps 契约，本轮不过度设计）。
+- **文档**：`docs/plans/2026-09-01-market-milestone-review.md`；附录 A E312。
+- **遗留**：P1（五角色审阅）已清空；P2 剩余——proactive-assistant + notification-hub（秘书）。
+
+### 16. 市场 Skill 沉淀第 15 批 E313/E314：秘书主动预判 + 通知枢纽（2026-09-01）
+
+- **需求依据**：五角色审阅 P2 最后两项（💁秘书缺口1「主动预判」+ 缺口3「信息枢纽」），owner 指令「继续剩余推进」。§2.5「有眼力见儿」行为指标 + §11.3 秘书日报 / §4.1 右栏通知区。
+- **代码**：① `src/skills/market/proactive.ts`（E313）——`proactiveSuggestions` 规则引擎（日期+地点→差旅查航班/酒店；报销→报销单模板；开会→日历事件+议程；连续工作≥2h→提醒休息）+ `detectTravelIntent` + `formatProactiveSuggestions`（输出「💡 主动建议，仅建议、不自动执行」，§2.3 人类裁决）；② `src/skills/market/notification-hub.ts`（E314）——`classifyEventPriority`（🔴 紧急：老板风险裁决/项目经理阻塞报告；🟡 普通：PRD 完成/选型建议；🟢 低：日常进度，kind/title 为主、全文仅紧急兜底）+ `renderNotificationDigest`（§11.3 秘书日报分组摘要）+ `parseEventsInput`（E251 内嵌 JSON 数组或事件文件路径）；③ 薄 CLI `scripts/market-proactive-assistant.ts` / `scripts/market-notification-hub.ts` + package.json `market:proactive:assistant` / `market:notification:hub`；④ 2 个 manifest 本地安装——`proactive-assistant`（主动提醒/有什么建议/主动建议/有眼力见 等，避让 reminder「提醒我」防抢）、`notification-hub`（通知汇总/每日简报/秘书日报/通知中心 等，「秘书日报」最长触发词优先于 docx-write「日报」），用户累积 Skill 38→40。
+- **验证**：`npm run build` 绿；proactive 6/6 + notification-hub 6/6 + nl-router 35/35（新增 6 条）；doc-lint 0 FAIL 0 WARN；真实冒烟 2 Skill 全链 ok:true——proactive「下周三要去深圳见供应商，顺便报销这次差旅费」→ 差旅安排+报销单 两条建议、notification-hub 三事件 → 🔴1/🟡1/🟢1 分组摘要；maturity:check 用户累积 Skill **38→40**/50+。
+- **诚实登记**：两 Skill 落地为「规则/聚合 + 建议/摘要」，不自动执行、不自动写库；「监听 projects/ 目录 + 各角色 Skill 输出事件自动写入通知库」的管道接线依赖 §4.1 三栏交互 UI 阶段（右栏通知区），登记为后续候选。
+- **文档**：`docs/plans/2026-09-01-market-proactive-notification-hub.md`；附录 A E313/E314。
+- **遗留**：五角色审阅全部清空；剩余候选——Outlook OAuth2、E309-后 confirm 阻断式（等 owner 拍板）、v2.6 pre-ship 封版确认、v1.0 大章节。
+
 ## 明日待办（接续点）
 
 1. v2.6 pre-ship 已封版（`346fcac`，tag `v2.6-pre-ship-2026-09-01` + ZIP）。
@@ -86,6 +152,7 @@
 ## 后续候选（owner 拍板后启动）
 
 - **Outlook OAuth2（XOAUTH2）**：Outlook.com 已停用 IMAP 账号密码基本认证（实测 `NO Basic authentication is disabled.`），若要用 Outlook 做第二邮箱需实现 OAuth2 IMAP（Azure 应用注册 + 令牌刷新），登记为候选。
+- **E309-后：confirm 阻断式 + 批准/否决面板**（E309 已落地记录侧，非破坏式）：§2.3 人类裁决「阻断执行 + 面板点批准/否决」依赖 §4.1 三栏交互 UI，待 owner 拍板「confirm 是否改阻断式」后启动。
 - **v2.6 pre-ship 封版确认**：tag `v2.6-pre-ship-2026-09-01` + ZIP 已生成，待 owner 封版（收口报告 §6）。
 - **v1.0 大章节**：MCP 子 Agent、证据链 UI、远程对话通道、代码托管联动等，见 §4.4 里程碑表与 P-10 验收口径。
 

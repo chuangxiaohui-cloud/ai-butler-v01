@@ -84,6 +84,8 @@ npm run maturity:check                    # 成熟度轻量自检 L0-L3（[P-25]
 | `src/skills/` | Skill 注册、生命周期与预置 Skill；市场 Skill（E243/E248/E250/E251：可执行 handler、触发词直连、本地安装、`@input` 安全输入通道） |
 | `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标、`maturity:check`，v1.0 P-10 条件③，E247） |
 | `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏 |
+| `src/budget/` | 预算账本（append-only 拨款/支出事件，余额=拨款-支出，§2.1/§5 唯一权威，E308） |
+| `src/escalation/` | 困难升级与人类裁决记录（§4.3.1 [P-47]/[P-48]/[P-16] + §2.3 裁决记录，E309） |
 | `src/repo/` | 代码托管联动（仓库白名单/预检门禁/commit+push/审计 + repo:push/repo:whitelist/repo:audit 真实 CLI，v1.0 S6，§11.4） |
 | `src/security/` | 命令/URL/动作白名单、沙箱、审计、域名授权（§10，E252 browser-actions/domain-auth） |
 | `src/slash/` | 斜杠命令层（/compact、/context，E193 手动入口） |

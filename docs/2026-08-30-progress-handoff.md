@@ -139,12 +139,27 @@
 - ✅ **ASR 白名单 / 安装日志 / 其余延后项**：登记 `docs/roadmap.md` backlog（B2/B3/B5），不丢。
 - ⏳ **SMTP 冒烟邮箱**：真实两段式发送冒烟需要 SMTP 凭据（host/账号/授权码），owner 未提供；待 owner 自行运行 `npm run mail:config` 配置后复测（fake SMTP 单测已覆盖双闸语义）。
 
+## 11. 下一阶段 owner 拍板（2026-08-30 晚，v2.5 交付后）
+
+| # | 阶段 | owner 拍板 | 范围 / 触发 / 窗口 |
+|---|---|---|---|
+| 1 | **T+6 follow-up** | owner 亲自跑 bench:devil-v25 122 条全量回归并提交结果；如需轻量复查再议 | bench:devil-v25（B-20260828-01 基线）122 条全量回归；T+6 ≈ 2026-09-13；提交物 = `bench/B-2026MMDD-T6-owner-regression.md` |
+| 2 | **v2.6 进入 pre-ship** | 开新委托（v2.6 pre-ship 周期），范围 = v2.6 增量 + B1~B4 + 6 项 Skill 信任域缺口 | 范围 = E293~E299 + roadmap B1（写盘沙箱 4 项）+ B2（video-learner ASR 白名单）+ B3（market/installer 安装日志）+ B4（browser-session 完整域名白名单）+ 6 项 Skill 信任域缺口（office-daily SMTP 已 E291 闭环 → 剩余 P-148~P-153 候选评估）+ P-148~P-150 分领域阈值（roadmap B5）；先写 `docs/plans/2026-08-30-v26-pre-ship.md` 锁定 scope |
+| 3 | **6 个月稳定性复评** | 按路线图执行 | 2027-02-28 ± 1 月窗口；复评范围 = v2.5 全量 §10 + T+6 回归结果 + v2.6 落地稳定性累积；产物 = `docs/audit-t6/closure-report.md` + bench:B-20270228-01 |
+
+**封版决定（不可逆）**：v2.5 交付完成（封版基线 tag `v0.2b-audit-2026-08-30` @ `cba6af6`），T+3 周期收口（5/5 交付物 + 3/3 owner 拍板）；v0.2b 分支本周期不再合入新功能（仅 hygiene 修复可入）。
+
+**下一阶段进入条件**（任一项触发即可启动）：
+- T+6（2026-09-13 ± 3 天）owner 提交 bench 122 条回归结果
+- v2.6 pre-ship 委托开启（owner 启动）
+- 6 个月窗口到达（2027-02-28 ± 1 月）
+
+**预估成本(¥)**：¥0（v2.5 交付封版 + 路线图登记均无 LLM/API/桌面调用；T+6/v2.6/6mo 三阶段按预算独立核算）。
 ## 12. 收邮件 IMAP 只读收件箱实现（E293，2026-08-31）
 
 - **背景**：v2.5 交付后 owner 指令「既然邮件发送做了，收邮件也一起实现」（2026-08-31）；v0.2b 已封版 → 实现按 v2.6 pre-ship 候选评估，提交归属待 owner 拍板。
 - **落地**：`src/mail/imap.ts`（最小只读 IMAP 客户端，node:net/node:tls 无外部依赖，Buffer 字节级 `{n}` 字面量解析；`fetchRecentEmails` 最新 N 封 + `fetchEmailText` 正文 + `extractPlainText`；明文无 STARTTLS 拒绝 LOGIN（H4））；`credentials.ts` 可选 `imapHost/imapPort/imapSecure` 透传（缺省 smtp.xxx→imap.xxx + 993 TLS）；office-daily 收件分支（收件箱/收邮件/查邮件/未读邮件/读第 N 封）+ 正文 untrusted_data 防护分隔符；intent-feature 路由关键词。
 - **验证**：build 绿；imap 8/8、office-daily 161/162（1 skip）、router-v2+credentials+smtp 97/97；doc-lint 0 FAIL 0 WARN。真实 QQ/Gmail IMAP 冒烟待用户（QQ 需开启 IMAP 服务 + 授权码）。
 - **文档**：计划 `docs/plans/2026-08-31-email-imap-receive.md`；附录 A E293；roadmap E293 + E293-后（MIME/附件/搜信/多账号 v2.6+ 候选）。
-- **待 owner 拍板**：提交归属（v0.2b 覆盖 vs v2.6 pre-ship）；是否把 `npm run mail:config` 扩展收件参数（imapHost/imapPort/imapSecure）。
-
+- **owner 拍板（2026-08-31）**：并入 v0.2b（提交 `b18174c`）；`npm run mail:config` 不扩展收件参数（QQ 默认推导 imap.qq.com + 993 TLS 够用）。
 
