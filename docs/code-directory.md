@@ -54,7 +54,7 @@
 | `src/reminder/` | `reminder-store.ts` | 主动提醒 SQLite 存储与到期轮询 | ✅ |
 | `src/mail/` | `credentials.ts`、`smtp.ts`、`imap.ts`、`oauth.ts`、`*.test.ts` | 邮箱通道：凭据多账号容器与认证模型（password/xoauth2，E302）、IMAP 只读收件/读信/搜信/附件（E293-E303）、SMTP 发信、Outlook OAuth2 设备码授权与自动续期（XOAUTH2 收信+发信，E321/E322，`npm run mail:config` / `mail:oauth`） | ✅ |
 | `src/budget/` | `budget-store.ts` | 预算账本 SQLite（append-only allocate/spend 事件，余额=拨款-支出，§2.1/§5，E308，`data/budget.db`） | ✅ |
-| `src/escalation/` | `decision-log.ts`、`escalation.ts`、`escalation-state.ts`、`confirm-gate.ts` | 困难升级与人类裁决记录（§4.3.1 [P-47]/[P-48]/[P-16] + §2.3 裁决记录与批准/否决回填，E309/E323，`data/decision-log.jsonl` + `data/escalation-state.jsonl`）+ confirm 真阻断（写类执行器清单/批准识别/等待确认文案 + 裁决批准自动恢复执行回执，E324；复述人称切换 E326） | ✅ |
+| `src/escalation/` | `decision-log.ts`、`escalation.ts`、`escalation-state.ts`、`confirm-gate.ts` | 困难升级与人类裁决记录（§4.3.1 [P-47]/[P-48]/[P-16] + §2.3 裁决记录与批准/否决回填，E309/E323，`data/decision-log.jsonl` + `data/escalation-state.jsonl`）+ confirm 真阻断（写类执行器清单/批准识别/等待确认文案 + 裁决批准自动恢复执行回执，E324；复述人称切换 E326；挂起文案带风险分级与预估成本 E334） | ✅ |
 | `src/gateway/` | `app.ts`、`server.ts` | 单一 TurnLoop Express gateway | ✅ |
 | `src/gateway/` | `rate-limit.ts` | 限速桶（P16 [P-114]）+ 并发闸门（[P-115]） | ✅ |
 | `src/gateway/` | `attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts`、`project-watcher.ts` | 附件、终端、文件、SSE 事件、projects/ 目录变更监听（E328） | ✅ |

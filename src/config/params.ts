@@ -96,6 +96,10 @@ export const PARAMS = {
   aiOpsAlertPct: 80,
   /** P-147 AI 运营用尽/硬停阈值（日消耗/日预算，§COST C-4） */
   aiOpsStopPct: 100,
+  /** P-149 confirm 挂起预估成本：单次内容生成输入上界 tokens（E334，deepseek-v4-flash 未命中价估算） */
+  confirmContentGenInputTokens: 4_000,
+  /** P-150 confirm 挂起预估成本：单次内容生成输出上界 tokens（E334，deepseek-v4-flash 高峰价估算） */
+  confirmContentGenOutputTokens: 2_000,
   /** P-117 低置信二次取证总预算（对齐单目标抓取 8s 超时） */
   secondPassBudgetMs: 8_000,
   /** P-118 取证 PDF 解析大小上限 */
@@ -207,6 +211,8 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   aiOpsWarnPct: 'P-145',
   aiOpsAlertPct: 'P-146',
   aiOpsStopPct: 'P-147',
+  confirmContentGenInputTokens: 'P-149',
+  confirmContentGenOutputTokens: 'P-150',
   secondPassBudgetMs: 'P-117',
   pdfParseMaxBytes: 'P-118',
   calibrationWindowDays: 'P-119',

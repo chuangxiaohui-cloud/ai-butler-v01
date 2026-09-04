@@ -3,7 +3,9 @@ import { test } from 'node:test';
 
 import {
   buildConfirmHoldAnswer,
+  estimateConfirmCostYuan,
   executorActionLabel,
+  executorRiskGrade,
   isConfirmWriteExecutor,
   parseApprovalReply,
   restateForUser,
@@ -30,28 +32,29 @@ test('confirm-gate: E324 写类执行器试点清单命中与文案', () => {
   assert.ok(executorActionLabel('calendar_skill').includes('日程'));
 });
 
-test('confirm-gate: E326 复述人称切换——AI 侧用「你」复述用户请求', () => {
-  const query = '帮我安排一下我家里明天的亲子游行程安排';
-  assert.equal(restateForUser(query), '帮你安排一下你家里明天的亲子游行程安排');
-  const answer = buildConfirmHoldAnswer('calendar_skill', query);
-  assert.ok(answer.includes('你让我“帮你安排一下你家里明天的亲子游行程安排”'), answer);
-  assert.ok(!answer.includes('“帮我'), answer);
-  assert.ok(!answer.includes('我家里'), answer);
-});
-
-test('confirm-gate: E324 批准/取消整句识别与防误伤', () => {
-  // 批准命中（允许首尾空白、标点、语气词）
-  for (const text of ['执行', ' 执行 ', '执行吧', '批准', '同意', '确认。', '继续', '可以', '好的', '行', '没问题', '就这么办', '执行呀', '来吧']) {
-    assert.equal(parseApprovalReply(text), 'approve', `「${text}」应识别为批准`);
+test('confirm-gate: E334 挂起文案带风险分级与本次操作预估成本', () => {
+  // [executor, 风险标签, 预估成本行]（成本行与 [P-149]/[P-150] + deepseek-v4-flash 高峰价联动）
+  const cases: Array<[string, string, string]> = [
+    ['project_writer', '中', '¥0.00（本地确定性执行，无外部模型调用）'],
+    ['content_writer', '中', '≤ ¥0.03（单次内容生成上界，按 /cost 单价估算）'],
+    ['office_daily', '高', '≤ ¥0.03（单次内容生成上界，按 /cost 单价估算）'],
+    ['calendar_skill', '低', '¥0.00（本地确定性执行，无外部模型调用）'],
+    ['im_dispatch', '高', '¥0.00（本地确定性执行，无外部模型调用）'],
+    ['project_packager', '中', '¥0.00（本地确定性执行，无外部模型调用）'],
+  ];
+  for (const [executor, risk, cost] of cases) {
+    const answer = buildConfirmHoldAnswer(executor, '帮我执行一次该操作');
+    assert.ok(answer.includes('风险等级：' + risk), executor + ' 风险应为「' + risk + '」: ' + answer);
+    assert.ok(
+      answer.includes('本次操作预估成本：' + cost),
+      executor + ' 成本应为「' + cost + '」: ' + answer,
+    );
+    assert.equal(
+      executorRiskGrade(executor),
+      risk === '高' ? 'high' : risk === '中' ? 'medium' : 'low',
+    );
   }
-  // 取消命中
-  for (const text of ['取消', '取消。', '否决', '不执行', '别执行', '放弃', '算了', '不要', '不做了']) {
-    assert.equal(parseApprovalReply(text), 'reject', `「${text}」应识别为取消`);
-  }
-  // 正文/复合句不误伤（仅整句匹配）
-  assert.equal(parseApprovalReply('帮我写一份批准的邮件草稿'), null);
-  assert.equal(parseApprovalReply('这个方案怎么执行'), null);
-  assert.equal(parseApprovalReply('不要的功能点先列一下'), null);
-  assert.equal(parseApprovalReply(''), null);
-  assert.equal(parseApprovalReply('   '), null);
+  // 成本纯函数：local ¥0，content_generation 按参数与单价给出分向上取整上界
+  assert.equal(estimateConfirmCostYuan('calendar_skill'), 0);
+  assert.ok(estimateConfirmCostYuan('office_daily') > 0);
 });

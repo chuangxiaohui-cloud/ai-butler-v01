@@ -5,6 +5,9 @@
  * 试点清单为内置 Skill 的写类执行器（副作用明确、bundled skill 目录存在）；后续风险分级再扩。
  */
 
+import { modelPriceCny } from '../config/model-pricing.js';
+import { PARAMS } from '../config/params.js';
+
 export const CONFIRM_WRITE_EXECUTORS = [
   'project_writer', // 写项目文档（文件落盘）
   'content_writer', // 生成/改写文档内容
@@ -16,13 +19,31 @@ export const CONFIRM_WRITE_EXECUTORS = [
 
 export type ConfirmWriteExecutor = (typeof CONFIRM_WRITE_EXECUTORS)[number];
 
-const EXECUTOR_ACTION_LABEL: Record<string, string> = {
-  project_writer: '写项目文档（文件落盘）',
-  content_writer: '生成/改写文档内容',
-  office_daily: '发送/处理邮件',
-  calendar_skill: '新建/导入日程',
-  im_dispatch: '外发即时消息',
-  project_packager: '打包项目产物',
+/** E334：风险分级（挂起文案提示用；按副作用外发性与可逆性） */
+export type ConfirmRiskGrade = 'low' | 'medium' | 'high';
+
+/**
+ * E334：执行器成本类别——local = 批准后本地确定性执行（无外部模型调用，预估 ¥0）；
+ * content_generation = 批准后经 LLM 生成内容（按 E317 单价估算上界金额）。
+ */
+export type ConfirmCostKind = 'local' | 'content_generation';
+
+interface ConfirmExecutorProfile {
+  /** 面向用户的中文动作描述（「会落盘/外发」括号里引用） */
+  label: string;
+  /** 风险分级 */
+  risk: ConfirmRiskGrade;
+  /** 成本类别（决定「本次操作预估成本」口径） */
+  costKind: ConfirmCostKind;
+}
+
+const EXECUTOR_PROFILE: Record<string, ConfirmExecutorProfile> = {
+  project_writer: { label: '写项目文档（文件落盘）', risk: 'medium', costKind: 'local' },
+  content_writer: { label: '生成/改写文档内容', risk: 'medium', costKind: 'content_generation' },
+  office_daily: { label: '发送/处理邮件', risk: 'high', costKind: 'content_generation' },
+  calendar_skill: { label: '新建/导入日程', risk: 'low', costKind: 'local' },
+  im_dispatch: { label: '外发即时消息', risk: 'high', costKind: 'local' },
+  project_packager: { label: '打包项目产物', risk: 'medium', costKind: 'local' },
 };
 
 export function isConfirmWriteExecutor(executor?: string): boolean {
@@ -33,7 +54,35 @@ export function isConfirmWriteExecutor(executor?: string): boolean {
 
 /** 面向用户的中文动作描述，用于等待确认文案 */
 export function executorActionLabel(executor?: string): string {
-  return executor ? (EXECUTOR_ACTION_LABEL[executor] ?? `${executor} 写操作`) : '写操作';
+  return executor ? (EXECUTOR_PROFILE[executor]?.label ?? `${executor} 写操作`) : '写操作';
+}
+
+const RISK_LABEL: Record<ConfirmRiskGrade, string> = {
+  low: '低',
+  medium: '中',
+  high: '高',
+};
+
+/** E334：执行器风险分级（未登记/未知执行器按「中」保守提示） */
+export function executorRiskGrade(executor?: string): ConfirmRiskGrade {
+  return executor ? (EXECUTOR_PROFILE[executor]?.risk ?? 'medium') : 'medium';
+}
+
+/**
+ * E334：本次操作预估成本（¥，上界口径）——批准后执行将发生的外部调用费用：
+ * local → ¥0（本地确定性执行）；content_generation → 默认内容模型 deepseek-v4-flash 单价（E317 表），
+ * 输入按缓存未命中价 + 输出按高峰价（执行时段未定取最贵档），token 上界读 [P-149]/[P-150]，分向上取整展示。
+ */
+export function estimateConfirmCostYuan(executor?: string): number {
+  const kind = executor ? (EXECUTOR_PROFILE[executor]?.costKind ?? 'local') : 'local';
+  if (kind !== 'content_generation') return 0;
+  const price = modelPriceCny('deepseek-v4-flash');
+  if (!price) return 0; // 单价未登记不计价（诚实兜底）
+  const raw =
+    (PARAMS.confirmContentGenInputTokens * price.inputCacheMissPerMTok +
+      PARAMS.confirmContentGenOutputTokens * price.outputPerMTok) /
+    1_000_000;
+  return Math.ceil(raw * 100) / 100;
 }
 
 /**
@@ -113,9 +162,16 @@ export function parseApprovalReply(text: string): 'approve' | 'reject' | null {
 export function buildConfirmHoldAnswer(executor: string, query: string): string {
   const restated = restateForUser(query);
   const brief = restated.length > 80 ? `${restated.slice(0, 80)}…` : restated;
+  const riskLabel = RISK_LABEL[executorRiskGrade(executor)];
+  const yuan = estimateConfirmCostYuan(executor);
+  const costText =
+    yuan <= 0
+      ? '¥0.00（本地确定性执行，无外部模型调用）'
+      : `≤ ¥${yuan.toFixed(2)}（单次内容生成上界，按 /cost 单价估算）`;
   return (
     `⏸ 你让我“${brief}”。这属于「${executorActionLabel(executor)}」这类会落盘/外发的写操作，` +
     '我不会擅自执行。\n' +
+    `风险等级：${riskLabel} ｜ 本次操作预估成本：${costText}\n` +
     '回复「执行」继续，回复「取消」放弃；也可以到右侧「裁决」页批准/否决。'
   );
 }
