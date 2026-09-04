@@ -29,4 +29,4 @@ E324 三刀收口后，确认挂起文案只有「⏸ 你让我… 我不会擅�
 
 ## 结果
 
-已实现（owner 口径拍板后本日落地 E334）：`src/escalation/confirm-gate.ts` profile（label+risk+costKind）+ executorRiskGrade()/estimateConfirmCostYuan() + 挂起文案追加「风险等级：X ｜ 本次操作预估成本：…」行；`src/config/params.ts` PARAMS+PARAM_IDS 补 P-149/P-150。验证：`npm run build` 绿；confirm-gate 定向 2/2 + pipeline 68/68；`npm run doc-lint` 0 FAIL 0 WARN（150 参数 / 77 key）；零外部 LLM/API（¥0）。需求 §5/§14.5/附录 A E334、code-directory、09-04 交接已同步；改动未提交（并入下一批）。真实 UI/桌面冒烟留 owner。
+已实现（owner 口径拍板后本日落地 E334）：`src/escalation/confirm-gate.ts` profile（label+risk+costKind）+ executorRiskGrade()/estimateConfirmCostYuan() + 挂起文案追加「风险等级：X ｜ 本次操作预估成本：…」行；`src/config/params.ts` PARAMS+PARAM_IDS 补 P-149/P-150。验证：`npm run build` 绿；confirm-gate 定向 2/2 + pipeline 68/68；`npm run doc-lint` 0 FAIL 0 WARN（150 参数 / 77 key）；零外部 LLM/API（¥0）。需求 §5/§14.5/附录 A E334、code-directory、09-04 交接已同步；已提交 `4ee3548`（2026-09-04，随 e2e A4/B/C 验收回填批次）；A4 冒烟 owner 复验通过，见 e2e 清单结果记录。
