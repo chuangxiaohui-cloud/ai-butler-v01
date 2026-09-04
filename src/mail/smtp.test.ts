@@ -9,6 +9,7 @@ import { test } from 'node:test';
 
 import type { SmtpCredentials } from './credentials.js';
 import { encodeHeaderWord, sendMail } from './smtp.js';
+import { buildXoauth2Initial } from './oauth.js';
 
 /** 生成自签证书（Python cryptography，不可用时跳过 TLS 用例） */
 function pythonHasCryptography(): boolean {
@@ -29,6 +30,34 @@ const HAS_CRYPTOGRAPHY = pythonHasCryptography();
 
 function tempDir(): string {
   return mkdtempSync(join(tmpdir(), 'mail-test-'));
+}
+
+/** 用 Python cryptography 生成自签证书（仅 TLS 用例使用；缺依赖时相关用例会 skip） */
+function genSelfSignedCert(dir: string): { certPath: string; keyPath: string } {
+  const certPath = join(dir, 'cert.pem');
+  const keyPath = join(dir, 'key.pem');
+  const python =
+    process.env.OFFICE_PYTHON ??
+    'C:\\Users\\zhxh\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe';
+  const genScript = `
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+import datetime, sys
+key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'localhost')])
+cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
+        .public_key(key.public_key()).serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1))
+        .not_valid_after(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30))
+        .sign(key, hashes.SHA256()))
+open(sys.argv[1], 'wb').write(cert.public_bytes(serialization.Encoding.PEM))
+open(sys.argv[2], 'wb').write(key.private_bytes(serialization.Encoding.PEM,
+    serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
+`;
+  execFileSync(python, ['-c', genScript, certPath, keyPath], { encoding: 'utf8' });
+  return { certPath, keyPath };
 }
 
 const CREDS: SmtpCredentials = {
@@ -195,6 +224,7 @@ function startFakeTlsSmtpServer(certPath: string, keyPath: string): Promise<{
       socket.setEncoding('utf8');
       socket.write('220 test.local ESMTP ready\r\n');
       let inData = false;
+      let xoauth334 = false;
       let buffer = '';
       socket.on('data', (chunk: string) => {
         buffer += chunk;
@@ -212,9 +242,21 @@ function startFakeTlsSmtpServer(certPath: string, keyPath: string): Promise<{
           transcript.push(line);
           const cmd = line.toUpperCase();
           if (cmd.startsWith('EHLO')) {
-            socket.write('250-test.local\r\n250 AUTH LOGIN\r\n');
+            socket.write('250-test.local\r\n250 AUTH LOGIN XOAUTH2\r\n');
           } else if (cmd === 'AUTH LOGIN') {
             socket.write('334 VXNlcm5hbWU6\r\n');
+          } else if (cmd.startsWith('AUTH XOAUTH2')) {
+            const payload = Buffer.from(line.slice('AUTH XOAUTH2 '.length), 'base64').toString('utf8');
+            if (payload.includes('auth=Bearer tok-x')) {
+              // RFC 4959：先回 334 空挑战，客户端须回空行后才给 235（覆盖 334 握手路径）
+              xoauth334 = true;
+              socket.write('334 \r\n');
+            } else {
+              socket.write('535 5.7.8 Authentication credentials invalid\r\n');
+            }
+          } else if (line === '' && xoauth334) {
+            xoauth334 = false;
+            socket.write('235 2.7.0 Authentication successful\r\n');
           } else if (line === Buffer.from('test@example.com').toString('base64')) {
             socket.write('334 UGFzc3dvcmQ6\r\n');
           } else if (line === Buffer.from('secret').toString('base64')) {
@@ -250,6 +292,97 @@ function startFakeTlsSmtpServer(certPath: string, keyPath: string): Promise<{
     });
   });
 }
+
+test('smtp: TLS 直连 xoauth2 → AUTH XOAUTH2 初始响应成功（334 挑战回空行，无 AUTH LOGIN/明文密码）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  try {
+    const { certPath, keyPath } = genSelfSignedCert(dir);
+    const fake = await startFakeTlsSmtpServer(certPath, keyPath);
+    try {
+      const port = fake.port;
+      const sent = await sendMail(
+        {
+          ...CREDS,
+          port,
+          secure: true,
+          pass: '',
+          auth: 'xoauth2',
+          accessToken: 'tok-x',
+        },
+        { to: 'rcpt@example.com', subject: 'xoauth2', text: 'secure body' },
+        { timeoutMs: 8000, allowInsecureTls: true },
+      );
+      assert.equal(sent.accepted, 'rcpt@example.com');
+      assert.equal(sent.messageId, 'tls-message-id');
+      const initial = buildXoauth2Initial('test@example.com', 'tok-x');
+      assert.ok(fake.transcript.includes(`AUTH XOAUTH2 ${initial}`), JSON.stringify(fake.transcript));
+      assert.equal(fake.transcript.includes('AUTH LOGIN'), false, 'xoauth2 不得走 AUTH LOGIN');
+      assert.equal(
+        fake.transcript.some((l) => l.includes(Buffer.from('secret').toString('base64'))),
+        false,
+        '不得出现明文密码 base64',
+      );
+    } finally {
+      await fake.close();
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('smtp: TLS xoauth2 token 无效 → 明确报错（含 SMTP 权限提示，不含 token）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  try {
+    const { certPath, keyPath } = genSelfSignedCert(dir);
+    const fake = await startFakeTlsSmtpServer(certPath, keyPath);
+    try {
+      await assert.rejects(
+        sendMail(
+          {
+            ...CREDS,
+            port: fake.port,
+            secure: true,
+            pass: '',
+            auth: 'xoauth2',
+            accessToken: 'tok-bad',
+          },
+          { to: 'rcpt@example.com', subject: 'x', text: 'y' },
+          { timeoutMs: 8000, allowInsecureTls: true },
+        ),
+        (err: Error) =>
+          err.message.includes('SMTP XOAUTH2 认证失败') &&
+          err.message.includes('SMTP 发信权限') &&
+          !err.message.includes('tok-bad'),
+      );
+    } finally {
+      await fake.close();
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('smtp: xoauth2 缺 accessToken → 报错指引重新授权', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  try {
+    const { certPath, keyPath } = genSelfSignedCert(dir);
+    const fake = await startFakeTlsSmtpServer(certPath, keyPath);
+    try {
+      await assert.rejects(
+        sendMail(
+          { ...CREDS, port: fake.port, secure: true, pass: '', auth: 'xoauth2' },
+          { to: 'rcpt@example.com', subject: 'x', text: 'y' },
+          { timeoutMs: 8000, allowInsecureTls: true },
+        ),
+        (err: Error) => err.message.includes('缺少 accessToken') && err.message.includes('mail:oauth'),
+      );
+    } finally {
+      await fake.close();
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('smtp: TLS 直连（secure=true，自签证书）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
   const dir = tempDir();

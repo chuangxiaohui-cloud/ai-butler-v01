@@ -467,6 +467,21 @@ button {
   border-color: var(--accent);
 }
 
+.message-retry {
+  margin-top: 6px;
+}
+.message-retry button {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.message-retry button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .video-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -1248,10 +1263,23 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  position: relative;
   padding: 6px 8px;
   border-radius: 7px;
   color: var(--muted);
   font-size: 11px;
+}
+
+.tab-badge {
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 10px;
+  line-height: 15px;
+  text-align: center;
 }
 
 .right-tabs button.active {
@@ -2462,3 +2490,180 @@ button {
   }
 }
 
+
+/* E320：右栏通知页 */
+.notify-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 2px 0;
+}
+.notify-toolbar button {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.notify-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.notify-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.notify-row {
+  cursor: default;
+}
+.notify-row div {
+  min-width: 0;
+}
+.notify-dot {
+  font-size: 13px;
+  line-height: 1;
+  color: inherit;
+  flex: none;
+}
+.notify-time {
+  white-space: nowrap;
+  flex: none;
+}
+
+/* E323：右栏裁决页 */
+.decision-receipts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.decision-receipt {
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  font-size: 10px;
+  line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.decision-receipt.ok {
+  color: var(--green);
+}
+.decision-receipt.reject {
+  color: var(--muted);
+}
+.decision-receipt.error {
+  color: var(--red);
+}
+.decision-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+.decision-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.decision-head strong {
+  font-size: 11px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.decision-options {
+  margin: 0;
+  padding: 2px 0 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.decision-meta {
+  margin: 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+.decision-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.decision-note {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-3);
+  color: var(--ink);
+  font-size: 10px;
+}
+.decision-note::placeholder {
+  color: var(--muted);
+}
+.decision-btn {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+}
+.decision-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.decision-btn.approve {
+  color: var(--green);
+  background: var(--green-soft);
+}
+.decision-btn.reject {
+  color: var(--red);
+  background: rgba(239, 107, 107, 0.14);
+}
+
+/* E324 第三刀：对话内确认卡（挂起写操作气泡内嵌执行/取消按钮） */
+.confirm-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 7px 8px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--panel-3);
+  flex-wrap: wrap;
+}
+.confirm-caption {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+.confirm-btn {
+  flex: none;
+  padding: 4px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.confirm-btn.approve {
+  color: var(--green);
+  background: var(--green-soft);
+}
+.confirm-btn.reject {
+  color: var(--red);
+  background: rgba(239, 107, 107, 0.14);
+}

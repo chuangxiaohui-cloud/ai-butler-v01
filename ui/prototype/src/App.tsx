@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowUpRight,
+  Bell,
   BookOpen,
   Bot,
   Calendar,
@@ -12,6 +13,7 @@ import {
   FileText,
   FolderKanban,
   FolderOpen,
+  Gavel,
   Globe,
   HeartPulse,
   Image,
@@ -39,7 +41,7 @@ import {
 } from 'lucide-react';
 
 type UiMode = 'engineering' | 'knowledge' | 'life';
-type RightTab = 'files' | 'browser' | 'terminal';
+type RightTab = 'files' | 'browser' | 'terminal' | 'notifications' | 'decisions';
 type SettingsKey = 'providers' | 'security' | 'routing' | 'skills' | 'memory' | 'usage' | 'mail' | 'calendar' | 'balance';
 
 interface Evidence {
@@ -71,6 +73,10 @@ interface Message {
   videos?: VideoCard[];
   meta?: string;
   notice?: string;
+  /** E324 第三刀：confirm 挂起文案附带的对话内确认卡（pendingId 指向 open resume pending） */
+  confirm?: { pendingId: string };
+  /** E332：网关未连接本地兜底携带原请求，供「重试」按钮重发 */
+  retryQuery?: string;
 }
 
 interface ModelOption {
@@ -96,6 +102,37 @@ const SUBMODE_LABELS: Record<string, string> = {
   product_planning: '产品规划',
   review_critique: '代码审查',
 };
+
+// E323：右栏「裁决」页——trigger 中文标签
+const DECISION_TRIGGER_LABELS: Record<string, string> = {
+  human_arbitration: '人类裁决',
+  escalation: '困难升级',
+  low_confidence: '低置信',
+};
+
+interface DecisionPanelEntry {
+  id: string;
+  trigger: string;
+  question?: string;
+  options?: string[];
+  conversationId?: string;
+  /** E324 第二刀：confirm 真阻断挂起载荷——批准后由 gateway 自动恢复执行 */
+  resume?: { query?: string; executor?: string };
+  confidence?: number;
+  createdAt: number;
+}
+
+/** E324 第二刀：批准恢复执行的执行回执（gateway POST /api/decisions/:id executed 字段） */
+interface ExecutedReceipt {
+  answer?: string;
+  error?: string;
+}
+
+interface DecisionReceipt {
+  id: string;
+  text: string;
+  tone: 'ok' | 'reject' | 'error';
+}
 
 const FALLBACK_MODELS: ModelOption[] = [
   { id: 'deepseek:heavy', provider: 'DeepSeek', label: 'deepseek-v4-pro', note: '旗舰 · 推理' },
@@ -124,6 +161,16 @@ function defaultModelId(list: ModelOption[]): string {
 }
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL ?? 'http://127.0.0.1:8787';
+
+/** E320：通知时间格式化（当日 HH:MM，跨日补 M-D） */
+function fmtNotifyTime(ms: number): string {
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return d.toDateString() === new Date().toDateString()
+    ? time
+    : `${d.getMonth() + 1}-${d.getDate()} ${time}`;
+}
 // 会话上下文（E193）：每次页面会话一个稳定 conversationId，供 gateway 端逐字窗口 + 压缩
 const CHAT_CONVERSATION_ID = `ui-1787395844719-xjbsv0ic`;
 
@@ -204,33 +251,14 @@ const SETTINGS_FORMS: Record<SettingsKey, { title: string; desc: string }> = {
 };
 
 function ReplyDraft(mode: UiMode, input: string): Message {
-  const base: { text: string; evidence: Evidence[] } =
-    mode === 'engineering'
-      ? {
-          text: '我先把任务拆成可验收的小步，再让对应子 Agent 执行；产物和检查日志会放到右侧。',
-          evidence: [
-            { type: 'file', label: 'hardware/next-task.kicad_sch', detail: input.slice(0, 40) },
-            { type: 'terminal', label: 'task-run.log:1', detail: '子 Agent 任务队列已建立' },
-          ],
-        }
-      : mode === 'knowledge'
-        ? {
-            text: '我先拆出需要查证的子问题，再逐条给出带来源的证据链，不急着给结论。',
-            evidence: [
-              { type: 'search', label: '[hard] 官方资料', detail: '厂商官网/数据手册', hard: true },
-              { type: 'search', label: '[soft] 国内资料站', detail: '立创 / 芯查查 / 半导小芯' },
-            ],
-          }
-        : {
-            text: '我先陪你把情况理清楚，再给一个现在就能执行的小步骤。',
-            evidence: [],
-          };
+  const modeLabel = MODES.find((m) => m.key === mode)?.label ?? '工程开发';
   return {
     id: `reply-${Date.now()}`,
     role: 'agent',
-    text: base.text,
-    evidence: base.evidence,
-    meta: `${MODES.find((m) => m.key === mode)?.label} · 本地兜底`,
+    // E332：本地兜底明确标注“未执行 + 本地预览”，并去掉演示用的假证据（避免被误当真实回答）
+    text: `⚠️ 网关未连接，刚才的请求没有真正执行（本地预览，非真实回答）。\n请先启动 gateway（npm run gateway），再点下方「重试」重发。`,
+    meta: `${modeLabel} · ⚠️ 本地预览`,
+    retryQuery: input,
   };
 }
 
@@ -244,6 +272,10 @@ function App() {
   const [model, setModel] = useState<string>(() => defaultModelId(FALLBACK_MODELS));
   const modelTouchedRef = useRef(false);
   const [liked, setLiked] = useState<Record<string, boolean>>({});
+  // E324 第三刀：对话内确认卡提交中的消息 id（防止连点双提交）
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  // E332：本地兜底「重试」提交中的消息 id（防连点）
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   const [l1Section, setL1Section] = useState<'sessions' | 'projects'>('projects');
   const [l1Open, setL1Open] = useState(false);
@@ -263,6 +295,25 @@ function App() {
   const [files, setFiles] = useState<Array<{ path: string; size: number; kind: string }>>([]);
   const [progressStage, setProgressStage] = useState('');
   const [generatingSkills, setGeneratingSkills] = useState<Record<string, string>>({});
+  // E320：右栏「通知」列表（source=decision/skill/usage，含 AI 运营日报与预算阈值事件）
+  const [notifications, setNotifications] = useState<
+    Array<{
+      id: string;
+      role: string;
+      kind: string;
+      title: string;
+      detail?: string;
+      source: string;
+      priority: 'urgent' | 'normal' | 'low';
+      createdAt: number;
+    }>
+  >([]);
+  const [notifyHint, setNotifyHint] = useState('');
+  // E331：通知分页 + 未读角标（会话内水位=最近一次查看通知页时页顶最新 id，越过水位的计为未读）
+  const [notifyPage, setNotifyPage] = useState(1);
+  const [notifyTotal, setNotifyTotal] = useState(0);
+  const [unreadNotify, setUnreadNotify] = useState(0);
+  const seenTopNotifyRef = useRef<string | null>(null);
 
   // §9.2 证据链交互：证据引用可点击验证
   const handleEvidenceClick = (ev: Evidence) => {
@@ -332,6 +383,54 @@ function App() {
 
   useEffect(loadFiles, []);
 
+  // E331：分页拉取通知（最新在前）；markSeen=查看通知页时把水位更新为页顶最新 id 并清零角标；
+  // 其它 tab 拉第一页时统计“越过水位的新条目”作未读数。
+  const loadNotifications = (page: number, { markSeen }: { markSeen: boolean }) => {
+    fetch(`${GATEWAY_URL}/api/notifications?page=${page}&pageSize=20`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then(
+        (data: { entries?: typeof notifications; total?: number } | null) => {
+          const list = data?.entries ?? [];
+          setNotifications(list);
+          setNotifyTotal(data?.total ?? 0);
+          setNotifyHint('');
+          const seen = seenTopNotifyRef.current;
+          if (markSeen || seen === null) {
+            // 首次建立水位或用户正在看通知页：以页顶最新 id 为已读水位，角标清零
+            seenTopNotifyRef.current = list[0]?.id ?? null;
+            setUnreadNotify(0);
+          } else {
+            const idx = list.findIndex((entry) => entry.id === seen);
+            setUnreadNotify(idx >= 0 ? idx : list.length);
+          }
+        },
+        () => {
+          setNotifyHint('无法连接 gateway，通知暂不可用');
+          setUnreadNotify(0);
+        },
+      );
+  };
+
+  const goNotifyPage = (next: number) => {
+    if (next < 1) return;
+    setNotifyPage(next);
+    loadNotifications(next, { markSeen: false });
+  };
+
+  // E331：切到通知页 → 回到第 1 页并记为已读；切到其它 tab → 30s 后台拉第一页供角标计数
+  useEffect(() => {
+    if (!rightOpen) return;
+    if (rightTab === 'notifications') {
+      setNotifyPage(1);
+      loadNotifications(1, { markSeen: true });
+    } else {
+      loadNotifications(1, { markSeen: false });
+      const timer = setInterval(() => loadNotifications(1, { markSeen: false }), 30000);
+      return () => clearInterval(timer);
+    }
+    return undefined;
+  }, [rightOpen, rightTab]);
+
   useEffect(() => {
     const source = new EventSource(`${GATEWAY_URL}/api/events`);
     source.addEventListener('progress', (event) => {
@@ -385,9 +484,10 @@ function App() {
     setSubmode(nextSubmode ?? null);
   };
 
-  const send = async (attachments: Attachment[] = []) => {
-    const text = input.trim();
+  const askQuery = async (text: string, attachments: Attachment[] = [], dropMsgId?: string) => {
     if (!text && attachments.length === 0) return;
+    // E332：重试时先摘掉原兜底回复，且不再重复追加用户气泡（原气泡仍在）
+    if (dropMsgId) setMessages((prev) => prev.filter((m) => m.id !== dropMsgId));
     const userMsg: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -396,8 +496,10 @@ function App() {
         .filter((item) => item.type.startsWith('image/'))
         .map((item) => item.dataUrl),
     };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput('');
+    if (!dropMsgId) {
+      setMessages((prev) => [...prev, userMsg]);
+      setInput('');
+    }
     const appendReply = (reply: Message) => setMessages((prev) => [...prev, reply]);
     try {
       const resp = await fetch(`${GATEWAY_URL}/api/ask`, {
@@ -446,7 +548,7 @@ function App() {
       ]
         .filter((item): item is string => Boolean(item))
         .join(' · ');
-      appendReply({
+      const reply: Message = {
         id: `reply-${Date.now()}`,
         role: 'agent',
         text: data.answer ?? '（后端没有返回内容）',
@@ -458,11 +560,113 @@ function App() {
         })),
         meta: replyMeta,
         notice: data.notice,
-      });
+      };
+      appendReply(reply);
+      attachConfirmReply(reply);
       loadFiles();
     } catch {
       appendReply(ReplyDraft(mode, text));
       loadFiles();
+    }
+  };
+
+  const send = async (attachments: Attachment[] = []) => {
+    await askQuery(input.trim(), attachments);
+  };
+
+  const retryFallback = (msgId: string, query: string) => {
+    setRetryingId(msgId);
+    void askQuery(query, [], msgId).finally(() => setRetryingId(null));
+  };
+
+  /** E324 第三刀：向主聊天追加 agent 消息（执行回执 / 确认结果共用） */
+  const appendChatReceipt = (text: string, meta = '人类裁决 · 执行回执') => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `receipt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        role: 'agent',
+        text,
+        meta,
+      },
+    ]);
+  };
+
+  /** E324 第二刀：裁决面板批准并恢复执行后，把执行回执续到主聊天（仅当挂起动作属于本会话） */
+  const pushExecutedReceipt = (entry: DecisionPanelEntry, executed: ExecutedReceipt) => {
+    if (entry.conversationId !== CHAT_CONVERSATION_ID) return;
+    // 面板批准后清掉该 pending 在本会话气泡上的确认卡，避免残留按钮
+    setMessages((prev) =>
+      prev.map((m) => (m.confirm?.pendingId === entry.id ? { ...m, confirm: undefined } : m)),
+    );
+    const text = executed.error
+      ? `⚠️ 已在裁决页批准，但自动恢复执行未成功：${executed.error}`
+      : `✅ 老板，已在裁决页批准并执行。\n${executed.answer ?? ''}`;
+    appendChatReceipt(text);
+  };
+
+  /** E324 第三刀：hold 文案返回后，把同会话对应的 resume pending 挂到该气泡以渲染确认卡 */
+  const attachConfirmReply = async (reply: Message) => {
+    if (!reply.text.includes('⏸')) return;
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/decisions`);
+      if (!resp.ok) return;
+      const data = (await resp.json()) as { open?: DecisionPanelEntry[] };
+      const target = (data.open ?? []).find(
+        (e) =>
+          e.resume &&
+          e.conversationId === CHAT_CONVERSATION_ID &&
+          (e.question ?? '').trim() === reply.text.trim(),
+      );
+      if (!target) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === reply.id ? { ...m, confirm: { pendingId: target.id } } : m)),
+      );
+    } catch {
+      // 确认卡挂载失败不影响已展示的挂起文案
+    }
+  };
+
+  /** E324 第三刀：对话内确认卡点「执行/取消」→ 直接调裁决端点（批准自动恢复执行复用第二刀回执） */
+  const confirmFromChat = async (msg: Message, decision: 'approve' | 'reject') => {
+    const pendingId = msg.confirm?.pendingId;
+    if (!pendingId || confirmingId) return;
+    setConfirmingId(msg.id);
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/decisions/${pendingId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, note: 'chat_card' }),
+      });
+      const data = (await resp.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        executed?: ExecutedReceipt;
+      } | null;
+      if (!resp.ok || !data?.ok) {
+        appendChatReceipt(
+          `ℹ️ 该操作未能${decision === 'approve' ? '批准' : '取消'}（${data?.error ?? '请求失败'}），可能已在别处处理。`,
+          '人类裁决',
+        );
+        return;
+      }
+      if (decision === 'reject') {
+        appendChatReceipt('❌ 已取消该操作，不会执行。');
+      } else if (data.executed?.error) {
+        appendChatReceipt(`⚠️ 已批准并记录，但自动恢复执行失败：${data.executed.error}`);
+      } else if (data.executed?.answer) {
+        appendChatReceipt(`✅ 老板，已按你的批准执行。\n${data.executed.answer}`);
+      } else {
+        appendChatReceipt('✅ 已批准并记录。');
+      }
+    } catch {
+      appendChatReceipt('⚠️ 无法连接 gateway，确认提交失败。', '人类裁决');
+    } finally {
+      // 无论成功/失败都收掉按钮，避免对已裁决 pending 重复提交
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msg.id ? { ...m, confirm: undefined } : m)),
+      );
+      setConfirmingId(null);
     }
   };
 
@@ -614,6 +818,10 @@ function App() {
                   liked={liked[msg.id]}
                   onLike={(value) => setLiked((prev) => ({ ...prev, [msg.id]: value }))}
                   onEvidence={handleEvidenceClick}
+                  onConfirm={confirmFromChat}
+                  confirming={confirmingId === msg.id}
+                  onRetry={retryFallback}
+                  retrying={retryingId === msg.id}
                 />
               ))}
             </div>
@@ -649,6 +857,8 @@ function App() {
                 ['files', '文件', FileText],
                 ['browser', '浏览器', Globe],
                 ['terminal', '终端', Terminal],
+                ['notifications', '通知', Bell],
+                ['decisions', '裁决', Gavel],
               ] as Array<[RightTab, string, LucideIcon]>
             ).map(([key, label, Icon]) => (
               <button
@@ -658,6 +868,9 @@ function App() {
               >
                 <Icon size={14} />
                 {label}
+                {key === 'notifications' && unreadNotify > 0 && (
+                  <span className="tab-badge">{unreadNotify > 99 ? '99+' : unreadNotify}</span>
+                )}
               </button>
             ))}
             <button className="right-close" onClick={() => setRightOpen(false)} aria-label="收起右侧栏">
@@ -715,6 +928,52 @@ function App() {
                 onRun={runTerminal}
               />
             )}
+            {rightTab === 'notifications' && (
+              <div className="file-list">
+                <div className="notify-toolbar">
+                  <span className="settings-note">
+                    共 {notifyTotal} 条
+                    {notifyTotal > 0 ? ` · 第 ${notifyPage}/${Math.max(1, Math.ceil(notifyTotal / 20))} 页` : ''}
+                    · 30s 自动刷新
+                  </span>
+                  <span className="notify-pager">
+                    <button
+                      disabled={notifyPage <= 1 || notifyTotal === 0}
+                      onClick={() => goNotifyPage(notifyPage - 1)}
+                    >
+                      上一页
+                    </button>
+                    <button
+                      disabled={notifyPage >= Math.max(1, Math.ceil(notifyTotal / 20)) || notifyTotal === 0}
+                      onClick={() => goNotifyPage(notifyPage + 1)}
+                    >
+                      下一页
+                    </button>
+                    <button onClick={() => loadNotifications(notifyPage, { markSeen: true })}>刷新</button>
+                  </span>
+                </div>
+                {notifyHint && <p className="settings-note">{notifyHint}</p>}
+                {notifications.length === 0 && !notifyHint && (
+                  <p className="settings-note">暂无通知（裁决 / Skill 输出 / AI 运营事件会自动出现）</p>
+                )}
+                {notifications.map((entry) => (
+                  <div className="file-row notify-row" key={entry.id}>
+                    <span className="notify-dot">
+                      {entry.priority === 'urgent' ? '🔴' : entry.priority === 'normal' ? '🟡' : '🟢'}
+                    </span>
+                    <div>
+                      <strong>{entry.title}</strong>
+                      <span>
+                        {entry.role} · {entry.kind} · {entry.source}
+                        {entry.detail ? ` · ${entry.detail}` : ''}
+                      </span>
+                    </div>
+                    <span className="notify-time">{fmtNotifyTime(entry.createdAt)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {rightTab === 'decisions' && <DecisionPanel onExecuted={pushExecutedReceipt} />}
           </div>
         </aside>
       )}
@@ -789,11 +1048,19 @@ function MessageItem({
   liked,
   onLike,
   onEvidence,
+  onConfirm,
+  confirming,
+  onRetry,
+  retrying,
 }: {
   msg: Message;
   liked: boolean | undefined;
   onLike: (value: boolean) => void;
   onEvidence: (ev: Evidence) => void;
+  onConfirm?: (msg: Message, decision: 'approve' | 'reject') => void;
+  confirming: boolean;
+  onRetry?: (msgId: string, query: string) => void;
+  retrying?: boolean;
 }) {
   const isUser = msg.role === 'user';
   const [expandedTest, setExpandedTest] = useState<string | null>(null);
@@ -813,6 +1080,38 @@ function MessageItem({
           </div>
         )}
         <div className="message-text">{msg.text}</div>
+        {msg.retryQuery && (
+          <div className="message-retry">
+            <button
+              disabled={retrying}
+              title={`重发原句：${msg.retryQuery}`}
+              onClick={() => onRetry?.(msg.id, msg.retryQuery ?? '')}
+            >
+              {retrying
+                ? '重试中…'
+                : `↻ 重试「${msg.retryQuery.length > 16 ? `${msg.retryQuery.slice(0, 16)}…` : msg.retryQuery}」`}
+            </button>
+          </div>
+        )}
+        {msg.confirm && (
+          <div className="confirm-actions">
+            <span className="confirm-caption">这是一步会落盘/外发的写操作，请确认：</span>
+            <button
+              className="confirm-btn approve"
+              disabled={confirming}
+              onClick={() => onConfirm?.(msg, 'approve')}
+            >
+              {confirming ? '执行中…' : '执行'}
+            </button>
+            <button
+              className="confirm-btn reject"
+              disabled={confirming}
+              onClick={() => onConfirm?.(msg, 'reject')}
+            >
+              取消
+            </button>
+          </div>
+        )}
         {msg.videos && msg.videos.length > 0 && (
           <div className="video-cards">
             {msg.videos.map((v, i) => (
@@ -2139,6 +2438,158 @@ function UsageSettings() {
       <p className="settings-note">
         Token 由后端计量服务自动记录；费用换算待配置单价后启用，超预算自动降级到更便宜模型。
       </p>
+    </div>
+  );
+}
+
+// E323：右栏「裁决」页——pending 待裁决队列 + 批准/否决回填（GET/POST /api/decisions）
+// E324 第二刀：批准带 resume 的挂起写动作 → gateway 自动恢复执行，面板回执 + 续到本会话聊天
+function DecisionPanel({
+  onExecuted,
+}: {
+  onExecuted?: (entry: DecisionPanelEntry, executed: ExecutedReceipt) => void;
+}) {
+  const [decisions, setDecisions] = useState<DecisionPanelEntry[]>([]);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [hint, setHint] = useState('');
+  const [receipts, setReceipts] = useState<DecisionReceipt[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = () => {
+    fetch(`${GATEWAY_URL}/api/decisions`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then(
+        (data: { open?: DecisionPanelEntry[] } | null) => {
+          setDecisions(data?.open ?? []);
+          setHint('');
+        },
+        () => setHint('无法连接 gateway，裁决队列暂不可用'),
+      );
+  };
+
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 30000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const brief = (text?: string, max = 90): string => {
+    const trimmed = (text ?? '').trim();
+    return trimmed.length > max ? `${trimmed.slice(0, max)}…` : trimmed;
+  };
+
+  const pushReceipt = (text: string, tone: DecisionReceipt['tone']) => {
+    setReceipts((prev) => [{ id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, text, tone }, ...prev].slice(0, 6));
+  };
+
+  const adjudicate = async (entry: DecisionPanelEntry, decision: 'approve' | 'reject') => {
+    const id = entry.id;
+    setBusyId(id);
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/decisions/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, note: (notes[id] ?? '').trim() }),
+      });
+      const data = (await resp.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        executed?: ExecutedReceipt;
+      } | null;
+      if (!resp.ok || !data?.ok) {
+        setHint(data?.error ?? '裁决提交失败，请重试');
+        return;
+      }
+      setNotes((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      const target = brief(entry.resume?.query || entry.question || '该操作');
+      if (decision === 'reject') {
+        pushReceipt(`❌ 已否决「${target}」，未执行。`, 'reject');
+      } else if (data.executed?.error) {
+        pushReceipt(`⚠️ 已批准「${target}」并记录，但自动恢复执行失败：${data.executed.error}`, 'error');
+      } else if (data.executed?.answer) {
+        onExecuted?.(entry, data.executed);
+        pushReceipt(`✅ 已批准「${target}」并恢复执行。结果：${brief(data.executed.answer, 180)}`, 'ok');
+      } else {
+        pushReceipt(`✅ 已批准「${target}」并记录。`, 'ok');
+      }
+      load();
+    } catch {
+      setHint('无法连接 gateway，提交失败');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="file-list">
+      <div className="notify-toolbar">
+        <span className="settings-note">待裁决 {decisions.length} 条 · 30s 自动刷新</span>
+        <button onClick={load}>刷新</button>
+      </div>
+      {receipts.length > 0 && (
+        <div className="decision-receipts">
+          {receipts.map((receipt) => (
+            <p className={`decision-receipt ${receipt.tone}`} key={receipt.id}>
+              {receipt.text}
+            </p>
+          ))}
+        </div>
+      )}
+      {hint && <p className="settings-note">{hint}</p>}
+      {decisions.length === 0 && !hint && (
+        <p className="settings-note">暂无待裁决（澄清 / 风险裁决会自动出现于此）</p>
+      )}
+      {decisions.map((entry) => (
+        <div className="decision-card" key={entry.id}>
+          <div className="decision-head">
+            <strong>{entry.question || '(无问题描述)'}</strong>
+            <span className="notify-time">{fmtNotifyTime(entry.createdAt)}</span>
+          </div>
+          {entry.options && entry.options.length > 0 && (
+            <ul className="decision-options">
+              {entry.options.map((opt, idx) => (
+                <li key={`${idx}-${opt}`}>{opt}</li>
+              ))}
+            </ul>
+          )}
+          <p className="decision-meta">
+            {DECISION_TRIGGER_LABELS[entry.trigger] ?? entry.trigger}
+            {entry.conversationId ? ` · 会话 ${entry.conversationId}` : ''}
+            {typeof entry.confidence === 'number' ? ` · 置信 ${entry.confidence.toFixed(2)}` : ''}
+            {entry.resume ? ' · ⏸ 批准后自动执行' : ''}
+          </p>
+          <div className="decision-bar">
+            <input
+              className="decision-note"
+              value={notes[entry.id] ?? ''}
+              onChange={(event) =>
+                setNotes((prev) => ({ ...prev, [entry.id]: event.target.value }))
+              }
+              placeholder="备注（可选）"
+              disabled={busyId === entry.id}
+            />
+            <button
+              className="decision-btn approve"
+              onClick={() => adjudicate(entry, 'approve')}
+              disabled={busyId === entry.id}
+            >
+              {busyId === entry.id ? '执行中…' : '批准'}
+            </button>
+            <button
+              className="decision-btn reject"
+              onClick={() => adjudicate(entry, 'reject')}
+              disabled={busyId === entry.id}
+            >
+              否决
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

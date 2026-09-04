@@ -304,3 +304,24 @@ test('renderMarketSkillAnswer：剥离 npm 横幅并收敛 github-project 输出
   assert.equal(answer.includes('ai-butler-v01'), false);
   assert.equal(answer.includes('market:github:project'), false);
 });
+
+test('renderMarketSkillAnswer：剥离 Windows \r\n npm 横幅（E330）', () => {
+  const answer = renderMarketSkillAnswer({
+    name: 'reminder',
+    version: '0.1.0',
+    results: [
+      {
+        ok: true,
+        step: 'npm run market:reminder -- @input',
+        stdout:
+          '\r\n> ai-butler-v01@0.1.0 market:reminder\r\n' +
+          '> tsx scripts/market-reminder.ts C:\\input.txt\r\n' +
+          '  {\r\n    "ok": true,\r\n    "action": "add"\r\n  }\r\n',
+        stderr: '',
+      },
+    ],
+  });
+  assert.ok(answer.includes('"ok": true'));
+  assert.equal(answer.includes('ai-butler-v01'), false);
+  assert.equal(answer.includes('market:reminder'), false);
+});

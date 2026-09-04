@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -278,6 +278,70 @@ describe('llm-client: §COST 日预算硬停门禁（预调用拦截，未配置
       assert.equal(text, 'ok');
     } finally {
       globalThis.fetch = original;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('预算阈值通知默认开启，AI_OPS_NOTIFY=0 显式关闭（E318）', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'llm-aiops-notify-'));
+    const usageFile = join(dir, 'usage.jsonl');
+    const budgetFile = join(dir, 'usage-budget.json');
+    const notifyFile = join(dir, 'notifications.jsonl');
+    const markerFile = join(dir, 'budget-marker.json');
+    const originalFetch = globalThis.fetch;
+    const keys = ['AI_OPS_NOTIFY', 'NOTIFICATION_LOG_PATH', 'AI_OPS_BUDGET_MARKER'] as const;
+    const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+    try {
+      writeUsageBudget(
+        { budgetYuan: null, degradeAtPercent: 90, dailyBudgetCny: 5, monthlyBudgetCny: 150, hardStop: false },
+        budgetFile,
+      );
+      globalThis.fetch = (async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }],
+            // 一次调用即跨越黄/红档（空闲 4.05¥≈81%、高峰 8.1¥）
+            usage: { prompt_tokens: 2_700_000, completion_tokens: 0 },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )) as typeof fetch;
+      process.env.NOTIFICATION_LOG_PATH = notifyFile;
+      process.env.AI_OPS_BUDGET_MARKER = markerFile;
+      const client = new OpenAiCompatibleClient({
+        baseUrl: 'http://127.0.0.1:1/v1',
+        apiKey: 'sk-test',
+        model: 'deepseek-v4-flash',
+        timeoutMs: 30_000,
+        provider: 'deepseek',
+        usageLogFile: usageFile,
+        usageBudgetFile: budgetFile,
+      });
+
+      // 显式关闭（AI_OPS_NOTIFY=0）：不写通知
+      process.env.AI_OPS_NOTIFY = '0';
+      await client.complete([{ role: 'user', content: 'hi' }]);
+      assert.equal(existsSync(notifyFile), false);
+
+      // 默认（未设置）= 开启：成功调用写入一条 ai_ops_budget_alert，同档重复调用不刷屏
+      delete process.env.AI_OPS_NOTIFY;
+      await client.complete([{ role: 'user', content: 'hi' }]);
+      await client.complete([{ role: 'user', content: 'hi' }]);
+      const lines = readFileSync(notifyFile, 'utf-8')
+        .trim()
+        .split('\n')
+        .filter(Boolean);
+      assert.equal(lines.length, 1);
+      const event = JSON.parse(lines[0]) as { source: string; kind: string; role: string };
+      assert.equal(event.source, 'usage');
+      assert.equal(event.kind, 'ai_ops_budget_alert');
+      assert.equal(event.role, '秘书');
+    } finally {
+      for (const key of keys) {
+        const value = saved[key];
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      globalThis.fetch = originalFetch;
       rmSync(dir, { recursive: true, force: true });
     }
   });

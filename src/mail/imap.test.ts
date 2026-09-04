@@ -17,6 +17,7 @@ import {
   fetchRecentEmails,
   searchEmails,
   parseAttachments,
+  buildXoauth2Initial,
   resolveImapConfig,
 } from './imap.js';
 
@@ -75,6 +76,7 @@ function handleImapSocket(
   transcript: string[],
 ): void {
   let socketBuffer = '';
+  let cancelTag: string | null = null;
   socket.write('* OK fake IMAP ready\r\n');
   socket.on('data', (chunk: string) => {
     socketBuffer += chunk;
@@ -82,7 +84,14 @@ function handleImapSocket(
     socketBuffer = lines.pop() ?? '';
     for (const raw of lines) {
       const line = raw.replace(/\r$/, '');
-      if (!line.trim()) continue;
+      if (!line.trim()) {
+        // E321：客户端收到 + 续行后回空行取消 XOAUTH2——此时给出 tagged NO
+        if (cancelTag) {
+          socket.write(`${cancelTag} NO AUTHENTICATE failed. Invalid credentials\r\n`);
+          cancelTag = null;
+        }
+        continue;
+      }
       const tag = line.split(' ')[0];
       transcript.push(line);
       const cmd = line.slice(tag.length + 1).trim().toUpperCase();
@@ -93,6 +102,17 @@ function handleImapSocket(
         socket.write(`* OK Begin TLS negotiation now\r\n${tag} OK Begin TLS negotiation\r\n`);
       } else if (cmd.startsWith('LOGIN')) {
         socket.write(`${tag} OK LOGIN completed\r\n`);
+      } else if (cmd.startsWith('AUTHENTICATE XOAUTH2')) {
+        // E321：payload 从原始行截取（cmd 已被 toUpperCase，base64 不能转大写）
+        const payload = line.slice(line.indexOf('XOAUTH2') + 'XOAUTH2'.length).trim();
+        if (payload === buildXoauth2Initial(IMAP_CREDS.user, 'outlook-access-token-ok')) {
+          socket.write(`${tag} OK AUTHENTICATE completed\r\n`);
+        } else {
+          // E321：模拟 Outlook——token 无效时先发 + 续行（base64 JSON 错误），客户端回空行后给 tagged NO
+          cancelTag = tag;
+          const errJson = Buffer.from(JSON.stringify({ status: '401', error: 'invalid_grant' }), 'utf8').toString('base64');
+          socket.write(`+ ${errJson}\r\n`);
+        }
       } else if (cmd.startsWith('ID')) {
         socket.write(`* ID ("name" "ai-butler-v01" "version" "0.1.0")\r\n${tag} OK ID completed\r\n`);
       } else if (cmd.startsWith('SELECT')) {
@@ -759,6 +779,76 @@ test('imap: TLS searchEmails 发件人/通用关键词过滤 + 📎 标记', { s
       fake.transcript.some((l) => l.includes('SEARCH OR SUBJECT "周报" FROM "周报"')),
       JSON.stringify(fake.transcript),
     );
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: buildXoauth2Initial 编码 XOAUTH2 初始响应（user + Bearer token + \x01 分隔，E321）', () => {
+  const initial = buildXoauth2Initial('user@example.com', 'tok123');
+  const expected = Buffer.from('user=user@example.com\x01auth=Bearer tok123\x01\x01', 'utf8').toString('base64');
+  assert.equal(initial, expected);
+  assert.equal(Buffer.from(initial, 'base64').toString('utf8'), 'user=user@example.com\x01auth=Bearer tok123\x01\x01');
+});
+
+test('imap: xoauth2 账号走 AUTHENTICATE XOAUTH2（不 LOGIN），token 不落明文日志（E321）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(SAMPLE_MESSAGES, certPath, keyPath);
+  try {
+    const port = fake.port;
+    const list = await fetchRecentEmails(
+      {
+        ...IMAP_CREDS,
+        host: 'smtp.office365.com',
+        auth: 'xoauth2',
+        accessToken: 'outlook-access-token-ok',
+        imapHost: '127.0.0.1',
+        imapPort: port,
+        imapSecure: true,
+      },
+      { timeoutMs: 8000, allowInsecureTls: true },
+    );
+    assert.equal(list.length, 3);
+    assert.ok(
+      fake.transcript.some((l) => /^A\d+ AUTHENTICATE XOAUTH2 /.test(l)),
+      `应走 AUTHENTICATE XOAUTH2：${JSON.stringify(fake.transcript)}`,
+    );
+    assert.equal(fake.transcript.some((l) => l.includes(' LOGIN ')), false, 'xoauth2 不得发送 LOGIN');
+    assert.equal(
+      fake.transcript.some((l) => l.includes('outlook-access-token-ok')),
+      false,
+      'token 只以 base64 形式出现在线路上，不得明文入日志',
+    );
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('imap: xoauth2 token 无效 → + 续行错误 → 回空行取消 → 明确报错不超时（E321）', { skip: !HAS_CRYPTOGRAPHY }, async () => {
+  const dir = tempDir();
+  const { certPath, keyPath } = genCert(dir);
+  const fake = await startFakeTlsImapServer(SAMPLE_MESSAGES, certPath, keyPath);
+  try {
+    const port = fake.port;
+    await assert.rejects(
+      fetchRecentEmails(
+        {
+          ...IMAP_CREDS,
+          host: 'smtp.office365.com',
+          auth: 'xoauth2',
+          accessToken: 'outlook-access-token-bad',
+          imapHost: '127.0.0.1',
+          imapPort: port,
+          imapSecure: true,
+        },
+        { timeoutMs: 8000, allowInsecureTls: true },
+      ),
+      (err: Error) => err.message.includes('XOAUTH2') && err.message.includes('重新授权'),
+    );
+    assert.ok(fake.transcript.some((l) => /^A\d+ AUTHENTICATE XOAUTH2 /.test(l)));
   } finally {
     await fake.close();
     rmSync(dir, { recursive: true, force: true });

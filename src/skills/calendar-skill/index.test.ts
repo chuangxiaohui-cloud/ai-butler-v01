@@ -6,7 +6,7 @@ import { test } from 'node:test';
 
 import { parseTimeExpression } from '../../agent/time-expression.js';
 import { ReminderStore } from '../../reminder/reminder-store.js';
-import { createCalendarSkill, parseIcs } from './index.js';
+import { cleanCalendarTitle, createCalendarSkill, parseIcs } from './index.js';
 
 test('calendar-skill: 创建日程并查询', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'calendar-skill-'));
@@ -25,7 +25,7 @@ test('calendar-skill: 创建日程并查询', async () => {
       deps,
     );
     const result = created.result as string;
-    assert.ok(result.includes('已创建日程'));
+    assert.ok(result.includes('已为你创建日程'));
     assert.ok(result.includes('明天上午十点'));
 
     const listed = await skill.execute(
@@ -47,6 +47,38 @@ test('calendar-skill: 创建日程并查询', async () => {
   }
 });
 
+test('calendar-skill: E325 日程标题清洗——「安排一下」不残留「一下」', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'calendar-skill-title-'));
+  process.env.REMINDERS_DB_PATH = join(dir, 'reminders.db');
+  const skill = createCalendarSkill({ dbPath: join(dir, 'calendar.db') });
+  try {
+    const created = await skill.execute(
+      {
+        query: '帮我安排一下我家里明天的亲子游行程安排',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: { mode: 'create_calendar' },
+      },
+      { callVLM: async () => '' },
+    );
+    const result = created.result as string;
+    assert.ok(result.includes('已为你创建日程：亲子游行程'), result);
+    assert.ok(!result.includes('我家里'), result);
+    assert.ok(!result.includes('一下'), result);
+  } finally {
+    delete process.env.REMINDERS_DB_PATH;
+    skill.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('calendar-skill: E329 标题清洗剥离提醒从句并清尾部标点', () => {
+  assert.equal(cleanCalendarTitle('帮我安排明天下午3点的周会，提前10分钟提醒'), '下午3点周会');
+  assert.equal(cleanCalendarTitle('帮我安排一下我家里明天的亲子游行程安排'), '亲子游行程');
+  assert.equal(cleanCalendarTitle('帮我安排今天下午4点看牙医'), '下午4点看牙医');
+});
+
 test('calendar-skill: 创建日程自动登记提醒（提前量）', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'calendar-skill-'));
   const remindersPath = join(dir, 'reminders.db');
@@ -64,7 +96,7 @@ test('calendar-skill: 创建日程自动登记提醒（提前量）', async () =
       { callVLM: async () => '' },
     );
     const result = created.result as string;
-    assert.ok(result.includes('已创建日程'));
+    assert.ok(result.includes('已为你创建日程'));
     assert.ok(result.includes('已同步设置提醒'));
 
     const store = new ReminderStore(remindersPath);
@@ -136,7 +168,7 @@ test('calendar-skill: 创建每天重复日程并登记重复提醒', async () =
       { callVLM: async () => '' },
     );
     const result = created.result as string;
-    assert.ok(result.includes('已创建日程'));
+    assert.ok(result.includes('已为你创建日程'));
     assert.ok(result.includes('每天重复'));
     assert.ok(result.includes('已同步设置提醒'));
     const store = new ReminderStore(remindersPath);
@@ -172,7 +204,7 @@ test('calendar-skill: 创建每周重复日程（提前量）并查询展示周�
       { callVLM: async () => '' },
     );
     const result = created.result as string;
-    assert.ok(result.includes('已创建日程'));
+    assert.ok(result.includes('已为你创建日程'));
     assert.ok(result.includes('每周重复'));
     const store = new ReminderStore(remindersPath);
     try {

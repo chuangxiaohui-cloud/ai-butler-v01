@@ -35,9 +35,14 @@ export function matchInstalledSkillTrigger(
   return best;
 }
 
-/** 剥离 npm run 包装输出的横幅行（如 > ai-butler-v01@0.1.0 market:github:project） */
+/** 剥离 npm run 包装输出的横幅行（如 > ai-butler-v01@0.1.0 market:github:project）；
+ * 逐行处理以兼容 Windows \r\n 及横幅前空行 */
 function stripNpmBanner(text: string): string {
-  return text.replace(/^(?:> [^\n]*\n?)+\n?/, '');
+  const lines = text.split(/\r?\n/);
+  let start = 0;
+  while (start < lines.length && lines[start].trim() === '') start++;
+  while (start < lines.length && lines[start].trimStart().startsWith('> ')) start++;
+  return lines.slice(start).join('\n');
 }
 
 /** 把 MarketRunOutcome 渲染为可读答案（有界截断，无文本输出时给摘要兜底） */

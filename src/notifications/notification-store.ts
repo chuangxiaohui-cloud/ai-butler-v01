@@ -25,8 +25,8 @@ export function notificationLogPath(): string {
 
 export interface NotificationEntry extends HubEvent {
   id: string;
-  /** 事件来源：decision（裁决/升级/低置信）/ skill（角色 Skill 输出） */
-  source: 'decision' | 'skill';
+  /** 事件来源：decision（裁决/升级/低置信）/ skill（角色 Skill 输出）/ usage（秘书 AI 运营事件） */
+  source: 'decision' | 'skill' | 'usage';
   createdAt: number;
 }
 
@@ -47,7 +47,7 @@ export class NotificationStore {
   }
 
   /** 写入一条通知事件（缺省 source=decision、ts=写入时刻 ISO） */
-  add(event: HubEvent & { source?: 'decision' | 'skill' }): NotificationEntry {
+  add(event: HubEvent & { source?: NotificationEntry['source'] }): NotificationEntry {
     const createdAt = Date.now();
     const entry: NotificationEntry = {
       ...event,
@@ -62,6 +62,11 @@ export class NotificationStore {
 
   recent(limit = 20): NotificationEntry[] {
     return readJsonlCached(this.file, parseEntry).slice(-limit);
+  }
+
+  /** E331：全量通知（append 顺序），供分页切片与总数统计 */
+  all(): NotificationEntry[] {
+    return readJsonlCached(this.file, parseEntry);
   }
 
   close(): void {

@@ -144,3 +144,46 @@ test('credentials: setActiveAccount 未知账号返回 false；无 accountKey �
   }
 });
 
+
+test('credentials: xoauth2 账号——auth/accessToken/refreshToken 往返，pass 可省略（E321）', () => {
+  const dir = tempDir();
+  try {
+    const path = join(dir, 'mail-credentials.json');
+    saveCredentials(
+      {
+        ...CREDS,
+        host: 'smtp.office365.com',
+        user: 'me@outlook.com',
+        from: 'me@outlook.com',
+        auth: 'xoauth2',
+        clientId: 'app-client-id',
+        tenant: 'consumers',
+        accessToken: 'at-1',
+        refreshToken: 'rt-1',
+        pass: '',
+      },
+      path,
+      'outlook',
+    );
+    const loaded = loadCredentials(path);
+    assert.ok(loaded);
+    assert.equal(loaded.auth, 'xoauth2');
+    assert.equal(loaded.host, 'smtp.office365.com');
+    assert.equal(loaded.clientId, 'app-client-id');
+    assert.equal(loaded.tenant, 'consumers');
+    assert.equal(loaded.accessToken, 'at-1');
+    assert.equal(loaded.refreshToken, 'rt-1');
+    const raw = readFileSync(path, 'utf-8');
+    assert.ok(raw.includes('at-1'), 'access token 应随凭据落盘（git 忽略，不打印）');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('credentials: xoauth2 缺 accessToken / 非法 auth 值报缺失；password 行为不变（E321）', () => {
+  assert.deepEqual(validateCredentials({ ...CREDS, auth: 'xoauth2' }), ['accessToken']);
+  assert.deepEqual(validateCredentials({ ...CREDS, auth: 'xoauth2', accessToken: 'at' }), []);
+  assert.deepEqual(validateCredentials({ ...CREDS, auth: 'oauth2' }), ['auth']);
+  // 缺省 password：缺 pass 仍报 pass（兼容既有账号）
+  assert.ok(validateCredentials({ ...CREDS, pass: '' }).includes('pass'));
+});

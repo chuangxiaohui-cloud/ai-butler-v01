@@ -29,11 +29,33 @@
 - **验证**：build 绿；doc-lint 0 FAIL 0 WARN；单测 1296/1297（1 skip 既有）+ 集成 32/32；`cost:today` 今日 ¥0.00/月 ¥0.07 无新增调用；全程零外部 LLM/API。
 - **文档**：`docs/plans/2026-09-02-ai-ops-cost.md`（状态：已完成）；已随 E306-E317 批次提交（`1290959`/`0756133`/`d0eb7cc`，2026-09-02）。
 
+### 4. AI 运营日报 / 预算阈值事件入通知枢纽（2026-09-02 追加，E318）
+
+- **代码**：`src/usage/ai-ops-notify.ts`（emitAiOpsDailyReport 按日幂等 + emitAiOpsBudgetAlerts 档位单调去重）；`NotificationStore.source` 扩 `usage`；notification-hub 预算词分级（用尽/即将耗尽→🔴，提醒/日报→🟡）；llm-client 成功记账后阈值事件（默认开启，`AI_OPS_NOTIFY=0` 显式关）；gateway 22:00 定时 + `npm run ai-ops:report` 手动兜底。
+- **验证**：build 绿；定向 31/31；全量单测 1302/1303（1 skip）+ 集成 32/32；doc-lint 0 FAIL 0 WARN；无 LLM 冒烟——`ai-ops:report` 首跑 emitted / 同日 dup，通知库出现 role=秘书 ai_ops_daily source=usage。
+- **文档**：`docs/plans/2026-09-02-ai-ops-notify.md`（已完成）；附录 A E318。
+- **待拍板**：owner 已拍板实时阈值事件默认开（`AI_OPS_NOTIFY=0` 显式关）；本轮仍未提交。
+
+### 5. /cost 斜杠命令——老板问答 AI 运营成本入口（2026-09-02 追加，E319）
+
+- **代码**：`src/slash/slash-commands.ts` 增 `/cost`——`SlashCommandName` 增 `cost`、`SLASH_PATTERN` 整行匹配、`runCost()` 复用 `readUsage` + `formatAiOpsReport`（与 `npm run cost:today` 同一报告口径）、`handleSlashCommand` 在会话 ID 检查前路由（全局只读，无需 conversationId）；`SlashContextDeps.costOptions.usageFile/budgetFile` 供测试注入；CLI/gateway 既有分发入口无需改动。
+- **验证**：build 绿；slash 定向 13/13（新增 4 条：整行识别 / 无 conversationId 可执行 / 携带 conversationId 可用 / 数据源异常可读兜底）；全量单测 1306/1307（1 skip 既有）+ 集成 32/32；doc-lint 0 FAIL 0 WARN；CLI `/cost` 冒烟输出含「📊 AI 运营成本 / 今日 / 本月 / 预算」；全程零外部 LLM/API。
+- **文档**：`docs/plans/2026-09-02-ai-ops-slash-cost.md`（已完成）；需求文档 §14.4 / §14.6 / 附录 A E319；`docs/code-directory.md` / `docs/directory-structure.md` 斜杠层行。
+- **待拍板**：E318/E319 是否提交（owner 已指示 git 暂不提交、先推进其他）。
+
+### 6. 通知区右栏展示——gateway 读 API + UI 面板（2026-09-02 追加，E320）
+
+- **代码**：`src/gateway/app.ts` 新增 `GET /api/notifications?limit=N`（缺省 50/上限 200）——`NotificationStore.recent()` + `classifyEventPriority`（最新在前）+ `renderNotificationDigest` 摘要；`GatewayOptions.notificationStore` 注入隔离。`ui/prototype/src/App.tsx` 右栏增「通知」页（30s 轮询 + 手动刷新 + 🔴🟡🟢 渲染 + 空态/网关不可达提示）；`styles.css` 最小样式。
+- **验证**：build 绿；gateway 定向 25/25（新增 1 条）；`npm --prefix ui/prototype run build` 绿；doc-lint 0 FAIL 0 WARN；全程零外部 LLM/API。
+- **文档**：`docs/plans/2026-09-02-notify-panel.md`（已完成）；需求文档 §11.3/§13/附录 A E320；`docs/code-directory.md`/`docs/directory-structure.md`。
+- **待拍板**：E318/E319/E320 是否随下批提交（owner 已指示暂不提交、先推进其他）。
+
 ## 明日待办（接续点）
 
 1. v2.6 pre-ship 增补封版（2026-09-02）：E306-E317 已入库（`1290959` 代码 / `0756133` 文档 / `d0eb7cc` bench），新 tag `v2.6-pre-ship-2026-09-02` + ZIP（`ai-butler-v2.6-pre-ship-2026-09-02.zip`，SHA256 见 `docs/audit-t6/pre-ship-closure.md` §4.1b），待 owner 最终验收确认。
 2. v1.0：P-10 唯一阻塞为 L2 成熟度——待 owner 按快照路径累积（Skill 40/50+ → 50+ / 反馈 n≥30 / 复用率 60%）；P-12 Tavily 配额已重置待 owner 复核 `bench:v01`。
-3. E306-E317 批次已提交（2026-09-02）；工作区剩余仅审计交付物（`审计交付/`、audit ZIP、audit-t3 审计文档等，按约定不入库）。
+3. E306-E317 批次已提交（2026-09-02）；其后的 E318/E319（AI 运营日报/阈值事件入通知 + `/cost` 斜杠命令）已完成但未提交（owner 指示先不提交，见下条）。工作区审计交付物（`审计交付/`、audit ZIP、audit-t3 文档等）按约定不入库。
+4. E318/E319/E320 收口待拍板：代码与文档全绿（全量单测 1306/1307 + 集成 32/32 + doc-lint 0 FAIL 0 WARN；E320 另加 UI vite build 绿）；owner 拍板是否随下批提交。
 
 ## 后续候选（owner 拍板后启动）
 

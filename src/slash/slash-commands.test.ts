@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -147,5 +147,73 @@ test('slash: describeSession 空会话返回全零占位', () => {
     assert.equal(report.needsCompaction, false);
   } finally {
     cleanup();
+  }
+});
+test('slash: /cost 整行识别且大小写不敏感', () => {
+  assert.deepEqual(parseSlashCommand('/cost'), { name: 'cost', raw: '/cost' });
+  assert.deepEqual(parseSlashCommand(' /Cost  '), { name: 'cost', raw: '/Cost' });
+  assert.equal(parseSlashCommand('/cost today'), null, '整行匹配，不接受参数');
+});
+
+test('slash: /cost 无 conversationId 也可输出全局成本报告', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'slash-cost-'));
+  const usageFile = join(dir, 'usage.jsonl');
+  const budgetFile = join(dir, 'usage-budget.json');
+  // 今日可计价记录（deepseek-v4-flash 单价见 model-pricing），确保报告非空
+  writeFileSync(
+    usageFile,
+    `${JSON.stringify({ ts: Date.now(), provider: 'deepseek', model: 'deepseek-v4-flash', promptTokens: 1_000_000, completionTokens: 100_000, cacheHitTokens: 800_000, cacheMissTokens: 200_000 })}\n`,
+    'utf-8',
+  );
+  writeFileSync(budgetFile, JSON.stringify({ dailyBudgetCny: 5, monthlyBudgetCny: 150 }), 'utf-8');
+  try {
+    const store = new SessionContextStore({ dir: join(dir, 'ctx') });
+    const res = await handleSlashCommand('/cost', undefined, {
+      sessionContext: store,
+      costOptions: { usageFile, budgetFile },
+    });
+    assert.ok(res);
+    assert.equal(res.slash, 'cost');
+    assert.ok(res.answer.includes('AI 运营成本'), res.answer);
+    assert.ok(res.answer.includes('今日'), res.answer);
+    assert.ok(res.answer.includes('本月'), res.answer);
+    assert.ok(res.answer.includes('预算 ¥5'), res.answer);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('slash: /cost 携带 conversationId 时同样可用（全局只读）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'slash-cost-cid-'));
+  const usageFile = join(dir, 'usage.jsonl');
+  writeFileSync(usageFile, '', 'utf-8');
+  try {
+    const store = new SessionContextStore({ dir: join(dir, 'ctx') });
+    const res = await handleSlashCommand('/cost', 'c1', {
+      sessionContext: store,
+      costOptions: { usageFile },
+    });
+    assert.ok(res);
+    assert.equal(res.slash, 'cost');
+    assert.ok(res.answer.includes('AI 运营成本'), res.answer);
+    assert.ok(res.answer.includes('调用: 0 次'), res.answer);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('slash: /cost 数据源异常时以可读 answer 兜底不抛错', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'slash-cost-fail-'));
+  try {
+    const res = await handleSlashCommand('/cost', 'c1', {
+      sessionContext: new SessionContextStore({ dir: join(dir, 'ctx') }),
+      costOptions: { usageFile: dir }, // 目录而非文件 → 读取抛错，应被兜底
+    });
+    assert.ok(res);
+    assert.equal(res.slash, 'cost');
+    assert.ok(res.answer.includes('执行失败'), res.answer);
+    assert.equal(res.confidence, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

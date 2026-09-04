@@ -20,6 +20,8 @@ import type { SearchProvider, SearchProviderResult, SearchResultItem } from './p
 import { splitSearchNotices, pipeline } from './pipeline.js';
 import { getSkills } from '../skills/registry.js';
 import { UserContextStore } from '../memory/user-context-store.js';
+import { DecisionLog } from '../escalation/decision-log.js';
+import { closeJsonl } from '../log/jsonl.js';
 import { appendOperation } from '../security/operation-log.js';
 import { DeepReportStore } from './deep-report-store.js';
 import type { TrajectoryEvent } from '../trajectory/trajectory-log.js';
@@ -1830,4 +1832,187 @@ test('pipeline: E309 成功回答清零连续失败计数', async () => {
   );
   assert.ok(r.answer.length > 0);
   assert.equal(esc.failures['conv-e309-ok'], 0);
+});
+
+test('pipeline: E324 批准挂起动作后同一轮恢复执行（chat_reply approve + 递归重放原请求）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-e324-approve-'));
+  const logFile = join(dir, 'decision-log.jsonl');
+  const log = new DecisionLog(logFile);
+  const base = makeEscalationFake();
+  try {
+    const seeded = log.record({
+      trigger: 'human_arbitration',
+      question: '⏸ 待批准动作',
+      options: ['执行', '取消'],
+      decision: 'pending',
+      resume: { query: '你现在是什么模型', executor: 'project_writer' },
+      conversationId: 'conv-e324-approve',
+      confidence: 0.6,
+    });
+    const r = await pipeline(
+      '执行吧',
+      {
+        ...deps,
+        escalation: { decisionLog: log, state: base.state },
+        notificationStore: makeNotificationFake(),
+      },
+      { conversationId: 'conv-e324-approve' },
+    );
+    assert.notEqual(r.answer, '已取消该操作，不会执行。');
+    assert.ok(!r.answer.includes('⏸'), '批准后不应再次挂起');
+    assert.ok(r.answer.length > 0, '应递归恢复执行并返回原请求结果');
+    const rows = log.recent(10);
+    const approveRow = rows.find((e) => e.note === 'chat_reply' && e.decision === 'approve');
+    assert.ok(approveRow, '应追加 chat_reply approve 裁决事件');
+    assert.equal(approveRow?.refId, seeded.id, '裁决指向被批准的原 pending');
+    assert.equal(log.openDecisions().length, 0, '待批动作已消费');
+  } finally {
+    log.close();
+    closeJsonl(logFile);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: E324 取消挂起动作记录 reject 且不执行', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-e324-reject-'));
+  const logFile = join(dir, 'decision-log.jsonl');
+  const log = new DecisionLog(logFile);
+  const base = makeEscalationFake();
+  try {
+    const seeded = log.record({
+      trigger: 'human_arbitration',
+      question: '⏸ 待批准动作',
+      options: ['执行', '取消'],
+      decision: 'pending',
+      resume: { query: '给张三发一封邮件', executor: 'office_daily' },
+      conversationId: 'conv-e324-reject',
+      confidence: 0.6,
+    });
+    const r = await pipeline(
+      '取消。',
+      {
+        ...deps,
+        escalation: { decisionLog: log, state: base.state },
+        notificationStore: makeNotificationFake(),
+      },
+      { conversationId: 'conv-e324-reject' },
+    );
+    assert.equal(r.answer, '已取消该操作，不会执行。');
+    const rows = log.recent(10);
+    const rejectRow = rows.find((e) => e.note === 'chat_reply' && e.decision === 'reject');
+    assert.ok(rejectRow, '应追加 chat_reply reject 裁决事件');
+    assert.equal(rejectRow?.refId, seeded.id);
+    assert.equal(log.openDecisions().length, 0);
+  } finally {
+    log.close();
+    closeJsonl(logFile);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: E324 无待批动作时「执行」不被预检误吞', async () => {
+  const esc = makeEscalationFake();
+  const r = await pipeline(
+    '执行',
+    { ...deps, escalation: esc },
+    { conversationId: 'conv-e324-none' },
+  );
+  assert.notEqual(r.answer, '已取消该操作，不会执行。');
+  assert.ok(
+    !esc.records.some((e) => e.note === 'chat_reply'),
+    '无待批动作时不应写 chat_reply 裁决',
+  );
+});
+
+test('pipeline: E324 confirm + 写类执行器被挂起写 pending(resume)，不直接执行', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-e324-block-'));
+  const logFile = join(dir, 'decision-log.jsonl');
+  const log = new DecisionLog(logFile);
+  const base = makeEscalationFake();
+  const notify = makeNotificationFake();
+  try {
+    const r = await pipeline(
+      '帮我安排明天上午十点的会议',
+      {
+        ...deps,
+        llm: undefined,
+        escalation: { decisionLog: log, state: base.state },
+        notificationStore: notify,
+      },
+      { conversationId: 'conv-e324-block' },
+    );
+    assert.ok(r.answer.includes('⏸'), r.answer);
+    assert.ok(r.answer.includes('执行'), r.answer);
+    const open = log.openDecisions();
+    assert.equal(open.length, 1, '应写入一条 open pending');
+    assert.equal(open[0]?.resume?.executor, 'calendar_skill');
+    assert.equal(open[0]?.resume?.intent, 'create_calendar');
+    assert.equal(open[0]?.resume?.query, '帮我安排明天上午十点的会议');
+    assert.ok(
+      notify.events.some((e) => e.role === '老板' && e.kind === 'risk_decision' && e.title === '待你裁决'),
+      '应写入 老板 risk_decision 通知事件',
+    );
+  } finally {
+    log.close();
+    closeJsonl(logFile);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: E330 confirm 恢复钉死原 executor——不被市场 Skill 触发词抢走', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-e330-pin-'));
+  const logFile = join(dir, 'decision-log.jsonl');
+  const log = new DecisionLog(logFile);
+  const base = makeEscalationFake();
+  let marketRunCalls = 0;
+  try {
+    const seeded = log.record({
+      trigger: 'human_arbitration',
+      question: '⏸ 待批准动作',
+      options: ['执行', '取消'],
+      decision: 'pending',
+      resume: {
+        query: '帮我安排明天下午3点的周会，提前10分钟提醒',
+        executor: 'content_writer',
+        intent: 'create_calendar',
+      },
+      conversationId: 'conv-e330-pin',
+      confidence: 0.6,
+    });
+    const r = await pipeline(
+      '执行吧',
+      {
+        ...deps,
+        llm: undefined,
+        skillDeps: {
+          callVLM: async () => '',
+          complete: { complete: async () => 'E330 内容草稿' },
+        },
+        escalation: { decisionLog: log, state: base.state },
+        notificationStore: makeNotificationFake(),
+        marketSkillRunner: {
+          listInstalledWithTriggers: () => [{ name: 'reminder', triggers: ['提醒'] }],
+          run: () => {
+            marketRunCalls += 1;
+            throw new Error('E330：恢复执行不应再命中市场 Skill');
+          },
+        },
+      },
+      { conversationId: 'conv-e330-pin' },
+    );
+    assert.equal(marketRunCalls, 0, '恢复执行不应再调用市场 Skill runner');
+    assert.ok(
+      r.answer.includes('E330 内容草稿'),
+      '应回到被批准时的 executor（content_writer）执行，而非被市场 reminder 抢走',
+    );
+    const rows = log.recent(10);
+    const approveRow = rows.find((e) => e.note === 'chat_reply' && e.decision === 'approve');
+    assert.ok(approveRow, '应追加 chat_reply approve 裁决事件');
+    assert.equal(approveRow?.refId, seeded.id);
+    assert.equal(log.openDecisions().length, 0);
+  } finally {
+    log.close();
+    closeJsonl(logFile);
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

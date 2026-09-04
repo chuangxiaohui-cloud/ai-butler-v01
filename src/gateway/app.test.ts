@@ -21,6 +21,8 @@ import type {
 } from '../search/providers/types.js';
 import type { PipelineDeps } from '../search/pipeline.js';
 import { createGatewayApp } from './app.js';
+import { DecisionLog } from '../escalation/decision-log.js';
+import { NotificationStore } from '../notifications/notification-store.js';
 import { resetBochaBalanceCache } from '../search/balance.js';
 
 class FakeLLM implements LLMClient {
@@ -213,6 +215,84 @@ test('gateway: /api/ask 斜杠命令 /context 返回会话状态', async () => {
     assert.equal(body.gate_triggered, 'none');
   } finally {
     server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('gateway: E324 第二刀 /api/decisions POST 批准带 resume → 自动恢复执行带回执（否决不执行）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-decision-resume-'));
+  const logFile = join(dir, 'decision-log.jsonl');
+  const store = new DecisionLog(logFile);
+  const approvePending = store.record({
+    trigger: 'human_arbitration',
+    question: '⏸ 待批准：查主频',
+    options: ['执行', '取消'],
+    decision: 'pending',
+    resume: { query: 'STM32F103C8T6 主频是多少', executor: 'project_writer' },
+    conversationId: 'conv-gw-resume-approve',
+    confidence: 0.6,
+  });
+  const rejectPending = store.record({
+    trigger: 'human_arbitration',
+    question: '⏸ 待批准：发周报',
+    options: ['执行', '取消'],
+    decision: 'pending',
+    resume: { query: '帮我把周报发给张三', executor: 'office_daily' },
+    conversationId: 'conv-gw-resume-reject',
+    confidence: 0.7,
+  });
+  const app = createGatewayApp({
+    deps: {
+      ...testDeps(),
+      sessionContext: new SessionContextStore({ dir: join(dir, 'session-context') }),
+    },
+    defaultUserId: 'test-user',
+    decisionLog: store,
+  });
+  const server = createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    // 批准带 resume 的 pending：裁决记录 + 同一 pipeline 自动恢复执行，响应带回执
+    const approve = await fetch(`${base}/api/decisions/${approvePending.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: 'approve', note: '面板批准' }),
+    });
+    assert.equal(approve.status, 200);
+    const approveBody = (await approve.json()) as {
+      ok?: boolean;
+      resume?: { query?: string };
+      executed?: { answer?: string; mode?: string; error?: string };
+    };
+    assert.equal(approveBody.ok, true);
+    assert.equal(approveBody.resume?.query, 'STM32F103C8T6 主频是多少', '响应应带回 resume 载荷');
+    assert.ok(approveBody.executed, '批准带 resume 的 pending 应自动恢复执行');
+    assert.ok(approveBody.executed?.answer?.includes('测试答案'), approveBody.executed?.answer);
+    assert.ok(!approveBody.executed?.answer?.includes('⏸'), '恢复执行不应二次挂起');
+    assert.equal(approveBody.executed?.mode, 'knowledge');
+    assert.equal(approveBody.executed?.error, undefined, '执行成功时无 error');
+
+    // 否决带 resume 的 pending：仅记录，不触发恢复执行
+    const reject = await fetch(`${base}/api/decisions/${rejectPending.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: 'reject', note: '面板否决' }),
+    });
+    assert.equal(reject.status, 200);
+    const rejectBody = (await reject.json()) as {
+      ok?: boolean;
+      resume?: { query?: string };
+      executed?: unknown;
+    };
+    assert.equal(rejectBody.ok, true);
+    assert.equal(rejectBody.resume?.query, '帮我把周报发给张三');
+    assert.equal(rejectBody.executed, undefined, '否决不触发自动执行、无回执');
+
+    assert.equal(store.openDecisions().length, 0, '两条待批均已被裁决，队列清空');
+  } finally {
+    server.close();
+    store.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -895,6 +975,226 @@ test('gateway: /api/bocha/balance 返回余额与告警（§D.3）', async () =>
     assert.equal(body.notice, null);
   } finally {
     server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+test('gateway: /api/notifications 返回通知列表（最新在前 + 优先级 + 摘要）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-notify-'));
+  const logFile = join(dir, 'notifications.jsonl');
+  const older = {
+    id: 'n1',
+    source: 'decision',
+    role: '老板',
+    kind: 'risk_decision',
+    title: '待你裁决',
+    detail: '选项 A/B',
+    ts: '2026-09-02T08:00:00.000Z',
+    createdAt: 1000,
+  };
+  const newer = {
+    id: 'n2',
+    source: 'usage',
+    role: '秘书',
+    kind: 'ai_ops_daily',
+    title: 'AI 运营日报',
+    detail: '今日 ¥0.07',
+    ts: '2026-09-02T14:00:00.000Z',
+    createdAt: 2000,
+  };
+  writeFileSync(logFile, `${JSON.stringify(older)}\n${JSON.stringify(newer)}\n`, 'utf-8');
+  const store = new NotificationStore(logFile);
+  const app = createGatewayApp({ deps: testDeps(), defaultUserId: 'test-user', notificationStore: store });
+  const server = createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as AddressInfo).port;
+  try {
+    const resp = await fetch(`http://127.0.0.1:${port}/api/notifications`);
+    assert.equal(resp.status, 200);
+    const body = (await resp.json()) as {
+      entries?: Array<{ id: string; createdAt: number; priority: string }>;
+      digest?: string;
+    };
+    assert.ok(body.entries, '应返回 entries');
+    assert.equal(body.entries.length, 2);
+    assert.equal(body.entries[0].id, 'n2', '最新在前');
+    assert.equal(body.entries[0].priority, 'normal', 'AI 运营日报 → 普通');
+    assert.equal(body.entries[1].priority, 'urgent', '待你裁决 → 紧急');
+    assert.ok(body.digest?.includes('🔴 紧急'), body.digest);
+    assert.ok(body.digest?.includes('AI 运营日报'), body.digest);
+  } finally {
+    server.close();
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('gateway: /api/notifications 分页（E331：page/pageSize 切片 + total）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-notify-page-'));
+  const logFile = join(dir, 'notifications.jsonl');
+  const lines: string[] = [];
+  for (let i = 1; i <= 25; i += 1) {
+    lines.push(
+      JSON.stringify({
+        id: `n${i}`,
+        source: 'skill',
+        role: '秘书',
+        kind: 'skill_run',
+        title: `事件 ${i}`,
+        ts: `2026-09-02T${String(i).padStart(2, '0')}:00:00.000Z`,
+        createdAt: i * 1000,
+      }),
+    );
+  }
+  writeFileSync(logFile, lines.join('\n') + '\n', 'utf-8');
+  const store = new NotificationStore(logFile);
+  const app = createGatewayApp({ deps: testDeps(), defaultUserId: 'test-user', notificationStore: store });
+  const server = createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as AddressInfo).port;
+  try {
+    const page2 = (await (
+      await fetch(`http://127.0.0.1:${port}/api/notifications?page=2&pageSize=10`)
+    ).json()) as { entries?: Array<{ id: string }>; total?: number };
+    assert.equal(page2.total, 25, '应返回总数 25');
+    assert.equal(page2.entries?.length, 10);
+    assert.equal(page2.entries?.[0].id, 'n15', '第 2 页最新在前从第 11 新（n15）开始');
+    assert.equal(page2.entries?.[9].id, 'n6', '第 2 页末尾 n6');
+    const page3 = (await (
+      await fetch(`http://127.0.0.1:${port}/api/notifications?page=3&pageSize=10`)
+    ).json()) as { entries?: Array<{ id: string }> };
+    assert.equal(page3.entries?.length, 5);
+    assert.equal(page3.entries?.[0].id, 'n5');
+    assert.equal(page3.entries?.[4].id, 'n1');
+  } finally {
+    server.close();
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('gateway: /api/decisions 待裁决队列 + POST 批准/否决回填（E323）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gateway-decision-'));
+  const logFile = join(dir, 'decision-log.jsonl');
+  const decidedOld = {
+    id: 'd0',
+    trigger: 'human_arbitration',
+    question: '旧题',
+    decision: 'pending',
+    conversationId: 'conv-0',
+    createdAt: 500,
+  };
+  const p1 = {
+    id: 'd1',
+    trigger: 'human_arbitration',
+    question: '选 A 还是 B？',
+    options: ['A', 'B'],
+    decision: 'pending',
+    conversationId: 'conv-1',
+    confidence: 0.6,
+    createdAt: 1000,
+  };
+  const p2 = {
+    id: 'd2',
+    trigger: 'human_arbitration',
+    question: '必须澄清：指哪个器件？',
+    decision: 'pending',
+    conversationId: 'conv-2',
+    createdAt: 2000,
+  };
+  const esc = {
+    id: 'd3',
+    trigger: 'escalation',
+    question: '连续失败升级',
+    decision: 'escalate',
+    conversationId: 'conv-3',
+    createdAt: 3000,
+  };
+  const doneEvent = {
+    id: 'e0',
+    trigger: 'human_arbitration',
+    question: '旧题',
+    decision: 'approve',
+    refId: 'd0',
+    createdAt: 4000,
+  };
+  writeFileSync(
+    logFile,
+    [decidedOld, p1, p2, esc, doneEvent].map((e) => JSON.stringify(e)).join('\n') + '\n',
+    'utf-8',
+  );
+  const store = new DecisionLog(logFile);
+  const app = createGatewayApp({
+    deps: testDeps(),
+    defaultUserId: 'test-user',
+    decisionLog: store,
+  });
+  const server = createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    // GET：只返回 open pending（d0 已被裁决事件引用，排除）；保持 append 顺序
+    const first = await fetch(`${base}/api/decisions`);
+    assert.equal(first.status, 200);
+    const firstBody = (await first.json()) as {
+      open?: Array<{ id: string; decision: string; refId?: string }>;
+    };
+    assert.ok(firstBody.open, '应返回 open 队列');
+    assert.deepEqual(
+      firstBody.open?.map((e) => e.id),
+      ['d1', 'd2'],
+      'escalate 与已裁决的 pending 不进队列',
+    );
+    assert.equal(firstBody.open?.[0]?.refId, undefined, '原行不带 refId');
+
+    // POST 批准 d1（带备注）
+    const post = await fetch(`${base}/api/decisions/d1`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: 'approve', note: '选 A' }),
+    });
+    assert.equal(post.status, 200);
+    const postBody = (await post.json()) as {
+      ok?: boolean;
+      entry?: { id: string; decision: string; refId?: string; note?: string };
+    };
+    assert.equal(postBody.ok, true);
+    assert.equal(postBody.entry?.decision, 'approve');
+    assert.equal(postBody.entry?.refId, 'd1', '裁决事件指向原 pending 行');
+    assert.equal(postBody.entry?.note, '选 A');
+
+    // 裁决后 open 只剩 d2
+    const second = await fetch(`${base}/api/decisions`);
+    const secondBody = (await second.json()) as { open?: Array<{ id: string }> };
+    assert.deepEqual(secondBody.open?.map((e) => e.id), ['d2']);
+
+    // 非法 decision / 未找到 / 已裁决 / 非 pending
+    const badDecision = await fetch(`${base}/api/decisions/d2`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: 'escalate' }),
+    });
+    assert.equal(badDecision.status, 400);
+    const missing = await fetch(`${base}/api/decisions/no-such-id`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: 'reject' }),
+    });
+    assert.equal(missing.status, 404);
+    const again = await fetch(`${base}/api/decisions/d1`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: 'reject' }),
+    });
+    assert.equal(again.status, 409, '已裁决二次提交拒绝');
+    const escalate = await fetch(`${base}/api/decisions/d3`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: 'reject' }),
+    });
+    assert.equal(escalate.status, 404, 'escalate 行不可裁决');
+  } finally {
+    server.close();
+    store.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });

@@ -2720,6 +2720,60 @@ test('office-daily: 发送邮件（已配置凭据 + 假 SMTP 服务器）→ �
   }
 });
 
+test('office-daily: xoauth2 账号发送邮件（Outlook 凭据 + 假 SMTP 服务器）→ 先回执，确认发送后真发成功', async () => {
+  const dir = tempDir();
+  const fake = await startFakeSmtpServer();
+  try {
+    const mailDir = join(dir, 'mail');
+    saveCredentials(
+      {
+        host: '127.0.0.1',
+        port: fake.port,
+        secure: false,
+        user: 'me@outlook.com',
+        pass: '',
+        from: 'me@outlook.com',
+        auth: 'xoauth2',
+        clientId: 'cid-1',
+        tenant: 'consumers',
+        accessToken: 'tok-fresh',
+        refreshToken: 'RT-1',
+      },
+      join(mailDir, 'mail-credentials.json'),
+    );
+    const skill = createOfficeDailySkill({ outDir: dir, mailDir });
+    const receipt = await skill.execute(
+      {
+        query: '发送邮件给 rcpt@example.com，主题：Outlook 测试，正文：你好。',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const receiptResult = receipt.result as { answer?: string };
+    assert.ok(receiptResult.answer?.includes('已保存为草稿'), receiptResult.answer);
+    assert.ok(!fake.transcript.includes('RCPT TO:<rcpt@example.com>'));
+    const out = await skill.execute(
+      {
+        query: '确认发送',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      { callVLM: async () => '' },
+    );
+    const result = out.result as { answer?: string; from?: string; to?: string };
+    assert.ok(result.answer?.includes('邮件已发送'), result.answer);
+    assert.equal(result.from, 'me@outlook.com');
+    assert.equal(result.to, 'rcpt@example.com');
+    assert.ok(fake.transcript.includes('RCPT TO:<rcpt@example.com>'));
+  } finally {
+    await fake.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('office-daily: 写邮件发给客户 → 仍走草稿而非发送', async () => {
   const dir = tempDir();
   try {

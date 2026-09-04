@@ -26,6 +26,12 @@ test('reminder: 提前量解析', () => {
   assert.equal(parsed.leadMs, 30 * 60 * 1000);
 });
 
+test('reminder: E330 日历口语句不再残留「安排的…提前N分钟提醒」', () => {
+  const parsed = parseReminderQuery('帮我安排明天下午3点的周会，提前10分钟提醒');
+  assert.equal(parsed.action, 'add');
+  assert.equal(parsed.message, '周会');
+});
+
 test('reminder: 无时间 → 归因提示', () => {
   const parsed = parseReminderQuery('提醒我交周报');
   assert.equal(parsed.action, 'add');

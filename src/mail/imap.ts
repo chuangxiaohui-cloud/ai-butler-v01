@@ -13,6 +13,12 @@
 import { connect as netConnect, type Socket } from 'node:net';
 import { connect as tlsConnect, type TLSSocket } from 'node:tls';
 
+import type { MailAuth } from './credentials.js';
+import { buildXoauth2Initial } from './oauth.js';
+
+/** E322：XOAUTH2 初始响应从 oauth.ts 统一导出（IMAP/SMTP 共用），此处 re-export 保持既有引用面 */
+export { buildXoauth2Initial } from './oauth.js';
+
 export interface ImapMessageSummary {
   seq: number;
   from: string;
@@ -182,6 +188,11 @@ class ImapSession {
         this.pending.shift();
         clearTimeout(p.timer);
         p.resolve({ parts: p.parts, tagged: token.text });
+      } else if (token.text.startsWith('+')) {
+        // IMAP 续行（+）：服务器等待客户端继续。XOAUTH2 失败时 Outlook 用 + 附带 base64
+        // JSON 错误并等一个空行结束握手——发空行取消，随后服务器回 tagged NO，避免挂起超时。
+        p.parts.push(token);
+        this.socket.write(CRLF);
       } else {
         p.parts.push(token);
       }
@@ -296,6 +307,10 @@ async function openSession(
     imapHost?: string;
     imapPort?: number;
     imapSecure?: boolean;
+    /** E321：认证方式；xoauth2 时走 AUTHENTICATE XOAUTH2（Outlook.com 等），缺省 password LOGIN */
+    auth?: MailAuth;
+    /** E321：xoauth2 专用——OAuth2 access token（Bearer，随 XOAUTH2 初始响应发送） */
+    accessToken?: string;
   },
   options: ImapFetchOptions,
 ): Promise<ImapSession> {
@@ -324,7 +339,25 @@ async function openSession(
       await session.command('STARTTLS', 'OK');
       await session.upgradeToTls(cfg.host, options.allowInsecureTls ?? false);
     }
-    await session.command(`LOGIN ${quoteString(creds.user)} ${quoteString(creds.pass)}`, 'OK');
+    if (creds.auth === 'xoauth2') {
+      if (!creds.accessToken) {
+        throw new Error(
+          'xoauth2 账号缺少 accessToken：请先完成 OAuth2 授权并保存 access token' +
+            '（npm run mail:config -- --account <名> --auth xoauth2 --access-token <token> …）。',
+        );
+      }
+      const initial = buildXoauth2Initial(creds.user, creds.accessToken);
+      try {
+        await session.command(`AUTHENTICATE XOAUTH2 ${initial}`, 'OK');
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        throw new Error(
+          `IMAP XOAUTH2 认证失败：${detail}。access token 可能已过期或缺少 IMAP 权限，请重新授权获取新 token。`,
+        );
+      }
+    } else {
+      await session.command(`LOGIN ${quoteString(creds.user)} ${quoteString(creds.pass)}`, 'OK');
+    }
     if (needsImapId(creds.host)) {
       await session.command('ID ("name" "ai-butler-v01" "version" "0.1.0")', 'OK');
     }
@@ -858,6 +891,10 @@ export async function fetchRecentEmails(
     imapHost?: string;
     imapPort?: number;
     imapSecure?: boolean;
+    /** E321：认证方式；xoauth2 时走 AUTHENTICATE XOAUTH2（Outlook.com 等），缺省 password LOGIN */
+    auth?: MailAuth;
+    /** E321：xoauth2 专用——OAuth2 access token（Bearer，随 XOAUTH2 初始响应发送） */
+    accessToken?: string;
   },
   options: ImapFetchOptions & { limit?: number } = {},
 ): Promise<ImapMessageSummary[]> {
@@ -929,6 +966,10 @@ export async function searchEmails(
     imapHost?: string;
     imapPort?: number;
     imapSecure?: boolean;
+    /** E321：认证方式；xoauth2 时走 AUTHENTICATE XOAUTH2（Outlook.com 等），缺省 password LOGIN */
+    auth?: MailAuth;
+    /** E321：xoauth2 专用——OAuth2 access token（Bearer，随 XOAUTH2 初始响应发送） */
+    accessToken?: string;
   },
   criteria: ImapSearchCriteria,
   options: ImapSearchOptions = {},
@@ -965,6 +1006,10 @@ export async function fetchEmailText(
     imapHost?: string;
     imapPort?: number;
     imapSecure?: boolean;
+    /** E321：认证方式；xoauth2 时走 AUTHENTICATE XOAUTH2（Outlook.com 等），缺省 password LOGIN */
+    auth?: MailAuth;
+    /** E321：xoauth2 专用——OAuth2 access token（Bearer，随 XOAUTH2 初始响应发送） */
+    accessToken?: string;
   },
   seq: number,
   options: ImapFetchOptions = {},
@@ -992,6 +1037,10 @@ export async function fetchEmailAttachments(
     imapHost?: string;
     imapPort?: number;
     imapSecure?: boolean;
+    /** E321：认证方式；xoauth2 时走 AUTHENTICATE XOAUTH2（Outlook.com 等），缺省 password LOGIN */
+    auth?: MailAuth;
+    /** E321：xoauth2 专用——OAuth2 access token（Bearer，随 XOAUTH2 初始响应发送） */
+    accessToken?: string;
   },
   seq: number,
   options: ImapFetchOptions = {},

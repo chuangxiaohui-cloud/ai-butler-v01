@@ -58,14 +58,15 @@ CLI (src/main.ts)  UI (ui/prototype)  桌面壳 (desktop)
 | `src/skills/` | Skill 注册、生命周期、预置 Skill | `registry.ts`、`lifecycle.ts`、`deps.ts`、`skills/*` |
 | `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标、`npm run maturity:check`，v1.0 P-10 条件③，E247）+ 运行时看门狗（E282，synthesis_timeout 环境噪音告警） | `metrics.ts`、`runtime-watchdog.ts` |
 | `src/memory/` | MemoryStore（sqlite/memorycore 配置切换）、ExperienceManager、用户上下文、蒸馏 | `store.ts`、`memorycore-store.ts`、`experience.ts`、`distill.ts` |
-| `src/slash/` | 斜杠命令层（/compact 手动压缩、/context 会话状态，§8.3 E204） | `slash-commands.ts` |
+| `src/slash/` | 斜杠命令层（/compact 手动压缩、/context 会话状态、/cost AI 运营成本报告，§8.3 E204 / §14 E319） | `slash-commands.ts` |
 | `src/reminder/` | 主动提醒存储 | `reminder-store.ts` |
-| `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API | `app.ts`、`server.ts`、`attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts`、`rate-limit.ts` |
+| `src/mail/` | 邮箱通道：凭据多账号容器与认证模型（password/xoauth2）、IMAP 只读收件/读信/搜信/附件（E293-E303）、SMTP 发信、Outlook OAuth2 设备码授权与自动续期（XOAUTH2 收信+发信，E321/E322） | `credentials.ts`、`smtp.ts`、`imap.ts`、`oauth.ts` |
+| `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API | `app.ts`、`server.ts`、`attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts`、`project-watcher.ts`、`rate-limit.ts` |
 | `src/browser/` | 浏览器会话、CDP 持久化、页面抓取、浏览器操作（E252：AX 树观察 [P-126] 有界 + DSL 交互层 [P-124]/[P-125] + 真实 CDP 驱动） | `session.ts`、`dom-observe.ts`、`operations.ts`、`driver.ts` |
 | `src/config/` | PARAM、Provider Registry、模型目录、安全/用量/Skill 配置、AI 运营分档单价表（缓存命中/未命中 × 高峰/空闲） | `params.ts`、`model-catalog.ts`、`provider-order.ts`、`security-config.ts`、`usage-budget.ts`、`model-pricing.ts` |
 | `src/trajectory/` | append-only 轨迹日志 | `trajectory-log.ts` |
 | `src/log/` | JSONL 追加/轮转（.1 归档）/缓存读 | `jsonl.ts` |
-| `src/usage/` | Token 计量与聚合（含缓存拆分）；AI 运营成本估算/阈值告警/硬停门禁/报告（§COST v1） | `usage-store.ts`、`cost.ts` |
+| `src/usage/` | Token 计量与聚合（含缓存拆分）；AI 运营成本估算/阈值告警/硬停门禁/报告（§COST v1）；AI 运营日报/阈值事件写入通知枢纽（§11.3 秘书日报，E318） | `usage-store.ts`、`cost.ts`、`ai-ops-notify.ts` |
 | `src/security/` | 沙箱路径白名单、审计、Agent 操作日志与回滚、浏览器抓取 URL 安全、浏览器动作白名单/高风险标记、域名授权持久化（E252） | `sandbox.ts`、`operation-log.ts`、`url-safety.ts`、`browser-actions.ts`、`domain-auth.ts` |
 | `src/security/` | 命令白名单 + 搜索脱敏（v1.0 S4，§10.2/§10.3） | `command-whitelist.ts`、`query-sanitize.ts` |
 | `src/postprocess/` | 输出后处理（文化回复等） | `cultural-reply.ts` |
@@ -97,6 +98,8 @@ CLI (src/main.ts)  UI (ui/prototype)  桌面壳 (desktop)
 | `GET/POST /api/skills` | Skill 元数据与启用/禁用同步 |
 | `GET/POST /api/usage/*` | Token 用量与预算 |
 | `GET /api/memory`、`POST /api/memory/forget` | 记忆浏览与删除 |
+| `GET /api/notifications` | 通知读 API（最新在前 + 优先级 + 摘要，§11.3，E320） |
+| `GET /api/decisions`、`POST /api/decisions/:id` | 人类裁决：待裁决队列读 + 批准/否决回填；批准带 resume 的挂起写动作时自动恢复执行并回执行回执（§2.3 记录侧 append 事件，E323/E324） |
 | `GET/POST /api/security` | 安全中心配置 |
 | `POST /api/terminal/exec` | 终端命令执行通道（Shell 权限门控） |
 | `GET /api/files` | 产物文件扫描（沙箱根目录白名单） |

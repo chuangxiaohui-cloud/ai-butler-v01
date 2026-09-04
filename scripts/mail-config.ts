@@ -42,11 +42,13 @@ if (args.includes('--help') || args.includes('-h')) {
   npm run mail:config -- --imap-host <收件服务器> --imap-port <993> --imap-secure <0|1>   （可选：覆盖收件服务器）
   npm run mail:config -- --set-active <账号名>                       （仅切换当前生效账号）
   npm run mail:config -- --list                                      （列出已配置账号）
+  npm run mail:config -- --auth xoauth2 --client-id <id> --tenant consumers --access-token <token> [--refresh-token <token>]   （E321：Outlook 等 OAuth2 账号，无需 --pass）
 说明：
   - secure=1 走 TLS 直连（如 QQ/163 的 465），secure=0 走明文/STARTTLS（587）。
   - 建议使用邮箱服务商提供的“授权码”，而不是登录密码。
   - 凭据保存在 data/mail/mail-credentials.json（git 忽略），发送前会先展示草稿预览。
-  - E302 多账号：--account 指定账号名（缺省沿用当前 active），保存后即为 active。`);
+  - E302 多账号：--account 指定账号名（缺省沿用当前 active），保存后即为 active。
+  - E321：Outlook.com/365 已禁用密码认证，用 --auth xoauth2 配 OAuth2（--pass 可省略，access token 只存 data/ 不打印）。`);
   process.exit(0);
 }
 
@@ -85,12 +87,17 @@ const accountKey = argValue('--account');
 const imapHost = argValue('--imap-host');
 const imapPortRaw = argValue('--imap-port');
 const imapSecureRaw = argValue('--imap-secure');
+const authRaw = argValue('--auth');
+const clientId = argValue('--client-id');
+const tenant = argValue('--tenant');
+const accessToken = argValue('--access-token');
+const refreshToken = argValue('--refresh-token');
 
 const missing: string[] = [];
 if (!host) missing.push('--host');
 if (!portRaw) missing.push('--port');
 if (!user) missing.push('--user');
-if (!pass) missing.push('--pass');
+if (authRaw !== 'xoauth2' && !pass) missing.push('--pass');
 if (!from) missing.push('--from');
 if (missing.length > 0) {
   console.error(`缺少参数：${missing.join('、')}（用 --help 查看用法）`);
@@ -103,8 +110,13 @@ const creds = {
   port: Number(portRaw),
   secure,
   user: user as string,
-  pass: pass as string,
+  pass: authRaw === 'xoauth2' ? '' : (pass as string),
   from: from as string,
+  ...(authRaw ? { auth: authRaw === 'xoauth2' ? 'xoauth2' : 'password' } : {}),
+  ...(clientId ? { clientId } : {}),
+  ...(tenant ? { tenant } : {}),
+  ...(accessToken ? { accessToken } : {}),
+  ...(refreshToken ? { refreshToken } : {}),
   ...(imapHost ? { imapHost } : {}),
   ...(imapPortRaw ? { imapPort: Number(imapPortRaw) } : {}),
   ...(imapSecureRaw !== undefined ? { imapSecure: imapSecureRaw === '1' || imapSecureRaw === 'true' } : {}),
@@ -115,6 +127,7 @@ try {
   const key = loadCredentialsStore(target)?.active ?? 'default';
   console.log(`已保存 SMTP 凭据：${target}`);
   console.log(`账号：${key}（active）· 发件人：${creds.from} · 服务器：${creds.host}:${creds.port}${creds.secure ? '（TLS）' : '（明文/STARTTLS）'}`);
+  console.log(`认证：${creds.auth ?? 'password'}${creds.auth === 'xoauth2' ? '（OAuth2，无需授权码）' : '（授权码/密码）'}`);
   console.log('注意：密码/授权码不会打印。现在可以对我说“查收件箱”收信，或“发送邮件给 xxx@example.com，主题…，正文…”来发信。');
   void root;
 } catch (err) {

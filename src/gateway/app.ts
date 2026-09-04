@@ -23,11 +23,14 @@ import { listSkillMetadata } from '../skills/registry.js';
 import { writeDisabledSkills } from '../config/skills-config.js';
 import { readUsageBudget, writeUsageBudget } from '../config/usage-budget.js';
 import { readSecurityConfig, writeSecurityConfig } from '../config/security-config.js';
+import { DecisionLog, type AdjudicateResult, type DecisionLogEntry } from '../escalation/decision-log.js';
 import { ExperienceManager } from '../memory/experience.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { SessionContextStore } from '../memory/session-context.js';
 import { handleSlashCommand } from '../slash/slash-commands.js';
 import { aggregateUsage, readUsage } from '../usage/usage-store.js';
+import { NotificationStore } from '../notifications/notification-store.js';
+import { classifyEventPriority, renderNotificationDigest } from '../skills/market/notification-hub.js';
 import { listProjectFiles } from './files.js';
 import { ConcurrencyGate, RateLimiter } from './rate-limit.js';
 import { classifyCommand, runCommand } from './terminal.js';
@@ -48,6 +51,10 @@ export interface GatewayOptions {
   mailCredentialsPath?: string;
   calendarDbPath?: string;
   uiDistPath?: string;
+  /** E320：通知库注入（测试隔离；缺省共享真实 data/notifications.jsonl） */
+  notificationStore?: NotificationStore;
+  /** E323：人类裁决记录库注入（测试隔离；缺省共享真实 data/decision-log.jsonl） */
+  decisionLog?: DecisionLog;
 }
 
 interface AskBody {
@@ -244,6 +251,119 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       stats: aggregateUsage(readUsage()),
       budget: readUsageBudget(),
     });
+  });
+
+  // E320：通知区只读 API（§11.3 秘书日报 / §4.1 右栏通知区；优先级复用 hub 纯函数单一判定口径）
+  // E331：支持 page/pageSize 分页并回 total；摘要口径固定最近 200 条，与当前分页解耦。
+  app.get('/api/notifications', (req, res) => {
+    const pageRaw = Number(req.query.page ?? 1);
+    const page = Number.isFinite(pageRaw) ? Math.max(1, Math.floor(pageRaw)) : 1;
+    const sizeRaw = Number(req.query.pageSize ?? 20);
+    const pageSize = Number.isFinite(sizeRaw) ? Math.min(Math.max(1, Math.floor(sizeRaw)), 200) : 20;
+    const store = opts.notificationStore ?? new NotificationStore();
+    try {
+      const all = store.all();
+      const total = all.length;
+      const newestFirst = [...all]
+        .reverse()
+        .map((entry) => ({ ...entry, priority: classifyEventPriority(entry) }));
+      const start = (page - 1) * pageSize;
+      const entries = newestFirst.slice(start, start + pageSize);
+      res.json({ entries, total, digest: renderNotificationDigest(all.slice(-200)) });
+    } finally {
+      store.close();
+    }
+  });
+
+  // E323：人类裁决读 API（§2.3 记录侧）——待裁决队列只读展示，保持 append 顺序（最早在前）
+  app.get('/api/decisions', (_req, res) => {
+    const store = opts.decisionLog ?? new DecisionLog();
+    try {
+      res.json({ open: store.openDecisions() });
+    } finally {
+      store.close();
+    }
+  });
+
+  // E323：人类批准/否决回填（§2.3 记录侧）——写端点挂网关鉴权；append 裁决事件，不改写原 pending 行
+  // E324 第二刀：批准带 resume 载荷（confirm 真阻断挂起的写动作）的 pending 后，本端点直接恢复执行
+  // （复用同一 pipeline + confirmResume 标记抑制二次拦截），响应带回执行回执 executed 供 UI 展示。
+  app.post('/api/decisions/:id', requireGatewayAuth, async (req, res) => {
+    const rawId = req.params.id;
+    const id = typeof rawId === 'string' ? rawId : '';
+    const body = (req.body ?? {}) as { decision?: unknown; note?: unknown };
+    const decision = body.decision;
+    if (decision !== 'approve' && decision !== 'reject') {
+      res.status(400).json({ error: 'decision 必须为 approve 或 reject' });
+      return;
+    }
+    const note = typeof body.note === 'string' && body.note.trim() ? body.note.trim() : undefined;
+    const store = opts.decisionLog ?? new DecisionLog();
+    let result: AdjudicateResult;
+    try {
+      result = store.adjudicate(id, decision, { note });
+    } catch {
+      try {
+        store.close();
+      } catch {
+        // 记录库句柄关闭失败可忽略
+      }
+      res.status(500).json({ error: '裁决记录写入失败，请稍后重试' });
+      return;
+    }
+    try {
+      store.close();
+    } catch {
+      // 记录库句柄关闭失败可忽略，不影响裁决结果返回
+    }
+    if (!result.ok) {
+      res.status(result.reason === 'not_found' ? 404 : 409).json({
+        error: result.reason === 'not_found' ? '未找到待裁决记录' : '该裁决已处理',
+      });
+      return;
+    }
+    const payload: {
+      ok: true;
+      entry: DecisionLogEntry;
+      resume?: { query: string; executor: string; intent?: string };
+      executed?: {
+        answer?: string;
+        confidence?: number;
+        gate_triggered?: string;
+        elapsed_ms?: number;
+        mode?: string;
+        submode?: string;
+        error?: string;
+      };
+    } = { ok: true, entry: result.entry };
+    if (result.resume) {
+      payload.resume = result.resume;
+      if (decision === 'approve') {
+        try {
+          const run = await pipeline(result.resume.query, opts.deps ?? {}, {
+            userId: opts.defaultUserId ?? 'ui-user',
+            conversationId: result.entry.conversationId,
+            confirmResume: true,
+            confirmResumeExecutor: result.resume.executor,
+            confirmResumeIntent: result.resume.intent,
+            watchdog: true,
+            onProgress: (stage) => publishArtifactEvent('progress', { stage, at: Date.now() }),
+            onArtifact: (event) => publishArtifactEvent('artifact', { ...event, at: Date.now() }),
+          });
+          payload.executed = {
+            answer: run.answer,
+            confidence: run.confidence,
+            gate_triggered: run.gate_triggered,
+            elapsed_ms: run.elapsed_ms,
+            mode: run.mode,
+            submode: run.submode,
+          };
+        } catch {
+          payload.executed = { error: '批准已记录，但自动恢复执行失败，请稍后在对话中重试。' };
+        }
+      }
+    }
+    res.json(payload);
   });
 
   app.get('/api/memory', (_req, res) => {

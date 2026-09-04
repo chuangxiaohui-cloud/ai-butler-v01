@@ -33,6 +33,20 @@ export function parseLeadMs(query: string): number {
   return m[2] === '小时' ? n * 3_600_000 : n * 60_000;
 }
 
+/**
+ * 日程标题清洗：摘除请求动词/语气残留（E325）、第一人称与相对时间词（E327）、
+ * 「提前 N 分钟提醒」从句并清尾部标点（E329）；返回干净事件名，空则「新日程」。
+ */
+export function cleanCalendarTitle(query: string): string {
+  return (
+    query
+      .replace(/帮我|安排一下|我们|我的|安排|预约|订|会议|日程|今天|明天|后天|家里|的|我/g, '')
+      .replace(/[，,]\s*提前[^，。；]*提醒/g, '')
+      .replace(/[，,。、；：:\s]+$/g, '')
+      .trim() || '新日程'
+  );
+}
+
 /** ICS 文本转义：反斜杠/换行/逗号/分号（RFC 5545 文本值） */
 function escapeIcsText(text: string): string {
   return text
@@ -339,8 +353,8 @@ export function createCalendarSkill(
             followUpAction: '请补充具体时间，例如“明天上午十点”。',
           };
         }
-        const title =
-          input.query.replace(/帮我|安排|预约|订|会议|日程|的/g, '').trim() || '新日程';
+        // 清洗标题：请求动词/人称/相对时间/提醒从句一律剥离（E325/E327/E329），避免残留进事件名
+        const title = cleanCalendarTitle(input.query);
         const now = Date.now();
         const parsed = parseTimeExpression(timeExpression);
         const database = ensureDb();
@@ -380,7 +394,7 @@ export function createCalendarSkill(
         }
         const repeatLabel = repeat === 'daily' ? '每天' : repeat === 'weekly' ? '每周' : '';
         return {
-          result: `已创建日程：${title}（${timeExpression}，${parsed.startAt}${repeat ? `，${repeatLabel}重复` : ''}）；${reminderNote}`,
+          result: `已为你创建日程：${title}（${timeExpression}，${parsed.startAt}${repeat ? `，${repeatLabel}重复` : ''}）；${reminderNote}`,
           confidence: 0.8,
           followUpAction: '需要调整提前量、改时间、取消日程，或生成会议邀请邮件，随时说。',
         };

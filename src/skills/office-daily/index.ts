@@ -23,11 +23,11 @@ import { parseTimeExpression, parseRepeatQuery } from '../../agent/time-expressi
 import { ReminderStore } from '../../reminder/reminder-store.js';
 import { guardSkillOutputPath } from '../../security/sandbox.js';
 import {
-  loadCredentials,
   loadCredentialsStore,
   setActiveAccount,
   type CredentialsStore,
 } from '../../mail/credentials.js';
+import { loadXoauthCredentials } from '../../mail/oauth.js';
 import {
   fetchEmailAttachments,
   fetchEmailText,
@@ -1292,7 +1292,7 @@ export function createOfficeDailySkill(opts?: {
               confidence: 0.2,
             };
           }
-          const creds = loadCredentials(join(mailDir, 'mail-credentials.json'));
+          const creds = await loadXoauthCredentials(join(mailDir, 'mail-credentials.json'));
           if (!creds) {
             return {
               result: {
@@ -1357,7 +1357,7 @@ export function createOfficeDailySkill(opts?: {
               confidence: 0.5,
             };
           }
-          const creds = loadCredentials(join(mailDir, 'mail-credentials.json'));
+          const creds = await loadXoauthCredentials(join(mailDir, 'mail-credentials.json'));
           if (!creds) {
             return {
               result: {
@@ -1398,7 +1398,7 @@ export function createOfficeDailySkill(opts?: {
         const isReceiveIntent = /收件箱|收邮件|查邮件|未读邮件|读第\s*\d+\s*封/.test(input.query);
         if (isReceiveIntent) {
           const readSeq = extractReadSeq(input.query);
-          const creds = loadCredentials(join(mailDir, 'mail-credentials.json'));
+          const creds = await loadXoauthCredentials(join(mailDir, 'mail-credentials.json'));
           if (!creds) {
             return {
               result: {
@@ -1490,7 +1490,8 @@ export function createOfficeDailySkill(opts?: {
               confidence: 0.4,
             };
           }
-          const creds = loadCredentials(join(mailDir, 'mail-credentials.json'));
+          // E322：发信口与 IMAP 读信口一致——xoauth2 账号先经 loadXoauthCredentials 自动续期
+          const creds = await loadXoauthCredentials(join(mailDir, 'mail-credentials.json'));
           if (!creds) {
             return {
               result: {

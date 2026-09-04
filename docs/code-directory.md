@@ -50,20 +50,21 @@
 | `src/memory/` | `experience.ts`、`distill.ts`、`confidence-decay.ts` | 经验、蒸馏、衰减 | ✅ |
 | `src/memory/` | `user-context-store.ts`、`user-context.ts` | 用户画像、长期事实、会话摘要 | ✅ |
 | `src/memory/` | `session-context.ts` | 会话上下文持久化与逐字窗口压缩（§8.3，E193） | ✅ |
-| `src/slash/` | `slash-commands.ts` | 斜杠命令层：`/compact` 手动压缩 + `/context` 会话状态（§8.3，E204） | ✅ |
+| `src/slash/` | `slash-commands.ts` | 斜杠命令层：`/compact` 手动压缩 + `/context` 会话状态 + `/cost` AI 运营成本报告（§8.3 E204 / §14 E319） | ✅ |
 | `src/reminder/` | `reminder-store.ts` | 主动提醒 SQLite 存储与到期轮询 | ✅ |
+| `src/mail/` | `credentials.ts`、`smtp.ts`、`imap.ts`、`oauth.ts`、`*.test.ts` | 邮箱通道：凭据多账号容器与认证模型（password/xoauth2，E302）、IMAP 只读收件/读信/搜信/附件（E293-E303）、SMTP 发信、Outlook OAuth2 设备码授权与自动续期（XOAUTH2 收信+发信，E321/E322，`npm run mail:config` / `mail:oauth`） | ✅ |
 | `src/budget/` | `budget-store.ts` | 预算账本 SQLite（append-only allocate/spend 事件，余额=拨款-支出，§2.1/§5，E308，`data/budget.db`） | ✅ |
-| `src/escalation/` | `decision-log.ts`、`escalation.ts`、`escalation-state.ts` | 困难升级与人类裁决记录（§4.3.1 [P-47]/[P-48]/[P-16] + §2.3 裁决记录，E309，`data/decision-log.jsonl` + `data/escalation-state.jsonl`） | ✅ |
+| `src/escalation/` | `decision-log.ts`、`escalation.ts`、`escalation-state.ts`、`confirm-gate.ts` | 困难升级与人类裁决记录（§4.3.1 [P-47]/[P-48]/[P-16] + §2.3 裁决记录与批准/否决回填，E309/E323，`data/decision-log.jsonl` + `data/escalation-state.jsonl`）+ confirm 真阻断（写类执行器清单/批准识别/等待确认文案 + 裁决批准自动恢复执行回执，E324；复述人称切换 E326） | ✅ |
 | `src/gateway/` | `app.ts`、`server.ts` | 单一 TurnLoop Express gateway | ✅ |
 | `src/gateway/` | `rate-limit.ts` | 限速桶（P16 [P-114]）+ 并发闸门（[P-115]） | ✅ |
-| `src/gateway/` | `attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts` | 附件、终端、文件、SSE 事件 | ✅ |
+| `src/gateway/` | `attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts`、`project-watcher.ts` | 附件、终端、文件、SSE 事件、projects/ 目录变更监听（E328） | ✅ |
 | `src/browser/` | `session.ts`、`dom-observe.ts`、`operations.ts`、`driver.ts` | 浏览器会话、CDP 持久化、页面抓取；浏览器操作（E252 §4.1.5：AX 树观察 [P-126] 有界 + DSL 交互层 [P-124]/[P-125] + 真实 CDP 驱动） | ✅ |
 | `src/config/` | `params.ts`、`env.ts` | PARAM 登记与环境解析 | ✅ |
 | `src/config/` | `model-catalog.ts`、`provider-order.ts` | 模型目录与 provider 顺序 | ✅ |
 | `src/config/` | `security-config.ts`、`skills-config.ts`、`usage-budget.ts`、`model-pricing.ts` | 安全、Skill、Token 预算持久化、AI 运营分档单价表（缓存命中/未命中 × 高峰/空闲，§COST C-3） | ✅ |
 | `src/trajectory/` | `trajectory-log.ts` | append-only 轨迹日志 | ✅ |
 | `src/log/` | `jsonl.ts` | JSONL 追加/轮转（.1 归档）/缓存读（P15） | ✅ |
-| `src/usage/` | `usage-store.ts`、`cost.ts` | Token 计量与聚合（含缓存拆分）、AI 运营成本估算/阈值/硬停门禁/报告（§COST v1） | ✅ |
+| `src/usage/` | `usage-store.ts`、`cost.ts`、`ai-ops-notify.ts` | Token 计量与聚合（含缓存拆分）、AI 运营成本估算/阈值/硬停门禁/报告（§COST v1）+ AI 运营日报/阈值事件写入通知枢纽（E318） | ✅ |
 | `src/security/` | `sandbox.ts`、`operation-log.ts`、`url-safety.ts`、`browser-actions.ts`、`domain-auth.ts` | 文件沙箱白名单、审计、Agent 操作日志与回滚、浏览器抓取 URL 安全（S1）；浏览器动作白名单/高风险标记与域名授权持久化（E252，§10.2/§4.1.5） | ✅ |
 | `src/postprocess/` | `cultural-reply.ts` | 文化梗回复后处理 | ✅ |
 | `src/wiki/` | `index.ts` | 冷启动知识种子 | ✅ |
@@ -73,7 +74,7 @@
 | 路径 | 职责 | 状态 |
 |------|------|------|
 | `ui/prototype/` | 独立 Vite + React 三栏 UI 原型 | ✅ |
-| `ui/prototype/src/App.tsx` | 三栏、设置、产物栏、终端、证据链交互 | ✅ |
+| `ui/prototype/src/App.tsx` | 三栏、设置、产物栏、终端、证据链交互、右栏「通知」页（E320）与「裁决」页（E323）、对话内确认卡（挂起写操作气泡内执行/取消，E324）、执行回执第二人称 + 「老板」称谓（E327） | ✅ |
 | `ui/prototype/src/styles.css` | 深色工作台样式 | ✅ |
 | `desktop/main.mjs` | Electron 主进程：拉起 gateway、加载 UI、回收子进程 | ✅ |
 | `desktop/package.json` | electron-builder 打包配置 | ✅ |
@@ -97,6 +98,7 @@
 | scripts/datasheet.ts | 官方 datasheet 下载与校验 | ✅ |
 | scripts/tavily-smoke.ts | Tavily 触发冒烟 + 配额监控 + 远端用量对比（E195/E228） | ✅ |
 | scripts/ai-ops-cost.ts | AI 运营成本报告 CLI（`npm run cost:today`，§COST v1） | ✅ |
+| scripts/ai-ops-report.ts | AI 运营日报写入通知库 CLI（`npm run ai-ops:report`，§COST C-7 §11.3，E318） | ✅ |
 | scripts/deep-report-bench.ts | 深度报告 [P-13] 复测工具（dry-run/LLM 模式，E229） | ✅ |
 | `scripts/migrate-to-memorycore.ts` | 历史记忆迁移 | ✅ |
 | `scripts/distill-worker.ts` | L1 蒸馏 worker | ✅ |

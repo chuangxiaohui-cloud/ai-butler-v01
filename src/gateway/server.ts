@@ -21,7 +21,9 @@ import { createGithubApiCache } from '../skills/github-reader/cache.js';
 import { TrajectoryLog } from '../trajectory/trajectory-log.js';
 import { createGatewayApp } from './app.js';
 import { publishArtifactEvent } from './artifact-bus.js';
+import { startProjectWatcher } from './project-watcher.js';
 import { ReminderStore } from '../reminder/reminder-store.js';
+import { emitAiOpsDailyReport } from '../usage/ai-ops-notify.js';
 import { bochaBalanceWarning, describeBochaBalance, queryBochaBalance } from '../search/balance.js';
 import { closeMcpAgents, createMcpAgents } from '../mcp/config.js';
 import { SubAgentDispatcher } from '../mcp/dispatcher.js';
@@ -82,6 +84,7 @@ const app = createGatewayApp({
 
 const server = createServer(app);
 const reminderStore = new ReminderStore();
+let projectWatcher: ReturnType<typeof startProjectWatcher> | null = null;
 const reminderTimer = setInterval(() => {
   try {
     for (const reminder of reminderStore.dueReminders()) {
@@ -96,9 +99,42 @@ const reminderTimer = setInterval(() => {
   }
 }, 30_000);
 reminderTimer.unref();
+let aiOpsReportTimer: NodeJS.Timeout | null = null;
+
+/** E318：每日 22:00 生成 AI 运营日报（§COST C-7 / §11.3）；启动时已过 22:00 先补发一次（marker 去重） */
+function scheduleAiOpsReport(): void {
+  const target = new Date();
+  target.setHours(22, 0, 0, 0);
+  let delayMs = target.getTime() - Date.now();
+  if (delayMs <= 0) {
+    try {
+      emitAiOpsDailyReport();
+    } catch {
+      // 通知旁路：失败不阻塞 gateway 启动
+    }
+    target.setDate(target.getDate() + 1);
+    delayMs = target.getTime() - Date.now();
+  }
+  aiOpsReportTimer = setTimeout(() => {
+    try {
+      emitAiOpsDailyReport();
+    } catch {
+      // 通知旁路：失败不阻塞 gateway
+    }
+    scheduleAiOpsReport();
+  }, delayMs);
+  aiOpsReportTimer.unref();
+}
+
 server.listen(PORT, HOST, () => {
   console.log(`TurnLoop gateway: http://${HOST}:${PORT}`);
   console.log('POST /api/ask | GET /api/health | GET /api/model-providers');
+  scheduleAiOpsReport();
+  // E328：projects/ 目录变更监听 → files_changed SSE（UI 文件面板自动刷新外部改动）
+  projectWatcher = startProjectWatcher({
+    workspaceRoot: process.cwd(),
+    onChange: () => publishArtifactEvent('files_changed', { at: Date.now(), source: 'project_watch' }),
+  });
   // §D.3 启动时资源包健康检查：余额告警写入日志，不阻塞启动
   queryBochaBalance()
     .then((balance) => {
@@ -111,7 +147,9 @@ server.listen(PORT, HOST, () => {
 });
 
 function shutdown(): void {
+  if (aiOpsReportTimer) clearTimeout(aiOpsReportTimer);
   clearInterval(reminderTimer);
+  projectWatcher?.stop();
   reminderStore.close();
   server.close(() => {
     experienceManager.close();

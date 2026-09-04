@@ -31,6 +31,11 @@ import { extractPartNumber, getHostname } from './authority.js';
 import { fuseResults } from './fusion.js';
 import { PARAMS } from '../config/params.js';
 import { DecisionLog } from '../escalation/decision-log.js';
+import {
+  buildConfirmHoldAnswer,
+  isConfirmWriteExecutor,
+  parseApprovalReply,
+} from '../escalation/confirm-gate.js';
 import { EscalationState } from '../escalation/escalation-state.js';
 import { NotificationStore } from '../notifications/notification-store.js';
 import {
@@ -210,6 +215,11 @@ export interface PipelineOptions {
   modelSelection?: ModelSelection;
   /** E282：运行时看门狗开关（CLI/gateway 生产接线开启，测试保持关闭避免读真实轨迹） */
   watchdog?: boolean;
+  /** E324：confirm 恢复执行标记（内部：聊天批准后递归重放原请求时抑制二次拦截） */
+  confirmResume?: boolean;
+  /** E330：confirm 恢复执行钉死原裁决时的执行器/意图（内部，防恢复路由被市场 Skill 触发词抢走） */
+  confirmResumeExecutor?: string;
+  confirmResumeIntent?: string;
   /** 外部取消信号（v1.0 S1 深度报告等长任务透传） */
   signal?: AbortSignal;
   onProgress?: (stage: string) => void;
@@ -509,6 +519,53 @@ export async function pipeline(
   const escalationLog = deps.escalation?.decisionLog ?? defaultDecisionLog();
   const escalationState = deps.escalation?.state ?? defaultEscalationState();
   const notificationLog = deps.notificationStore ?? defaultNotificationStore();
+  // E324：confirm 真阻断需要完整 DecisionLog（pendingForConversation/adjudicate）；
+  // 注入对象仅实现 record 时回落共享真实库，避免把测试写入真实裁决记录
+  const confirmDecisionLog =
+    deps.escalation?.decisionLog instanceof DecisionLog
+      ? deps.escalation.decisionLog
+      : defaultDecisionLog();
+  // E324：confirm 真阻断预检——同一会话存在带 resume 的 open pending 时，整句批准/取消
+  if (conversationId && !opts.confirmResume) {
+    const reply = parseApprovalReply(prepared.cleanQuery);
+    if (reply) {
+      const pendingAction = confirmDecisionLog.pendingForConversation(conversationId);
+      if (pendingAction) {
+        confirmDecisionLog.adjudicate(pendingAction.id, reply === 'approve' ? 'approve' : 'reject', {
+          note: 'chat_reply',
+        });
+        if (reply === 'approve' && pendingAction.resume?.query) {
+          // 批准：带 confirmResume 标记递归重放原请求，走同一条 pipeline 恢复执行；
+          // E330：同时钉死原裁决时的 executor/intent，防恢复路由被市场 Skill 触发词抢走
+          return await pipeline(pendingAction.resume.query, deps, {
+            ...opts,
+            confirmResume: true,
+            confirmResumeExecutor: pendingAction.resume.executor,
+            confirmResumeIntent: pendingAction.resume.intent,
+          });
+        }
+        const answer = '已取消该操作，不会执行。';
+        await recordSessionTurns(query, answer);
+        recordTrajectory({
+          type: 'answer',
+          answer: {
+            answerSnippet: answer.slice(0, 300),
+            confidence: 0.95,
+            gateTriggered: 'none',
+            elapsedMs: Date.now() - start,
+          },
+        });
+        return {
+          query,
+          answer,
+          confidence: 0.95,
+          evidence: [],
+          gate_triggered: 'none',
+          elapsed_ms: Date.now() - start,
+        };
+      }
+    }
+  }
   if (conversationId) {
     if (
       sessionCtx &&
@@ -649,7 +706,7 @@ export async function pipeline(
       elapsed_ms: Date.now() - start,
     };
   }
-  const routeSelected =
+  let routeSelected =
     route.decision.type === 'direct' || route.decision.type === 'confirm'
       ? route.decision.selected
       : null;
@@ -797,9 +854,81 @@ export async function pipeline(
       mode: uiRoute.mode,
     };
   }
+  // E324：confirm 真阻断第一刀——confirm 路由 + 写类执行器：挂起等批准，不直接执行。
+  // 知识问答/搜索/专用意图已在前序短路；confirmResume 标记的恢复执行不二次拦截。
+  if (
+    !opts.confirmResume &&
+    conversationId &&
+    route.decision.type === 'confirm' &&
+    isConfirmWriteExecutor(routeSelected.executor)
+  ) {
+    const existing = conversationId ? confirmDecisionLog.pendingForConversation(conversationId) : null;
+    if (existing) {
+      const answer = '还有一步待批准的操作没处理：请先在上一条里回复「执行」或「取消」，或到右侧「裁决」页处理。';
+      return {
+        query,
+        answer,
+        confidence: route.confidence,
+        evidence: [],
+        gate_triggered: 'none',
+        elapsed_ms: Date.now() - start,
+        mode: uiRoute.mode,
+        submode: uiRoute.submode,
+      };
+    }
+    const holdAnswer = buildConfirmHoldAnswer(
+      routeSelected.executor ?? '',
+      prepared.originalQuery,
+    );
+    try {
+      confirmDecisionLog.record({
+        trigger: 'human_arbitration',
+        question: holdAnswer,
+        options: ['执行', '取消'],
+        decision: 'pending',
+        resume: {
+          query: prepared.originalQuery || prepared.cleanQuery,
+          executor: routeSelected.executor ?? '',
+          intent: routeSelected.intent,
+        },
+        conversationId,
+        confidence: route.confidence,
+      });
+      safeNotify(notificationLog, {
+        role: '老板',
+        kind: 'risk_decision',
+        title: '待你裁决',
+        detail: holdAnswer,
+      });
+    } catch {
+      // 裁决记录失败不阻塞挂起回复
+    }
+    return {
+      query,
+      answer: holdAnswer,
+      confidence: route.confidence,
+      evidence: [],
+      gate_triggered: 'none',
+      elapsed_ms: Date.now() - start,
+      mode: uiRoute.mode,
+      submode: uiRoute.submode,
+    };
+  }
+  // E330：confirm 恢复执行钉死原裁决动作——强制回到被批准时的 executor/intent 且 searchNeed=false，
+  // 避免恢复路径重新路由时被市场 Skill 触发词（如裸「提醒」）抢走而执行到别的 Skill。
+  if (opts.confirmResume && opts.confirmResumeExecutor) {
+    routeSelected.executor = opts.confirmResumeExecutor;
+    if (opts.confirmResumeIntent) routeSelected.intent = opts.confirmResumeIntent;
+    routeSelected.searchNeed = false;
+  }
   // E243 收口：市场 Skill 自然语言路由（命中已安装 Skill 触发词 → 直连执行，绕开搜索）
   // 安全/专用意图已在前面短路返回；deep_report 走深度报告专用链路，不拦截。
-  if (deps.marketSkillRunner && routeSelected.intent !== 'deep_report' && routeSelected.intent !== 'github_analysis') {
+  if (
+    !opts.confirmResume && // E330：恢复执行按原 executor 分发，跳过市场块
+    deps.marketSkillRunner &&
+    routeSelected.intent !== 'deep_report' &&
+    routeSelected.intent !== 'github_analysis'
+  ) {
     // E301：路由已直连本地 Skill（如 office-daily 搜信）时，2 字泛触发词（周报/日报/模板等）不抢专属意图；
     // ≥3 字定向触发词（周报模板/生成周报/会议纪要等）仍视为明确意图，可覆盖本地路由。
     const minTriggerLength = route.decision.type === 'direct' ? 3 : 2;

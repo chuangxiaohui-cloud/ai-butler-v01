@@ -54,7 +54,13 @@ export function parseReminderQuery(text: string): Omit<ReminderResult, 'ok' | 'p
   const message =
     trimmed
       .replace(timeExpression, '')
-      .replace(/帮我|请|提醒我|提醒|一下|设个|设置|每天|每日|每周|每星期/g, '')
+      // E330：去掉「提前N分钟提醒」从句（提前量已由 parseLeadMs 单独解析），并清掉
+      // 「帮我/安排/今天/明天/后天」等口语前缀词，避免残句（如“安排的周会”）混进提醒内容。
+      .replace(/[，,]\s*提前[^，。；]*提醒/g, '')
+      .replace(/帮我|请|提醒我|提醒|一下|设个|设置|安排|今天|明天|后天|每天|每日|每周|每星期/g, '')
+      .replace(/^[，,。.、\s]*/, '')
+      .replace(/^的+/, '')
+      .replace(/[，,。、；;：:\s]+$/g, '')
       .trim()
       .slice(0, 80) || '提醒';
   return { action: 'add', message, remindAt, repeat, leadMs: parseLeadMs(trimmed) };

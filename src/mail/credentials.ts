@@ -7,6 +7,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
+/** E321：邮箱认证方式——password（授权码/应用专用密码，默认）或 xoauth2（OAuth2 Bearer，Outlook 已禁用基本认证） */
+export type MailAuth = 'password' | 'xoauth2';
+
 export interface SmtpCredentials {
   host: string;
   port: number;
@@ -18,6 +21,16 @@ export interface SmtpCredentials {
   imapHost?: string;
   imapPort?: number;
   imapSecure?: boolean;
+  /** E321：认证方式；缺省 password（兼容既有授权码账号）。Outlook.com/365 已禁用基本认证，须 xoauth2 */
+  auth?: MailAuth;
+  /** E321：xoauth2 专属——OAuth2 应用 client id（公共客户端，授权/续期用） */
+  clientId?: string;
+  /** E321：xoauth2 专属——租户：'consumers'（个人微软账户）/ 'common'；Outlook.com 个人邮箱用 consumers */
+  tenant?: string;
+  /** E321：xoauth2 专属——refresh token（授权后落盘，供自动续期；git 忽略，勿写日志） */
+  refreshToken?: string;
+  /** E321：xoauth2 专属——access token（XOAUTH2 直接使用；过期后需 refreshToken 换取新 token） */
+  accessToken?: string;
 }
 
 /**
@@ -46,8 +59,18 @@ export function validateCredentials(
   if (typeof c.host !== 'string' || !c.host.trim()) missing.push('host');
   const port = Number(c.port);
   if (!Number.isInteger(port) || port <= 0 || port > 65535) missing.push('port');
+  if (c.auth !== undefined && c.auth !== 'password' && c.auth !== 'xoauth2') missing.push('auth');
   if (typeof c.user !== 'string' || !c.user.trim()) missing.push('user');
-  if (typeof c.pass !== 'string' || !c.pass.trim()) missing.push('pass');
+  const auth = c.auth === 'xoauth2' ? 'xoauth2' : 'password';
+  if (auth === 'xoauth2') {
+    // xoauth2 账号不要求密码，直接使用 access token；refreshToken/clientId/tenant 为可选续期信息
+    if (typeof c.accessToken !== 'string' || !c.accessToken.trim()) missing.push('accessToken');
+    if (c.clientId !== undefined && (typeof c.clientId !== 'string' || !c.clientId.trim())) missing.push('clientId');
+    if (c.tenant !== undefined && (typeof c.tenant !== 'string' || !c.tenant.trim())) missing.push('tenant');
+    if (c.refreshToken !== undefined && (typeof c.refreshToken !== 'string' || !c.refreshToken.trim())) missing.push('refreshToken');
+  } else if (typeof c.pass !== 'string' || !c.pass.trim()) {
+    missing.push('pass');
+  }
   if (typeof c.from !== 'string' || !/^[^@\s]+@[^@\s]+$/.test(c.from.trim())) missing.push('from');
   if (c.imapHost !== undefined && (typeof c.imapHost !== 'string' || !c.imapHost.trim())) missing.push('imapHost');
   if (c.imapPort !== undefined) {
@@ -67,6 +90,11 @@ function normalizeCredentials(c: Record<string, unknown>): SmtpCredentials {
     user: String(c.user).trim(),
     pass: String(c.pass),
     from: String(c.from).trim(),
+    ...(c.auth === 'xoauth2' || c.auth === 'password' ? { auth: c.auth } : {}),
+    ...(c.clientId !== undefined ? { clientId: String(c.clientId).trim() } : {}),
+    ...(c.tenant !== undefined ? { tenant: String(c.tenant).trim() } : {}),
+    ...(c.refreshToken !== undefined ? { refreshToken: String(c.refreshToken) } : {}),
+    ...(c.accessToken !== undefined ? { accessToken: String(c.accessToken) } : {}),
     ...(c.imapHost !== undefined ? { imapHost: String(c.imapHost).trim() } : {}),
     ...(c.imapPort !== undefined ? { imapPort: Number(c.imapPort) } : {}),
     ...(c.imapSecure !== undefined ? { imapSecure: Boolean(c.imapSecure) } : {}),

@@ -18,8 +18,11 @@ export interface HubEvent {
 
 export type HubPriority = 'urgent' | 'normal' | 'low';
 
-const URGENT_RE = /风险|裁决|审批|阻塞|卡住|故障|紧急|escalat|blocking|risk/i;
-const NORMAL_RE = /完成|prd|选型|建议|评审|notice|approve|review|low_confidence|低置信|user_story|用户故事|contract|接口契约/i;
+// E318：预算阈值事件（§COST C-4）——「预算用尽/即将耗尽」提升为紧急；预算提醒/运营日报归普通。
+const URGENT_RE =
+  /风险|裁决|审批|阻塞|卡住|故障|紧急|escalat|blocking|risk|预算.{0,2}用尽|预算即将耗尽/i;
+const NORMAL_RE =
+  /完成|prd|选型|建议|评审|notice|approve|review|low_confidence|低置信|user_story|用户故事|contract|接口契约|预算|日报/i;
 
 /** 按事件内容分优先级：紧急（裁决/阻塞）→ 普通（完成/建议）→ 低（日常） */
 export function classifyEventPriority(event: HubEvent): HubPriority {

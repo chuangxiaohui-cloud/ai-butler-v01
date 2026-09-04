@@ -57,6 +57,13 @@ test('notification-hub: 空事件输出占位（E314）', () => {
   assert.ok(digest.includes('暂无待处理通知'));
 });
 
+test('notification-hub: E318 AI 运营预算事件——用尽/即将耗尽紧急、预算提醒与运营日报普通', () => {
+  assert.equal(classifyEventPriority({ ...base, role: '秘书', kind: 'ai_ops_budget_alert', title: '🚫 今日预算已用尽（¥5.40 / ¥5.00），拒绝新的付费调用' }), 'urgent');
+  assert.equal(classifyEventPriority({ ...base, role: '秘书', kind: 'ai_ops_budget_alert', title: '🔴 今日预算即将耗尽（已用 92%），建议暂停非紧急任务' }), 'urgent');
+  assert.equal(classifyEventPriority({ ...base, role: '秘书', kind: 'ai_ops_budget_alert', title: '⚠️ 今日已消耗 ¥3.00，超过一半预算（¥5.00）' }), 'normal');
+  assert.equal(classifyEventPriority({ ...base, role: '秘书', kind: 'ai_ops_daily', title: 'AI 运营日报（2026年9月2日）' }), 'normal');
+});
+
 test('notification-hub: 输入解析 JSON 数组（E251 @input）', () => {
   const events = parseEventsInput('[{"role":"老板","kind":"risk_decision","title":"请裁决"},{"role":"秘书","kind":"progress","title":"日报"}]');
   assert.equal(events.length, 2);

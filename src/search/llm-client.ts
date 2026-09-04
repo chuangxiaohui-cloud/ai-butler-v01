@@ -2,8 +2,9 @@
  * OpenAI 兼容 LLM 客户端（与 provider 选择解耦，供 registry/fallback 复用）。
  */
 
-import { recordUsage } from '../usage/usage-store.js';
+import { emitAiOpsBudgetAlerts } from '../usage/ai-ops-notify.js';
 import { assertAiOpsGate } from '../usage/cost.js';
+import { recordUsage } from '../usage/usage-store.js';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -187,6 +188,7 @@ export class OpenAiCompatibleClient implements LLMClient {
         } catch {
           // 记账失败不阻塞回复
         }
+        this.notifyAiOpsBudgetAfterCall();
       }
       if (opts.rejectOnTruncate && data.choices?.[0]?.finish_reason === 'length') {
         throw new LLMLengthTruncatedError(stripThinkBlock(content));
@@ -195,6 +197,19 @@ export class OpenAiCompatibleClient implements LLMClient {
     } finally {
       clearTimeout(timer);
       opts.signal?.removeEventListener('abort', onExternalAbort);
+    }
+  }
+
+  /** E318：日消耗跨过 §COST C-4 阈值档位时写通知事件（owner 2026-09-02 拍板默认开；env AI_OPS_NOTIFY=0 显式关），失败旁路不阻塞调用 */
+  private notifyAiOpsBudgetAfterCall(): void {
+    if (process.env.AI_OPS_NOTIFY === '0') return;
+    try {
+      emitAiOpsBudgetAlerts({
+        usageFile: this.opts.usageLogFile,
+        budgetFile: this.opts.usageBudgetFile,
+      });
+    } catch {
+      // 通知写入失败不阻塞 LLM 调用
     }
   }
 
@@ -269,6 +284,7 @@ export class OpenAiCompatibleClient implements LLMClient {
         } catch {
           // 记账失败不阻塞回复
         }
+        this.notifyAiOpsBudgetAfterCall();
       }
       if (opts.rejectOnTruncate && finishReason === 'length') {
         throw new LLMLengthTruncatedError(stripThinkBlock(content));

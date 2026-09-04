@@ -90,6 +90,7 @@ npm run maturity:check                    # 成熟度轻量自检 L0-L3（[P-25]
 | `src/security/` | 命令/URL/动作白名单、沙箱、审计、域名授权（§10，E252 browser-actions/domain-auth） |
 | `src/slash/` | 斜杠命令层（/compact、/context，E193 手动入口） |
 | `src/im/` | 远程对话通道（授权开关/会话隔离/输出适配/复用 pipeline + OneBot 11 真实适配器，v1.0 S5，§4.5，E224+E241） |
+| `src/mail/` | 邮箱通道（凭据多账号容器、IMAP 只读收件/搜信/附件、SMTP 发信、Outlook OAuth2 设备码授权与自动续期 XOAUTH2，E293-E322，§4.5 生活助手） |
 | `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API、限速/并发闸门（P16） |
 | `src/mcp/` | MCP 子 Agent 注册/stdio 客户端/调度器/工具白名单与真实 server 配置装配（S3） |
 | `src/browser/` | 浏览器会话、CDP 持久化、页面抓取、浏览器操作（观察/交互/驱动，E252 §4.1.5） |

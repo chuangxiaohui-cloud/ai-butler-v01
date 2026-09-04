@@ -2,6 +2,7 @@
  * 斜杠命令层（E204）
  * - /context：查看当前会话上下文状态（轮次/逐字窗口/摘要/token 粗估/[P-109] 预算）
  * - /compact：手动触发当前会话压缩（窗口外轮次 → 「实体+决策+未决」摘要，复用 E193 compact）
+ * - /cost（E319）：AI 运营成本报告（§COST C-7 老板问答入口，复用 formatAiOpsReport，全局只读无需会话）
  *
  * 与 pipeline 的 E193 SessionContextStore 同持久化（data/session-context/<id>.json），
  * 因此 CLI / gateway 各自 new 实例读写的都是同一份会话文件，无单例依赖。
@@ -11,8 +12,10 @@
 
 import { COMPACT_TIMEOUT_MS, CONTEXT_TOKEN_BUDGET, VERBATIM_WINDOW_TURNS, estimateTokens, type SessionContext, type SessionContextStore } from '../memory/session-context.js';
 import { createLightClient, type LLMClient } from '../search/llm.js';
+import { formatAiOpsReport } from '../usage/cost.js';
+import { readUsage } from '../usage/usage-store.js';
 
-export type SlashCommandName = 'compact' | 'context';
+export type SlashCommandName = 'compact' | 'context' | 'cost';
 
 export interface SlashCommand {
   name: SlashCommandName;
@@ -30,6 +33,8 @@ export interface SlashResult {
 export interface SlashContextDeps {
   sessionContext: SessionContextStore;
   llm?: LLMClient;
+  /** E319：/cost 报告文件注入（测试隔离；缺省读仓库 data/ 默认路径） */
+  costOptions?: { usageFile?: string; budgetFile?: string };
 }
 
 export interface SessionStatusReport {
@@ -44,7 +49,7 @@ export interface SessionStatusReport {
 }
 
 // 仅整行匹配，避免正文以 / 开头的正常问题被误判（如 "/STM32 的引脚图"）。
-const SLASH_PATTERN = /^\/(compact|context)\s*$/i;
+const SLASH_PATTERN = /^\/(compact|context|cost)\s*$/i;
 
 export function parseSlashCommand(query: string): SlashCommand | null {
   const trimmed = (query ?? '').trim();
@@ -101,6 +106,18 @@ export function formatContextReport(r: SessionStatusReport): string {
     `- token 粗估：约 ${r.tokenEstimate} / 预算 ${r.budget}（[P-109]）`,
     `- 是否需要压缩：${r.needsCompaction ? '是（可执行 /compact）' : '否'}`,
   ].join('\n');
+}
+
+/** E319：AI 运营成本报告（§COST C-7；全局只读，无需会话） */
+function runCost(deps: SlashContextDeps): SlashResult {
+  const options = deps.costOptions ?? {};
+  return {
+    answer: formatAiOpsReport(readUsage(options.usageFile), { budgetFile: options.budgetFile }),
+    confidence: 1,
+    evidence: [],
+    gate_triggered: 'none',
+    slash: 'cost',
+  };
 }
 
 async function runContext(conversationId: string, deps: SlashContextDeps): Promise<SlashResult> {
@@ -161,6 +178,20 @@ export async function handleSlashCommand(
 ): Promise<SlashResult | null> {
   const cmd = parseSlashCommand(query);
   if (!cmd) return null;
+  // E319：/cost 为全局只读报告，不依赖会话上下文
+  if (cmd.name === 'cost') {
+    try {
+      return runCost(deps);
+    } catch (err) {
+      return {
+        answer: `/cost 执行失败：${err instanceof Error ? err.message : String(err)}`,
+        confidence: 0,
+        evidence: [],
+        gate_triggered: 'none',
+        slash: 'cost',
+      };
+    }
+  }
   if (!conversationId || conversationId.trim() === '') {
     return {
       answer: `/${cmd.name} 需要会话 ID：请携带 conversationId 调用（桌面端主聊天会自动携带；CLI 默认使用 cli 会话）。`,

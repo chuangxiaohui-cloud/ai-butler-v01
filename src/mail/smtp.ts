@@ -3,7 +3,7 @@
  * 仅用 node:net/node:tls，无外部依赖：
  *   - secure=true：TLS 直连（465）
  *   - secure=false：明文连接，服务器支持且选项开启时 STARTTLS 升级（587）
- * 认证 AUTH LOGIN 仅在加密通道（TLS 直连或 STARTTLS 升级后）发送；
+ * 认证（AUTH LOGIN / AUTH XOAUTH2）仅在加密通道（TLS 直连或 STARTTLS 升级后）发送；
  * 服务器要求认证但连接为明文时拒绝发送凭据（H4，架构审计 2026-08-23）。
  * 正文 base64 UTF-8，头部 UTF-8 编码。
  */
@@ -13,6 +13,7 @@ import { connect as netConnect, type Socket } from 'node:net';
 import { connect as tlsConnect, type TLSSocket } from 'node:tls';
 
 import type { SmtpCredentials } from './credentials.js';
+import { buildXoauth2Initial } from './oauth.js';
 
 export interface MailMessage {
   to: string;
@@ -268,16 +269,39 @@ export async function sendMail(
       await command(session, 'EHLO ai-butler.local', ['250']);
     }
     if (creds.secure || didStartTls) {
-      session.write('AUTH LOGIN');
-      await session.expect((l) => /^334( |$)/.test(l));
-      session.write(base64Utf8(creds.user));
-      await session.expect((l) => /^334( |$)/.test(l));
-      session.write(base64Utf8(creds.pass));
-      const authReply = await session.expect((l) => /^2\d\d( |$)/.test(l));
-      if (!authReply.startsWith('235')) {
-        throw new Error(`SMTP 认证失败：${authReply}`);
+      if (creds.auth === 'xoauth2') {
+        if (!creds.accessToken) {
+          throw new Error(
+            'xoauth2 账号缺少 accessToken：请先完成 OAuth2 授权并保存 access token' +
+              '（npm run mail:oauth -- --client-id <应用ID> --user <outlook邮箱>）。',
+          );
+        }
+        const initial = buildXoauth2Initial(creds.user, creds.accessToken);
+        session.write(`AUTH XOAUTH2 ${initial}`);
+        let authReply = await session.expect((l) => l.length > 0);
+        if (/^334( |$)/.test(authReply)) {
+          // RFC 4959：服务器 334 挑战（可能带 base64 错误体）→ 客户端回空行收尾态
+          session.write('');
+          authReply = await session.expect((l) => l.length > 0);
+        }
+        if (!authReply.startsWith('235')) {
+          throw new Error(
+            `SMTP XOAUTH2 认证失败：${authReply}。` +
+              'access token 可能已过期或缺少 SMTP 发信权限，请重新授权（npm run mail:oauth）获取新 token。',
+          );
+        }
+      } else {
+        session.write('AUTH LOGIN');
+        await session.expect((l) => /^334( |$)/.test(l));
+        session.write(base64Utf8(creds.user));
+        await session.expect((l) => /^334( |$)/.test(l));
+        session.write(base64Utf8(creds.pass));
+        const authReply = await session.expect((l) => /^2\d\d( |$)/.test(l));
+        if (!authReply.startsWith('235')) {
+          throw new Error(`SMTP 认证失败：${authReply}`);
+        }
       }
-    } else if (/AUTH\s+LOGIN/i.test(caps)) {
+    } else if (/AUTH\s+(?:LOGIN|XOAUTH2)/i.test(caps)) {
       // H4：服务器要求 AUTH 但不支持 STARTTLS——明文发送 base64 凭据可被窃听，拒绝
       throw new Error(
         'SMTP 服务器要求认证但不支持 STARTTLS，拒绝在明文连接上发送凭据。' +
