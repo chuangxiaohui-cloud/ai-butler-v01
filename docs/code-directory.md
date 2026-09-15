@@ -27,7 +27,7 @@
 | `src/search/` | `second-pass.ts`、`second-pass-fetch.ts` | 低置信二次取证选目标 + 并发抓取（[P-117] 预算 / [P-118] PDF 上限，P1/P2） | ✅ |
 | `src/search/` | `deep-report.ts` | 深度报告分阶段生成（v1.0 S1，§4.3.2，[P-13] 预算，E220） | ✅ |
 | `src/search/` | `deep-report-store.ts` | 深度报告任务状态存储（取消恢复，JSONL 落盘，v1.0 S2，§4.3.2，E221） | ✅ |
-| `src/mcp/` | `types.ts`、`registry.ts`、`client.ts`、`dispatcher.ts`、`safety.ts`、`config.ts` | MCP 子 Agent：注册表/stdio 客户端/调度器（重试·退避·降级）/工具白名单与 untrusted 域/真实 server 配置装配（v1.0 S3 E222 + E240 真实接入，§4.1.2 + §10 + §11.1） | ✅ |
+| `src/mcp/` | `types.ts`、`contract.ts`、`registry.ts`、`client.ts`、`dispatcher.ts`、`safety.ts`、`config.ts`、`health.ts`、`keil.ts`、`keil-server.ts`、`vscode.ts`、`vscode-server.ts`、`stm32-gcc.ts`、`stm32-gcc-server.ts`、`kicad.ts`、`kicad-server.ts`、`ltspice.ts`、`ltspice-server.ts`、`project-profile.ts`、`project-profile-store.ts`、`project-profile-merge.ts`、`domain-workflow.ts`、`workflow-entry.ts`、`workflow-guard.ts` | MCP 子 Agent 运行契约与工具适配；Keil、VS Code、STM32-GCC、KiCad ERC 与 LTspice 只读链已接入并有真实 stdio 夹具证据（E401-E410）；项目画像支持字段级合并、多平台共存、过期重探测和构建人工审批，受 schema、白名单、沙箱与 [P-154] 约束；不含 EDA 编辑、实际仿真或烧录 | 🟡 |
 | `src/security/` | `command-whitelist.ts`、`query-sanitize.ts` | 命令白名单（允许集合+硬编码拒绝+超时 kind）与搜索脱敏（路径/密钥/内网剥离，v1.0 S4，§10.2/§10.3，E223） | ✅ |
 | `src/im/` | `gate.ts`、`session.ts`、`format.ts`、`service.ts`、`channel.ts`、`config.ts`、`run.ts`、`onebot/` | 远程对话通道（授权开关/会话隔离/输出适配/复用 pipeline + ImChannel 抽象 + OneBot 11 真实适配器 + 常驻入口，v1.0 S5，§4.5，E224+E241） | ✅ |
 | `src/repo/` | `types.ts`、`repo-whitelist.ts`、`push-audit.ts`、`push-service.ts`、`cli.ts` | 代码托管联动（仓库白名单/预检门禁/commit+push/JSONL 审计，v1.0 S6，§11.4，E225）+ 真实推送 CLI 编排（`cli.ts`：repo:push/repo:whitelist/repo:audit，E244） | ✅ |
@@ -40,24 +40,26 @@
 | src/search/ | quota.ts | 搜索配额计数与月度快照（[P-63]/[P-64]/[P-65]，E195） | ✅ |
 | src/search/ | tavily-usage.ts | Tavily 远端 /usage 用量快照（[P-64] 口径复算，E228） | ✅ |
 | src/search/ | 	avily-trigger.ts | Tavily 条件并联触发判定（§6.2.1，E72/E195） | ✅ |
-| `src/agent/` | `router-v2.ts`、`routing-table.ts`、`intent-feature.ts`、`extract.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` | 三层意图路由、rewrite/记住指令、时间表达解析 | ✅ |
+| `src/agent/` | `router-v2.ts`、`routing-table.ts`、`intent-feature.ts`、`extract.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` | 三层意图路由、rewrite、显式记住/纠正记忆指令（§8.3.2，E370）、时间表达解析 | ✅ |
 | `src/agent/` | `mode-mapper.ts`、`multimodal-preprocessor.ts`、`executors.ts` | 模式映射、多模态信号、执行器状态 | ✅ |
 | `src/agent/` | `route-case-store.ts`、`route-case-audit.ts`、`confidence-calibration.ts` | 路由 case 采集、审核、校准闭环（JSONL 追加/轮转 P13） | ✅ |
-| `src/skills/` | `registry.ts`、`lifecycle.ts`、`deps.ts`、`install.ts` | Skill 注册、生命周期、依赖注入、安装 | ✅ |
-| `src/skills/*/` | 23 个 Skill 目录 | 预置能力 | ✅ |
-| `src/maturity/` | `metrics.ts`、`runtime-watchdog.ts` | 成熟度观测（五维指标纯函数 + L0-L3 判定，v1.0 P-10 条件③，§12.4，E247，`npm run maturity:check`）+ 运行时看门狗（E282，synthesis_timeout 环境噪音告警） | ✅ |
+| `src/skills/` | `registry.ts`、`lifecycle.ts`、`deps.ts`、`install.ts` | Skill 注册、生命周期、依赖注入、安装；回复连续 👎 达 [P-79] 标记复审并由用户恢复（E378/E379） | ✅ |
+| `src/skills/*/` | 28 个 Skill 目录（E353 codegraph + E352 archify + E364 layered-arch；project-writer 多文件事务预览、确认与首次裁决执行 E398/E399） | 预置能力 | ✅ |
+| `src/maturity/` | `metrics.ts`、`runtime-watchdog.ts` | 成熟度观测（五维指标纯函数 + L0-L3 判定；合并 pipeline 路由标注与回复最新反馈，§9.3/§12.4，E247/E377，`npm run maturity:check`）+ 运行时看门狗（E282，synthesis_timeout 环境噪音告警） | ✅ |
+| `src/feedback/` | `feedback-store.ts`、`skill-candidate-store.ts`、`skill-candidate-draft.ts` | 回复反馈、最新值与按用户每日汇总，Skill 复审、重复修订候选归并，以及 accepted 候选的只读草案预览（§9.3，E374-E387） | ✅ |
 | `src/memory/` | `store.ts`、`memorycore-store.ts`、`schema.sql` | MemoryStore 双实现与冻结 schema（v1.0 S8：`MEMORY_STORE` 配置切换 sqlite/memorycore，E227） | ✅ |
 | `src/memory/` | `experience.ts`、`distill.ts`、`confidence-decay.ts` | 经验、蒸馏、衰减 | ✅ |
-| `src/memory/` | `user-context-store.ts`、`user-context.ts` | 用户画像、长期事实、会话摘要 | ✅ |
-| `src/memory/` | `session-context.ts` | 会话上下文持久化与逐字窗口压缩（§8.3，E193） | ✅ |
+| `src/memory/` | `user-context-store.ts`、`user-context.ts`、`software-profile.ts`、`persona-memory.ts`、`time-sensitive-memory.ts` | 用户画像、长期事实、会话摘要；软件职业建议（E365）；人格事实分层、栏位冲突治理、时间敏感事实及已解决生活主题 L2 素材（§8.1.3/§8.3，E369/E371-E373） | ✅ |
+| `src/memory/` | `session-context.ts` | 会话上下文持久化、逐字窗口压缩与已解决生活话题退出活跃上下文（§8.3，E193/E373） | ✅ |
+| `src/memory/` | `asset-acl.ts` | 三栏固定记忆装备与管理面/pipeline 读取侧 ACL（§8.1.2，E367/E368） | ✅ |
 | `src/slash/` | `slash-commands.ts` | 斜杠命令层：`/compact` 手动压缩 + `/context` 会话状态 + `/cost` AI 运营成本报告（§8.3 E204 / §14 E319） | ✅ |
 | `src/reminder/` | `reminder-store.ts` | 主动提醒 SQLite 存储与到期轮询 | ✅ |
 | `src/mail/` | `credentials.ts`、`smtp.ts`、`imap.ts`、`oauth.ts`、`*.test.ts` | 邮箱通道：凭据多账号容器与认证模型（password/xoauth2，E302）、IMAP 只读收件/读信/搜信/附件（E293-E303）、SMTP 发信、Outlook OAuth2 设备码授权与自动续期（XOAUTH2 收信+发信，E321/E322，`npm run mail:config` / `mail:oauth`） | ✅ |
 | `src/budget/` | `budget-store.ts` | 预算账本 SQLite（append-only allocate/spend 事件，余额=拨款-支出，§2.1/§5，E308，`data/budget.db`） | ✅ |
-| `src/escalation/` | `decision-log.ts`、`escalation.ts`、`escalation-state.ts`、`confirm-gate.ts` | 困难升级与人类裁决记录（§4.3.1 [P-47]/[P-48]/[P-16] + §2.3 裁决记录与批准/否决回填，E309/E323，`data/decision-log.jsonl` + `data/escalation-state.jsonl`）+ confirm 真阻断（写类执行器清单/批准识别/等待确认文案 + 裁决批准自动恢复执行回执，E324；复述人称切换 E326；挂起文案带风险分级与预估成本 E334） | ✅ |
-| `src/gateway/` | `app.ts`、`server.ts` | 单一 TurnLoop Express gateway | ✅ |
+| `src/escalation/` | `decision-log.ts`、`escalation.ts`、`escalation-state.ts`、`confirm-gate.ts` | 困难升级与人类裁决记录（§4.3.1 [P-47]/[P-48]/[P-16] + §2.3 裁决记录与批准/否决回填，E309/E323，`data/decision-log.jsonl` + `data/escalation-state.jsonl`）+ confirm 真阻断（写类执行器清单/批准识别/等待确认文案 + 裁决批准自动恢复执行回执，E324；复述人称切换 E326；挂起文案带风险分级与预估成本 E334）+ 结构化 choice 与 append-only 选择证据（E396） | ✅ |
+| `src/gateway/` | `app.ts`、`server.ts` | 单一 TurnLoop Express gateway；普通批准/否决、结构化 choice、project-writer 首次确认及冲突三选一恢复执行（E323/E396/E399/E402） | ✅ |
 | `src/gateway/` | `rate-limit.ts` | 限速桶（P16 [P-114]）+ 并发闸门（[P-115]） | ✅ |
-| `src/gateway/` | `attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts`、`project-watcher.ts` | 附件、终端、文件、SSE 事件、projects/ 目录变更监听（E328） | ✅ |
+| `src/gateway/` | `attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts`、`project-watcher.ts`、`change-history.ts` | 附件、终端、文件、SSE 事件、projects/ 目录变更监听（E328）、变更记录内存环（E339） | ✅ |
 | `src/browser/` | `session.ts`、`dom-observe.ts`、`operations.ts`、`driver.ts` | 浏览器会话、CDP 持久化、页面抓取；浏览器操作（E252 §4.1.5：AX 树观察 [P-126] 有界 + DSL 交互层 [P-124]/[P-125] + 真实 CDP 驱动） | ✅ |
 | `src/config/` | `params.ts`、`env.ts` | PARAM 登记与环境解析 | ✅ |
 | `src/config/` | `model-catalog.ts`、`provider-order.ts` | 模型目录与 provider 顺序 | ✅ |
@@ -65,8 +67,8 @@
 | `src/trajectory/` | `trajectory-log.ts` | append-only 轨迹日志 | ✅ |
 | `src/log/` | `jsonl.ts` | JSONL 追加/轮转（.1 归档）/缓存读（P15） | ✅ |
 | `src/usage/` | `usage-store.ts`、`cost.ts`、`ai-ops-notify.ts` | Token 计量与聚合（含缓存拆分）、AI 运营成本估算/阈值/硬停门禁/报告（§COST v1）+ AI 运营日报/阈值事件写入通知枢纽（E318） | ✅ |
-| `src/security/` | `sandbox.ts`、`operation-log.ts`、`url-safety.ts`、`browser-actions.ts`、`domain-auth.ts` | 文件沙箱白名单、审计、Agent 操作日志与回滚、浏览器抓取 URL 安全（S1）；浏览器动作白名单/高风险标记与域名授权持久化（E252，§10.2/§4.1.5） | ✅ |
-| `src/postprocess/` | `cultural-reply.ts` | 文化梗回复后处理 | ✅ |
+| `src/security/` | `sandbox.ts`、`operation-log.ts`、`project-transaction.ts`、`project-conflict-confirmation.ts`、`project-conflict-resolution.ts`、`pending-project-transaction-store.ts`、`url-safety.ts`、`browser-actions.ts`、`domain-auth.ts` | 文件沙箱白名单、单文件回滚及项目级快照/预检/全量暂存、自动回滚、事务审计、冲突确认/重新确认、进程内 pending 绑定与三选一恢复执行（§11.2 E366/E393-E399/E402）；浏览器抓取 URL 安全、动作白名单与域名授权（E252） | ✅ |
+| `src/postprocess/` | `cultural-reply.ts`、`answer-postprocess.ts`、`answer-postprocess-store.ts` | 文化梗回复处理；Stage 6 回答规则运行时、用户级 append-only 启停/使用/反馈复审与恢复账本；待复审规则展示按用户隔离的最近负反馈证据（§9.3，E382-E386） | ✅ |
 | `src/wiki/` | `index.ts` | 冷启动知识种子 | ✅ |
 
 ## 2. 运行通道与 UI
@@ -74,7 +76,7 @@
 | 路径 | 职责 | 状态 |
 |------|------|------|
 | `ui/prototype/` | 独立 Vite + React 三栏 UI 原型 | ✅ |
-| `ui/prototype/src/App.tsx` | 三栏、设置、产物栏、终端、证据链交互、右栏「通知」页（E320）与「裁决」页（E323）、对话内确认卡（挂起写操作气泡内执行/取消，E324）、执行回执第二人称 + 「老板」称谓（E327） | ✅ |
+| `ui/prototype/src/App.tsx` | 三栏、设置、产物栏、终端、证据链交互、Keil target/诊断卡与源码预览入口（E392）、右栏「通知」页（E320，含每日反馈汇总 E387）与「裁决」页（E323）、对话内确认卡（E324）、Skill 候选复审证据（E386）、执行回执第二人称 + 「老板」称谓（E327）、左栏角色面板（E350） | ✅ |
 | `ui/prototype/src/styles.css` | 深色工作台样式 | ✅ |
 | `desktop/main.mjs` | Electron 主进程：拉起 gateway、加载 UI、回收子进程 | ✅ |
 | `desktop/package.json` | electron-builder 打包配置 | ✅ |
@@ -86,6 +88,7 @@
 | 路径 | 职责 | 状态 |
 |------|------|------|
 | `scripts/doc-lint.ts` | 文档宪法七检查 | ✅ |
+| `scripts/mcp-health.ts` / `scripts/mcp-s3-evidence.ts` | MCP 握手/工具清单/只读默认调用健康检查与五类专业夹具证据采集（E410） | ✅ |
 | `scripts/market-run.ts` / `scripts/market-install.ts` / `scripts/route-query-file.ts` | 市场 Skill 执行/清单（E243，E251 `--query` 带参）、本地安装（E250）、意图路由文件入口（E251，`npm run route:query:file`） | ✅ |
 | `scripts/bench-*.ts` | v0.1 / v0.2a / devil-v25 / provider-router 基准 | ✅ |
 | `scripts/gen-devil-*` | 魔鬼训练评分、清单、证据、CSV 导出 | ✅ |

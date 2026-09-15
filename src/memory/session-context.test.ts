@@ -271,3 +271,28 @@ test('session: buildRecentMemory 只保留最近窗口配对（P14 硬顶）', (
   assert.equal(pairs.length, VERBATIM_WINDOW_TURNS);
   assert.deepEqual(pairs[pairs.length - 1], { query: 'q13', answer: 'a13' });
 });
+
+test('session: 已解决的最近情绪话题退出活跃上下文并返回人格素材', async () => {
+  const store = new SessionContextStore({ dir: freshDir() });
+  await store.append('c1', 'user', '最近工作压力很大，晚上总是失眠');
+  await store.append('c1', 'assistant', '先试试把睡前工作清单放下。');
+  await store.append('c1', 'user', '我好多了，谢谢你');
+  await store.append('c1', 'assistant', '那就好，今晚早点休息。');
+
+  const material = await store.resolveLatestLifeTopic('c1', '我好多了，谢谢你');
+  const ctx = await store.load('c1');
+  assert.equal(material, '用户已解决的情绪话题：最近工作压力很大，晚上总是失眠');
+  assert.deepEqual(ctx?.turns, []);
+});
+
+test('session: 无明确解决信号或最近话题为技术内容时不移出', async () => {
+  const store = new SessionContextStore({ dir: freshDir() });
+  await store.append('c1', 'user', 'STM32 当前版本需要升级');
+  await store.append('c1', 'assistant', '建议先核对发行说明。');
+  await store.append('c1', 'user', '已经解决了');
+  await store.append('c1', 'assistant', '收到。');
+
+  assert.equal(await store.resolveLatestLifeTopic('c1', '已经解决了'), null);
+  assert.equal((await store.load('c1'))?.turns.length, 4);
+  assert.equal(await store.resolveLatestLifeTopic('c1', '继续看看'), null);
+});

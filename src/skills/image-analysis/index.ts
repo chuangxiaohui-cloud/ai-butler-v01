@@ -4,6 +4,7 @@
  */
 
 import { isImageFile, toDataUrl } from '../../agent/multimodal-preprocessor.js';
+import { PARAMS } from '../../config/params.js';
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 import type { RawFileLike, SkillDeps } from '../deps.js';
 
@@ -32,7 +33,7 @@ export function createImageAnalysisSkill(): ExecutableSkill {
             image: dataUrl,
             prompt: '用 3-5 句话描述这张图片的内容、主体和可读文字。',
           },
-          { maxTokens: 200 },
+          { maxTokens: PARAMS.vlmImageMaxTokens },
         );
         return {
           result: { description: raw.trim(), raw },

@@ -22,6 +22,12 @@ import type { ExperienceEntry } from '../memory/experience.js';
 import type { SearchSourceStats } from './source-stats.js';
 import type { TrajectoryEventBody, TrajectoryLogLike } from '../trajectory/trajectory-log.js';
 import { getSkills, isSkillEnabled, toDisplayText } from '../skills/registry.js';
+import type { SkillArtifact } from '../skills/registry.js';
+import {
+  parseStructuredProjectChanges,
+  prepareProjectWriterTransactionPreview,
+} from '../skills/project-writer/index.js';
+import { buildOutlinePreviewText, parseOutlineToTree, sanitizeOutlineTree, treeToOutlineText } from '../skills/pm-xmind/format.js';
 import { matchInstalledSkillTrigger, renderMarketSkillAnswer } from '../skills/market/nl-router.js';
 import type { MarketRunOutcome } from '../skills/market/runner.js';
 import type { RawFileLike, SkillDeps } from '../skills/deps.js';
@@ -36,8 +42,13 @@ import {
   isConfirmWriteExecutor,
   parseApprovalReply,
 } from '../escalation/confirm-gate.js';
+import { describeMcpWorkflowPlan, preflightMcpBuildRequest } from '../mcp/workflow-entry.js';
 import { EscalationState } from '../escalation/escalation-state.js';
 import { NotificationStore } from '../notifications/notification-store.js';
+import {
+  defaultPendingProjectTransactionStore,
+  type PendingProjectTransactionStore,
+} from '../security/pending-project-transaction-store.js';
 import {
   correctionEscalationMessage,
   countConsecutiveCorrections,
@@ -76,16 +87,21 @@ import { preprocessUserMessage } from '../agent/multimodal-preprocessor.js';
 import { extractIntentFeatureRuleBased } from '../agent/intent-feature.js';
 import { buildMemoryInjection, type UserContext } from '../memory/user-context.js';
 import type { UserContextStore } from '../memory/user-context-store.js';
+import { canAccessMemoryAsset } from '../memory/asset-acl.js';
 import { rewriteWithMemory } from '../agent/rewrite-with-memory.js';
-import { extractRememberInstruction } from '../agent/memory-instruction.js';
+import {
+  extractMemoryCorrection,
+  extractRememberInstruction,
+} from '../agent/memory-instruction.js';
 import { isRollbackQuery, rollbackLatest } from '../security/operation-log.js';
 import { culturalReplyPostProcess } from '../postprocess/cultural-reply.js';
+import type { AnswerPostprocessRuntime } from '../postprocess/answer-postprocess.js';
 import type { RouteCaseStore } from '../agent/route-case-store.js';
 import { prepareQuery } from './stages/s1_prepare.js';
 import { classifyQuery } from './stages/s2_classify.js';
 import type { IntentKey } from './stages/s2_classify.js';
 import { runSearchLoop, type BrowserFetcher } from './search-loop.js';
-import { createClientForRole } from './llm.js';
+import { createClientForRole, createXmindOutlineClient } from './llm.js';
 import { synthesizeAnswer } from './stages/s5_synthesize.js';
 import { postProcess } from './stages/s6_post.js';
 import {
@@ -157,6 +173,12 @@ export interface AnswerResult {
   notice?: string;
   /** P3：工具配额/API 告警（进状态栏/日志，不污染对话气泡） */
   toolNotice?: string;
+  /** §9.3：本回复实际触发的 Skill，供反馈闭环关联生命周期。 */
+  skillName?: string;
+  /** E382：Stage 6 实际改变回答的 answer_postprocess Skill，按执行顺序记录。 */
+  postprocessSkillNames?: string[];
+  /** E392：direct Skill 返回的结构化产物，UI 只读展示。 */
+  artifacts?: SkillArtifact[];
 }
 
 export interface PipelineDeps {
@@ -164,7 +186,10 @@ export interface PipelineDeps {
   providers?: SearchProvider[];
   quota?: QuotaStoreLike;
   memoryStore?: Pick<MemoryStore, 'put' | 'recall'>;
-  userContextStore?: Pick<UserContextStore, 'load' | 'addSessionSummary' | 'addFact'>;
+  userContextStore?: Pick<
+    UserContextStore,
+    'load' | 'addSessionSummary' | 'addFact' | 'correctMemoryFact'
+  >;
   routeCaseStore?: Pick<RouteCaseStore, 'record' | 'attachModelRoute'>;
   skillDeps?: SkillDeps;
   tavily?: { enabled?: boolean };
@@ -184,14 +209,38 @@ export interface PipelineDeps {
   skillLifecycle?: {
     findBest(query: string): { name: string } | null;
     recordUse?(name: string): void;
+    syncReviewSignals?(
+      name: string,
+      thumbsDownCount: number,
+      consecutiveDown: number,
+      now?: number,
+    ): { needsReview: boolean; consecutiveDown: number } | null;
+    list?(): Array<{
+      name: string;
+      state: 'active' | 'cold' | 'review';
+      thumbsDownCount: number;
+      consecutiveDown: number;
+      confidence: number;
+    }>;
+    clearReview?(name: string, now?: number): {
+      needsReview: boolean;
+      consecutiveDown: number;
+      thumbsDownCount: number;
+      confidence: number;
+    } | null;
   };
   /** E243：市场 Skill 可执行器（命中已安装 Skill 触发词 → 直连执行；测试可注入） */
   marketSkillRunner?: {
     listInstalledWithTriggers(): Array<{ name: string; triggers: string[] }>;
     run(name: string, opts?: { input?: string }): MarketRunOutcome;
   };
+  /** E382：显式注入的回答后处理运行时；不自动扫描或安装候选。 */
+  answerPostprocess?: Pick<AnswerPostprocessRuntime, 'apply'>;
   trajectory?: TrajectoryLogLike;
-  sessionContext?: Pick<SessionContextStore, 'load' | 'append' | 'compactIfNeeded'>;
+  sessionContext?: Pick<
+    SessionContextStore,
+    'load' | 'append' | 'compactIfNeeded' | 'resolveLatestLifeTopic'
+  >;
   /** E309：困难升级/人类裁决（判定与记录；测试可注入内存实现，缺省共享真实单例） */
   escalation?: {
     decisionLog?: Pick<DecisionLog, 'record'>;
@@ -199,11 +248,15 @@ export interface PipelineDeps {
   };
   /** E315：通知枢纽自动写入（§11.3 秘书日报；测试可注入内存实现，缺省共享真实单例 data/notifications.jsonl） */
   notificationStore?: Pick<NotificationStore, 'add'>;
+  /** E399：E398 prepared transaction 的进程内正文仓库；日志仅保存摘要和引用。 */
+  pendingProjectTransactionStore?: PendingProjectTransactionStore;
   browserSession?: BrowserFetcher;
   /** v1.0 S2：深度报告任务状态存储（取消恢复；测试可注入内存实现） */
   deepReportStore?: DeepReportStoreLike;
   /** E231：深度报告专用 LLM（per-call 预算=[P-13]，测试可注入 FakeLLM；缺省用 createDeepReportHeavyClient） */
   deepReportLlm?: LLMClient | null;
+  /** E343：内容型思维导图大纲合成专用 LLM（per-call 预算放宽=[P-122]，测试可注入 FakeLLM；缺省用 createXmindOutlineClient） */
+  outlineLlm?: LLMClient | null;
   /** §10.3 搜索脱敏开关（默认开；工程开发栏显式携带项目上下文时可关） */
   querySanitizeEnabled?: boolean;
 }
@@ -212,6 +265,8 @@ export interface PipelineOptions {
   files?: RawFileLike[];
   userId?: string;
   conversationId?: string;
+  /** E368：显式栏位约束记忆资产注入；缺省保持 CLI/旧调用兼容。 */
+  mode?: UiMode;
   modelSelection?: ModelSelection;
   /** E282：运行时看门狗开关（CLI/gateway 生产接线开启，测试保持关闭避免读真实轨迹） */
   watchdog?: boolean;
@@ -391,12 +446,18 @@ export async function pipeline(
   // 用户上下文（Week 4 起接入）：意图提取与最终回复双端注入
   const userId = opts.userId ?? 'default';
   const memorySessionId = userId === 'default' ? 'v0.1-cli' : `v0.1-cli:${userId}`;
+  const chatMemoryEnabled =
+    opts.mode === undefined || canAccessMemoryAsset(opts.mode, 'chat_memory');
+  const skillMemoryEnabled = opts.mode === undefined || canAccessMemoryAsset(opts.mode, 'skill');
   const userStore = deps.userContextStore;
   let userContext: UserContext | null = null;
   let memoryBlock = '';
   if (userStore) {
     try {
-      userContext = userStore.load(userId);
+      const loadedContext = userStore.load(userId, Date.now(), opts.mode);
+      userContext = chatMemoryEnabled
+        ? loadedContext
+        : { ...loadedContext, longTermFacts: [], recentSessions: [] };
       memoryBlock = buildMemoryInjection(userContext);
     } catch {
       // 用户上下文读取失败不阻塞主对话
@@ -407,20 +468,22 @@ export async function pipeline(
   const memoryStore = deps.memoryStore ?? defaultMemoryStore();
   let memoryNotes: string[] = [];
   let recentMemory: Array<{ query: string; answer: string }> = [];
-  try {
-    const history = await memoryStore.recall(memorySessionId, 3);
-    memoryNotes = history.map(
-      (m) => `Q: ${m.query} → A: ${m.answer.slice(0, 120)}`,
-    );
-    recentMemory = history.map((m) => ({ query: m.query, answer: m.answer }));
-  } catch {
-    // 记忆读取失败不阻塞主对话
+  if (chatMemoryEnabled) {
+    try {
+      const history = await memoryStore.recall(memorySessionId, 3);
+      memoryNotes = history.map(
+        (m) => `Q: ${m.query} → A: ${m.answer.slice(0, 120)}`,
+      );
+      recentMemory = history.map((m) => ({ query: m.query, answer: m.answer }));
+    } catch {
+      // 记忆读取失败不阻塞主对话
+    }
   }
   // 会话上下文（§8.3 E193）：同一会话摘要 + 逐字窗口注入，供路由/合成消歧
   const conversationId = opts.conversationId ?? '';
   const sessionStore = deps.sessionContext ?? defaultSessionContext();
   let sessionCtx: SessionContext | null = null;
-  if (conversationId) {
+  if (conversationId && chatMemoryEnabled) {
     try {
       sessionCtx = await sessionStore.load(conversationId);
     } catch {
@@ -436,6 +499,24 @@ export async function pipeline(
     try {
       await sessionStore.append(conversationId, 'user', userText);
       await sessionStore.append(conversationId, 'assistant', assistantText);
+      try {
+        const resolvedMaterial =
+          opts.mode === 'life'
+            ? await sessionStore.resolveLatestLifeTopic?.(conversationId, userText)
+            : null;
+        if (resolvedMaterial) {
+          userStore?.addFact?.(
+            userId,
+            resolvedMaterial,
+            'inferred',
+            Date.now(),
+            undefined,
+            'life',
+          );
+        }
+      } catch {
+        // 生活话题归档失败不阻塞会话记录与后续压缩
+      }
       void sessionStore
         .compactIfNeeded(conversationId, deps.llm ?? createLightClient({ timeoutMs: COMPACT_TIMEOUT_MS }))
         .catch(() => {
@@ -457,11 +538,60 @@ export async function pipeline(
       ? prepared.originalQuery
       : prepared.cleanQuery;
 
+  // 显式记忆纠正：用户新信息优先，直接覆盖旧事实并按新内容重算层级
+  const memoryCorrection = extractMemoryCorrection(prepared.originalQuery);
+  if (memoryCorrection) {
+    let saved = false;
+    try {
+      if (userStore?.correctMemoryFact) {
+        userStore.correctMemoryFact(
+          userId,
+          memoryCorrection.oldContent,
+          memoryCorrection.newContent,
+          Date.now(),
+          opts.mode,
+        );
+        saved = true;
+      }
+    } catch {
+      // 记忆纠正失败在回复中诚实披露
+    }
+    const answer = saved
+      ? `已纠正记忆：${memoryCorrection.oldContent} → ${memoryCorrection.newContent}`
+      : '未保存记忆纠正：记忆存储当前不可用。';
+    await recordSessionTurns(query, answer);
+    recordTrajectory({
+      type: 'answer',
+      answer: {
+        answerSnippet: answer.slice(0, 300),
+        confidence: saved ? 0.95 : 0.3,
+        gateTriggered: 'none',
+        elapsedMs: Date.now() - start,
+      },
+    });
+    return {
+      query,
+      answer,
+      confidence: saved ? 0.95 : 0.3,
+      evidence: [],
+      gate_triggered: 'none',
+      elapsed_ms: Date.now() - start,
+      mode: 'knowledge',
+    };
+  }
+
   // 显式“记住：...”指令：直接写长期事实，不走搜索
   const rememberContent = extractRememberInstruction(prepared.originalQuery);
   if (rememberContent) {
     try {
-      userStore?.addFact?.(userId, rememberContent, 'user_explicit');
+      userStore?.addFact?.(
+        userId,
+        rememberContent,
+        'user_explicit',
+        Date.now(),
+        undefined,
+        opts.mode,
+      );
     } catch {
       // 记忆写入失败不阻塞确认回复
     }
@@ -519,6 +649,8 @@ export async function pipeline(
   const escalationLog = deps.escalation?.decisionLog ?? defaultDecisionLog();
   const escalationState = deps.escalation?.state ?? defaultEscalationState();
   const notificationLog = deps.notificationStore ?? defaultNotificationStore();
+  const pendingProjectTransactions =
+    deps.pendingProjectTransactionStore ?? defaultPendingProjectTransactionStore();
   // E324：confirm 真阻断需要完整 DecisionLog（pendingForConversation/adjudicate）；
   // 注入对象仅实现 record 时回落共享真实库，避免把测试写入真实裁决记录
   const confirmDecisionLog =
@@ -676,7 +808,7 @@ export async function pipeline(
     // E309：人类裁决记录（§2.3）——摆了什么选项给用户（decision=pending，批准/否决留待用户答复时回填）
     if (conversationId) {
       try {
-        escalationLog.record({
+        const pending = escalationLog.record({
           trigger: 'human_arbitration',
           question: route.decision.question,
           options:
@@ -692,6 +824,7 @@ export async function pipeline(
           kind: 'risk_decision',
           title: '待你裁决',
           detail: route.decision.question,
+          decisionId: pending.id,
         });
       } catch {
         // 裁决记录失败不阻塞回答
@@ -856,12 +989,154 @@ export async function pipeline(
   }
   // E324：confirm 真阻断第一刀——confirm 路由 + 写类执行器：挂起等批准，不直接执行。
   // 知识问答/搜索/专用意图已在前序短路；confirmResume 标记的恢复执行不二次拦截。
+  const mcpBuildPreflight = routeSelected.executor === 'mcp_agent'
+    ? preflightMcpBuildRequest(prepared.originalQuery, deps.skillDeps?.projectProfiles)
+    : null;
+  const mcpBuildNeedsApproval = mcpBuildPreflight?.status === 'approval_required';
   if (
     !opts.confirmResume &&
     conversationId &&
-    route.decision.type === 'confirm' &&
-    isConfirmWriteExecutor(routeSelected.executor)
+    (route.decision.type === 'confirm' ||
+      (routeSelected.executor === 'project_writer' &&
+        parseStructuredProjectChanges({ query: prepared.originalQuery, params: undefined }).matched) ||
+      mcpBuildNeedsApproval) &&
+    isConfirmWriteExecutor(routeSelected.executor) &&
+    (routeSelected.executor !== 'mcp_agent' || mcpBuildNeedsApproval)
   ) {
+    if (routeSelected.executor === 'project_writer') {
+      const structured = parseStructuredProjectChanges({
+        query: prepared.originalQuery,
+        params: undefined,
+      });
+      if (structured.matched) {
+        if (!structured.ok) {
+          return {
+            query,
+            answer: `多文件变更清单无效，未创建事务：${structured.error}`,
+            confidence: 0.3,
+            evidence: [],
+            gate_triggered: 'none',
+            elapsed_ms: Date.now() - start,
+            mode: uiRoute.mode,
+            submode: uiRoute.submode,
+            skillName: 'project-writer',
+          };
+        }
+        const existing = confirmDecisionLog.openDecisions().find(
+          (entry) =>
+            entry.conversationId === conversationId &&
+            entry.context?.kind === 'project_multifile_change_confirmation',
+        );
+        if (existing) {
+          return {
+            query,
+            answer: '已有一批多文件变更等待确认，请先到右侧「裁决」页处理。',
+            confidence: route.confidence,
+            evidence: [],
+            gate_triggered: 'none',
+            elapsed_ms: Date.now() - start,
+            mode: uiRoute.mode,
+            submode: uiRoute.submode,
+            skillName: 'project-writer',
+          };
+        }
+        const preview = prepareProjectWriterTransactionPreview(
+          {
+            query: prepared.originalQuery,
+            params: { fileChanges: structured.changes },
+          },
+          {
+            cwd: process.cwd(),
+            audit: {
+              userId,
+              conversationId,
+            },
+          },
+        );
+        if (!preview.matched || !preview.ok) {
+          return {
+            query,
+            answer: `多文件事务预检失败，未写入目标文件：${preview.matched ? preview.error : '未识别到变更清单'}`,
+            confidence: 0.3,
+            evidence: [],
+            gate_triggered: 'none',
+            elapsed_ms: Date.now() - start,
+            mode: uiRoute.mode,
+            submode: uiRoute.submode,
+            skillName: 'project-writer',
+          };
+        }
+        let pendingId = '';
+        try {
+          pendingId = randomUUID();
+          pendingProjectTransactions.register(pendingId, preview.transaction, { conversationId });
+          const pending = confirmDecisionLog.record({
+            id: pendingId,
+            trigger: 'human_arbitration',
+            question: preview.answer,
+            options: ['确认变更', '取消整批'],
+            choices: [
+              {
+                id: 'confirm_changes',
+                label: '确认变更',
+                description: '确认这份多文件变更清单；本轮仍不写入目标文件。',
+                outcome: 'approve',
+              },
+              {
+                id: 'cancel_all',
+                label: '取消整批',
+                description: '保留当前项目状态，不写入任何文件。',
+                outcome: 'reject',
+              },
+            ],
+            defaultChoice: 'cancel_all',
+            requiresConfirmation: true,
+            context: {
+              kind: 'project_multifile_change_confirmation',
+              transactionId: preview.transaction.id,
+              snapshotDir: preview.transaction.snapshotDir,
+              changes: preview.artifact.data.changes,
+            },
+            decision: 'pending',
+            conversationId,
+            confidence: route.confidence,
+          });
+          safeNotify(notificationLog, {
+            role: '老板',
+            kind: 'risk_decision',
+            title: '待确认多文件变更',
+            detail: preview.answer,
+            decisionId: pending.id,
+          });
+        } catch {
+          if (pendingId) pendingProjectTransactions.discard(pendingId);
+          return {
+            query,
+            answer: '多文件事务已完成预检，但确认记录写入失败；目标文件未写入，请稍后重试。',
+            confidence: 0.2,
+            evidence: [],
+            gate_triggered: 'none',
+            elapsed_ms: Date.now() - start,
+            mode: uiRoute.mode,
+            submode: uiRoute.submode,
+            skillName: 'project-writer',
+            artifacts: [preview.artifact],
+          };
+        }
+        return {
+          query,
+          answer: preview.answer,
+          confidence: route.confidence,
+          evidence: [],
+          gate_triggered: 'none',
+          elapsed_ms: Date.now() - start,
+          mode: uiRoute.mode,
+          submode: uiRoute.submode,
+          skillName: 'project-writer',
+          artifacts: [preview.artifact],
+        };
+      }
+    }
     const existing = conversationId ? confirmDecisionLog.pendingForConversation(conversationId) : null;
     if (existing) {
       const answer = '还有一步待批准的操作没处理：请先在上一条里回复「执行」或「取消」，或到右侧「裁决」页处理。';
@@ -876,12 +1151,15 @@ export async function pipeline(
         submode: uiRoute.submode,
       };
     }
-    const holdAnswer = buildConfirmHoldAnswer(
+    let holdAnswer = buildConfirmHoldAnswer(
       routeSelected.executor ?? '',
       prepared.originalQuery,
     );
+    if (routeSelected.executor === 'mcp_agent' && mcpBuildPreflight?.plan) {
+      holdAnswer += `\n执行计划：\n${describeMcpWorkflowPlan(mcpBuildPreflight.plan)}`;
+    }
     try {
-      confirmDecisionLog.record({
+      const pending = confirmDecisionLog.record({
         trigger: 'human_arbitration',
         question: holdAnswer,
         options: ['执行', '取消'],
@@ -899,6 +1177,7 @@ export async function pipeline(
         kind: 'risk_decision',
         title: '待你裁决',
         detail: holdAnswer,
+        decisionId: pending.id,
       });
     } catch {
       // 裁决记录失败不阻塞挂起回复
@@ -992,6 +1271,7 @@ export async function pipeline(
           elapsed_ms: Date.now() - start,
           mode: uiRoute.mode,
           submode: uiRoute.submode,
+          skillName: skillHit.skillName,
         };
       }
       safeArtifact({ skill: skillHit.skillName, state: 'failed' });
@@ -1006,6 +1286,7 @@ export async function pipeline(
         elapsed_ms: Date.now() - start,
         mode: uiRoute.mode,
         submode: uiRoute.submode,
+        skillName: skillHit.skillName,
       };
     }
   }
@@ -1027,7 +1308,7 @@ export async function pipeline(
           ...(resolvedComplete
             ? { complete: withStreamingToken(resolvedComplete, opts.onToken) }
             : {}),
-          ...(deps.experienceManager
+          ...(skillMemoryEnabled && deps.experienceManager
             ? {
                 experienceManager: deps.experienceManager as SkillDeps['experienceManager'],
               }
@@ -1038,6 +1319,9 @@ export async function pipeline(
         const skillInputQuery =
           skillName === 'project-packager' ||
           skillName === 'project-writer' ||
+          skillName === 'pm-xmind' || // E340：Xmind 大纲/路径不能被 Stage 1 清洗丢失
+          skillName === 'codegraph' || // E353：CodeGraph 目标目录路径不能被 Stage 1 清洗丢失
+          skillName === 'mcp-agent' || // E408：领域工作流必须保留工程路径用于画像绑定
           (skillName === 'calendar-skill' &&
             /[A-Za-z]:\\[^\s]*\.ics/i.test(prepared.originalQuery))
             ? prepared.originalQuery
@@ -1053,6 +1337,13 @@ export async function pipeline(
               mode: routeSelected.intent,
               userId,
               conversationId: opts.conversationId ?? userId,
+              ...(skillName === 'mcp-agent'
+                ? {
+                    mcpWorkflowApproved: opts.confirmResume === true,
+                    minimumObservedAt: 0,
+                    completedRevisionCycles: 0,
+                  }
+                : {}),
             },
           },
           skillDepsForRun,
@@ -1141,6 +1432,8 @@ export async function pipeline(
           ...(answerTiming ? { timing: answerTiming } : {}),
           mode: uiRoute.mode,
           submode: uiRoute.submode,
+          skillName: skill.name,
+          ...(output.artifacts?.length ? { artifacts: output.artifacts } : {}),
         };
       } catch (err) {
         // B4：执行器真实失败要如实归因，不落到"尚未接入"误报
@@ -1157,6 +1450,7 @@ export async function pipeline(
           elapsed_ms: Date.now() - start,
           mode: uiRoute.mode,
           submode: uiRoute.submode,
+          skillName: skill.name,
         };
       }
     }
@@ -1181,7 +1475,7 @@ export async function pipeline(
   let skillHints: string[] = [];
   const skillOutputs: string[] = [];
   let usedSkillName: string | null = null;
-  if (deps.experienceManager) {
+  if (skillMemoryEnabled && deps.experienceManager) {
     try {
       const hits = deps.experienceManager.search(prepared.cleanQuery, { limit: 3 });
       for (const entry of hits) {
@@ -1565,14 +1859,23 @@ export async function pipeline(
     hasGithubLink: route.features.hasGithubLink,
   });
   const synthStart = Date.now();
+  // E343：内容型思维导图（xmind_content）合成端单独放开 per-call 预算——
+  // UI 默认 deepseek:medium（v4-flash）走 [P-116] 18s 链，长结构大纲实测 >18s 被杀；
+  // 同 E283 github-reader 套路放宽到 [P-122] 90s，模型仍 v4-flash、成本不变。
+  const contentOutline = routeSelected.intent === 'xmind_content' && !opts.confirmResume;
   const synthesized = await synthesizeAnswer(prepared.cleanQuery, fused, classified, {
     // UI 显式选档时按所选 provider:role 走模型（缺省 medium 便宜且快），
     // 未选档（CLI 等）回落到调用方默认客户端（E278：CLI 由 heavy 改 medium，对齐 P-105）
-    llm: opts.modelSelection
-      ? createClientForRole(opts.modelSelection.role, {
-          preferredId: opts.modelSelection.provider,
-        })
-      : deps.llm,
+    // E343：内容型大纲请求不走上面两条默认 18s 链——测试注入 outlineLlm，
+    //       生产用 createXmindOutlineClient（medium v4-flash + [P-122] 90s 预算）
+    llm: contentOutline
+      ? (deps.outlineLlm ??
+        createXmindOutlineClient({ preferredProvider: opts.modelSelection?.provider }))
+      : opts.modelSelection
+        ? createClientForRole(opts.modelSelection.role, {
+            preferredId: opts.modelSelection.provider,
+          })
+        : deps.llm,
     serious: rule3.serious,
     memoryNotes: memoryBlock ? [...memoryNotes, memoryBlock] : memoryNotes,
     aiAnswers: search.aiAnswers,
@@ -1580,6 +1883,8 @@ export async function pipeline(
     skillHints,
     skillOutputs,
     pageContents,
+    // E342：内容型思维导图——检索后只让 LLM 出大纲（短输出，预算内可完成），不写长文
+    outlineOnly: contentOutline,
     readinessGap: readiness.gap,
     primaryLens: routeSelected.primaryLens,
     modelTier: opts.modelSelection?.role ?? routeModelTier,
@@ -1682,7 +1987,70 @@ export async function pipeline(
     }
   }
 
+  // E342：内容型思维导图——LLM 已按证据生成大纲；E344：正文只回紧凑预览（此前整段大纲文字把 ⏸ 卡压到看不见），
+  // resume 存清洗后的规范大纲（去重复中心主题/文末说明叶子，见 sanitizeOutlineTree），批准后按干净结构落盘 .xmind。
+  // 超时/失败不挂卡，引导重试。
+  if (routeSelected.intent === 'xmind_content' && conversationId && !opts.confirmResume) {
+    const outlineTree = synthesized.source === 'llm' ? parseOutlineToTree(synthesized.answer) : null;
+    const cleanTree = outlineTree ? sanitizeOutlineTree(outlineTree) : null;
+    if (cleanTree && cleanTree.children.length > 0) {
+      const previewText = buildOutlinePreviewText(cleanTree);
+      const existing = confirmDecisionLog.pendingForConversation(conversationId);
+      if (!existing) {
+        const holdAnswer = buildConfirmHoldAnswer('pm_xmind', prepared.originalQuery);
+        try {
+          const pending = confirmDecisionLog.record({
+            trigger: 'human_arbitration',
+            question: holdAnswer,
+            options: ['执行', '取消'],
+            decision: 'pending',
+            resume: {
+              query: treeToOutlineText(cleanTree),
+              executor: 'pm_xmind',
+              intent: 'xmind',
+            },
+            conversationId,
+            confidence: route.confidence,
+          });
+          safeNotify(notificationLog, {
+            role: '老板',
+            kind: 'risk_decision',
+            title: '待你裁决',
+            detail: holdAnswer,
+            decisionId: pending.id,
+          });
+        } catch {
+          // 裁决记录失败不阻塞大纲交付
+        }
+        finalAnswerText = `${previewText}\n\n${holdAnswer}`;
+      } else {
+        finalAnswerText = previewText;
+      }
+    } else {
+      finalAnswerText =
+        `${finalAnswerText}\n\n（已尝试把该主题整理成思维导图大纲，但本次生成超时/失败、未得到可用结构；` +
+        '可切换更快档位重试，或直接发一段大纲文本让我生成 .xmind）';
+    }
+  }
+
   // Stage 6：后处理 + L0 记忆写入
+  let postprocessSkillNames: string[] = [];
+  if (deps.answerPostprocess) {
+    try {
+      const processedAnswer = deps.answerPostprocess.apply(finalAnswerText, {
+        query,
+        userId,
+        mode: uiRoute.mode,
+        ...(usedSkillName ? { sourceSkillName: usedSkillName } : {}),
+      });
+      if (processedAnswer.answer.trim()) {
+        finalAnswerText = processedAnswer.answer;
+        postprocessSkillNames = processedAnswer.appliedSkillNames;
+      }
+    } catch {
+      // 后处理运行时整体失败时保留原回答，不能阻断共享 pipeline。
+    }
+  }
   const final = await postProcess(
     {
       query,
@@ -1745,10 +2113,12 @@ export async function pipeline(
     videos: videoResults.length > 0 ? videoResults : undefined,
     ...(chatNotices.length > 0 ? { notice: chatNotices[0] } : {}),
     ...(toolNotices.length > 0 ? { toolNotice: toolNotices[0] } : {}),
+    ...(synthesized.source === 'llm' && usedSkillName ? { skillName: usedSkillName } : {}),
+    ...(postprocessSkillNames.length > 0 ? { postprocessSkillNames } : {}),
   };
 }
 
-const ARTIFACT_PATH_RE = /[\w./\\:-]+\.(zip|kicad_sch|kicad_pcb|net|pdf|html?|md|txt)/i;
+const ARTIFACT_PATH_RE = /[\w./\\:-]+\.(zip|kicad_sch|kicad_pcb|net|pdf|html?|md|txt|xmind)/i;
 
 function extractArtifactPath(text: string): string | undefined {
   const match = ARTIFACT_PATH_RE.exec(text);

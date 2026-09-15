@@ -15,6 +15,10 @@ export const CONFIRM_WRITE_EXECUTORS = [
   'calendar_skill', // 新建/导入日程
   'im_dispatch', // 外发即时消息
   'project_packager', // 打包项目产物
+  'pm_xmind', // E340：生成/读取 Xmind 思维导图（读写本地文件）
+  'layered_arch', // E364：生成分层架构/框架/模块图（LLM 产分层 JSON + 写本地产物）
+  'archify', // E352：生成系统/流程/时序/数据流/生命周期交互图（LLM 产 IR + 写本地产物）
+  'mcp_agent', // E408：仅画像已就绪的 MCP 构建进入批准门；只读盘点不挂起
 ] as const;
 
 export type ConfirmWriteExecutor = (typeof CONFIRM_WRITE_EXECUTORS)[number];
@@ -44,6 +48,10 @@ const EXECUTOR_PROFILE: Record<string, ConfirmExecutorProfile> = {
   calendar_skill: { label: '新建/导入日程', risk: 'low', costKind: 'local' },
   im_dispatch: { label: '外发即时消息', risk: 'high', costKind: 'local' },
   project_packager: { label: '打包项目产物', risk: 'medium', costKind: 'local' },
+  pm_xmind: { label: '处理 Xmind 思维导图（读写本地文件）', risk: 'low', costKind: 'local' },
+  layered_arch: { label: '生成分层架构图（LLM 整理后写入本地产物）', risk: 'low', costKind: 'content_generation' },
+  archify: { label: '生成系统架构图（LLM 整理后写入本地产物）', risk: 'low', costKind: 'content_generation' },
+  mcp_agent: { label: '执行已取证的本地工程构建', risk: 'medium', costKind: 'local' },
 };
 
 export function isConfirmWriteExecutor(executor?: string): boolean {
@@ -168,10 +176,17 @@ export function buildConfirmHoldAnswer(executor: string, query: string): string 
     yuan <= 0
       ? '¥0.00（本地确定性执行，无外部模型调用）'
       : `≤ ¥${yuan.toFixed(2)}（单次内容生成上界，按 /cost 单价估算）`;
+  const projectWriterTarget = query.match(
+    /(?:写入|保存到|写到|文件路径|目标路径|路径)[：: ]?\s*([^\s，。；,!！]+)/,
+  )?.[1];
+  const changeList =
+    executor === 'project_writer'
+      ? `\n变更清单：\n- 创建或修改文件：${projectWriterTarget ?? '待执行时解析'}\n- 将运行的命令：无`
+      : '';
   return (
     `⏸ 你让我“${brief}”。这属于「${executorActionLabel(executor)}」这类会落盘/外发的写操作，` +
     '我不会擅自执行。\n' +
-    `风险等级：${riskLabel} ｜ 本次操作预估成本：${costText}\n` +
+    `风险等级：${riskLabel} ｜ 本次操作预估成本：${costText}${changeList}\n` +
     '回复「执行」继续，回复「取消」放弃；也可以到右侧「裁决」页批准/否决。'
   );
 }

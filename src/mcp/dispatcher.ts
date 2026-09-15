@@ -11,6 +11,16 @@ import type { McpClient } from './types.js';
 import type { SubAgentCategory, SubAgentMeta } from './types.js';
 import { validateMcpCall } from './safety.js';
 import { resolveRealToolName } from './types.js';
+import type {
+  SubAgentArtifact,
+  SubAgentEvidence,
+  SubAgentFailure,
+  SubAgentHandoff,
+  SubAgentPlanStep,
+  SubAgentProgressEvent,
+  SubAgentRunStatus,
+  SubAgentTaskRef,
+} from './contract.js';
 
 export type McpOpKind = 'compile' | 'flash' | 'filegen' | 'tool';
 
@@ -29,6 +39,8 @@ export interface DispatchOptions {
   /** 覆盖操作类型默认超时 */
   timeoutMs?: number;
   signal?: AbortSignal;
+  /** 结构化进度观察；观察方异常不得中断实际任务 */
+  onProgress?: (event: SubAgentProgressEvent) => void;
 }
 
 export interface DispatchResult {
@@ -41,6 +53,14 @@ export interface DispatchResult {
   degraded: boolean;
   timedOut?: boolean;
   error?: string;
+  task: SubAgentTaskRef;
+  status: SubAgentRunStatus;
+  plan: SubAgentPlanStep[];
+  progress: SubAgentProgressEvent[];
+  artifacts: SubAgentArtifact[];
+  evidence: SubAgentEvidence[];
+  failure?: SubAgentFailure;
+  handoff: SubAgentHandoff;
 }
 
 export interface DispatcherOpts {
@@ -56,21 +76,100 @@ export class SubAgentDispatcher {
   ) {}
 
   async dispatch(task: string, options: DispatchOptions = {}): Promise<DispatchResult> {
-    void task;
     const start = Date.now();
+    const taskRef: SubAgentTaskRef = {
+      description: task,
+      ...(options.toolName ? { requestedTool: options.toolName } : {}),
+      ...(options.category ? { category: options.category } : {}),
+    };
+    const plan: SubAgentPlanStep[] = [
+      { id: 'select_agent', title: '选择可用子 Agent', status: 'pending' },
+      { id: 'validate_call', title: '校验工具与参数白名单', status: 'pending' },
+      { id: 'execute_tool', title: '执行 MCP 工具并收集结果', status: 'pending' },
+    ];
+    const progress: SubAgentProgressEvent[] = [];
+    const evidence: SubAgentEvidence[] = [];
+    const emit = (
+      phase: SubAgentProgressEvent['phase'],
+      message: string,
+      detail: Pick<SubAgentProgressEvent, 'agentId' | 'attempt'> = {},
+    ) => {
+      const event: SubAgentProgressEvent = {
+        phase,
+        message,
+        elapsedMs: Date.now() - start,
+        ...detail,
+      };
+      progress.push(event);
+      try {
+        options.onProgress?.(event);
+      } catch {
+        // 进度观察方不属于执行链，异常不得改变任务结果。
+      }
+    };
+    const finish = (input: {
+      ok: boolean;
+      agentId: string;
+      output?: string;
+      attempts: number;
+      degraded: boolean;
+      status: SubAgentRunStatus;
+      timedOut?: boolean;
+      failure?: SubAgentFailure;
+    }): DispatchResult => ({
+      ok: input.ok,
+      agentId: input.agentId,
+      output: input.output ?? '',
+      untrusted: true,
+      attempts: input.attempts,
+      elapsedMs: Date.now() - start,
+      degraded: input.degraded,
+      ...(input.timedOut ? { timedOut: true } : {}),
+      ...(input.failure ? { error: input.failure.message, failure: input.failure } : {}),
+      task: taskRef,
+      status: input.status,
+      plan,
+      progress,
+      artifacts: input.output
+        ? [{ kind: 'text', content: input.output, untrusted: true }]
+        : [],
+      evidence,
+      handoff: input.failure
+        ? {
+            required: true,
+            reason: input.failure.message,
+            nextAction: input.failure.code === 'cancelled'
+              ? '确认任务范围后重新发起。'
+              : '检查对应软件、MCP 配置和安全授权，或交由用户处理。',
+          }
+        : { required: false },
+    });
+
+    emit('planned', `已接收任务：${task}`);
+    plan[0]!.status = 'running';
     const candidates = this.pickCandidates(options);
     if (candidates.length === 0) {
-      return {
+      plan[0]!.status = 'failed';
+      plan[1]!.status = 'skipped';
+      plan[2]!.status = 'skipped';
+      const failure: SubAgentFailure = {
+        code: 'no_agent',
+        message: '没有可用的子 Agent',
+        retryable: false,
+      };
+      emit('failed', failure.message);
+      return finish({
         ok: false,
         agentId: '',
-        output: '',
-        untrusted: true,
         attempts: 0,
-        elapsedMs: 0,
         degraded: false,
-        error: '没有可用的子 Agent',
-      };
+        status: 'failed',
+        failure,
+      });
     }
+    plan[0]!.status = 'completed';
+    plan[1]!.status = 'running';
+    emit('running', `已选择 ${candidates[0]!.id}`, { agentId: candidates[0]!.id });
 
     const retryCount =
       options.retryCount ??
@@ -80,7 +179,9 @@ export class SubAgentDispatcher {
 
     let attempts = 0;
     let lastError = '';
+    let lastOutput = '';
     let lastTimedOut = false;
+    let lastFailureCode: SubAgentFailure['code'] = 'tool_error';
 
     for (let index = 0; index < candidates.length; index++) {
       const meta = candidates[index];
@@ -95,50 +196,93 @@ export class SubAgentDispatcher {
       const validation = validateMcpCall(meta, internalToolName, options.args ?? {});
       if (!validation.ok) {
         lastError = validation.reason ?? '白名单校验失败';
+        lastFailureCode = 'validation_error';
         continue;
       }
       // E240：内部名 → 真实 MCP 工具名（allowedTools 白名单在 validateMcpCall 内已校验）
       const realToolName = resolveRealToolName(meta, internalToolName);
       if (!realToolName) {
         lastError = `工具 ${internalToolName} 无真实工具名映射`;
+        lastFailureCode = 'validation_error';
         continue;
       }
+      plan[1]!.status = 'completed';
+      plan[2]!.status = 'running';
+      if (index > 0) emit('degraded', `降级到备用子 Agent ${meta.id}`, { agentId: meta.id });
       const maxAttempts = 1 + retryCount;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         if (options.signal?.aborted) {
-          return {
+          plan[2]!.status = 'skipped';
+          const failure: SubAgentFailure = {
+            code: 'cancelled',
+            message: '已取消',
+            retryable: true,
+          };
+          emit('cancelled', failure.message, { agentId: meta.id, attempt: attempts });
+          return finish({
             ok: false,
             agentId: meta.id,
-            output: '',
-            untrusted: true,
             attempts,
-            elapsedMs: Date.now() - start,
             degraded: index > 0,
-            error: '已取消',
-          };
+            status: 'cancelled',
+            failure,
+          });
         }
         attempts++;
+        emit(attempt === 0 ? 'running' : 'retrying', `调用 ${meta.id}.${realToolName}`, {
+          agentId: meta.id,
+          attempt: attempts,
+        });
+        evidence.push({
+          kind: 'mcp_tool_call',
+          agentId: meta.id,
+          toolName: realToolName,
+          attempt: attempts,
+          untrusted: true,
+        });
         try {
           const callArgs =
             options.args && Object.keys(options.args).length > 0
               ? options.args
               : (meta.defaultArgs ?? {});
-          const result = await client.callTool(realToolName, callArgs, timeoutMs);
+          const result = await client.callTool(realToolName, callArgs, timeoutMs, options.signal);
           if (result.ok) {
-            return {
+            plan[2]!.status = 'completed';
+            emit('completed', `${meta.id} 执行完成`, { agentId: meta.id, attempt: attempts });
+            return finish({
               ok: true,
               agentId: meta.id,
               output: result.output,
-              untrusted: true,
               attempts,
-              elapsedMs: Date.now() - start,
               degraded: index > 0,
+              status: 'succeeded',
+            });
+          }
+          if (result.cancelled) {
+            plan[2]!.status = 'failed';
+            const failure: SubAgentFailure = {
+              code: 'cancelled',
+              message: result.error ?? '已取消',
+              retryable: true,
             };
+            emit('cancelled', failure.message, { agentId: meta.id, attempt: attempts });
+            return finish({
+              ok: false,
+              agentId: meta.id,
+              output: result.output,
+              attempts,
+              degraded: index > 0,
+              status: 'cancelled',
+              failure,
+            });
           }
           lastError = result.error ?? `工具调用失败（${meta.id}）`;
+          lastOutput = result.output;
           lastTimedOut = result.timedOut ?? false;
+          lastFailureCode = lastTimedOut ? 'timeout' : 'tool_error';
         } catch (err) {
           lastError = err instanceof Error ? err.message : String(err);
+          lastFailureCode = 'tool_error';
         }
         if (attempt < maxAttempts - 1) {
           await sleep(backoffBaseMs * Math.pow(2, attempt));
@@ -147,17 +291,24 @@ export class SubAgentDispatcher {
       // 当前子 Agent 重试耗尽 → 降级下一个候选
     }
 
-    return {
+    if (plan[1]!.status === 'running') plan[1]!.status = 'failed';
+    plan[2]!.status = plan[2]!.status === 'pending' ? 'skipped' : 'failed';
+    const failure: SubAgentFailure = {
+      code: lastFailureCode,
+      message: lastError || '子 Agent 执行失败',
+      retryable: lastFailureCode === 'timeout' || lastFailureCode === 'tool_error',
+    };
+    emit('failed', failure.message, { agentId: candidates[candidates.length - 1]?.id });
+    return finish({
       ok: false,
       agentId: candidates[candidates.length - 1]?.id ?? '',
-      output: '',
-      untrusted: true,
       attempts,
-      elapsedMs: Date.now() - start,
       degraded: candidates.length > 1,
       timedOut: lastTimedOut,
-      error: lastError || '子 Agent 执行失败',
-    };
+      output: lastOutput,
+      status: 'failed',
+      failure,
+    });
   }
 
   private pickCandidates(options: DispatchOptions): SubAgentMeta[] {

@@ -181,3 +181,49 @@ test('decision-log: E324 pendingForConversation 只返回带 resume 的最近 op
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('decision-log: E396 结构化 choice 必须显式选择并追加决策证据', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'decision-choice-'));
+  const file = join(dir, 'decision-log.jsonl');
+  const log = new DecisionLog(file);
+  try {
+    const pending = log.record({
+      trigger: 'human_arbitration',
+      question: '冲突如何处理？',
+      options: ['保留外部版本', '使用事务版本', '取消整批'],
+      choices: [
+        { id: 'keep_external', label: '保留外部版本', outcome: 'approve' },
+        { id: 'use_transaction', label: '使用事务版本', outcome: 'approve' },
+        { id: 'cancel_all', label: '取消整批', outcome: 'reject' },
+      ],
+      defaultChoice: 'cancel_all',
+      requiresConfirmation: true,
+      context: { kind: 'project_transaction_conflict', transactionId: 'tx-1' },
+      decision: 'pending',
+    });
+    assert.deepEqual(log.adjudicate(pending.id, 'approve'), {
+      ok: false,
+      reason: 'choice_required',
+    });
+    assert.deepEqual(log.adjudicateChoice(pending.id, 'not-an-option'), {
+      ok: false,
+      reason: 'invalid_choice',
+    });
+    const result = log.adjudicateChoice(pending.id, 'cancel_all', { note: '保持现状' });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.equal(result.entry.decision, 'reject');
+    assert.equal(result.entry.selectedChoice, 'cancel_all');
+    assert.equal(result.entry.refId, pending.id);
+    assert.equal(result.entry.context?.transactionId, 'tx-1');
+    assert.equal(log.all().find((entry) => entry.id === pending.id)?.selectedChoice, undefined);
+    assert.deepEqual(log.adjudicateChoice(pending.id, 'use_transaction'), {
+      ok: false,
+      reason: 'already_decided',
+    });
+  } finally {
+    log.close();
+    closeJsonl(file);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

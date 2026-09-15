@@ -70,6 +70,49 @@ test('s5: LLM 合成答案并引用证据', async () => {
   assert.ok(r.answer.includes('72MHz'));
 });
 
+test('s5: E342 outlineOnly 模式只要求输出层级大纲（短输出约束，不含来源列表要求）', async () => {
+  const outline = 'FreeRTOS 软件架构思维导图\n1. 内核\n1.1 任务调度\n1.2 队列\n2. 内存管理';
+  let system = '';
+  const fake = new FakeLLM((messages) => {
+    system = messages[0]?.content ?? '';
+    return outline;
+  });
+  const r = await synthesizeAnswer('FreeRTOS 的软件架构思维导图？', fusedOk, classified, {
+    llm: fake,
+    outlineOnly: true,
+    pageContents: [
+      {
+        title: 'FreeRTOS 架构说明',
+        url: 'https://example.com/freertos',
+        text: 'FreeRTOS 内核 任务调度 队列 内存管理 文档 '.repeat(20),
+      },
+    ],
+  });
+  assert.equal(r.source, 'llm');
+  assert.equal(r.answer, outline);
+  assert.match(system, /内容型思维导图大纲/);
+  assert.match(system, /不得输出段落讲解/);
+  assert.ok(!system.includes('文末附「参考来源」'), '大纲模式不应要求附参考来源');
+  assert.ok(!system.includes('P0 硬约束'), '大纲模式不叠加长文 P0 约束');
+  assert.match(system, /中心主题行只出现一次/);
+  assert.match(system, /不得在任何条目之外输出/);
+});
+
+test('s5: E344 outlineOnly 不注入 readinessGap 文末诚实边界段（防“证据未覆盖”注释污染大纲）', async () => {
+  let system = '';
+  const fake = new FakeLLM((messages) => {
+    system = messages[0]?.content ?? '';
+    return '旅行计划\n1. 交通\n2. 住宿';
+  });
+  await synthesizeAnswer('把旅行计划做成思维导图', fusedOk, classified, {
+    llm: fake,
+    outlineOnly: true,
+    readinessGap: '具体数值信息',
+  });
+  assert.ok(!system.includes('诚实边界：当前证据可能缺乏'), '大纲模式不注入文末诚实边界说明');
+  assert.match(system, /不得在任何条目之外输出/);
+});
+
 test('s5: onToken 透传给合成客户端（流式渐进展示）', async () => {
   const seen: string[] = [];
   const fake: LLMClient = {

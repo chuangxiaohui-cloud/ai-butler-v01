@@ -6,6 +6,41 @@
       "allowedTools": ["Process"],
       "toolMap": {},
       "defaultTool": "windows.Process"
+    },
+    {
+      "id": "keil",
+      "command": ["node", "--import", "tsx", "src/mcp/keil-server.ts", "--uv4", "C:\\Keil_v5\\UV4\\UV4.exe"],
+      "allowedTools": ["DiscoverProjects", "InspectProjectProfile", "ListTargets", "BuildProject"],
+      "defaultTool": "keil.DiscoverProjects",
+      "defaultArgs": { "root": "projects" }
+    },
+    {
+      "id": "vscode",
+      "command": ["node", "--import", "tsx", "src/mcp/vscode-server.ts", "--code", "C:\\Users\\you\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe"],
+      "allowedTools": ["DiscoverWorkspaces", "InspectWorkspace"],
+      "defaultTool": "vscode.DiscoverWorkspaces",
+      "defaultArgs": { "root": "projects" }
+    },
+    {
+      "id": "stm32-gcc",
+      "command": ["node", "--import", "tsx", "src/mcp/stm32-gcc-server.ts", "--cmake", "C:\\Program Files\\CMake\\bin\\cmake.exe"],
+      "allowedTools": ["DiscoverProjects", "InspectProjectProfile", "BuildProject"],
+      "defaultTool": "stm32-gcc.DiscoverProjects",
+      "defaultArgs": { "root": "projects" }
+    },
+    {
+      "id": "kicad",
+      "command": ["node", "--import", "tsx", "src/mcp/kicad-server.ts", "--kicad-cli", "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe"],
+      "allowedTools": ["DiscoverProjects", "InspectProject", "RunErc"],
+      "defaultTool": "kicad.DiscoverProjects",
+      "defaultArgs": { "root": "projects" }
+    },
+    {
+      "id": "ltspice",
+      "command": ["node", "--import", "tsx", "src/mcp/ltspice-server.ts", "--ltspice", "C:\\Users\\you\\AppData\\Local\\Programs\\ADI\\LTspice\\LTspice.exe"],
+      "allowedTools": ["DiscoverSchematics", "InspectSchematic"],
+      "defaultTool": "ltspice.DiscoverSchematics",
+      "defaultArgs": { "root": "projects" }
     }
   ]
 }

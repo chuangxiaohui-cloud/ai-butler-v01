@@ -27,6 +27,8 @@ export interface NotificationEntry extends HubEvent {
   id: string;
   /** 事件来源：decision（裁决/升级/低置信）/ skill（角色 Skill 输出）/ usage（秘书 AI 运营事件） */
   source: 'decision' | 'skill' | 'usage';
+  /** E336：关联的人类裁决 pending 记录 id（decision-log）；裁决后通知列表据此过滤去残留 */
+  decisionId?: string;
   createdAt: number;
 }
 
@@ -47,7 +49,9 @@ export class NotificationStore {
   }
 
   /** 写入一条通知事件（缺省 source=decision、ts=写入时刻 ISO） */
-  add(event: HubEvent & { source?: NotificationEntry['source'] }): NotificationEntry {
+  add(
+    event: HubEvent & { source?: NotificationEntry['source']; decisionId?: string },
+  ): NotificationEntry {
     const createdAt = Date.now();
     const entry: NotificationEntry = {
       ...event,

@@ -104,6 +104,17 @@ test('router-v2: 规则特征提取可离线运行', () => {
   assert.equal(f.searchSourceHint, 'local_skill');
 });
 
+test('router-v2: Keil 工程请求路由到 MCP 子 Agent', () => {
+  const r = routeV2('查看 projects\\demo.uvprojx 有哪些 target');
+  assert.equal(r.features.actionType, 'operate');
+  assert.equal(r.features.targetDomain, 'system');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.executor, 'mcp_agent');
+    assert.equal(r.decision.selected.searchNeed, false);
+  }
+});
+
 test('router-v2: PCB 安全审查提取为 analyze/security 且不触发搜索', () => {
   const f = extractIntentFeatureRuleBased('帮我检查一下这个PCB的安全性');
   assert.equal(f.actionType, 'analyze');

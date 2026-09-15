@@ -1,6 +1,6 @@
 # 进度交接 2026-09-04（confirm 真阻断第二/三刀 + E325/E329 标题清洗 + E326/E327 人称规约 + E328 目录监听 + E330 恢复钉死/reminder 收窄 + E331 通知分页/角标 + E332 兜底离线标识/重试 + E333 重试原句预览）
 
-> 当前分支：v0.2b｜本轮收口：E324 第二刀（裁决面板批准自动恢复执行 + 执行回执）+ 第三刀（对话内确认卡）+ E325（日程标题残词修复）+ E326（confirm 复述人称切换）+ E327（执行回执/日程条目人称规约：回执第二人称＋「老板」称谓、AI 生成标题中性化）+ E328（projects/ 目录变更监听）+ E329（标题清洗剥离提醒从句）+ E330（confirm 恢复执行钉死原裁决 + reminder 触发词/verify 收窄）+ E331（§4.1 通知分页 + 未读角标）+ E332（网关未连接兜底醒目标识 + 重试）+ E333（重试按钮带原句预览）+ E334（confirm 挂起带风险分级与本次操作预估成本）。
+> 当前分支：v0.2b｜本轮收口：E324 第二刀（裁决面板批准自动恢复执行 + 执行回执）+ 第三刀（对话内确认卡）+ E325（日程标题残词修复）+ E326（confirm 复述人称切换）+ E327（执行回执/日程条目人称规约：回执第二人称＋「老板」称谓、AI 生成标题中性化）+ E328（projects/ 目录变更监听）+ E329（标题清洗剥离提醒从句）+ E330（confirm 恢复执行钉死原裁决 + reminder 触发词/verify 收窄）+ E331（§4.1 通知分页 + 未读角标）+ E332（网关未连接兜底醒目标识 + 重试）+ E333（重试按钮带原句预览）+ E334（confirm 挂起带风险分级与本次操作预估成本）+ E335（文件面板临时文件过滤）+ E336（裁决后旧「待你裁决」通知去残留）+ E337（文件面板只读预览）+ E338（文件面板手动刷新）+ E339（文件面板最近变更记录）。
 > 上一份交接见 `docs/2026-09-03-progress-handoff.md`（E324 第一刀收口于 2026-09-03，跨零点续做第二刀）。
 
 ## 今日完成
@@ -113,9 +113,45 @@
 - **验证**（零外部 LLM/API，¥0）：`npm run build` 绿；confirm-gate 定向 2/2（新增 E334 断言）+ pipeline 68/68（挂起文案契约无回归）；`npm run doc-lint` 0 FAIL 0 WARN（150 参数 / 77 key 引用）。全量 test:all/bench 未跑（成本纪律）。
 - **文档**：需求 §5 注册表补 P-149/P-150 行、§14.5 衔接表行由「候选，未实现」转已实现并标 E334、附录 A E334 登记；计划 `docs/plans/2026-09-04-confirm-cost-display.md`（结果已回填）；`docs/code-directory.md` confirm-gate 行补 E334；本交接。改动随 e2e 验收回填已提交 `4ee3548`（2026-09-04，见「批次状态 #2」）。
 
+### E335 文件面板临时文件过滤（owner 复验 B1 后改选「1」，列表侧与 watcher 同口径剔除）
+
+- **背景**：E328 B1 手动复验已知项——`/api/files` 列表不过滤 `~$`/`.tmp` 临时文件（新建会显示、删除后残留至下一次真实刷新才消失），owner 先拍板“记为已知项不修”，复验后再选「1」收口。
+- **代码**：`src/gateway/files.ts` 把 watcher 的 `EDITOR_TEMP` 正则上提为导出常量并复用，`listProjectFiles` 的 `walk()` 在 push 前按 basename 剔除（过滤在 push 前做，不占 maxFiles 名额）；`src/gateway/project-watcher.ts` 删本地重复常量改从 `files.js` 导入，`snapshotProjects` 二次剔除保留（行为不变式）。`src/gateway/files.test.ts` 新增剔除用例。
+- **验证**（零外部 LLM/API，¥0）：`npm run build` 绿；files 定向 2/2 + project-watcher 3/3；`npm run doc-lint` 0 FAIL 0 WARN。全量 test:all/bench 未跑（成本纪律）。 真实 UI 冒烟：owner 复验 `projects/` 新建 `~$a.txt` 后面板不显示（通过，2026-09-04）。
+- **文档**：需求附录 A E335 登记；计划 `docs/plans/2026-09-04-file-temp-filter.md`；e2e 清单 B1 已知项备注改为 E335 已收口；本交接。未提交，待 owner 拍板批次。
+### E336 裁决后旧「待你裁决」通知去残留（owner「A」选定，通知读侧过滤）
+
+- **背景**：E324 已知边界——裁决面板批准/否决后，通知页里对应「待你裁决」仍保留（通知库 append-only，E323 起行为），容易误以为还有未处理项。
+- **代码**：`src/notifications/notification-store.ts` `NotificationEntry` 增可选 `decisionId`；`src/search/pipeline.ts` 两处写「待你裁决」前先取 `record()` 返回的 pending id 随通知写入 `decisionId`；`src/escalation/decision-log.ts` 增 `all()`；`src/gateway/app.ts` `GET /api/notifications` 读 decision-log refId 集合过滤已裁决的通知（聊天与面板裁决共用同一 `adjudicate`，两路径自动覆盖，UI 零改动）。审计与通知库保持 append-only，仅读侧过滤。
+- **验证**（零外部 LLM/API，¥0）：`npm run build` 绿；notification-store 6/6（decisionId 往返）+ pipeline 全绿（E315/E324 断言通知 decisionId == pending id）+ gateway 全绿（新增 E336 未裁决展示→否决后消失用例）；`npm run doc-lint` 0 FAIL 0 WARN。全量 test:all/bench 未跑（成本纪律）。
+- **文档**：需求附录 A E336 登记；计划 `docs/plans/2026-09-04-notify-resolve.md`；本交接。未提交，待 owner 拍板批次。
+### E337 文件面板只读预览（owner「A」选定，双击就地预览）
+
+- **背景**：文件面板目前点文件只高亮、不能看内容；owner「A」选定补只读预览。
+- **代码**：`src/gateway/files.ts` 导出 `SCAN_ROOTS` 并新增 `readTextFilePreview()`（防穿越：绝对路径/`.`/`..`/非沙箱根拒绝；`stat.isFile`；只读前段 ≤ [P-151] 512KB、超长截断；含 NUL 判二进制）；`src/config/params.ts` 增 [P-151] `filePreviewMaxBytes`；`src/gateway/app.ts` 增 `GET /api/files/preview`（400/404/415）；UI 文件行双击拉预览 + 顶栏预览卡（✕ 关闭），`styles.css` 增 `.file-preview*`。
+- **验证**（零外部 LLM/API，¥0）：`npm run build` 绿；files 定向 3/3（E337 覆盖文本/截断/空/二进制/目录/不存在/7 种非法路径）；gateway 全绿（E337 路由 400/404）；`npm --prefix ui/prototype run build` 绿；`npm run doc-lint` 0 FAIL 0 WARN（151 参数）。全量 test:all/bench 未跑（成本纪律）。
+- **文档**：需求 §5 补 P-151 行、附录 A E337 登记；计划 `docs/plans/2026-09-04-file-preview.md`；本交接。未提交，待 owner 拍板批次。
+- **追加轮（长列表可达性，owner 复验发现）**：83 条文件时底部不可达且无滚动条——根因 `.shell-v2` 网格行 `1fr` 被右栏最小高度撑到 ~4676px 且 `overflow:hidden` 裁掉溢出段，不是滚动条样式问题；修 `.shell-v2` 行改 `minmax(0,1fr)` + `.right-v2` 加 `min-height:0`，滚动回到 `.right-body`（headless 实测 771 高/内容 4617、gutter 10px、可滚到底且末行可见），再补常显滚动条 + 文件 tab 顶部「共 N 个文件 · 按修改时间新→旧，往下滚动看全部」提示；`npm --prefix ui/prototype run build` 绿。滚动条可见与底部 PDF 可达（owner 复验通过，2026-09-04）。
+### E338 文件面板手动「刷新」按钮（按推荐直接开工）
+
+- **背景**：owner 多轮复验遇到“文件没显示/没刷新”的困惑——E328 自动刷新依赖 SSE 监听，缺手动兜底；文件 tab 补「刷新」。
+- **代码**：`ui/prototype/src/App.tsx` `loadFiles(autoPreview, markBusy)` 支持忙态（按钮禁用 + 「刷新中…」，成功/失败复位）；文件 tab 顶部工具栏左侧「共 N 个文件…」提示、右侧「刷新」按钮（复用 notify-toolbar 样式，纯前端、零新 CSS）。
+- **验证**（零外部 LLM/API，¥0）：`npm --prefix ui/prototype run build` 绿；纯前端改动，src 无变更、既有单测不受影响；`npm run doc-lint` 0 FAIL 0 WARN。
+- **文档**：需求附录 A E338 登记；计划 `docs/plans/2026-09-04-file-refresh.md`；本交接。未提交，待 owner 拍板批次。
+
+### E339 文件面板「最近变更」记录（§4.1.2 产物区第三项；方案 A 内存环收口）
+
+- **背景**：§4.1.2 右栏产物区 = 项目产物文件列表 + 变更记录 + 风险提示；列表/预览/刷新已就位，缺「变更记录」。E328 watcher 已算出差量但只广播无明细事件，UI 无法展示。
+- **代码**：新增 src/gateway/change-history.ts（内存环：ecordProjectChanges 倒序 unshift——同批保持 watcher 原序、整体新批在前，上限 50 条丢弃最旧；listProjectChangeRecords 返回副本防污染；clearProjectChangeHistory）；src/gateway/server.ts watcher onChange(changes) 先入环再广播 iles_changed；src/gateway/app.ts 增只读 GET /api/files/changes；UI 文件 tab 工具栏下「最近变更」区（新增/修改/删除彩色标签 + 路径 + 时间：当天 HH:mm:ss / 跨天 MM-DD HH:mm），挂载 + files_changed + 手动刷新三处拉取（最多展示 30 条），styles.css 增 .change-log* 样式。
+- **验证**（零外部 LLM/API，¥0）：
+pm run build 绿；change-history 定向 3/3 + gateway 全绿（34/34，新增 E339 空环/记录顺序路由用例）；
+pm --prefix ui/prototype run build 绿；
+pm run doc-lint 0 FAIL 0 WARN。全量 test:all/bench 未跑（成本纪律）。
+- **文档**：需求附录 A E339 登记；计划 `docs/plans/2026-09-04-file-change-history.md`；code-directory/directory-structure gateway 行；本交接。未提交，待 owner 拍板批次 + 手动复验。
+- **手动复验**（owner，2026-09-05）✅：重启 gateway 后在 `projects/` 新建/修改/删除文件，「最近变更」约 1–2s 内出现对应行且最新在最上；重启清空属预期。
 ## 明日/后续待办
 
-1. **（owner 复验，可选）**：主链路已通过；E325/E326/E327/E329/E330/E331/E332/E333 修复后复验六条——①「帮我安排一下我家里明天的亲子游行程安排」：日程标题「亲子游行程」（无「一下/我家里」）、确认文案「你让我“帮你安排一下你家里明天的亲子游行程安排”」、批准后回执「✅ 老板，已按你的批准执行。已为你创建日程：亲子游行程（…）」；②「帮我安排明天下午3点的周会，提前10分钟提醒」：标题「下午3点周会」（无「提前…提醒」残留），提醒仍按提前量登记；③ E330 修复后同句批准（聊天「执行」或裁决页）：应建日历事件（标题「下午3点周会」）、不再建一次性提醒、执行回执不再拼 git 状态噪音；④ E331：网关运行中从其它通道/操作写入多条通知后，右栏「通知」tab 出现未读数字角标，进通知页清零，通知超过 20 条可翻页；⑤ E332：关掉 gateway 提问 → 出现「⚠️ 本地预览」兜底（无假证据、不冒充真实回答），启动 gateway 后点「↻ 重试」→ 收到真实回复且不重复用户气泡；⑥ E333：兜底按钮直接显示 `↻ 重试「{原句}」`（如 `↻ 重试「明天天气如何」`），点击前即可确认重发内容。其余验收路径照旧。
-2. **批次状态**：E318-E333 已统一提交 `ffaa457`（2026-09-04，见「今日完成」收尾节）；E334 批次（代码+文档+e2e A4/B/C 验收回填）已提交 `4ee3548`（2026-09-04）。
-3. **后续轮候选**：真实 CLI/桌面 e2e 验收（含 E334 挂起文案风险/成本冒烟、E328 目录监听、E331 通知角标/分页）；§4.1 三栏 UI 其余打磨（目录监听、通知角标/分页已收口，剩余按需）；文件面板临时文件过滤（`/api/files` 列表含 `~$`/`.tmp`，删除后残留至下次真实刷新——B1 复验已知项，owner 拍板本轮不修，按需后续做）；Azure 注册（Outlook OAuth2 真连验收）仍挂 owner 侧，本轮不做。
+1. **（owner 复验，可选）**：主链路已通过；E325/E326/E327/E329/E330/E331/E332/E333 修复后复验七条——①「帮我安排一下我家里明天的亲子游行程安排」：日程标题「亲子游行程」（无「一下/我家里」）、确认文案「你让我“帮你安排一下你家里明天的亲子游行程安排”」、批准后回执「✅ 老板，已按你的批准执行。已为你创建日程：亲子游行程（…）」；②「帮我安排明天下午3点的周会，提前10分钟提醒」：标题「下午3点周会」（无「提前…提醒」残留），提醒仍按提前量登记；③ E330 修复后同句批准（聊天「执行」或裁决页）：应建日历事件（标题「下午3点周会」）、不再建一次性提醒、执行回执不再拼 git 状态噪音；④ E331：网关运行中从其它通道/操作写入多条通知后，右栏「通知」tab 出现未读数字角标，进通知页清零，通知超过 20 条可翻页；⑤ E332：关掉 gateway 提问 → 出现「⚠️ 本地预览」兜底（无假证据、不冒充真实回答），启动 gateway 后点「↻ 重试」→ 收到真实回复且不重复用户气泡；⑥ E333：兜底按钮直接显示 `↻ 重试「{原句}」`（如 `↻ 重试「明天天气如何」`），点击前即可确认重发内容；⑦ E339：外部工具/记事本在 `projects/` 新建/修改/删除文件 → 文件 tab 顶部「最近变更」约 2s 内出现对应 新增/修改/删除 行；重启 gateway 后清空属预期（内存环）（✅ 已复验通过，2026-09-05）。其余验收路径照旧。
+2. **批次状态**：E318-E333 已统一提交 `ffaa457`（2026-09-04，见「今日完成」收尾节）；E334 批次（代码+文档+e2e A4/B/C 验收回填）已提交 `4ee3548`（2026-09-04）；E335（文件面板临时文件过滤）已实现未提交，待 owner 拍板批次；E336（裁决后旧「待你裁决」通知去残留）已实现未提交，同待拍板；E337（文件面板只读预览）已实现未提交，同待拍板；E338（文件面板手动刷新）已实现未提交，同待拍板；E339（文件面板最近变更记录）已实现未提交，同待拍板。
+3. **后续轮候选**：真实 CLI/桌面 e2e 验收（含 E334 挂起文案风险/成本冒烟、E328 目录监听、E331 通知角标/分页）；§4.1 三栏 UI 其余打磨（目录监听、通知角标/分页已收口，剩余按需）；文件面板边角料（E335 临时过滤 / E336 通知去残留 / E337 预览 / E338 刷新 / E339 最近变更记录均已收口，见「今日完成」）；Azure 注册（Outlook OAuth2 真连验收）仍挂 owner 侧，本轮不做。
 4. **已评估不引入（勿重复立项）**：外部项目 genoffice（办公自动化类）已评估，结论维持「先不引入、按现有办公自动化路线推进」，无需再展开。

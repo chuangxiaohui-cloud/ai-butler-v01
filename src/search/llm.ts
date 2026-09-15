@@ -96,15 +96,20 @@ export function createSkillHeavyClient(): LLMClient | undefined {
 
 /**
  * 生产 skill 合成客户端（main/gateway/im 三入口与市场通道共用）：按 skill 名选档。
- * github-reader 属速读型 skill（契约渲染为主），走 medium（v4-flash）——heavy 档
- * v4-pro 的 <think> 推理块与答案共享 max_tokens，实测合成 ~46s；medium 更快完成
- * 同等契约渲染。但 medium 默认 [P-116] 18s 总预算在 API 抖动/长答案时会把正在生成的
- * 答案杀掉（E283 实测 18s 截断触发模板兜底），故 github-reader 合成单独放宽到 [P-122]
- * 90s（与 skill 长文档位同一预算口径，模型仍为 v4-flash；不动全局 [P-116]）。
+ * github-reader / archify / layered-arch 属契约式输出型 skill（JSON/结构化渲染为主）：
+ * - github-reader：heavy 档 v4-pro 的 <think> 推理块与答案共享 max_tokens，实测合成 ~46s；
+ *   medium 更快完成同等契约渲染（E283）。
+ * - archify（E358）：一次要出最多 6000 token 的 JSON IR，v4-pro 90s 内偶发回不来
+ *   导致整次 0.3 收据（owner 复测短问「画个订单系统的系统架构图」真机复现）；JSON 版式
+ *   有本地 validate/repair 兜底，不需要推理档，medium v4-flash 足够。
+ * - layered-arch（E364）：一次要出最多 4000 token 的分层 JSON，同 archify 理由走 medium。
+ * 但 medium 默认 [P-116] 18s 总预算在 API 抖动/长答案时会把正在生成的答案杀掉
+ * （E283 实测 18s 截断触发模板兜底），故这类 skill 合成单独放宽到 [P-122] 90s
+ * （与 skill 长文档位同一预算口径，模型仍为 v4-flash；不动全局 [P-116]）。
  * 其余 skill 维持 heavy（E238：长文生成需要 [P-122] 的 90s 预算防截断）。
  */
 export function createSkillCompleteClient(skillName: string): LLMClient {
-  if (skillName === 'github-reader') {
+  if (skillName === 'github-reader' || skillName === 'archify' || skillName === 'layered-arch') {
     try {
       return createClientForRole('medium', {
         totalBudgetMs: PARAMS.skillGenerationBudgetMs,
@@ -113,6 +118,25 @@ export function createSkillCompleteClient(skillName: string): LLMClient {
     } catch {
       // 未配置 medium provider 时回落 heavy 链
     }
+  }
+  return createSkillHeavyClient() ?? createHeavyClient();
+}
+
+/**
+ * E343：内容型思维导图大纲合成客户端（xmind_content）——E342 真机冒烟复现
+ * medium 档 v4-flash 在「长结构大纲」任务上实际 >18s，被 [P-116] 18s 链总预算强停。
+ * 与 E283 github-reader 同一套路：模型仍 medium（v4-flash，成本不变），per-call 预算
+ * 放宽到 [P-122] 90s（timeoutMs 同步放宽，防单 provider 30s 超时先切链），不动全局 [P-116]。
+ */
+export function createXmindOutlineClient(opts?: { preferredProvider?: string }): LLMClient {
+  try {
+    return createClientForRole('medium', {
+      totalBudgetMs: PARAMS.skillGenerationBudgetMs,
+      timeoutMs: PARAMS.skillGenerationBudgetMs,
+      preferredId: opts?.preferredProvider,
+    });
+  } catch {
+    // 未配置 medium provider 时回落 heavy 链（同 90s 预算）
   }
   return createSkillHeavyClient() ?? createHeavyClient();
 }
@@ -129,7 +153,8 @@ export function createVisionClient(opts?: { timeoutMs?: number }): VLMClient {
   const baseUrl = profile.baseUrl;
   const apiKey = profile.apiKey;
   const model = profile.models.vision;
-  const timeoutMs = opts?.timeoutMs ?? Number(process.env.VLM_TIMEOUT_MS ?? '8000');
+  // P-153：推理型视觉模型思考耗时偏长，默认放宽到 20s；env VLM_TIMEOUT_MS 仍可覆盖
+  const timeoutMs = opts?.timeoutMs ?? Number(process.env.VLM_TIMEOUT_MS ?? PARAMS.vlmTimeoutMs);
 
   return async (input, options = {}) => {
     const controller = new AbortController();

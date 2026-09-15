@@ -35,9 +35,15 @@ export async function extractIntentFeature(
   attachments: AttachmentSignal[] = [],
   contextHints: string[] = [],
 ): Promise<ExtractionResult> {
+  // E342：内容型思维导图（主题 + 思维导图，无自带大纲）是确定性动作意图，
+  // 不经 LLM 分类（省一次调用且不被误判成普通知识问答），直接走规则结果。
+  const ruleBased = extractIntentFeatureRuleBased(query, attachments);
+  if (ruleBased.actionType === 'xmind_content') {
+    return { features: ruleBased, source: 'rule', issues: [] };
+  }
   if (!llm) {
     return {
-      features: extractIntentFeatureRuleBased(query, attachments),
+      features: ruleBased,
       source: 'rule',
       issues: [],
     };

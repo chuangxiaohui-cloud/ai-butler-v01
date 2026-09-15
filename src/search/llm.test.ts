@@ -124,7 +124,7 @@ function restoreModelEnv(saved: Map<string, string | undefined>): void {
   }
 }
 
-test('llm: createSkillCompleteClient github-reader 走 medium（v4-flash），其余 skill 维持 heavy（E283）', () => {
+test('llm: createSkillCompleteClient github-reader/archify/layered-arch 走 medium（v4-flash），其余 skill 维持 heavy（E283/E358/E364）', () => {
   const savedKeys = saveKeys();
   const savedModels = saveModelEnv();
   for (const key of KEY_ENVS) process.env[key] = '';
@@ -132,17 +132,23 @@ test('llm: createSkillCompleteClient github-reader 走 medium（v4-flash），�
   process.env.DEEPSEEK_MEDIUM_MODEL = 'deepseek-v4-flash';
   process.env.DEEPSEEK_HEAVY_MODEL = 'deepseek-v4-pro';
   try {
-    const medium = createSkillCompleteClient('github-reader') as unknown as {
-      model?: string;
-      opts?: { timeoutMs?: number };
-      chain?: Array<{ client?: { opts?: { timeoutMs?: number } } }>;
-    };
+    const pick = (skill: string) =>
+      createSkillCompleteClient(skill) as unknown as {
+        model?: string;
+        opts?: { timeoutMs?: number };
+        chain?: Array<{ client?: { opts?: { timeoutMs?: number } } }>;
+      };
+    const medium = pick('github-reader');
+    const archify = pick('archify');
+    const layered = pick('layered-arch');
     const heavy = createSkillCompleteClient('engineer') as unknown as { model?: string };
-    assert.equal(medium.model, 'deepseek-v4-flash');
+    for (const client of [medium, archify, layered]) {
+      assert.equal(client.model, 'deepseek-v4-flash');
+      // E283/E358/E364：契约式输出型 skill 预算放宽到 [P-122]（medium 默认 [P-116] 18s 会截断长答案）
+      const timeoutMs = client.opts?.timeoutMs ?? client.chain?.[0]?.client?.opts?.timeoutMs;
+      assert.equal(timeoutMs, PARAMS.skillGenerationBudgetMs);
+    }
     assert.equal(heavy.model, 'deepseek-v4-pro');
-    // E283 修订：github-reader 合成预算放宽到 [P-122]（medium 默认 [P-116] 18s 会截断长答案）
-    const timeoutMs = medium.opts?.timeoutMs ?? medium.chain?.[0]?.client?.opts?.timeoutMs;
-    assert.equal(timeoutMs, PARAMS.skillGenerationBudgetMs);
   } finally {
     restoreKeys(savedKeys);
     restoreModelEnv(savedModels);

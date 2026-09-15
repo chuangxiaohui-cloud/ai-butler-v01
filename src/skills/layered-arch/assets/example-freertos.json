@@ -1,0 +1,93 @@
+{
+  "meta": {
+    "title": "嵌入式 FreeRTOS 系统框架图",
+    "version": "1.0",
+    "created": "2026-09-06",
+    "description": "从应用任务到硬件的 FreeRTOS 分层框架，自上而下五层",
+    "canvas": { "width": 680, "height": 640, "direction": "top-down" },
+    "colorScheme": {
+      "application": "#E6F1FB",
+      "middleware": "#E1F5EE",
+      "kernel": "#EEEDFE",
+      "kernelAccent": "#534AB7",
+      "driver": "#FAEEDA",
+      "hardware": "#F1EFE8"
+    }
+  },
+  "layers": [
+    {
+      "id": "app",
+      "name": "应用层",
+      "subtitle": "用户任务，优先级由高到低划分",
+      "order": 1,
+      "nodes": [
+        { "id": "task_acquire", "name": "采集任务", "detail": "ADC / 传感器" },
+        { "id": "task_comm", "name": "通信任务", "detail": "MQTT / 上位机" },
+        { "id": "task_process", "name": "处理任务", "detail": "滤波 / 协议解析" },
+        { "id": "task_display", "name": "显示任务", "detail": "LCD / LED" }
+      ]
+    },
+    {
+      "id": "middleware",
+      "name": "中间件层",
+      "order": 2,
+      "nodes": [
+        { "id": "mw_stack", "name": "协议栈", "detail": "LwIP / BLE" },
+        { "id": "mw_fs", "name": "文件系统", "detail": "FatFS" },
+        { "id": "mw_cli", "name": "CLI / 日志", "detail": "" }
+      ]
+    },
+    {
+      "id": "kernel",
+      "name": "FreeRTOS 内核",
+      "order": 3,
+      "highlight": true,
+      "nodes": [
+        {
+          "id": "scheduler",
+          "name": "抢占式调度器",
+          "detail": "SysTick 节拍 · PendSV 上下文切换 · 优先级抢占 + 时间片轮转",
+          "role": "core"
+        },
+        { "id": "task_tcb", "name": "任务 / TCB" },
+        { "id": "queue", "name": "队列 Queue" },
+        { "id": "semaphore", "name": "信号量" },
+        { "id": "mutex", "name": "互斥量", "detail": "优先级继承" },
+        { "id": "event_group", "name": "事件组 / 任务通知" },
+        { "id": "heap", "name": "动态内存管理", "detail": "heap_4" },
+        { "id": "timers_isr", "name": "软件定时器 · 中断管理", "detail": "临界区" }
+      ]
+    },
+    {
+      "id": "driver",
+      "name": "驱动 / HAL 层",
+      "order": 4,
+      "nodes": [
+        { "id": "drv_uart", "name": "UART" },
+        { "id": "drv_spi_i2c", "name": "SPI / I2C" },
+        { "id": "drv_adc", "name": "ADC / DAC" },
+        { "id": "drv_gpio", "name": "GPIO / TIM" },
+        { "id": "drv_dma", "name": "DMA / Flash" }
+      ]
+    },
+    {
+      "id": "hardware",
+      "name": "硬件层",
+      "order": 5,
+      "nodes": [
+        { "id": "mcu", "name": "MCU", "detail": "Cortex-M 内核 · Flash / SRAM" },
+        { "id": "peripherals", "name": "外部外设", "detail": "传感器 / 屏幕 / 无线模块" }
+      ]
+    }
+  ],
+  "connections": [
+    { "from": "app", "to": "middleware", "label": "" },
+    { "from": "middleware", "to": "kernel", "label": "OS API" },
+    { "from": "kernel", "to": "driver", "label": "驱动接口 / ISR 唤醒任务" },
+    { "from": "driver", "to": "hardware", "label": "寄存器 / 总线时序" }
+  ],
+  "rules": [
+    "任务不直接操作硬件：应用 → OS API → 驱动 → 寄存器，层层隔离",
+    "ISR 中只调用 FromISR 系列接口唤醒任务，不做耗时处理"
+  ]
+}

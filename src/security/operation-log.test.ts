@@ -37,6 +37,20 @@ test('operation-log: append/latest 按用户过滤', () => {
       { userId: 'u1', conversationId: 'conv1', action: 'write', path: 'c.c', backup: null, created: true },
       logPath,
     );
+    appendOperation(
+      {
+        userId: 'u1',
+        conversationId: 'conv1',
+        action: 'transaction',
+        status: 'prepared',
+        transactionId: 'tx-1',
+        paths: ['c.c', 'd.c'],
+        path: '.',
+        backup: 'snapshots/tx-1',
+        created: false,
+      },
+      logPath,
+    );
     assert.equal(latestWriteOperation('u1', { logPath })?.path, 'c.c');
     assert.equal(latestWriteOperation('u1', { logPath, conversationId: 'conv1' })?.path, 'c.c');
     assert.equal(latestWriteOperation('u1', { logPath, conversationId: 'conv2' }), null);
@@ -105,6 +119,9 @@ test('operation-log: 新建文件回滚删除文件', () => {
       assert.equal(r.ok, true);
       assert.equal(existsSync(target), false);
       assert.ok(r.message.includes('删除新建文件'));
+      const repeated = rollbackLatest('u1', { logPath, cwd: dir });
+      assert.equal(repeated.ok, false);
+      assert.ok(repeated.message.includes('没有找到最近由我执行的写入操作'));
     } finally {
       process.env.SANDBOX_ALLOWED_DIRS = old;
     }

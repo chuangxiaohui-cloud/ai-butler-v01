@@ -33,6 +33,29 @@ test('notification-store: add + recent 往返（E315）', () => {
   }
 });
 
+test('notification-store: decisionId 透传往返（E336）', () => {
+  const file = tempLog();
+  const store = new NotificationStore(file);
+  try {
+    store.add({
+      role: '老板',
+      kind: 'risk_decision',
+      title: '待你裁决',
+      detail: '帮我安排明天下午3点的周会？',
+      decisionId: 'decision-abc',
+    });
+    const recent = store.recent();
+    assert.equal(recent.length, 1);
+    assert.equal(recent[0]?.decisionId, 'decision-abc');
+    assert.equal(store.all().length, 1);
+    assert.equal(store.all()[0]?.decisionId, 'decision-abc');
+  } finally {
+    store.close();
+    clearJsonlReadCache();
+    rmSync(dirname(file), { recursive: true, force: true });
+  }
+});
+
 test('notification-store: source=skill 透传 + recent 条数限制（E315）', () => {
   const file = tempLog();
   const store = new NotificationStore(file);

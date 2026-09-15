@@ -1,7 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeMaturityMetrics, countReuseEvents, type MaturityInputs } from './metrics.js';
+import {
+  collectMaturityFeedbackSamples,
+  computeMaturityMetrics,
+  countReuseEvents,
+  type MaturityInputs,
+} from './metrics.js';
 
 function baseInput(overrides: Partial<MaturityInputs> = {}): MaturityInputs {
   return {
@@ -44,6 +49,24 @@ test('computeMaturityMetrics：通过率 = accept/(accept+reject+correct)', () =
   assert.equal(metrics.acceptance.correct, 1);
   assert.equal(metrics.acceptance.total, 4);
   assert.equal(metrics.acceptance.rate, 0.5);
+});
+
+test('collectMaturityFeedbackSamples：合并 pipeline 路由标注与回复最新反馈', () => {
+  const samples = collectMaturityFeedbackSamples(
+    [
+      { source: 'pipeline', feedback: 'accept' },
+      { source: 'seed', feedback: 'reject' },
+    ],
+    [
+      { feedback: 'reject' },
+      { feedback: 'correct' },
+    ],
+  );
+  assert.deepEqual(samples, [
+    { source: 'pipeline', feedback: 'accept' },
+    { source: 'answer_feedback', feedback: 'reject' },
+    { source: 'answer_feedback', feedback: 'correct' },
+  ]);
 });
 
 test('computeMaturityMetrics：n<30 且通过率达标时提示样本不足', () => {

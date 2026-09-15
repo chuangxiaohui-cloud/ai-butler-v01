@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 import { findAvailable, findSubAgent, getSubAgents } from './registry.js';
 
-test('mcp-registry: 预置子 Agent 覆盖四类 + 编译类，默认占位', () => {
+test('mcp-registry: 预置子 Agent 覆盖专业类别且 VS Code 默认占位', () => {
   const agents = getSubAgents();
   assert.ok(agents.length >= 6);
   const kicad = findSubAgent('kicad');
@@ -12,6 +12,26 @@ test('mcp-registry: 预置子 Agent 覆盖四类 + 编译类，默认占位', ()
   assert.equal(kicad.toolPrefix, 'kicad.');
   assert.equal(kicad.available, false, '默认未接入');
   assert.deepEqual(kicad.command, [], '无命令 = 占位');
+
+  const vscode = findSubAgent('vscode');
+  assert.ok(vscode);
+  assert.equal(vscode.name, 'Visual Studio Code');
+  assert.equal(vscode.category, 'code');
+  assert.equal(vscode.toolPrefix, 'vscode.');
+  assert.equal(vscode.available, false, 'VS Code 未配置真实连接时保持占位');
+  assert.deepEqual(vscode.command, []);
+
+  const stm32Gcc = findSubAgent('stm32-gcc');
+  assert.ok(stm32Gcc);
+  assert.equal(stm32Gcc.category, 'build');
+  assert.equal(stm32Gcc.toolPrefix, 'stm32-gcc.');
+  assert.equal(stm32Gcc.available, false);
+
+  const ltspice = findSubAgent('ltspice');
+  assert.ok(ltspice);
+  assert.equal(ltspice.category, 'simulation');
+  assert.equal(ltspice.toolPrefix, 'ltspice.');
+  assert.equal(ltspice.available, false);
 
   const categories = new Set<string>(agents.map((meta) => meta.category));
   for (const expected of ['eda', 'structure', 'code', 'simulation', 'build']) {

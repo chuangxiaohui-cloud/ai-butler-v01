@@ -50,26 +50,27 @@ CLI (src/main.ts)  UI (ui/prototype)  桌面壳 (desktop)
 | 模块 | 职责 | 关键文件 |
 |------|------|----------|
 | `src/search/` | Stage 1-6 搜索问答管道、搜索 provider、融合、兜底链 | `pipeline.ts`、`stages/`、`providers/`、`fusion.ts`、`rule1.ts`、`rule3.ts`、`second-pass.ts`、`second-pass-fetch.ts`、`deep-report.ts`、`deep-report-store.ts` |
-| `src/mcp/` | MCP 子 Agent（注册表/stdio 客户端/调度器/安全白名单/真实 server 配置装配，v1.0 S3 E222 + E240） | `registry.ts`、`client.ts`、`dispatcher.ts`、`safety.ts`、`types.ts`、`config.ts` |
+| `src/mcp/` | MCP 子 Agent 运行契约与工具适配；Keil、VS Code、STM32-GCC、KiCad ERC 与 LTspice 只读链已接入并有真实 stdio 夹具证据（E401-E410）；画像支持字段级合并、多平台共存、过期重探测和构建人工审批，受 schema、白名单、沙箱与 [P-154] 约束；不含 EDA 编辑、实际仿真或烧录 | `types.ts`、`contract.ts`、`registry.ts`、`client.ts`、`dispatcher.ts`、`safety.ts`、`config.ts`、`health.ts`、`keil.ts`、`keil-server.ts`、`vscode.ts`、`vscode-server.ts`、`stm32-gcc.ts`、`stm32-gcc-server.ts`、`kicad.ts`、`kicad-server.ts`、`ltspice.ts`、`ltspice-server.ts`、`project-profile.ts`、`project-profile-store.ts`、`project-profile-merge.ts`、`domain-workflow.ts`、`workflow-entry.ts`、`workflow-guard.ts`；证据脚本：`scripts/mcp-s3-evidence.ts`；schema：`configs/mcp-profiles/project-profile.schema.json` |
 | `src/im/` | 远程对话通道（授权开关/会话隔离/输出适配/复用 pipeline + ImChannel 抽象 + OneBot 11 真实适配器 + 常驻入口，v1.0 S5，§4.5 E224+E241） | `gate.ts`、`session.ts`、`format.ts`、`service.ts`、`channel.ts`、`config.ts`、`run.ts`、`onebot/` |
 | `src/repo/` | 代码托管联动（仓库白名单/预检门禁/commit+push/审计 JSONL + 真实推送 CLI 编排，v1.0 S6，E225+E244） | `types.ts`、`repo-whitelist.ts`、`push-audit.ts`、`push-service.ts`、`cli.ts` |
 | `src/skills/market/` | Skill 市场远程化（索引/校验/权限门禁/安装记录 JSONL + 可执行 handler + 自然语言触发词直连 + 本地安装通道，v1.0 S7，E243+E248+E250+E251 输入通道） | `index-client.ts`、`manifest.ts`、`installer.ts`、`nl-router.ts`、`runner.ts`、`store.ts`、`types.ts`（精选包源 `configs/market-skills/`） |
-| `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理、rewrite/记住指令、时间表达、路由 case JSONL（追加/轮转） | `router-v2.ts`、`routing-table.ts`、`mode-mapper.ts`、`route-case-store.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` |
-| `src/skills/` | Skill 注册、生命周期、预置 Skill | `registry.ts`、`lifecycle.ts`、`deps.ts`、`skills/*` |
-| `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标、`npm run maturity:check`，v1.0 P-10 条件③，E247）+ 运行时看门狗（E282，synthesis_timeout 环境噪音告警） | `metrics.ts`、`runtime-watchdog.ts` |
-| `src/memory/` | MemoryStore（sqlite/memorycore 配置切换）、ExperienceManager、用户上下文、蒸馏 | `store.ts`、`memorycore-store.ts`、`experience.ts`、`distill.ts` |
+| `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理、rewrite/显式记住与纠正记忆指令（E370）、时间表达、路由 case JSONL（追加/轮转） | `router-v2.ts`、`routing-table.ts`、`mode-mapper.ts`、`route-case-store.ts`、`rewrite-with-memory.ts`、`memory-instruction.ts`、`time-expression.ts` |
+| `src/skills/` | Skill 注册、生命周期、预置 Skill；project-writer 结构化多文件事务预览、确认与首次裁决执行（E398/E399）；回复连续 👎 达 [P-79] 标记复审并由用户恢复（E378/E379） | `registry.ts`、`lifecycle.ts`、`deps.ts`、`skills/*` |
+| `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标；合并 pipeline 路由标注与回复最新反馈，§9.3/§12.4，E247/E377，`npm run maturity:check`）+ 运行时看门狗（E282，synthesis_timeout 环境噪音告警） | `metrics.ts`、`runtime-watchdog.ts` |
+| `src/feedback/` | 回复反馈、最新值与按用户每日汇总，Skill 复审、重复修订候选归并，以及 accepted 候选的只读草案预览（§9.3，E374-E387） | `feedback-store.ts`、`skill-candidate-store.ts`、`skill-candidate-draft.ts` |
+| `src/memory/` | MemoryStore、ExperienceManager、用户上下文与蒸馏；软件职业画像（E365）；三栏 ACL（E367/E368）；人格事实分层、栏位冲突、时间敏感事实及已解决生活话题出窗/L2 保留（§8.1.3/§8.3，E369/E371-E373） | `store.ts`、`memorycore-store.ts`、`experience.ts`、`distill.ts`、`session-context.ts`、`user-context-store.ts`、`software-profile.ts`、`asset-acl.ts`、`persona-memory.ts`、`time-sensitive-memory.ts` |
 | `src/slash/` | 斜杠命令层（/compact 手动压缩、/context 会话状态、/cost AI 运营成本报告，§8.3 E204 / §14 E319） | `slash-commands.ts` |
 | `src/reminder/` | 主动提醒存储 | `reminder-store.ts` |
 | `src/mail/` | 邮箱通道：凭据多账号容器与认证模型（password/xoauth2）、IMAP 只读收件/读信/搜信/附件（E293-E303）、SMTP 发信、Outlook OAuth2 设备码授权与自动续期（XOAUTH2 收信+发信，E321/E322） | `credentials.ts`、`smtp.ts`、`imap.ts`、`oauth.ts` |
-| `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API | `app.ts`、`server.ts`、`attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts`、`project-watcher.ts`、`rate-limit.ts` |
+| `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API；普通批准/否决、结构化 choice、project-writer 首次确认及冲突三选一恢复执行（E323/E396/E399/E402） | `app.ts`、`server.ts`、`attachments.ts`、`terminal.ts`、`files.ts`、`artifact-bus.ts`、`project-watcher.ts`、`change-history.ts`、`rate-limit.ts` |
 | `src/browser/` | 浏览器会话、CDP 持久化、页面抓取、浏览器操作（E252：AX 树观察 [P-126] 有界 + DSL 交互层 [P-124]/[P-125] + 真实 CDP 驱动） | `session.ts`、`dom-observe.ts`、`operations.ts`、`driver.ts` |
 | `src/config/` | PARAM、Provider Registry、模型目录、安全/用量/Skill 配置、AI 运营分档单价表（缓存命中/未命中 × 高峰/空闲） | `params.ts`、`model-catalog.ts`、`provider-order.ts`、`security-config.ts`、`usage-budget.ts`、`model-pricing.ts` |
 | `src/trajectory/` | append-only 轨迹日志 | `trajectory-log.ts` |
 | `src/log/` | JSONL 追加/轮转（.1 归档）/缓存读 | `jsonl.ts` |
 | `src/usage/` | Token 计量与聚合（含缓存拆分）；AI 运营成本估算/阈值告警/硬停门禁/报告（§COST v1）；AI 运营日报/阈值事件写入通知枢纽（§11.3 秘书日报，E318） | `usage-store.ts`、`cost.ts`、`ai-ops-notify.ts` |
-| `src/security/` | 沙箱路径白名单、审计、Agent 操作日志与回滚、浏览器抓取 URL 安全、浏览器动作白名单/高风险标记、域名授权持久化（E252） | `sandbox.ts`、`operation-log.ts`、`url-safety.ts`、`browser-actions.ts`、`domain-auth.ts` |
+| `src/security/` | 沙箱路径白名单、单文件回滚及项目级快照/预检/全量暂存、自动回滚、事务审计、冲突确认/重新确认、进程内 pending 绑定与三选一恢复执行（§11.2 E366/E393-E399/E402）、浏览器抓取 URL 安全、浏览器动作白名单/高风险标记、域名授权持久化（E252） | `sandbox.ts`、`operation-log.ts`、`project-transaction.ts`、`project-conflict-confirmation.ts`、`project-conflict-resolution.ts`、`pending-project-transaction-store.ts`、`url-safety.ts`、`browser-actions.ts`、`domain-auth.ts` |
 | `src/security/` | 命令白名单 + 搜索脱敏（v1.0 S4，§10.2/§10.3） | `command-whitelist.ts`、`query-sanitize.ts` |
-| `src/postprocess/` | 输出后处理（文化回复等） | `cultural-reply.ts` |
+| `src/postprocess/` | 输出后处理：文化回复、Stage 6 answer_postprocess 运行时及用户级 append-only 启停/使用/反馈复审与恢复账本；待复审规则展示按用户隔离的最近负反馈证据（§9.3，E382-E386） | `cultural-reply.ts`、`answer-postprocess.ts`、`answer-postprocess-store.ts` |
 | `src/wiki/` | 冷启动知识种子 | `index.ts` |
 
 ## 4. 接口契约
@@ -96,10 +97,13 @@ CLI (src/main.ts)  UI (ui/prototype)  桌面壳 (desktop)
 | `GET /api/events` | Artifact 事件 SSE |
 | `GET/POST /api/providers` | Provider 状态与默认顺序 |
 | `GET/POST /api/skills` | Skill 元数据与启用/禁用同步 |
+| `GET /api/skill-candidates`、`POST /api/skill-candidates/:id/rule` | Skill 候选、answer_postprocess 规则启停/复审与最近负反馈证据（§9.3，E380-E386） |
+| `GET/POST /api/feedback` | 回复反馈审计、最新状态与统计（§9.3，E374-E386） |
+| `GET /api/agents` | 子 Agent 目录（类别/名称/接入状态，§4.1.2 角色面板，E350） |
 | `GET/POST /api/usage/*` | Token 用量与预算 |
 | `GET /api/memory`、`POST /api/memory/forget` | 记忆浏览与删除 |
-| `GET /api/notifications` | 通知读 API（最新在前 + 优先级 + 摘要，§11.3，E320） |
-| `GET /api/decisions`、`POST /api/decisions/:id` | 人类裁决：待裁决队列读 + 批准/否决回填；批准带 resume 的挂起写动作时自动恢复执行并回执行回执（§2.3 记录侧 append 事件，E323/E324） |
+| `GET /api/notifications` | 通知读 API（最新在前 + 优先级 + 当前用户每日反馈摘要，§9.3/§11.3，E320/E387） |
+| `GET /api/decisions`、`POST /api/decisions/:id` | 人类裁决：待裁决队列读 + 批准/否决/结构化 choice 回填；普通 resume、project-writer 首次确认及冲突三选一均显式恢复并返回事务回执（§2.3，E323/E324/E396/E399/E402） |
 | `GET/POST /api/security` | 安全中心配置 |
 | `POST /api/terminal/exec` | 终端命令执行通道（Shell 权限门控） |
 | `GET /api/files` | 产物文件扫描（沙箱根目录白名单） |

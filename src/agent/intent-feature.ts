@@ -20,12 +20,17 @@ export const ACTION_TYPES = [
   'qa',
   'summarize',
   'extract_structure',
+  'xmind',
   'rewrite',
   'pack',
   'schedule',
   'compare',
   'chat',
   'apply_to_project',
+  'xmind_content',
+  'codegraph_impact',
+  'archify_diagram',
+  'layered_arch_diagram',
   'generate_bom',
   'office_daily',
   'learn_video',
@@ -93,6 +98,48 @@ const METRIC_QA_RE =
   /是多少|多少钱|什么价位|价位多少|价格多少|价格是多少|什么价格|多大|几位|有多少|剩多少/;
 const QA_RE = new RegExp(`${GENERIC_QA_RE.source}|${METRIC_QA_RE.source}`);
 const COLOR_RE = /颜色|配色|色号|色彩|主色|取色/;
+// E340：Xmind 软件咨询类问句提示词（好用吗/哪款/教程等），命中时不该落“生成 .xmind 文件”写类动作
+const XMIND_SOFTWARE_QA_RE =
+  /好用|好用吗|方便吗|推荐|哪款|哪个好|哪家|软件|怎么学|教程|教学|模板|风格|快捷键|优缺点|区别|怎么用/u;
+// E342：主题型内容思维导图（需联网整理内容后生成），与 E340“用户自带大纲直接生成”区分：
+// 命中以下名词/动词形态且非咨询问句、无大纲结构行时 → xmind_content（走检索 + LLM 出大纲）。
+// 名词形态：FreeRTOS 的软件架构思维导图？/ FreeRTOS思维导图
+const XMIND_CONTENT_NOUN_RE =
+  /([\w\u4e00-\u9fa5][\w\u4e00-\u9fa5 _\-./()（）+]{0,28}?)(?:的|之)?(?:软件|系统|整体|总体|技术|内部|体系|业务|产品|功能)?(?:架构|体系结构|结构|组成|模块|框架|体系|内核|知识点)?\s*(?:思维导图|xmind|脑图|mind\s*map|\.xmind)/i;
+// 动词形态：把 FreeRTOS 软件架构做成/梳理成/整理成 思维导图
+const XMIND_CONTENT_VERB_RE =
+  /(?:把|将|请把|给)\s*([\w\u4e00-\u9fa5][\w\u4e00-\u9fa5 _\-./()（）+]{0,28}?)(?:的|之)?(?:软件|系统|整体|总体|技术|内部|体系|业务|产品|功能)?(?:架构|体系结构|结构|组成|模块|框架|体系|内核|知识点)?\s*(?:拆解|梳理|整理成|做成|整理|生成|画|制作|转为|转成)?\s*(?:成)?\s*(?:思维导图|xmind|脑图|mind\s*map)/i;
+const XMIND_CONTENT_RE = new RegExp(
+  `${XMIND_CONTENT_NOUN_RE.source}|${XMIND_CONTENT_VERB_RE.source}`,
+  'i',
+);
+// E342：思维导图咨询/泛问句（怎么做/推荐哪款/思维导图软件等）不与内容型抢意图
+const XMIND_CONSULT_RE =
+  /好用吗|好用|推荐|哪款|哪个好|教程|教学|模板|风格|快捷键|优缺点|区别|怎么用|怎么做|怎么画|怎么学|思维导图软件|用思维导图|有没有|哪些|是什么|什么叫/u;
+/** 大纲结构行（WBS 编号 / - * 列表）——用户已自带大纲，直接生成而非内容整理 */
+const OUTLINE_LINE_RE = /[\r\n]\s*\d+(?:\.\d+)*[\s.、]|[\r\n]\s*[-*]\s/;
+// E353：CodeGraph 本地代码解读——意图触发需带代码语境（函数/符号/文件/工程等），
+// 纯问句（什么是影响分析/明天会影响出行吗）由下方守卫让位 qa/web_search。
+const CODEGRAPH_IMPACT_RE =
+  /(?:改了|改下|改一下|改动|修改|重构|删除|删掉|调整)\s*(?:了)?\s*(?:这个|那个)?[^。；\n]{0,20}(?:影响|波及)|(?:谁|被谁)\s*(?:在)?\s*(?:调用|调用了)|(?:谁|哪些|什么)\s*在\s*(?:调用|引用)|(?:调用链|影响分析|代码影响|会波及|影响到哪些)/i;
+const CODEGRAPH_READ_RE =
+  /(?:解读|速读|分析|梳理|讲讲|看看|摸清)\s*(?:一下)?\s*[^。；\n]{0,28}?(?:代码|项目|仓库|源码|工程)\s*(?:的)?(?:整体|主要|总体)?(?:结构|组成|模块|架构|依赖|调用|关系)?/i;
+const CODE_ENTITY_RE =
+  /函数|方法|变量|符号|模块|类|接口|源码|代码|项目|仓库|工程|文件|引用|调用|\.(?:ts|tsx|js|jsx|c|cpp|cc|cxx|h|hpp|py|rs|go|java|kt|v|sv|zig)\b|(?:projects|sandbox|outputs|data)[\\/][A-Za-z0-9_.\-/\\]*/i;
+// E353：影响分析/调用关系类元问句（概念咨询）不落本地代码分析
+const CODEGRAPH_CONSULT_RE =
+  /(?:什么是|是什么|什么叫|指什么|怎么做|怎么用|如何做|如何用|哪些工具|有什么工具|有没有工具)\s*.{0,10}(?:影响分析|调用关系|代码影响|调用链)/i;
+// E352：Archify 五类系统图（架构/流程/时序/数据流/生命周期）——「…图」名词或
+// 「画/生成 + 图型主题 + (图)」动宾结构；置于 analyze/create 之前防被「分析/画」抢词。
+const ARCHIFY_RE =
+  /(?:系统架构图|架构图|系统图|组件图|模块图|拓扑图|部署图|架构示意|流程图|泳道图|工作流图|时序图|序列图|数据流图|数据管道图|生命周期图|状态机图|状态图|architecture\s*diagram|component\s*diagram|workflow\s*diagram|flow\s*chart|sequence\s*diagram|data\s*flow\s*diagram|lifecycle\s*diagram|state\s*machine\s*diagram)|(?:把|将|请|帮我)?\s*(?:画|绘制|生成|做张|做一张|出一张|出图|设计)\s*.{0,18}(?:架构|系统|流程|工作流|泳道|时序|序列|数据流|数据管道|生命周期|状态机|组件|拓扑|部署|architecture|workflow|sequence|dataflow|data\s*flow|lifecycle).{0,6}(?:图|diagram)?/i;
+// E352：画图实义祈使（「帮我画… / 画个…图 / 把…画出来」），用于问句守卫放行
+const ARCHIFY_IMPERATIVE_RE =
+  /(?:帮我|请|给我|麻烦)\s*(?:画|绘制|生成|设计|出一张|画一张)|画(?:个|一张|一个|下|出来|出)|生成一张|做张|做一张/i;
+// E364：分层架构/框架/模块图（layered-arch 自研 viewer，替代 Archify 架构类）——
+// 只拦「架构/框架/分层/模块/组件/系统图」类；流程/时序/数据流/生命周期/拓扑/部署仍留给 archify_diagram。
+const LAYERED_ARCH_RE =
+  /(?:系统架构图|架构图|系统图|组件图|模块图|框架图|分层图|架构示意|architecture\s*diagram|component\s*diagram)|(?:把|将|请|帮我)?\s*(?:画|绘制|生成|设计|做张|做一张|出一张)\s*.{0,18}(?:系统架构|架构|系统框架|框架|模块|组件|分层|结构).{0,6}(?:图|diagram)?/i;
 const ACTION_RE: Array<[ActionType, RegExp]> = [
   [
     'illegal_request',
@@ -107,6 +154,18 @@ const ACTION_RE: Array<[ActionType, RegExp]> = [
     /急救|120|119|110|火灾|地震|溺水|落水|触电|电击|大出血|呼吸困难|窒息|蛇咬|毒蛇|咬伤|中毒|昏迷|心梗|胸痛|心肌梗死|跟踪|遇袭|抢劫|挟持/,
   ],
   ['cultural_reference', /小鸡啄米|唐伯虎|周星驰|星爷|梗|名场面|表情包|meme|经典桥段|鬼畜|抽象|玩梗/],
+  // E353：CodeGraph 代码影响/调用/项目解读——置于 analyze/qa/create 之前防被抢词
+  ['codegraph_impact', CODEGRAPH_IMPACT_RE],
+  ['codegraph_impact', CODEGRAPH_READ_RE],
+  // E342：内容型思维导图须置于 xmind 之前——问句/自带大纲由下方守卫让位
+  ['xmind_content', XMIND_CONTENT_RE],
+  // E340：Xmind 思维导图动作（生成/读取 .xmind）须置于 analyze/office_daily/create 之前，
+  // 否则正文里的“分析/对比/安排”等词会抢走意图；问句（怎么做/是什么）由下方 qa 守卫让位
+  ['xmind', /(?:思维导图|xmind|脑图|mind\s*map|\.xmind).{0,14}(?:生成|创建|画|绘制|整理|整理成|做成|做|制作|转成|转为|导出|拆解|拆成|读取|读一下|打开|解析|大纲|内容)|(?:生成|创建|画|绘制|整理|整理成|做成|做|制作|转成|转为|导出|拆解成|拆成).{0,14}(?:思维导图|xmind|脑图|mind\s*map|\.xmind)/i],
+  // E352：Archify 图（架构/流程/时序/数据流/生命周期）——置于 office_daily/analyze/create 之前
+  // E364：分层架构/框架/模块图须在 archify 之前，防「架构图」被 archify 抢走
+  ['layered_arch_diagram', LAYERED_ARCH_RE],
+  ['archify_diagram', ARCHIFY_RE],
   ['office_daily', /发.*邮件|发送.*邮件|邮件.*(发送|发出)|把.*邮件.*发|收件箱|收邮件|查邮件|未读邮件|读第\s*\d+\s*封|下载.*附件|附件.*下载|保存.*附件|附件.*保存|确认发送|确定发送|确认发出|确定发出|搜信|搜.*邮件|找.*邮件|查找.*邮件|搜索.*邮件|切换.*(?:邮箱|账号|收件箱|邮件)|切(?:到|成).*(?:邮箱|账号|收件箱|邮件)|换成.*(?:邮箱|账号|邮件)|用.*(?:邮箱|账号).*(?:查|看|收件|搜|发)|考勤表|部门占比|回复邮件|写.*邮件|邮件.*回复|压缩.*(KB|图片)|图片.*压缩|表格模板|占比|PPT|幻灯片|汇报|Word|docx|PDF.*(转|换)成Word|转成Word|转Word|PDF.*(合并|加密|加锁|压缩)|(合并|加密|加锁|压缩).*PDF|转成\s*(png|jpe?g|webp|bmp|heic|heif|avif|tiff?)|图片.*格式|HEIC|HEIF|AVIF|排版|Excel|xlsx|主动提醒|提醒我|设置提醒/i],
   ['learn_video', /学习这个视频|视频学习|视频总结|总结这个视频/],
   ['compare', /对比|比较|对照|PK/],
@@ -115,6 +174,9 @@ const ACTION_RE: Array<[ActionType, RegExp]> = [
   ['analyze', /github\.(?:com|io)\S*\s*(?:这|该|这个|那个)?(?:项目|仓库|repo).*(?:做什么|干什么|是什么|怎么用|怎么玩|怎么样|值不值|值不值得|评价|了解|介绍)/],
   // E264：自我身份问答（“你现在是什么模型/你是谁”等 → 直达身份回答，不做搜索）
   ['self_identity', /你(?:现在|目前|当前|到底)?(?:是|用|基于|由|采用|用的).{0,8}(?:什么|哪|哪个|谁).{0,10}(?:模型|引擎|技术|原理|做的|驱动|公司|团队)|你(?:是|叫)(?:谁|什么)|你是谁|你是什么|你叫什么|介绍(?:一下)?你自己|自我(?:介绍|认知)/],
+  // E392：显式 MCP 工具或工程路径属于本地工具操作，须在通用 qa/query 之前判定。
+  // 裸 “Keil/STM32” 技能名（如「只有 Keil 基础」）不算 operate，避免 devil SM05 类管理问句误路由。
+  ['operate', /列出.*(进程|应用|窗口)|进程.*(列表|状态|查看)|切换.*窗口|关闭.*(应用|程序|进程)|打开.*(应用|程序|软件|记事本|浏览器)|启动.*(程序|软件)|系统工具|桌面控制|windows\.|\.uvprojx|(?:查找|发现|搜索|盘点|查看|列出|编译|构建|build|烧录|flash).{0,20}(?:keil|stm32-gcc|\.uvprojx)|(?:keil|stm32-gcc).{0,16}(?:编译|构建|build|烧录)|arm-none-eabi|stm32.{0,12}cmake/i],
   ['qa', QA_RE],
   // E169：日历/日程“导出/保存/下载/ics”视为 query，命中 R004 走 calendar_skill，避免偏到 web_search
   ['query', /导(?:出|下载).*(日历|日程)|保存.*(?:日历|日程)|(?:日历|日程).*(导出|保存|下载|\.?ics)/i],
@@ -133,8 +195,6 @@ const ACTION_RE: Array<[ActionType, RegExp]> = [
   ['modify', /修改|改下|更新|重构|修复|不对|改成|换成|我要的是|修正|调整/],
   // v1.0 S1：深度报告（§4.3.2 长任务首实例），须置于 create 之前防止「写一份…报告」被 create 抢走
   ['deep_report', /深度报告|调研报告|研究报告|深度分析|出一份.*报告|写一份.*报告|做一份.*报告|整理成.*报告|做个.*(调研|报告)|报告.*(调研|分析)/],
-  // E240（S3 真实接入）：系统/桌面控制操作，置于 create 之前防「打开/启动」被 create 抢走
-  ['operate', /列出.*(进程|应用|窗口)|进程.*(列表|状态|查看)|切换.*窗口|关闭.*(应用|程序|进程)|打开.*(应用|程序|软件|记事本|浏览器)|启动.*(程序|软件)|系统工具|桌面控制|windows\./],
   ['create', /创建|生成|写个|写一个|做个|做一个|开发|搭建|实现|写一份|帮我写|设计|画/],
 ];
 
@@ -147,7 +207,7 @@ const DOMAIN_RE: Array<[TargetDomain, RegExp]> = [
   ['finance', /(?<!时间)(?<!学习)(?<!人力)成本|预算|收益|报价|值不值|ROI|利润/],
   ['document', /PRD|文档|方案|报告|需求文档|说明|总结|BOM|物料清单|元器件清单|元件清单|原理图/],
   ['color', /颜色|配色|色号|色彩|主色|取色/],
-  ['system', /进程|窗口|桌面|系统工具|应用列表|windows\./],
+  ['system', /进程|窗口|桌面|系统工具|应用列表|windows\.|keil|\.uvprojx|stm32-gcc|arm-none-eabi|stm32.{0,12}cmake/i],
 ];
 
 export function validateIntentFeature(input: unknown): IntentFeature {
@@ -227,6 +287,69 @@ export function extractIntentFeatureRuleBased(
       // “这个方案成本多少，值不值”仍走 analyze 的选项式消歧
       continue;
     }
+    if (
+      type === 'xmind' &&
+      (GENERIC_QA_RE.test(q) || METRIC_QA_RE.test(q) || XMIND_SOFTWARE_QA_RE.test(q)) &&
+      !OUTLINE_LINE_RE.test(q) &&
+      !/(?:做成|整理成|生成|创建|画|绘制)\s*.{0,8}(?:思维导图|xmind|脑图|mind\s*map|\.xmind)/i.test(q)
+    ) {
+      // E340：怎么做/是什么/软件咨询类问句让给 qa（知识问答），不当作 Xmind 写文件动作；
+      // 带大纲结构行或“做成/生成…脑图”实义短语时不误让
+      continue;
+    }
+    if (
+      type === 'xmind_content' &&
+      (OUTLINE_LINE_RE.test(q) ||
+        XMIND_CONSULT_RE.test(q) ||
+        // E340：读取/解析已有 .xmind 属“读回”动作，让位 xmind（skill 内再判读/生成）
+        (/读取|读一下|读回|打开|解析|提取|看看|查看|转成文字/u.test(q) &&
+          /思维导图|xmind|脑图|mind\s*map|\.xmind/i.test(q)))
+    ) {
+      // E342：自带大纲结构行 → 让位 xmind 直接生成；咨询/泛问句 → 让位 qa
+      continue;
+    }
+    if (
+      type === 'codegraph_impact' &&
+      (GENERIC_QA_RE.test(q) || METRIC_QA_RE.test(q)) &&
+      !CODE_ENTITY_RE.test(q)
+    ) {
+      // E353：问句但无代码语境（函数/符号/工程/文件等）→ 让位 qa，不误落本地代码分析
+      continue;
+    }
+    if (type === 'codegraph_impact' && CODEGRAPH_CONSULT_RE.test(q)) {
+      // E353：概念咨询问句让位 qa（知识问答），不当作本地代码分析动作
+      continue;
+    }
+    if (type === 'codegraph_impact' && hasGithubLink) {
+      // E353：GitHub 链接项目问句让位 analyze/github_analysis（在线仓库解读走 github-reader），
+      // 本地 codegraph 只解本地工程
+      continue;
+    }
+    if (
+      type === 'layered_arch_diagram' &&
+      (GENERIC_QA_RE.test(q) || METRIC_QA_RE.test(q)) &&
+      !ARCHIFY_IMPERATIVE_RE.test(q)
+    ) {
+      // E364：架构/框架图咨询问句（怎么画架构图/什么是框架图）让给 qa，不当作画图写操作
+      continue;
+    }
+    if (type === 'layered_arch_diagram' && attachments.some((a) => a.type === 'image')) {
+      // E364：已有图片的「解读这张架构图」走图片分析，不当作新画一张图
+      continue;
+    }
+    if (
+      type === 'archify_diagram' &&
+      (GENERIC_QA_RE.test(q) || METRIC_QA_RE.test(q)) &&
+      !ARCHIFY_IMPERATIVE_RE.test(q)
+    ) {
+      // E352：图型咨询问句（什么是时序图 / 怎么画架构图 / 流程图怎么做）让给 qa，不当作画图写操作；
+      // 「帮我画…/画个…图/把…画出来」等实义祈使不误让
+      continue;
+    }
+    if (type === 'archify_diagram' && attachments.some((a) => a.type === 'image')) {
+      // E352：已有图片的「解读这张架构图」走图片分析，不当作新画一张图
+      continue;
+    }
     actionType = type;
     break;
   }
@@ -251,10 +374,13 @@ export function extractIntentFeatureRuleBased(
   const hasImplicitContext =
     /(这个|那个|它|他|她|这项目|那项目)/.test(q) || actionType === 'apply_to_project';
   const requiresExternalSearch =
+    actionType === 'xmind_content' || // E342：内容型思维导图需联网整理主题内容
     /最新|行情|天气|价格|库存|评测|报错|怎么解决|datasheet|github|搜索|(^|[^检])查一下|资料/.test(q) ||
     targetDomain === 'search';
   const searchSourceHint: SearchSourceHint =
-    actionType === 'compare' && targetDomain === 'finance'
+    actionType === 'xmind_content'
+      ? 'web_search'
+      : actionType === 'compare' && targetDomain === 'finance'
       ? 'vendor_db'
       : targetDomain === 'schedule' || targetDomain === 'message'
       ? 'local_skill'
@@ -321,7 +447,7 @@ export function buildIntentFeaturePrompt(
           .join('\n')}`
       : '';
   return `你是一个意图特征提取器。只输出 JSON，不要做路由决策。
-字段：actionType(create|modify|query|send|analyze|clarify|emergency|illegal_request|property_emergency|cultural_reference|office_daily|learn_video|deep_report|qa|summarize|extract_structure|generate_bom|rewrite|pack|schedule|compare|chat|apply_to_project|unknown), targetDomain(code|document|schedule|message|search|finance|security|color|unknown), scope(atomic|multi_step|project_level|unknown), requiresExternalSearch(boolean), searchSourceHint(local_skill|web_search|internal_db|vendor_db|none), hasImplicitContext(boolean), hasGithubLink(boolean), urgency(normal|urgent|critical), rawEntities(string[]), ambiguityFlags(missing_referent|scope_unclear|target_ambiguous[])。
+字段：actionType(create|modify|query|send|analyze|clarify|emergency|illegal_request|property_emergency|cultural_reference|office_daily|learn_video|deep_report|qa|summarize|extract_structure|xmind|xmind_content|codegraph_impact|archify_diagram|layered_arch_diagram|rewrite|pack|schedule|compare|chat|apply_to_project|unknown), targetDomain(code|document|schedule|message|search|finance|security|color|unknown), scope(atomic|multi_step|project_level|unknown), requiresExternalSearch(boolean), searchSourceHint(local_skill|web_search|internal_db|vendor_db|none), hasImplicitContext(boolean), hasGithubLink(boolean), urgency(normal|urgent|critical), rawEntities(string[]), ambiguityFlags(missing_referent|scope_unclear|target_ambiguous[])。
 hasImage(boolean), hasDocument(boolean), attachmentTypes(string[]), fastImageDescription(string|undefined), timeExpression(string|undefined), hasTimeExpression(boolean)。
 用户输入：${query}${attachmentBlock}${contextBlock}`;
 }

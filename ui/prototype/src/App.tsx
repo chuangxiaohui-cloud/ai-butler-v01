@@ -35,12 +35,19 @@ import {
   ThumbsDown,
   ThumbsUp,
   User,
+  Users,
   Wallet,
   X,
   Zap,
 } from 'lucide-react';
 
+import MindMapViewer from './MindMapViewer';
+import type { MindTreeNode } from './mindMapLayout';
+import XmindBubble from './XmindBubble';
+
 type UiMode = 'engineering' | 'knowledge' | 'life';
+type FeedbackReason = 'irrelevant' | 'too_verbose' | 'technical_error' | 'missing_key_point';
+type FeedbackValue = 'accept' | 'reject' | 'correct';
 type RightTab = 'files' | 'browser' | 'terminal' | 'notifications' | 'decisions';
 type SettingsKey = 'providers' | 'security' | 'routing' | 'skills' | 'memory' | 'usage' | 'mail' | 'calendar' | 'balance';
 
@@ -64,6 +71,13 @@ const PLATFORM_LABELS: Record<string, string> = {
   other: '视频',
 };
 
+const FEEDBACK_REASON_LABELS: Record<FeedbackReason, string> = {
+  irrelevant: '答非所问',
+  too_verbose: '太啰嗦',
+  technical_error: '技术错误',
+  missing_key_point: '漏了重点',
+};
+
 interface Message {
   id: string;
   role: 'user' | 'agent';
@@ -73,10 +87,19 @@ interface Message {
   videos?: VideoCard[];
   meta?: string;
   notice?: string;
+  skillName?: string;
+  postprocessSkillNames?: string[];
+  artifacts?: SkillArtifact[];
   /** E324 第三刀：confirm 挂起文案附带的对话内确认卡（pendingId 指向 open resume pending） */
   confirm?: { pendingId: string };
   /** E332：网关未连接本地兜底携带原请求，供「重试」按钮重发 */
   retryQuery?: string;
+}
+
+interface SkillArtifact {
+  kind: string;
+  title: string;
+  data: Record<string, unknown>;
 }
 
 interface ModelOption {
@@ -84,6 +107,12 @@ interface ModelOption {
   provider: string;
   label: string;
   note: string;
+}
+
+interface ChangeRecord {
+  path: string;
+  kind: 'added' | 'modified' | 'removed';
+  at: number;
 }
 
 interface Attachment {
@@ -115,6 +144,15 @@ interface DecisionPanelEntry {
   trigger: string;
   question?: string;
   options?: string[];
+  choices?: Array<{
+    id: string;
+    label: string;
+    description?: string;
+    outcome: 'approve' | 'reject';
+  }>;
+  defaultChoice?: string;
+  requiresConfirmation?: boolean;
+  context?: { kind?: string; transactionId?: string; conflicts?: unknown[] };
   conversationId?: string;
   /** E324 第二刀：confirm 真阻断挂起载荷——批准后由 gateway 自动恢复执行 */
   resume?: { query?: string; executor?: string };
@@ -262,6 +300,177 @@ function ReplyDraft(mode: UiMode, input: string): Message {
   };
 }
 
+const AGENT_CATEGORY_ORDER = ['eda', 'structure', 'code', 'simulation', 'build', 'system'];
+const AGENT_CATEGORY_LABELS: Record<string, string> = {
+  eda: '电路设计 EDA',
+  structure: '结构设计',
+  code: '编码',
+  simulation: '仿真',
+  build: '编译/烧录',
+  system: '系统控制',
+};
+const MODE_ROLES: Record<UiMode, Array<{ name: string; desc: string }>> = {
+  engineering: [
+    { name: '老板', desc: '拍板 · 审批 · 验收' },
+    { name: '产品经理', desc: '需求规划 · PRD · 评审' },
+    { name: '项目经理', desc: '任务拆解 · 调度子 Agent · Xmind' },
+    { name: '系统架构师', desc: '技术方案 · 架构 · 代码审查' },
+  ],
+  knowledge: [{ name: '30 年经验老专家', desc: '芯片/器件分析 · 技术问答 · 资料解读' }],
+  life: [{ name: '贴身女秘书', desc: '日程提醒 · 天气生活 · 日常打理' }],
+};
+const SUBMODE_ROLE: Record<string, string> = {
+  product_planning: '产品经理',
+  review_critique: '系统架构师',
+};
+
+interface AgentDirectoryAgent {
+  id: string;
+  name: string;
+  category: string;
+  available: boolean;
+}
+interface AgentDirectory {
+  total: number;
+  available: number;
+  agents: AgentDirectoryAgent[];
+}
+interface SkillDirectory {
+  total: number;
+  enabled: number;
+  skills: Array<{ name: string; enabled: boolean }>;
+}
+
+function RolePanel({
+  mode,
+  submode,
+  onClose,
+  onOpenSkills,
+}: {
+  mode: UiMode;
+  submode: string | null;
+  onClose: () => void;
+  onOpenSkills: () => void;
+}) {
+  const [agents, setAgents] = useState<AgentDirectory | null>(null);
+  const [skills, setSkills] = useState<SkillDirectory | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      fetch(`${GATEWAY_URL}/api/agents`)
+        .then((resp) => resp.json().catch(() => null))
+        .catch(() => null),
+      fetch(`${GATEWAY_URL}/api/skills`)
+        .then((resp) => resp.json().catch(() => null))
+        .catch(() => null),
+    ]).then(([agentData, skillData]) => {
+      if (!alive) return;
+      if (!agentData || !Array.isArray(agentData.agents) || !skillData || !Array.isArray(skillData.skills)) {
+        setError('未连接 gateway：角色/子 Agent 数据不可用');
+        return;
+      }
+      setAgents(agentData as AgentDirectory);
+      setSkills(skillData as SkillDirectory);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const modeLabel = MODES.find((item) => item.key === mode)?.label ?? '';
+  const roleList = MODE_ROLES[mode] ?? [];
+  const highlightRole = submode ? (SUBMODE_ROLE[submode] ?? null) : null;
+  const groups = AGENT_CATEGORY_ORDER.map((category) => ({
+    category,
+    label: AGENT_CATEGORY_LABELS[category] ?? category,
+    list: (agents?.agents ?? []).filter((agent) => agent.category === category),
+  })).filter((group) => group.list.length > 0);
+  const enabledSkills = (skills?.skills ?? []).filter((skill) => skill.enabled);
+
+  return (
+    <aside className="role-v2">
+      <div className="role-head">
+        <div className="role-head-title">
+          <strong>角色面板</strong>
+          <span>{modeLabel}{submode ? ` · ${SUBMODE_LABELS[submode] ?? submode}` : ''}</span>
+        </div>
+        <button onClick={onClose} aria-label="收起角色面板" title="收起">
+          <X size={15} />
+        </button>
+      </div>
+      <div className="role-body">
+        <section className="role-block">
+          <h4>当前角色</h4>
+          <div className="role-list">
+            {roleList.map((role) => (
+              <div
+                key={role.name}
+                className={role.name === highlightRole ? 'role-row active' : 'role-row'}
+              >
+                <span className="role-dot" />
+                <strong>{role.name}</strong>
+                <small>{role.desc}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="role-block">
+          <h4>
+            子 Agent
+            <span>{agents ? `${agents.available} 可用 / ${agents.total}` : '…'}</span>
+          </h4>
+          {error ? (
+            <p className="role-note">⚠️ {error}</p>
+          ) : !agents ? (
+            <p className="role-note">子 Agent 目录加载中…</p>
+          ) : (
+            groups.map((group) => (
+              <div className="role-group" key={group.category}>
+                <div className="role-group-head">{group.label} · {group.list.length}</div>
+                {group.list.map((agent) => (
+                  <div className="role-row" key={agent.id}>
+                    <span className={`role-dot ${agent.available ? 'on' : ''}`} />
+                    <strong>{agent.name}</strong>
+                    <span className={agent.available ? 'role-status on' : 'role-status'}>
+                      {agent.available ? '可用' : '未接入'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))
+          )}
+        </section>
+        <section className="role-block">
+          <h4>
+            Skill
+            <span>{skills ? `${skills.enabled} 启用 / ${skills.total}` : '…'}</span>
+          </h4>
+          {error ? (
+            <p className="role-note">⚠️ {error}</p>
+          ) : !skills ? (
+            <p className="role-note">Skill 目录加载中…</p>
+          ) : (
+            <>
+              {enabledSkills.slice(0, 10).map((skill) => (
+                <div className="role-row" key={skill.name}>
+                  <span className="role-dot on" />
+                  <strong className="role-skill-name">{skill.name}</strong>
+                </div>
+              ))}
+              {enabledSkills.length > 10 && (
+                <p className="role-note">+{enabledSkills.length - 10} 个已启用 Skill</p>
+              )}
+              <button className="role-more" onClick={onOpenSkills} type="button">
+                管理 Skill →
+              </button>
+            </>
+          )}
+        </section>
+      </div>
+    </aside>
+  );
+}
 function App() {
   const [mode, setMode] = useState<UiMode>('engineering');
   const [submode, setSubmode] = useState<string | null>('product_planning');
@@ -271,18 +480,51 @@ function App() {
   const [models, setModels] = useState<ModelOption[]>(FALLBACK_MODELS);
   const [model, setModel] = useState<string>(() => defaultModelId(FALLBACK_MODELS));
   const modelTouchedRef = useRef(false);
-  const [liked, setLiked] = useState<Record<string, boolean>>({});
+  const [feedbackByMessage, setFeedbackByMessage] = useState<Record<string, FeedbackValue>>({});
   // E324 第三刀：对话内确认卡提交中的消息 id（防止连点双提交）
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   // E332：本地兜底「重试」提交中的消息 id（防连点）
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetch(`${GATEWAY_URL}/api/feedback`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((data: {
+        latest?: Array<{ userId: string; conversationId: string; messageId: string; feedback: FeedbackValue }>;
+      } | null) => {
+        const restored: Record<string, FeedbackValue> = {};
+        for (const entry of data?.latest ?? []) {
+          if (entry.userId === 'ui-user' && entry.conversationId === CHAT_CONVERSATION_ID) {
+            restored[entry.messageId] = entry.feedback;
+          }
+        }
+        setFeedbackByMessage(restored);
+      })
+      .catch(() => {
+        // gateway 不可用时维持本地空状态。
+      });
+  }, []);
+
   const [l1Section, setL1Section] = useState<'sessions' | 'projects'>('projects');
   const [l1Open, setL1Open] = useState(false);
+  const [roleOpen, setRoleOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(false);
   const [rightTab, setRightTab] = useState<RightTab>('files');
   const [browserUrl, setBrowserUrl] = useState('https://item.szlcsc.com/9243.html');
   const [highlightFile, setHighlightFile] = useState<string | null>(null);
+  // E337：文件面板只读预览（双击文件行加载）；E346：.xmind 额外携带树供可视化
+  const [filePreview, setFilePreview] = useState<{
+    path: string;
+    size: number;
+    text: string;
+    truncated: boolean;
+    tree?: MindTreeNode;
+    // E354：HTML 产物走整文件 iframe 渲染（raw 端点 URL）
+    htmlUrl?: string;
+  } | null>(null);
+  const [filePreviewError, setFilePreviewError] = useState('');
+  // E339：文件面板「最近变更」记录（watcher 差量，进程内内存环，重启清空属预期）
+  const [recentChanges, setRecentChanges] = useState<ChangeRecord[]>([]);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsKey, setSettingsKey] = useState<SettingsKey>('providers');
@@ -293,6 +535,7 @@ function App() {
   const [terminalLines, setTerminalLines] = useState<string[]>(TERMINAL_LINES);
   const [terminalInput, setTerminalInput] = useState('');
   const [files, setFiles] = useState<Array<{ path: string; size: number; kind: string }>>([]);
+  const [filesRefreshing, setFilesRefreshing] = useState(false);
   const [progressStage, setProgressStage] = useState('');
   const [generatingSkills, setGeneratingSkills] = useState<Record<string, string>>({});
   // E320：右栏「通知」列表（source=decision/skill/usage，含 AI 运营日报与预算阈值事件）
@@ -308,6 +551,13 @@ function App() {
       createdAt: number;
     }>
   >([]);
+  const [dailyFeedback, setDailyFeedback] = useState<{
+    accept: number;
+    reject: number;
+    correct: number;
+    total: number;
+    text: string;
+  } | null>(null);
   const [notifyHint, setNotifyHint] = useState('');
   // E331：通知分页 + 未读角标（会话内水位=最近一次查看通知页时页顶最新 id，越过水位的计为未读）
   const [notifyPage, setNotifyPage] = useState(1);
@@ -323,9 +573,11 @@ function App() {
       setRightTab('browser');
       setBrowserUrl(url);
     } else if (ev.type === 'file') {
+      const path = ev.label.split(':')[0];
       setRightOpen(true);
       setRightTab('files');
-      setHighlightFile(ev.label.split(':')[0]);
+      setHighlightFile(path);
+      void previewFile(path);
     } else if (ev.type === 'terminal') {
       setRightOpen(true);
       setRightTab('terminal');
@@ -367,32 +619,112 @@ function App() {
       });
   }, []);
 
-  const loadFiles = (autoPreview = false) => {
+  const loadFiles = (autoPreview = false, markBusy = false) => {
+    if (markBusy) setFilesRefreshing(true);
     fetch(`${GATEWAY_URL}/api/files`)
       .then((resp) => (resp.ok ? resp.json() : null))
       .then((data: { files?: typeof files } | null) => {
         const list = data?.files ?? [];
         setFiles(list);
+        if (markBusy) setFilesRefreshing(false);
         if (autoPreview && list.some((file) => file.kind === 'HTML 预览')) {
           setRightOpen(true);
           setRightTab('browser');
         }
       })
-      .catch(() => setFiles([]));
+      .catch(() => {
+        setFiles([]);
+        if (markBusy) setFilesRefreshing(false);
+      });
   };
 
-  useEffect(loadFiles, []);
+  /** E339：最近变更记录（新→旧，来自 gateway watcher 内存环） */
+  const loadRecentChanges = () => {
+    fetch(`${GATEWAY_URL}/api/files/changes`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((data: { changes?: ChangeRecord[] } | null) => {
+        setRecentChanges((data?.changes ?? []).slice(0, 30));
+      })
+      .catch(() => {
+        setRecentChanges([]);
+      });
+  };
+
+  /** E339：变更时间展示——当天 HH:mm:ss，跨天 MM-DD HH:mm */
+  const formatChangeTime = (at: number) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const d = new Date(at);
+    const sameDay = d.toDateString() === new Date().toDateString();
+    return sameDay
+      ? `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+      : `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  useEffect(() => {
+    loadFiles();
+    loadRecentChanges();
+  }, []);
+
+  /** E337：双击文件行 → 只读预览（服务端防穿越，仅沙箱根内文本） */
+  const previewFile = async (path: string) => {
+    setFilePreviewError('');
+    const lowerPath = path.toLowerCase();
+    // E354：HTML 产物整文件 iframe 渲染（raw 只读、防穿越同 preview），不经过文本截断预览
+    if (lowerPath.endsWith('.html') || lowerPath.endsWith('.htm')) {
+      const known = files.find((f) => f.path === path);
+      setFilePreview({
+        path,
+        size: known?.size ?? 0,
+        text: '',
+        truncated: false,
+        htmlUrl: `${GATEWAY_URL}/api/files/raw?path=${encodeURIComponent(path)}`,
+      });
+      return;
+    }
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/files/preview?path=${encodeURIComponent(path)}`);
+      const data = (await resp.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        path?: string;
+        size?: number;
+        preview?: string;
+        truncated?: boolean;
+        tree?: MindTreeNode;
+      } | null;
+      if (!resp.ok || !data?.ok) {
+        setFilePreview(null);
+        setFilePreviewError(data?.error ?? '预览失败');
+        return;
+      }
+      setFilePreview({
+        path: data.path ?? path,
+        size: data.size ?? 0,
+        text: data.preview ?? '',
+        truncated: data.truncated ?? false,
+        tree: data.tree,
+      });
+    } catch {
+      setFilePreview(null);
+      setFilePreviewError('无法连接 gateway，预览失败');
+    }
+  };
 
   // E331：分页拉取通知（最新在前）；markSeen=查看通知页时把水位更新为页顶最新 id 并清零角标；
   // 其它 tab 拉第一页时统计“越过水位的新条目”作未读数。
   const loadNotifications = (page: number, { markSeen }: { markSeen: boolean }) => {
-    fetch(`${GATEWAY_URL}/api/notifications?page=${page}&pageSize=20`)
+    fetch(`${GATEWAY_URL}/api/notifications?page=${page}&pageSize=20&userId=ui-user`)
       .then((resp) => (resp.ok ? resp.json() : null))
       .then(
-        (data: { entries?: typeof notifications; total?: number } | null) => {
+        (data: {
+          entries?: typeof notifications;
+          total?: number;
+          feedbackSummary?: NonNullable<typeof dailyFeedback>;
+        } | null) => {
           const list = data?.entries ?? [];
           setNotifications(list);
           setNotifyTotal(data?.total ?? 0);
+          setDailyFeedback(data?.feedbackSummary ?? null);
           setNotifyHint('');
           const seen = seenTopNotifyRef.current;
           if (markSeen || seen === null) {
@@ -406,6 +738,7 @@ function App() {
         },
         () => {
           setNotifyHint('无法连接 gateway，通知暂不可用');
+          setDailyFeedback(null);
           setUnreadNotify(0);
         },
       );
@@ -467,6 +800,7 @@ function App() {
       setProgressStage('');
       setGeneratingSkills({});
       loadFiles(true);
+      loadRecentChanges();
     });
     return () => source.close();
   }, []);
@@ -527,6 +861,9 @@ function App() {
         submode?: string;
         notice?: string;
         toolNotice?: string;
+        skillName?: string;
+        postprocessSkillNames?: string[];
+        artifacts?: SkillArtifact[];
       };
       // P3：工具告警显示到底部状态栏
       setStatusNotice(data.toolNotice ?? null);
@@ -560,6 +897,9 @@ function App() {
         })),
         meta: replyMeta,
         notice: data.notice,
+        skillName: data.skillName,
+        postprocessSkillNames: data.postprocessSkillNames,
+        artifacts: data.artifacts,
       };
       appendReply(reply);
       attachConfirmReply(reply);
@@ -577,6 +917,51 @@ function App() {
   const retryFallback = (msgId: string, query: string) => {
     setRetryingId(msgId);
     void askQuery(query, [], msgId).finally(() => setRetryingId(null));
+  };
+
+  const submitFeedback = async (
+    msg: Message,
+    feedback: FeedbackValue,
+    details?: { reason?: FeedbackReason; note?: string; correctedAnswer?: string },
+  ): Promise<boolean> => {
+    if (msg.retryQuery) return false;
+    const index = messages.findIndex((item) => item.id === msg.id);
+    const query = [...messages.slice(0, index)]
+      .reverse()
+      .find((item) => item.role === 'user')?.text ?? '';
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: 'ui-user',
+          conversationId: CHAT_CONVERSATION_ID,
+          messageId: msg.id,
+          mode,
+          query,
+          answer: msg.text,
+          ...(msg.skillName ? { skillName: msg.skillName } : {}),
+          ...(msg.postprocessSkillNames?.length
+            ? { postprocessSkillNames: msg.postprocessSkillNames }
+            : {}),
+          feedback,
+          ...details,
+        }),
+      });
+      if (resp.ok) {
+        const data = (await resp.json()) as {
+          skillCandidate?: { status?: string; title?: string } | null;
+        };
+        setFeedbackByMessage((prev) => ({ ...prev, [msg.id]: feedback }));
+        if (data.skillCandidate?.status === 'proposed' && data.skillCandidate.title) {
+          setStatusNotice(`已生成 Skill 候选「${data.skillCandidate.title}」，请到设置 → Skill 确认。`);
+        }
+        return true;
+      }
+    } catch {
+      // 反馈写入失败时保持未选择状态，避免把未落盘误显示为成功。
+    }
+    return false;
   };
 
   /** E324 第三刀：向主聊天追加 agent 消息（执行回执 / 确认结果共用） */
@@ -636,7 +1021,7 @@ function App() {
       const resp = await fetch(`${GATEWAY_URL}/api/decisions/${pendingId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decision, note: 'chat_card' }),
+        body: JSON.stringify({ decision, note: 'chat_card', mode }),
       });
       const data = (await resp.json().catch(() => null)) as {
         ok?: boolean;
@@ -706,7 +1091,7 @@ function App() {
   };
 
   return (
-    <div className="shell-v2">
+    <div className={roleOpen ? 'shell-v2 role-open' : 'shell-v2'}>
       <nav className="l0-nav" aria-label="一级导航">
         <button
           className={l1Open && l1Section === 'sessions' ? 'active' : ''}
@@ -721,6 +1106,14 @@ function App() {
           aria-label="项目"
         >
           <FolderKanban size={19} />
+        </button>
+        <button
+          className={roleOpen ? 'active' : ''}
+          onClick={() => setRoleOpen((prev) => !prev)}
+          aria-label="角色面板"
+          title="角色面板"
+        >
+          <Users size={19} />
         </button>
         <button
           className={settingsOpen ? 'active' : ''}
@@ -781,11 +1174,24 @@ function App() {
         </aside>
       )}
 
+      {roleOpen && (
+        <RolePanel
+          mode={mode}
+          submode={submode}
+          onClose={() => setRoleOpen(false)}
+          onOpenSkills={() => {
+            setSettingsKey('skills');
+            setSettingsOpen(true);
+          }}
+        />
+      )}
+
       <main className="center-v2">
         {settingsOpen ? (
           <SettingsPanel
             settingsKey={settingsKey}
             onSelect={setSettingsKey}
+            mode={mode}
             shellEnabled={shellEnabled}
             onShellChange={setShellEnabled}
             onBack={() => setSettingsOpen(false)}
@@ -815,8 +1221,8 @@ function App() {
                 <MessageItem
                   key={msg.id}
                   msg={msg}
-                  liked={liked[msg.id]}
-                  onLike={(value) => setLiked((prev) => ({ ...prev, [msg.id]: value }))}
+                  feedback={feedbackByMessage[msg.id]}
+                  onFeedback={(value, details) => submitFeedback(msg, value, details)}
                   onEvidence={handleEvidenceClick}
                   onConfirm={confirmFromChat}
                   confirming={confirmingId === msg.id}
@@ -880,6 +1286,79 @@ function App() {
           <div className="right-body">
             {rightTab === 'files' && (
               <div className="file-list">
+                <div className="notify-toolbar">
+                  <span className="settings-note">
+                    {files.length > 0
+                      ? `共 ${files.length} 个文件 · 按修改时间新→旧，往下滚动看全部`
+                      : '暂无文件'}
+                  </span>
+                  <button disabled={filesRefreshing} onClick={() => { loadFiles(false, true); loadRecentChanges(); }}>
+                    {filesRefreshing ? '刷新中…' : '刷新'}
+                  </button>
+                </div>
+                {recentChanges.length > 0 && (
+                  <div className="change-log">
+                    <div className="change-log-head">
+                      最近变更（{recentChanges.length}）· 外部工具/手动改动约 2s 内记录
+                    </div>
+                    {recentChanges.map((item, idx) => (
+                      <div className="change-row" key={`${item.path}-${item.at}-${idx}`}>
+                        <span className={`change-kind ${item.kind}`}>
+                          {item.kind === 'added' ? '新增' : item.kind === 'removed' ? '删除' : '修改'}
+                        </span>
+                        <span className="change-path" title={item.path}>
+                          {item.path}
+                        </span>
+                        <span className="change-time">{formatChangeTime(item.at)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {filePreview && (
+                  <div className="file-preview">
+                    <div className="file-preview-bar">
+                      <strong>{filePreview.path}</strong>
+                      <span>
+                        {filePreview.path.toLowerCase().endsWith('.xmind')
+                          ? '思维导图 · '
+                          : ''}
+                        {(filePreview.size / 1024).toFixed(1)} KB
+                        {filePreview.truncated ? ' · 内容过长已截断' : ''}
+                      </span>
+                      {filePreview.htmlUrl && (
+                        <a
+                          className="file-preview-open"
+                          href={filePreview.htmlUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="在浏览器新标签打开（可全屏/缩放）"
+                        >
+                          ↗
+                        </a>
+                      )}
+                      <button
+                        className="file-preview-close"
+                        onClick={() => setFilePreview(null)}
+                        title="关闭预览"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    {filePreview.htmlUrl ? (
+                      <iframe
+                        className="file-preview-frame"
+                        src={filePreview.htmlUrl}
+                        sandbox="allow-scripts"
+                        title={`HTML 产物预览：${filePreview.path}`}
+                      />
+                    ) : filePreview.tree ? (
+                      <MindMapViewer tree={filePreview.tree} outline={filePreview.text} />
+                    ) : (
+                      <pre className="file-preview-body">{filePreview.text}</pre>
+                    )}
+                  </div>
+                )}
+                {filePreviewError && <p className="settings-note">{filePreviewError}</p>}
                 {Object.entries(generatingSkills).map(([skill, label]) => (
                   <div className="file-row generating" key={skill}>
                     <FileText size={15} />
@@ -895,7 +1374,8 @@ function App() {
                     className={`file-row ${highlightFile === file.path ? 'highlight' : ''}`}
                     key={file.path}
                     onClick={() => setHighlightFile(file.path)}
-                    title="点击高亮定位"
+                    onDoubleClick={() => previewFile(file.path)}
+                    title="单击高亮定位 · 双击只读预览"
                   >
                     <FileText size={15} />
                     <div>
@@ -953,6 +1433,12 @@ function App() {
                   </span>
                 </div>
                 {notifyHint && <p className="settings-note">{notifyHint}</p>}
+                {dailyFeedback && !notifyHint && (
+                  <div className="daily-feedback-summary">
+                    <strong>今日反馈</strong>
+                    <span>{dailyFeedback.text}</span>
+                  </div>
+                )}
                 {notifications.length === 0 && !notifyHint && (
                   <p className="settings-note">暂无通知（裁决 / Skill 输出 / AI 运营事件会自动出现）</p>
                 )}
@@ -973,7 +1459,9 @@ function App() {
                 ))}
               </div>
             )}
-            {rightTab === 'decisions' && <DecisionPanel onExecuted={pushExecutedReceipt} />}
+            {rightTab === 'decisions' && (
+              <DecisionPanel mode={mode} onExecuted={pushExecutedReceipt} />
+            )}
           </div>
         </aside>
       )}
@@ -1043,10 +1531,21 @@ function browserHost(url: string): string {
   }
 }
 
+/** E348：从回复文本里提取 .xmind 产物路径（绝对/相对，去尾部标点，去重，最多 3 个） */
+function extractXmindPaths(text: string): string[] {
+  const paths: string[] = [];
+  const re = /[\w:./\\-]+\.xmind/gi;
+  for (const m of text.matchAll(re)) {
+    const raw = m[0].replace(/[，。；、:：]+$/u, '');
+    if (!paths.includes(raw)) paths.push(raw);
+  }
+  return paths.slice(0, 3);
+}
+
 function MessageItem({
   msg,
-  liked,
-  onLike,
+  feedback,
+  onFeedback,
   onEvidence,
   onConfirm,
   confirming,
@@ -1054,8 +1553,11 @@ function MessageItem({
   retrying,
 }: {
   msg: Message;
-  liked: boolean | undefined;
-  onLike: (value: boolean) => void;
+  feedback: FeedbackValue | undefined;
+  onFeedback: (
+    value: FeedbackValue,
+    details?: { reason?: FeedbackReason; note?: string; correctedAnswer?: string },
+  ) => Promise<boolean>;
   onEvidence: (ev: Evidence) => void;
   onConfirm?: (msg: Message, decision: 'approve' | 'reject') => void;
   confirming: boolean;
@@ -1064,6 +1566,13 @@ function MessageItem({
 }) {
   const isUser = msg.role === 'user';
   const [expandedTest, setExpandedTest] = useState<string | null>(null);
+  const [dislikeOpen, setDislikeOpen] = useState(false);
+  const [feedbackReason, setFeedbackReason] = useState<FeedbackReason | undefined>();
+  const [feedbackNote, setFeedbackNote] = useState('');
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [correctedAnswer, setCorrectedAnswer] = useState(msg.text);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const xmindPaths = useMemo(() => extractXmindPaths(msg.text), [msg.text]);
   return (
     <article className={`message ${isUser ? 'user' : 'agent'}`}>
       <div className="message-avatar">
@@ -1080,6 +1589,16 @@ function MessageItem({
           </div>
         )}
         <div className="message-text">{msg.text}</div>
+        {msg.artifacts?.map((artifact, index) => (
+          <KeilArtifactCard
+            key={`${artifact.kind}-${index}`}
+            artifact={artifact}
+            onOpenFile={onEvidence}
+          />
+        ))}
+        {xmindPaths.map((p) => (
+          <XmindBubble key={p} path={p} />
+        ))}
         {msg.retryQuery && (
           <div className="message-retry">
             <button
@@ -1173,26 +1692,204 @@ function MessageItem({
         {!isUser && (
           <div className="feedback-row">
             <button
-              className={liked === true ? 'liked' : ''}
+              className={feedback === 'accept' ? 'liked' : ''}
               aria-label="赞"
-              onClick={() => onLike(true)}
+              disabled={feedbackSubmitting}
+              onClick={() => {
+                setDislikeOpen(false);
+                setCorrectionOpen(false);
+                void onFeedback('accept');
+              }}
             >
               <ThumbsUp size={14} />
             </button>
             <button
-              className={liked === false ? 'disliked' : ''}
+              className={feedback === 'reject' ? 'disliked' : ''}
               aria-label="踩"
-              onClick={() => onLike(false)}
+              disabled={feedbackSubmitting}
+              onClick={() => {
+                setCorrectionOpen(false);
+                setDislikeOpen((open) => !open);
+              }}
             >
               <ThumbsDown size={14} />
             </button>
-            <button aria-label="修改建议">
+            <button
+              className={feedback === 'correct' ? 'corrected' : ''}
+              aria-label="修改建议"
+              disabled={feedbackSubmitting}
+              onClick={() => {
+                setDislikeOpen(false);
+                setCorrectionOpen((open) => !open);
+              }}
+            >
               <PenLine size={14} />
+            </button>
+          </div>
+        )}
+        {!isUser && dislikeOpen && (
+          <div className="feedback-details">
+            <span>哪里需要改进？（可选）</span>
+            <div className="feedback-reasons">
+              {(Object.entries(FEEDBACK_REASON_LABELS) as Array<[FeedbackReason, string]>).map(
+                ([reason, label]) => (
+                  <button
+                    className={feedbackReason === reason ? 'active' : ''}
+                    key={reason}
+                    onClick={() => setFeedbackReason((current) => current === reason ? undefined : reason)}
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ),
+              )}
+            </div>
+            <textarea
+              value={feedbackNote}
+              onChange={(event) => setFeedbackNote(event.target.value)}
+              placeholder="补充说明（可选）"
+            />
+            <button
+              className="feedback-submit"
+              disabled={feedbackSubmitting}
+              onClick={async () => {
+                setFeedbackSubmitting(true);
+                const saved = await onFeedback('reject', {
+                  reason: feedbackReason,
+                  note: feedbackNote.trim() || undefined,
+                });
+                setFeedbackSubmitting(false);
+                if (saved) setDislikeOpen(false);
+              }}
+              type="button"
+            >
+              {feedbackSubmitting ? '提交中…' : '提交反馈'}
+            </button>
+          </div>
+        )}
+        {!isUser && correctionOpen && (
+          <div className="feedback-details">
+            <span>直接修改这条回复</span>
+            <textarea
+              value={correctedAnswer}
+              onChange={(event) => setCorrectedAnswer(event.target.value)}
+              placeholder="输入你认为更合适的完整回复"
+            />
+            <button
+              className="feedback-submit"
+              disabled={
+                feedbackSubmitting ||
+                !correctedAnswer.trim() ||
+                correctedAnswer.trim() === msg.text.trim()
+              }
+              onClick={async () => {
+                setFeedbackSubmitting(true);
+                const saved = await onFeedback('correct', {
+                  correctedAnswer: correctedAnswer.trim(),
+                });
+                setFeedbackSubmitting(false);
+                if (saved) setCorrectionOpen(false);
+              }}
+              type="button"
+            >
+              {feedbackSubmitting ? '提交中…' : '保存修改'}
             </button>
           </div>
         )}
       </div>
     </article>
+  );
+}
+
+function KeilArtifactCard({
+  artifact,
+  onOpenFile,
+}: {
+  artifact: SkillArtifact;
+  onOpenFile: (ev: Evidence) => void;
+}) {
+  if (artifact.kind === 'project-change-confirmation') {
+    const changes = Array.isArray(artifact.data.changes)
+      ? artifact.data.changes.filter(
+          (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object',
+        )
+      : [];
+    return (
+      <section className="keil-artifact">
+        <div className="keil-artifact-head">
+          <strong>{artifact.title}</strong>
+          <span>{Number(artifact.data.totalBytes ?? 0)} bytes</span>
+        </div>
+        <small>事务：{String(artifact.data.transactionId ?? '')}</small>
+        <div className="keil-diagnostics">
+          {changes.map((change, index) => (
+            <div className="keil-diagnostic warning" key={`${String(change.path)}-${index}`}>
+              <span>{change.action === 'create' ? '新建' : '修改'}</span>
+              <div>
+                <strong>{String(change.path ?? '')}</strong>
+                <small>{Number(change.bytes ?? 0)} 字节 · SHA-256 {String(change.proposedSha256 ?? '').slice(0, 12)}…</small>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+  if (artifact.kind === 'keil-targets') {
+    const targets = Array.isArray(artifact.data.targets)
+      ? artifact.data.targets.filter((item): item is string => typeof item === 'string')
+      : [];
+    return (
+      <section className="keil-artifact">
+        <strong>{artifact.title}</strong>
+        <small>{String(artifact.data.projectPath ?? '')}</small>
+        <div className="keil-targets">
+          {targets.length ? targets.map((target) => <span key={target}>{target}</span>) : <em>未声明 target</em>}
+        </div>
+      </section>
+    );
+  }
+  if (artifact.kind !== 'keil-diagnostics') return null;
+  const diagnostics = Array.isArray(artifact.data.diagnostics)
+    ? artifact.data.diagnostics.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+    : [];
+  return (
+    <section className="keil-artifact">
+      <div className="keil-artifact-head">
+        <strong>{artifact.title}</strong>
+        <span>{Number(artifact.data.errorCount ?? 0)} error · {Number(artifact.data.warningCount ?? 0)} warning</span>
+      </div>
+      {typeof artifact.data.target === 'string' && <small>target：{artifact.data.target}</small>}
+      <div className="keil-diagnostics">
+        {diagnostics.length === 0 && <em>没有结构化诊断</em>}
+        {diagnostics.map((item, index) => {
+          const severity = item.severity === 'error' ? 'error' : 'warning';
+          const sourcePath = typeof item.sourcePath === 'string' ? item.sourcePath : '';
+          const line = typeof item.line === 'number' ? item.line : undefined;
+          const location = sourcePath || (typeof item.file === 'string' ? item.file : '');
+          return (
+            <button
+              type="button"
+              className={`keil-diagnostic ${severity}`}
+              key={`${location}-${line ?? 0}-${index}`}
+              disabled={!sourcePath}
+              onClick={() => sourcePath && onOpenFile({
+                type: 'file',
+                label: sourcePath,
+                detail: line ? `第 ${line} 行` : '源码文件',
+              })}
+              title={sourcePath ? '在文件面板只读预览' : '诊断路径不在工作区或文件不存在'}
+            >
+              <span>{severity}</span>
+              <div>
+                <strong>{location}{line ? `:${line}` : ''}</strong>
+                <small>{[item.code, item.message].filter(Boolean).map(String).join(' ')}</small>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -1229,7 +1926,15 @@ function Composer({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const currentModel = models.find((item) => item.id === model) ?? models[0];
+  // 输入框随内容自动增高，最多 ~7 行（与 CSS max-height:148px 对齐），超出出现纵向滚动条
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 148)}px`;
+  }, [value]);
   const currentMode = MODES.find((item) => item.key === mode) ?? MODES[0];
   const ModeIcon = currentMode.icon;
   const providers = Array.from(new Set(models.map((item) => item.provider)));
@@ -1347,6 +2052,7 @@ function Composer({
       )}
       <div className="composer-input-row">
         <textarea
+          ref={textareaRef}
           value={value}
           placeholder="输入问题，或直接粘贴图片…"
           onChange={(event) => onChange(event.target.value)}
@@ -1469,12 +2175,14 @@ function Composer({
 function SettingsPanel({
   settingsKey,
   onSelect,
+  mode,
   shellEnabled,
   onShellChange,
   onBack,
 }: {
   settingsKey: SettingsKey;
   onSelect: (key: SettingsKey) => void;
+  mode: UiMode;
   shellEnabled: boolean;
   onShellChange: (enabled: boolean) => void;
   onBack: () => void;
@@ -1518,7 +2226,7 @@ function SettingsPanel({
         {settingsKey === 'calendar' && <CalendarSettings />}
         {settingsKey === 'routing' && <RoutingSettings />}
         {settingsKey === 'skills' && <SkillsSettings />}
-        {settingsKey === 'memory' && <MemorySettings />}
+        {settingsKey === 'memory' && <MemorySettings mode={mode} />}
         {settingsKey === 'usage' && <UsageSettings />}
       </div>
     </section>
@@ -2192,9 +2900,57 @@ function RoutingSettings() {
 
 function SkillsSettings() {
   const [skills, setSkills] = useState<
-    Array<{ name: string; version: string; triggers: string[]; enabled: boolean }>
+    Array<{
+      name: string;
+      version: string;
+      triggers: string[];
+      enabled: boolean;
+      state: 'active' | 'cold' | 'review';
+      thumbsDownCount: number;
+      consecutiveDown: number;
+    }>
+  >([]);
+  const [candidates, setCandidates] = useState<
+    Array<{
+      id: string;
+      title: string;
+      description: string;
+      sampleCount: number;
+      latestSample: string;
+      status: 'proposed' | 'accepted' | 'rejected';
+      ruleEnabled: boolean;
+      ruleLifecycle: {
+        usageCount: number;
+        thumbsDownCount: number;
+        consecutiveDown: number;
+        needsReview: boolean;
+      } | null;
+      latestNegativeFeedback: {
+        reason?: 'irrelevant' | 'too_verbose' | 'technical_error' | 'missing_key_point';
+        note?: string;
+        query: string;
+        answer: string;
+        createdAt: number;
+      } | null;
+    }>
   >([]);
   const [category, setCategory] = useState('all');
+  const [restoring, setRestoring] = useState<string | null>(null);
+  const [decidingCandidate, setDecidingCandidate] = useState<string | null>(null);
+  const [loadingDraft, setLoadingDraft] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, {
+    name: string;
+    version: string;
+    description: string;
+    triggers: string[];
+    permissions: string[];
+    scope: string;
+    instructions: string[];
+    skillMarkdown: string;
+    installable: boolean;
+    installBlocker: string | null;
+  }>>({});
+  const [updatingRule, setUpdatingRule] = useState<string | null>(null);
 
   const categoryOf = (name: string): string => {
     if (['chip-analysis', 'circuit-topology', 'datasheet-speed', 'github-reader', 'industry-kits', 'engineer', 'project-packager', 'color-recognition'].includes(name)) {
@@ -2207,10 +2963,23 @@ function SkillsSettings() {
   };
 
   const load = () => {
-    fetch(`${GATEWAY_URL}/api/skills`)
-      .then((resp) => (resp.ok ? resp.json() : null))
-      .then((data: { skills?: typeof skills } | null) => setSkills(data?.skills ?? []))
-      .catch(() => setSkills([]));
+    Promise.all([
+      fetch(`${GATEWAY_URL}/api/skills`).then((resp) => (resp.ok ? resp.json() : null)),
+      fetch(`${GATEWAY_URL}/api/skill-candidates?userId=ui-user`).then((resp) =>
+        resp.ok ? resp.json() : null,
+      ),
+    ])
+      .then(([skillData, candidateData]: [
+        { skills?: typeof skills } | null,
+        { candidates?: typeof candidates } | null,
+      ]) => {
+        setSkills(skillData?.skills ?? []);
+        setCandidates(candidateData?.candidates ?? []);
+      })
+      .catch(() => {
+        setSkills([]);
+        setCandidates([]);
+      });
   };
 
   useEffect(load, []);
@@ -2231,6 +3000,74 @@ function SkillsSettings() {
     load();
   };
 
+  const restoreReview = async (name: string) => {
+    if (!window.confirm(`确认恢复 Skill「${name}」？累计 👎 会保留。`)) return;
+    setRestoring(name);
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/skills/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, action: 'restore' }),
+      });
+      if (resp.ok) load();
+    } finally {
+      setRestoring(null);
+    }
+  };
+
+  const decideCandidate = async (id: string, decision: 'accept' | 'reject') => {
+    const prompt = decision === 'accept'
+      ? '确认保留这个 Skill 候选？这一步不会安装或启用 Skill。'
+      : '确认忽略这个 Skill 候选？';
+    if (!window.confirm(prompt)) return;
+    setDecidingCandidate(id);
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/skill-candidates/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'ui-user', decision }),
+      });
+      if (resp.ok) load();
+    } finally {
+      setDecidingCandidate(null);
+    }
+  };
+
+  const loadCandidateDraft = async (id: string) => {
+    setLoadingDraft(id);
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/skill-candidates/${id}/draft?userId=ui-user`);
+      if (!resp.ok) return;
+      const data = (await resp.json()) as { draft?: (typeof drafts)[string] };
+      if (data.draft) setDrafts((prev) => ({ ...prev, [id]: data.draft! }));
+    } finally {
+      setLoadingDraft(null);
+    }
+  };
+
+  const updateCandidateRule = async (
+    id: string,
+    action: 'enable' | 'disable' | 'restore_review',
+  ) => {
+    const prompt = action === 'enable'
+      ? '确认启用这条回答规则？后续回答会按该规则处理。'
+      : action === 'disable'
+        ? '确认停用这条回答规则？历史审计记录会保留。'
+        : '确认该规则已复审完成？累计反馈、使用次数和审计历史会保留。';
+    if (!window.confirm(prompt)) return;
+    setUpdatingRule(id);
+    try {
+      const resp = await fetch(`${GATEWAY_URL}/api/skill-candidates/${id}/rule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'ui-user', action }),
+      });
+      if (resp.ok) load();
+    } finally {
+      setUpdatingRule(null);
+    }
+  };
+
   const filtered =
     category === 'all' ? skills : skills.filter((skill) => categoryOf(skill.name) === category);
 
@@ -2247,6 +3084,124 @@ function SkillsSettings() {
           </button>
         ))}
       </div>
+      {candidates.filter((candidate) => candidate.status !== 'rejected').map((candidate) => (
+        <div className="skill-candidate-card" key={candidate.id}>
+          <strong>
+            {candidate.ruleEnabled
+              ? '已启用规则'
+              : candidate.status === 'accepted'
+                ? '已保留候选'
+                : '待确认候选'} · {candidate.title}
+          </strong>
+          <span>{candidate.description}（同类修订 {candidate.sampleCount} 条）</span>
+          <small title={candidate.latestSample}>最近样例：{candidate.latestSample}</small>
+          {candidate.ruleLifecycle && (
+            <small>
+              状态：{candidate.ruleLifecycle.needsReview ? '需复审' : '正常'}
+              {' · '}使用 {candidate.ruleLifecycle.usageCount}
+              {' · '}累计 👎 {candidate.ruleLifecycle.thumbsDownCount}
+              {' · '}连续 👎 {candidate.ruleLifecycle.consecutiveDown}
+            </small>
+          )}
+          {candidate.ruleLifecycle?.needsReview && candidate.latestNegativeFeedback && (
+            <div className="skill-review-evidence">
+              <strong>最近负反馈证据</strong>
+              <small>
+                原因：{candidate.latestNegativeFeedback.reason
+                  ? ({
+                      irrelevant: '答非所问',
+                      too_verbose: '太啰嗦',
+                      technical_error: '技术错误',
+                      missing_key_point: '漏了重点',
+                    } as const)[candidate.latestNegativeFeedback.reason]
+                  : '未选择'}
+                {' · '}{new Date(candidate.latestNegativeFeedback.createdAt).toLocaleString()}
+              </small>
+              {candidate.latestNegativeFeedback.note && (
+                <small>补充说明：{candidate.latestNegativeFeedback.note}</small>
+              )}
+              <small>原问题：{candidate.latestNegativeFeedback.query}</small>
+              <small>原回答：{candidate.latestNegativeFeedback.answer}</small>
+            </div>
+          )}
+          {candidate.ruleLifecycle?.needsReview && (
+            <button
+              className="skill-review-restore"
+              disabled={updatingRule === candidate.id}
+              onClick={() => void updateCandidateRule(candidate.id, 'restore_review')}
+              type="button"
+            >
+              {updatingRule === candidate.id ? '恢复中…' : '复审完成'}
+            </button>
+          )}
+          <div className="skill-candidate-actions">
+            {candidate.status === 'proposed' ? (
+              <>
+                <button
+                  disabled={decidingCandidate === candidate.id}
+                  onClick={() => void decideCandidate(candidate.id, 'accept')}
+                  type="button"
+                >
+                  保留候选
+                </button>
+                <button
+                  disabled={decidingCandidate === candidate.id}
+                  onClick={() => void decideCandidate(candidate.id, 'reject')}
+                  type="button"
+                >
+                  忽略
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  disabled={loadingDraft === candidate.id}
+                  onClick={() => void loadCandidateDraft(candidate.id)}
+                  type="button"
+                >
+                  {loadingDraft === candidate.id ? '生成中…' : '预览草案'}
+                </button>
+                {candidate.ruleEnabled && (
+                  <button
+                    disabled={updatingRule === candidate.id}
+                    onClick={() => void updateCandidateRule(candidate.id, 'disable')}
+                    type="button"
+                  >
+                    停用规则
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+          {drafts[candidate.id] && (
+            <div className="skill-draft-preview">
+              {drafts[candidate.id].installBlocker && (
+                <span>{drafts[candidate.id].installBlocker}</span>
+              )}
+              <pre>{JSON.stringify({
+                name: drafts[candidate.id].name,
+                version: drafts[candidate.id].version,
+                description: drafts[candidate.id].description,
+                triggers: drafts[candidate.id].triggers,
+                permissions: drafts[candidate.id].permissions,
+                scope: drafts[candidate.id].scope,
+                instructions: drafts[candidate.id].instructions,
+                installable: drafts[candidate.id].installable,
+              }, null, 2)}{`\n\n${drafts[candidate.id].skillMarkdown}`}</pre>
+              {drafts[candidate.id].installable && !candidate.ruleEnabled && (
+                <button
+                  className="skill-rule-enable"
+                  disabled={updatingRule === candidate.id}
+                  onClick={() => void updateCandidateRule(candidate.id, 'enable')}
+                  type="button"
+                >
+                  {updatingRule === candidate.id ? '启用中…' : '确认启用规则'}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
       {filtered.map((skill) => (
         <div className="skill-card" key={skill.name}>
           <div>
@@ -2265,7 +3220,20 @@ function SkillsSettings() {
             </button>
           </div>
           <div className="skill-meta">
-            <span>输入参数 / 输出契约 / 错误日志见 Skill 元数据</span>
+            <span>
+              状态：{skill.state === 'review' ? '需复审' : skill.state === 'cold' ? '冷存' : '正常'}
+              {' · '}累计 👎 {skill.thumbsDownCount} · 连续 👎 {skill.consecutiveDown}
+            </span>
+            {skill.state === 'review' && (
+              <button
+                className="skill-review-restore"
+                disabled={restoring === skill.name}
+                onClick={() => void restoreReview(skill.name)}
+                type="button"
+              >
+                {restoring === skill.name ? '恢复中…' : '恢复使用'}
+              </button>
+            )}
           </div>
         </div>
       ))}
@@ -2273,7 +3241,7 @@ function SkillsSettings() {
   );
 }
 
-function MemorySettings() {
+function MemorySettings({ mode }: { mode: UiMode }) {
   const [items, setItems] = useState<
     Array<{
       id: string;
@@ -2283,25 +3251,27 @@ function MemorySettings() {
       createdAt: number;
       lastAccessedAt: number;
       meta: string;
+      stale?: boolean;
+      expiresAt?: number | null;
     }>
   >([]);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
 
   const load = () => {
-    fetch(`${GATEWAY_URL}/api/memory`)
+    fetch(`${GATEWAY_URL}/api/memory?mode=${encodeURIComponent(mode)}`)
       .then((resp) => (resp.ok ? resp.json() : null))
       .then((data: { items?: typeof items } | null) => setItems(data?.items ?? []))
       .catch(() => setItems([]));
   };
 
-  useEffect(load, []);
+  useEffect(load, [mode]);
 
   const forget = async (id: string, type: string) => {
     await fetch(`${GATEWAY_URL}/api/memory/forget`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, type }),
+      body: JSON.stringify({ id, type, mode }),
     });
     load();
   };
@@ -2320,12 +3290,19 @@ function MemorySettings() {
     return `技能经验 · ${item.layer}`;
   };
 
+  const equippedAssets: Record<UiMode, string> = {
+    engineering: 'Skill / Wiki / CodeGraph',
+    knowledge: 'Chat Memory / Skill / Wiki',
+    life: 'Chat Memory',
+  };
+
   return (
     <div className="settings-form">
+      <p className="settings-note">当前栏位已装备：{equippedAssets[mode]}</p>
       <div className="memory-filter">
         <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>全部</button>
-        <button className={filter === 'L1' ? 'active' : ''} onClick={() => setFilter('L1')}>L1 情景</button>
-        <button className={filter === 'L2' ? 'active' : ''} onClick={() => setFilter('L2')}>L2 语义</button>
+        <button className={filter === 'L1' ? 'active' : ''} onClick={() => setFilter('L1')}>L1 事实/情景</button>
+        <button className={filter === 'L2' ? 'active' : ''} onClick={() => setFilter('L2')}>L2 场景知识</button>
         <div className="memory-search">
           <Search size={13} />
           <input
@@ -2340,7 +3317,11 @@ function MemorySettings() {
         <div className="memory-row" key={item.id}>
           <div>
             <strong>{item.content}</strong>
-            <span>{labelOf(item)} · {new Date(item.lastAccessedAt).toLocaleString()}</span>
+            <span>
+              {labelOf(item)}
+              {item.stale ? ' · 可能已过时，请重新确认' : ''}
+              {' · '}{new Date(item.lastAccessedAt).toLocaleString()}
+            </span>
           </div>
           <button onClick={() => forget(item.id, item.type)}>遗忘</button>
         </div>
@@ -2445,8 +3426,10 @@ function UsageSettings() {
 // E323：右栏「裁决」页——pending 待裁决队列 + 批准/否决回填（GET/POST /api/decisions）
 // E324 第二刀：批准带 resume 的挂起写动作 → gateway 自动恢复执行，面板回执 + 续到本会话聊天
 function DecisionPanel({
+  mode,
   onExecuted,
 }: {
+  mode: UiMode;
   onExecuted?: (entry: DecisionPanelEntry, executed: ExecutedReceipt) => void;
 }) {
   const [decisions, setDecisions] = useState<DecisionPanelEntry[]>([]);
@@ -2483,19 +3466,29 @@ function DecisionPanel({
     setReceipts((prev) => [{ id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, text, tone }, ...prev].slice(0, 6));
   };
 
-  const adjudicate = async (entry: DecisionPanelEntry, decision: 'approve' | 'reject') => {
+  const adjudicate = async (
+    entry: DecisionPanelEntry,
+    input: { decision?: 'approve' | 'reject'; choice?: string },
+  ) => {
     const id = entry.id;
     setBusyId(id);
     try {
       const resp = await fetch(`${GATEWAY_URL}/api/decisions/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decision, note: (notes[id] ?? '').trim() }),
+        body: JSON.stringify({ ...input, note: (notes[id] ?? '').trim(), mode }),
       });
       const data = (await resp.json().catch(() => null)) as {
         ok?: boolean;
         error?: string;
         executed?: ExecutedReceipt;
+        projectTransaction?: {
+          ok?: boolean;
+          status?: string;
+          error?: string;
+          conflictDecisionId?: string;
+          commit?: { committedPaths?: string[] };
+        };
       } | null;
       if (!resp.ok || !data?.ok) {
         setHint(data?.error ?? '裁决提交失败，请重试');
@@ -2507,7 +3500,27 @@ function DecisionPanel({
         return next;
       });
       const target = brief(entry.resume?.query || entry.question || '该操作');
-      if (decision === 'reject') {
+      if (data.projectTransaction) {
+        const transaction = data.projectTransaction;
+        if (transaction.status === 'completed') {
+          pushReceipt(
+            `✅ 多文件事务已提交，共写入 ${transaction.commit?.committedPaths?.length ?? 0} 个文件。`,
+            'ok',
+          );
+        } else if (transaction.status === 'cancelled') {
+          pushReceipt('❌ 已取消整批变更并清理未执行快照，目标文件未写入。', 'reject');
+        } else if (transaction.status === 'conflict_pending') {
+          pushReceipt('⚠️ 提交前发现文件变化，目标零写入；已生成新的冲突裁决。', 'error');
+        } else {
+          pushReceipt(`⚠️ 多文件事务未执行：${transaction.error ?? transaction.status ?? '未知状态'}`, 'error');
+        }
+      } else if (input.choice) {
+        const selected = entry.choices?.find((choice) => choice.id === input.choice);
+        pushReceipt(
+          `${selected?.outcome === 'reject' ? '❌' : '✅'} 已记录「${selected?.label ?? input.choice}」，本轮未执行文件写入。`,
+          selected?.outcome === 'reject' ? 'reject' : 'ok',
+        );
+      } else if (input.decision === 'reject') {
         pushReceipt(`❌ 已否决「${target}」，未执行。`, 'reject');
       } else if (data.executed?.error) {
         pushReceipt(`⚠️ 已批准「${target}」并记录，但自动恢复执行失败：${data.executed.error}`, 'error');
@@ -2573,20 +3586,38 @@ function DecisionPanel({
               placeholder="备注（可选）"
               disabled={busyId === entry.id}
             />
-            <button
-              className="decision-btn approve"
-              onClick={() => adjudicate(entry, 'approve')}
-              disabled={busyId === entry.id}
-            >
-              {busyId === entry.id ? '执行中…' : '批准'}
-            </button>
-            <button
-              className="decision-btn reject"
-              onClick={() => adjudicate(entry, 'reject')}
-              disabled={busyId === entry.id}
-            >
-              否决
-            </button>
+            {entry.choices?.length ? (
+              entry.choices.map((choice) => (
+                <button
+                  className={`decision-btn ${choice.outcome === 'reject' ? 'reject' : 'approve'}`}
+                  key={choice.id}
+                  onClick={() => adjudicate(entry, { choice: choice.id })}
+                  disabled={busyId === entry.id}
+                  title={choice.description}
+                >
+                  {busyId === entry.id
+                    ? '记录中…'
+                    : `${choice.label}${entry.defaultChoice === choice.id ? '（默认）' : ''}`}
+                </button>
+              ))
+            ) : (
+              <>
+                <button
+                  className="decision-btn approve"
+                  onClick={() => adjudicate(entry, { decision: 'approve' })}
+                  disabled={busyId === entry.id}
+                >
+                  {busyId === entry.id ? '执行中…' : '批准'}
+                </button>
+                <button
+                  className="decision-btn reject"
+                  onClick={() => adjudicate(entry, { decision: 'reject' })}
+                  disabled={busyId === entry.id}
+                >
+                  否决
+                </button>
+              </>
+            )}
           </div>
         </div>
       ))}

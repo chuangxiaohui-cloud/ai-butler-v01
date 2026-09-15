@@ -3,17 +3,19 @@ import { test } from 'node:test';
 
 import { findSkill, getSkills, toDisplayText } from './registry.js';
 
-test('registry: 24 项 Skill 全量加载', () => {
+test('registry: 28 项 Skill 全量加载（E340/E352/E353/E364）', () => {
   const skills = getSkills();
-  assert.equal(skills.length, 24);
+  assert.equal(skills.length, 28);
   const names = skills.map((s) => s.name);
   assert.deepEqual(
     names.sort(),
     [
+      'archify',
       'browser-session',
       'chip-analysis',
       'circuit-topology',
       'calendar-skill',
+      'codegraph',
       'color-recognition',
       'content-writer',
       'datasheet-speed',
@@ -26,11 +28,13 @@ test('registry: 24 项 Skill 全量加载', () => {
       'industry-kits',
       'jargon-map',
       'knowledge-qa',
+      'layered-arch',
       'mcp-agent',
       'office-daily',
       'plan-validation',
       'project-packager',
       'project-writer',
+      'pm-xmind',
       'quote-compare',
       'schematic-bom',
       'video-learner',

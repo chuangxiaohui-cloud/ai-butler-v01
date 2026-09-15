@@ -21,6 +21,13 @@ const memory: UserContext = {
   longTermFacts: [
     {
       content: '用户喜欢周星驰和唐伯虎点秋香',
+      kind: 'general',
+      layer: 'L1',
+      scope: 'global',
+      conflictKey: '',
+      temporalKind: null,
+      expiresAt: null,
+      stale: false,
       source: 'user_explicit',
       confidence: 0.9,
       createdAt: Date.now(),

@@ -2,7 +2,8 @@
 /**
  * [P-25] 成熟度轻量自检 CLI（§12.4 五维指标 + L0-L3 判定）
  * 数据源：data/experience.db#skill_stats、MarketStore（data/market-skills 安装记录）、
- *         data/route-cases.jsonl（反馈样本）、data/trajectory.jsonl（复用率观察）。
+ *         data/route-cases.jsonl + data/answer-feedback.jsonl（反馈样本）、
+ *         data/trajectory.jsonl（复用率观察）。
  * 用法：npm run maturity:check [--json]
  */
 
@@ -14,7 +15,9 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { MarketStore } from '../src/skills/market/store.js';
 import { getSkills } from '../src/skills/registry.js';
+import { FeedbackStore } from '../src/feedback/feedback-store.js';
 import {
+  collectMaturityFeedbackSamples,
   computeMaturityMetrics,
   countReuseEvents,
   type MaturityFeedbackSample,
@@ -59,17 +62,21 @@ function main(): void {
   const marketStore = new MarketStore();
   const installedMarketSkills = marketStore.installed().map((record) => record.name);
 
-  const feedbackSamples: MaturityFeedbackSample[] = [];
+  const routeFeedbackSamples: MaturityFeedbackSample[] = [];
   for (const line of readLines(join(root, 'data', 'route-cases.jsonl'))) {
     try {
       const record = JSON.parse(line) as { source?: string; feedback?: string | null };
-      if (record.source === 'pipeline') {
-        feedbackSamples.push({ source: record.source, feedback: record.feedback ?? null });
-      }
+      routeFeedbackSamples.push({ source: record.source, feedback: record.feedback ?? null });
     } catch {
       // 损坏行跳过
     }
   }
+  const feedbackStore = new FeedbackStore();
+  const feedbackSamples = collectMaturityFeedbackSamples(
+    routeFeedbackSamples,
+    feedbackStore.latest(),
+  );
+  feedbackStore.close();
 
   const trajectoryEvents: Array<{ type?: string; skill?: { kind?: string } }> = [];
   for (const line of readLines(join(root, 'data', 'trajectory.jsonl'))) {

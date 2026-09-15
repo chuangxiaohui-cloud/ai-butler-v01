@@ -27,6 +27,10 @@ import { createSchematicBomSkill } from './schematic-bom/index.js';
 import { createOfficeDailySkill } from './office-daily/index.js';
 import { createVideoLearnerSkill } from './video-learner/index.js';
 import { createMcpAgentSkill } from './mcp-agent/index.js';
+import { createPmXmindSkill } from './pm-xmind/index.js';
+import { createCodegraphSkill } from './codegraph/index.js';
+import { createArchifySkill } from './archify/index.js';
+import { createLayeredArchSkill } from './layered-arch/index.js';
 import { PARAMS } from '../config/params.js';
 import { readDisabledSkills } from '../config/skills-config.js';
 import type { AttachmentSignal } from '../agent/multimodal-preprocessor.js';
@@ -62,6 +66,10 @@ const EXECUTABLE_SKILLS = [
   createOfficeDailySkill(),
   createVideoLearnerSkill(),
   createMcpAgentSkill(),
+  createPmXmindSkill(),
+  createCodegraphSkill(), // E353：CodeGraph 本地代码影响/调用关系解读（只读、本地 ¥0）
+  createLayeredArchSkill(), // E364：分层架构/框架/模块图（自研 viewer 渲染，替代 Archify 架构类；content_generation，写 outputs/layered-arch）
+  createArchifySkill(), // E352：Archify 系统/流程/时序/数据流/生命周期交互图（content_generation，写 outputs/archify）
 ];
 
 export function getSkills(): ExecutableSkill[] {
@@ -109,6 +117,13 @@ export interface SkillOutput {
   result: unknown; // 不假设字符串；字符串化只在显示边界
   followUpAction?: string;
   confidence: number;
+  artifacts?: SkillArtifact[];
+}
+
+export interface SkillArtifact {
+  kind: string;
+  title: string;
+  data: Record<string, unknown>;
 }
 
 /** 新体系接口；C3 迁移完成后改名 Skill 并退役旧接口 */

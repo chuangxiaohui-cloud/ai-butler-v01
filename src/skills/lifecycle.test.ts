@@ -13,13 +13,13 @@ function tempDb(): { path: string; dir: string } {
   return { path: join(dir, 'experience.db'), dir };
 }
 
-test('skill-lifecycle: 注册 24 项 Skill 并记录使用', () => {
+test('skill-lifecycle: 注册 28 项 Skill 并记录使用（E340/E352/E353/E364）', () => {
   const { path, dir } = tempDb();
   const lc = new SkillLifecycle(path);
   try {
     const now = Date.now();
     lc.ensureRegistered(now);
-    assert.equal(lc.list(now).length, 24);
+    assert.equal(lc.list(now).length, 28);
     lc.recordUse('chip-analysis', now);
     const stat = lc.list(now).find((s) => s.name === 'chip-analysis');
     assert.equal(stat?.usageCount, 1);
@@ -42,6 +42,30 @@ test('skill-lifecycle: 连续 👎 触发复审但不自动弃用', () => {
     const stat = lc.list(now).find((s) => s.name === 'jargon-map');
     assert.equal(stat?.state, 'review');
     assert.equal(stat?.needsReview, true);
+  } finally {
+    lc.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('skill-lifecycle: 同步回复负反馈只标复审，不自动调整 confidence', () => {
+  const { path, dir } = tempDb();
+  const lc = new SkillLifecycle(path);
+  try {
+    const now = Date.now();
+    lc.ensureRegistered(now);
+    const before = lc.list(now).find((s) => s.name === 'jargon-map');
+    lc.syncReviewSignals('jargon-map', 3, 3, now);
+    const after = lc.list(now).find((s) => s.name === 'jargon-map');
+    assert.equal(after?.thumbsDownCount, 3);
+    assert.equal(after?.consecutiveDown, 3);
+    assert.equal(after?.needsReview, true);
+    assert.equal(after?.confidence, before?.confidence);
+    const restored = lc.clearReview('jargon-map', now);
+    assert.equal(restored?.needsReview, false);
+    assert.equal(restored?.consecutiveDown, 0);
+    assert.equal(lc.list(now).find((s) => s.name === 'jargon-map')?.thumbsDownCount, 3);
+    assert.equal(restored?.confidence, before?.confidence);
   } finally {
     lc.close();
     rmSync(dir, { recursive: true, force: true });
@@ -71,7 +95,7 @@ test('skill-lifecycle: 90 天未用标记 cold', () => {
     lc.ensureRegistered(created);
     const later = created + 100 * DAY_MS;
     const list = lc.list(later);
-    assert.equal(list.filter((s) => s.state === 'cold').length, 24);
+    assert.equal(list.filter((s) => s.state === 'cold').length, 28);
     assert.equal(lc.findBest('芯片', later), null);
   } finally {
     lc.close();
@@ -88,7 +112,7 @@ test('skill-lifecycle: 市场安装 Skill 进入统计且幂等（§8.2.3 成熟
     lc.ensureMarketSkillsRegistered([{ name: 'pcb-helper', version: '0.1.0' }], now);
     lc.ensureMarketSkillsRegistered([{ name: 'pcb-helper', version: '0.1.0' }], now);
     const list = lc.list(now);
-    assert.equal(list.length, 25);
+    assert.equal(list.length, 29);
     const stat = list.find((s) => s.name === 'pcb-helper');
     assert.equal(stat?.version, '0.1.0');
     assert.equal(stat?.usageCount, 0);

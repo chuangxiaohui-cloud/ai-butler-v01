@@ -1,23 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { createMcpAgents, closeMcpAgents } from '../../src/mcp/config.js';
+import { createMcpAgents, closeMcpAgents, loadMcpAgentConfig } from '../../src/mcp/config.js';
 import { SubAgentDispatcher } from '../../src/mcp/dispatcher.js';
 import { createMcpAgentSkill } from '../../src/skills/mcp-agent/index.js';
 
-const WINDOWS_MCP = 'C:\\Users\\zhxh\\.local\\bin\\windows-mcp.exe';
-const hasServer = existsSync(WINDOWS_MCP);
-const skipReason = hasServer ? false : '本机未安装 windows-mcp（真实 server 集成测试跳过）';
+const windowsConfig = loadMcpAgentConfig().find((entry) => entry.id === 'windows');
+const hasServer = Boolean(windowsConfig && existsSync(windowsConfig.command[0]!));
+const skipReason = hasServer ? false : '本机未配置或未安装 windows-mcp（真实 server 集成测试跳过）';
 
 function buildRuntime() {
-  const { metas, clients } = createMcpAgents([
-    {
-      id: 'windows',
-      command: [WINDOWS_MCP, 'serve'],
-      allowedTools: ['Process'],
-      startTimeoutMs: 10000,
-    },
-  ]);
+  if (!windowsConfig) throw new Error('本机未配置 windows-mcp');
+  const { metas, clients } = createMcpAgents([windowsConfig]);
   return { metas, clients, dispatcher: new SubAgentDispatcher(metas, clients) };
 }
 
@@ -39,6 +33,12 @@ test('INT-MCP-001：真实 windows-mcp 端到端——白名单外拒绝、白�
     assert.ok(res.output.length > 0);
     assert.equal(res.untrusted, true);
     assert.equal(res.agentId, 'windows');
+    assert.equal(res.task.description, '列出进程');
+    assert.equal(res.status, 'succeeded');
+    assert.deepEqual(res.plan.map((step) => step.status), ['completed', 'completed', 'completed']);
+    assert.equal(res.artifacts[0]?.untrusted, true);
+    assert.equal(res.evidence[0]?.toolName, 'Process');
+    assert.equal(res.handoff.required, false);
   } finally {
     closeMcpAgents(clients);
   }

@@ -6,6 +6,8 @@
  */
 
 export const PARAMS = {
+  /** P-11 回灌动参阈值：同类回复修订达到此样本数才生成 Skill 候选 */
+  feedbackCandidateThreshold: 10,
   /** P-80 路由高置信直接执行阈值 */
   routeConfidenceHigh: 0.75,
   /** P-81 路由低置信必须澄清阈值 */
@@ -100,6 +102,14 @@ export const PARAMS = {
   confirmContentGenInputTokens: 4_000,
   /** P-150 confirm 挂起预估成本：单次内容生成输出上界 tokens（E334，deepseek-v4-flash 高峰价估算） */
   confirmContentGenOutputTokens: 2_000,
+  /** P-151 文件面板只读预览大小上限（E337，超出截断展示） */
+  filePreviewMaxBytes: 512 * 1024,
+  /** P-152 图片类 Skill VLM 单次输出 maxTokens（E351：推理型视觉模型思考与答案共享预算，替代 200/100） */
+  vlmImageMaxTokens: 2_048,
+  /** P-153 createVisionClient 默认单次超时（E351：推理型视觉模型放宽，env VLM_TIMEOUT_MS 可覆盖） */
+  vlmTimeoutMs: 20_000,
+  /** P-154 跨节点“构建→烧录→验证→修订”自动修订循环单任务上限（E401） */
+  subAgentRevisionCycleLimit: 2,
   /** P-117 低置信二次取证总预算（对齐单目标抓取 8s 超时） */
   secondPassBudgetMs: 8_000,
   /** P-118 取证 PDF 解析大小上限 */
@@ -166,6 +176,7 @@ export type ParamKey = keyof typeof PARAMS;
 
 /** camelCase key → P-NN，供 §5 追溯；Record 类型在编译期强制全覆盖 */
 export const PARAM_IDS: Record<ParamKey, string> = {
+  feedbackCandidateThreshold: 'P-11',
   routeConfidenceHigh: 'P-80',
   routeConfidenceLow: 'P-81',
   routeCandidateGap: 'P-82',
@@ -213,6 +224,10 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   aiOpsStopPct: 'P-147',
   confirmContentGenInputTokens: 'P-149',
   confirmContentGenOutputTokens: 'P-150',
+  filePreviewMaxBytes: 'P-151',
+  vlmImageMaxTokens: 'P-152',
+  vlmTimeoutMs: 'P-153',
+  subAgentRevisionCycleLimit: 'P-154',
   secondPassBudgetMs: 'P-117',
   pdfParseMaxBytes: 'P-118',
   calibrationWindowDays: 'P-119',

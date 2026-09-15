@@ -117,6 +117,41 @@ export class SkillLifecycle {
       .run(confidence, consecutive, review, now, name);
   }
 
+  /** §9.3：同步回复级最新 👎 信号；只标复审，不自动改变权重。 */
+  syncReviewSignals(
+    name: string,
+    thumbsDownCount: number,
+    consecutiveDown: number,
+    now = Date.now(),
+  ): Pick<SkillStat, 'needsReview' | 'consecutiveDown'> | null {
+    const stat = this.get(name);
+    if (!stat) return null;
+    const review = consecutiveDown >= P79_REVIEW_THRESHOLD ? 1 : stat.needsReview ? 1 : 0;
+    this.db
+      .prepare(
+        `UPDATE skill_stats
+         SET thumbs_down_count = ?, consecutive_down = ?, needs_review = ?, last_used_at = ?
+         WHERE name = ?`,
+      )
+      .run(thumbsDownCount, consecutiveDown, review, now, name);
+    const updated = this.get(name);
+    return updated
+      ? { needsReview: updated.needsReview, consecutiveDown: updated.consecutiveDown }
+      : null;
+  }
+
+  clearReview(name: string, now = Date.now()): SkillStat | null {
+    if (!this.get(name)) return null;
+    this.db
+      .prepare(
+        `UPDATE skill_stats
+         SET consecutive_down = 0, needs_review = 0, last_used_at = ?
+         WHERE name = ?`,
+      )
+      .run(now, name);
+    return this.get(name);
+  }
+
   list(now = Date.now()): Array<SkillStat & { state: 'active' | 'cold' | 'review' }> {
     const rows = this.all();
     return rows.map((r) => ({

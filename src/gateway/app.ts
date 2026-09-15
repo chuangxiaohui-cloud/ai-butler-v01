@@ -20,6 +20,8 @@ import { parseModelId } from '../search/model-id.js';
 import { pipeline, type PipelineDeps } from '../search/pipeline.js';
 import { bochaBalanceWarning, queryBochaBalance } from '../search/balance.js';
 import { listSkillMetadata } from '../skills/registry.js';
+import { getSubAgents } from '../mcp/registry.js';
+import { loadMcpAgentConfig } from '../mcp/config.js';
 import { writeDisabledSkills } from '../config/skills-config.js';
 import { readUsageBudget, writeUsageBudget } from '../config/usage-budget.js';
 import { readSecurityConfig, writeSecurityConfig } from '../config/security-config.js';
@@ -27,11 +29,18 @@ import { DecisionLog, type AdjudicateResult, type DecisionLogEntry } from '../es
 import { ExperienceManager } from '../memory/experience.js';
 import { UserContextStore } from '../memory/user-context-store.js';
 import { SessionContextStore } from '../memory/session-context.js';
+import {
+  canAccessMemoryAsset,
+  memoryAssetsForMode,
+  memoryItemAsset,
+  parseMemoryAccessMode,
+} from '../memory/asset-acl.js';
 import { handleSlashCommand } from '../slash/slash-commands.js';
 import { aggregateUsage, readUsage } from '../usage/usage-store.js';
 import { NotificationStore } from '../notifications/notification-store.js';
 import { classifyEventPriority, renderNotificationDigest } from '../skills/market/notification-hub.js';
-import { listProjectFiles } from './files.js';
+import { listProjectFiles, readHtmlArtifactRaw, readTextFilePreview, readXmindFilePreview } from './files.js';
+import { listProjectChangeRecords } from './change-history.js';
 import { ConcurrencyGate, RateLimiter } from './rate-limit.js';
 import { classifyCommand, runCommand } from './terminal.js';
 import { publishArtifactEvent, subscribeArtifactEvents } from './artifact-bus.js';
@@ -39,6 +48,19 @@ import type { RawFileLike } from '../skills/deps.js';
 import { dataUrlToRawFile, type AttachmentPayload } from './attachments.js';
 import { loadCredentials, saveCredentials, validateCredentials } from '../mail/credentials.js';
 import { buildCalendarIcs, importIcsToDb, openCalendarDb } from '../skills/calendar-skill/index.js';
+import { FeedbackStore, isAnswerFeedbackReason } from '../feedback/feedback-store.js';
+import { detectCorrectionPattern, SkillCandidateStore } from '../feedback/skill-candidate-store.js';
+import { buildSkillCandidateDraft } from '../feedback/skill-candidate-draft.js';
+import { buildCorrectionPreferenceFact } from '../memory/persona-memory.js';
+import {
+  AnswerPostprocessRuleStore,
+  PersistedAnswerPostprocessRuntime,
+} from '../postprocess/answer-postprocess-store.js';
+import {
+  defaultPendingProjectTransactionStore,
+  type PendingProjectTransactionStore,
+  type PendingProjectTransactionResolution,
+} from '../security/pending-project-transaction-store.js';
 
 export interface GatewayOptions {
   deps?: PipelineDeps;
@@ -55,6 +77,14 @@ export interface GatewayOptions {
   notificationStore?: NotificationStore;
   /** E323：人类裁决记录库注入（测试隔离；缺省共享真实 data/decision-log.jsonl） */
   decisionLog?: DecisionLog;
+  /** E399：project-writer prepared transaction 进程内仓库（测试可注入）。 */
+  pendingProjectTransactionStore?: PendingProjectTransactionStore;
+  /** E374：回复 👍/👎 本地反馈库（测试可注入）。 */
+  feedbackStore?: FeedbackStore;
+  /** E380：重复回复修订形成的待确认 Skill 候选库。 */
+  skillCandidateStore?: SkillCandidateStore;
+  /** E383：用户二次确认后的 answer_postprocess 规则账本。 */
+  answerPostprocessRuleStore?: AnswerPostprocessRuleStore;
 }
 
 interface AskBody {
@@ -72,6 +102,27 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
   const routeCaseStore = opts.routeCaseStore ?? new RouteCaseStore();
   // 斜杠命令（E204）与 pipeline 的 E193 会话上下文同持久化（data/session-context/<id>.json）
   const sessionContext = opts.sessionContext ?? new SessionContextStore();
+  const feedbackStore = opts.feedbackStore ?? new FeedbackStore();
+  const skillCandidateStore = opts.skillCandidateStore ?? new SkillCandidateStore();
+  const answerPostprocessRuleStore =
+    opts.answerPostprocessRuleStore ?? new AnswerPostprocessRuleStore();
+  const pendingProjectTransactionStore =
+    opts.pendingProjectTransactionStore ?? defaultPendingProjectTransactionStore();
+  const pipelineDeps: PipelineDeps = {
+    ...(opts.deps ?? {}),
+    pendingProjectTransactionStore,
+    ...(opts.decisionLog || opts.deps?.escalation
+      ? {
+          escalation: {
+            ...(opts.deps?.escalation ?? {}),
+            ...(opts.decisionLog ? { decisionLog: opts.decisionLog } : {}),
+          },
+        }
+      : {}),
+    answerPostprocess:
+      opts.deps?.answerPostprocess ??
+      new PersistedAnswerPostprocessRuntime(answerPostprocessRuleStore),
+  };
   app.use(express.json({ limit: '25mb' }));
 
   // SEV-1.4 + H3：网关鉴权（非 GET 端点统一挂载）+ /api/ask 速率限制
@@ -83,6 +134,27 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
         '生产或局域网暴露前必须设置。',
     );
   }
+  // E341：开发期 CORS 白名单——Vite UI 开发源（5173）跨端口直连 gateway。
+  // 仅未设置 GATEWAY_AUTH_TOKEN（dev 模式）时生效；生产/局域网暴露（带 token）不返回任何跨域头。
+  const DEV_UI_ORIGINS = new Set(['http://127.0.0.1:5173', 'http://localhost:5173']);
+  const corsWhitelist: express.RequestHandler = (req, res, next) => {
+    if (GATEWAY_AUTH_TOKEN) return next();
+    const origin = req.headers.origin;
+    if (typeof origin === 'string' && DEV_UI_ORIGINS.has(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token');
+      res.setHeader('Access-Control-Max-Age', '86400');
+      if (req.method === 'OPTIONS') {
+        res.status(204).end();
+        return;
+      }
+    }
+    next();
+  };
+  app.use(corsWhitelist);
+
   const requireGatewayAuth: express.RequestHandler = (req, res, next) => {
     if (!GATEWAY_AUTH_TOKEN) return next(); // dev 模式放行
     const auth = req.headers['authorization'];
@@ -157,6 +229,66 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     res.json({ total: files.length, files });
   });
 
+  // E339：右栏产物区「变更记录」——projects/ watcher 差量内存环（新→旧，进程内保留，不落盘）
+  app.get('/api/files/changes', (_req, res) => {
+    res.json({ changes: listProjectChangeRecords() });
+  });
+
+  // E337：文件面板只读预览——只允许沙箱根内文件，防路径穿越；超 [P-151] 文本截断 / .xmind 整体拒绝
+  // E345：.xmind（zip）按扩展名分发，解包读回大纲文本；损坏 zip / 超大 → 415
+  app.get('/api/files/preview', async (req, res) => {
+    const relPath = typeof req.query.path === 'string' ? req.query.path : '';
+    const isXmind = relPath.replace(/\\/g, '/').toLowerCase().endsWith('.xmind');
+    const result = isXmind
+      ? await readXmindFilePreview(process.cwd(), relPath, PARAMS.filePreviewMaxBytes)
+      : readTextFilePreview(process.cwd(), relPath, PARAMS.filePreviewMaxBytes);
+    if (!result.ok) {
+      const status =
+        result.error === 'bad_path' ? 400 : result.error === 'not_found' ? 404 : 415;
+      const message =
+        result.error === 'bad_path'
+          ? '路径不合法：只允许 projects/sandbox/outputs/data/datasheets 内的相对路径'
+          : result.error === 'not_found'
+            ? '文件不存在'
+            : result.error === 'not_file'
+              ? '目标不是文件'
+              : result.error === 'too_large'
+                ? '文件过大，不支持预览'
+                : result.error === 'bad_xmind'
+                  ? '不是可读的 .xmind 文件'
+                  : '不支持预览二进制文件';
+      res.status(status).json({ error: message });
+      return;
+    }
+    res.json(result);
+  });
+
+
+  // E354：产物 HTML 整文件只读回读——文件面板 iframe 渲染用（text/html；防穿越同 preview）
+  app.get('/api/files/raw', (req, res) => {
+    const relPath = typeof req.query.path === 'string' ? req.query.path : '';
+    const result = readHtmlArtifactRaw(process.cwd(), relPath);
+    if (!result.ok) {
+      const status =
+        result.error === 'bad_path' ? 400 : result.error === 'not_found' ? 404 : 415;
+      const message =
+        result.error === 'bad_path'
+          ? '路径不合法：只允许沙箱根内相对/绝对路径'
+          : result.error === 'not_found'
+            ? '文件不存在'
+            : result.error === 'not_file'
+              ? '目标不是文件'
+              : result.error === 'not_html'
+                ? '仅支持渲染 .html/.htm 产物'
+                : '文件过大，不支持渲染';
+      res.status(status).json({ error: message });
+      return;
+    }
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(result.buffer);
+  });
   app.get('/api/events', requireGatewayAuth, (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -224,11 +356,38 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
   });
 
   app.get('/api/skills', (_req, res) => {
-    const skills = listSkillMetadata();
+    const lifecycle = new Map(
+      (opts.deps?.skillLifecycle?.list?.() ?? []).map((stat) => [stat.name, stat]),
+    );
+    const skills = listSkillMetadata().map((skill) => {
+      const stat = lifecycle.get(skill.name);
+      return {
+        ...skill,
+        state: stat?.state ?? 'active',
+        thumbsDownCount: stat?.thumbsDownCount ?? 0,
+        consecutiveDown: stat?.consecutiveDown ?? 0,
+        confidence: stat?.confidence ?? null,
+      };
+    });
     res.json({
       total: skills.length,
       enabled: skills.filter((s) => s.enabled).length,
       skills,
+    });
+  });
+
+  app.get('/api/agents', (_req, res) => {
+    const configuredIds = new Set(loadMcpAgentConfig().map((entry) => entry.id));
+    const agents = getSubAgents().map((meta) => ({
+      id: meta.id,
+      name: meta.name,
+      category: meta.category,
+      available: configuredIds.has(meta.id),
+    }));
+    res.json({
+      total: agents.length,
+      available: agents.filter((agent) => agent.available).length,
+      agents,
     });
   });
 
@@ -246,6 +405,20 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     res.json({ ok: true, disabled });
   });
 
+  app.post('/api/skills/review', requireGatewayAuth, (req, res) => {
+    const body = (req.body ?? {}) as { name?: unknown; action?: unknown };
+    if (typeof body.name !== 'string' || body.action !== 'restore') {
+      res.status(400).json({ ok: false, error: '复审操作参数非法' });
+      return;
+    }
+    const restored = opts.deps?.skillLifecycle?.clearReview?.(body.name.trim());
+    if (!restored) {
+      res.status(404).json({ ok: false, error: '未找到 Skill 生命周期记录' });
+      return;
+    }
+    res.json({ ok: true, skill: body.name.trim(), lifecycle: restored });
+  });
+
   app.get('/api/usage/stats', (_req, res) => {
     res.json({
       stats: aggregateUsage(readUsage()),
@@ -256,6 +429,10 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
   // E320：通知区只读 API（§11.3 秘书日报 / §4.1 右栏通知区；优先级复用 hub 纯函数单一判定口径）
   // E331：支持 page/pageSize 分页并回 total；摘要口径固定最近 200 条，与当前分页解耦。
   app.get('/api/notifications', (req, res) => {
+    const userId =
+      typeof req.query.userId === 'string' && req.query.userId.trim()
+        ? req.query.userId.trim()
+        : (opts.defaultUserId ?? 'default');
     const pageRaw = Number(req.query.page ?? 1);
     const page = Number.isFinite(pageRaw) ? Math.max(1, Math.floor(pageRaw)) : 1;
     const sizeRaw = Number(req.query.pageSize ?? 20);
@@ -263,13 +440,33 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     const store = opts.notificationStore ?? new NotificationStore();
     try {
       const all = store.all();
-      const total = all.length;
-      const newestFirst = [...all]
+      // E336：已裁决（approve/reject）的 pending 不再展示对应「待你裁决」通知，消除裁决后残留
+      const logStore = opts.decisionLog ?? new DecisionLog();
+      const decided = new Set<string>();
+      try {
+        for (const row of logStore.all()) {
+          if (row.refId) decided.add(row.refId);
+        }
+      } finally {
+        try {
+          logStore.close();
+        } catch {
+          // 读句柄关闭失败可忽略
+        }
+      }
+      const visible = all.filter((entry) => !entry.decisionId || !decided.has(entry.decisionId));
+      const total = visible.length;
+      const newestFirst = [...visible]
         .reverse()
         .map((entry) => ({ ...entry, priority: classifyEventPriority(entry) }));
       const start = (page - 1) * pageSize;
       const entries = newestFirst.slice(start, start + pageSize);
-      res.json({ entries, total, digest: renderNotificationDigest(all.slice(-200)) });
+      res.json({
+        entries,
+        total,
+        digest: renderNotificationDigest(visible.slice(-200)),
+        feedbackSummary: feedbackStore.dailySummary(userId),
+      });
     } finally {
       store.close();
     }
@@ -291,17 +488,48 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
   app.post('/api/decisions/:id', requireGatewayAuth, async (req, res) => {
     const rawId = req.params.id;
     const id = typeof rawId === 'string' ? rawId : '';
-    const body = (req.body ?? {}) as { decision?: unknown; note?: unknown };
+    const body = (req.body ?? {}) as {
+      decision?: unknown;
+      choice?: unknown;
+      note?: unknown;
+      mode?: unknown;
+    };
     const decision = body.decision;
-    if (decision !== 'approve' && decision !== 'reject') {
-      res.status(400).json({ error: 'decision 必须为 approve 或 reject' });
+    const choice = typeof body.choice === 'string' && body.choice.trim() ? body.choice.trim() : undefined;
+    if (!choice && decision !== 'approve' && decision !== 'reject') {
+      res.status(400).json({ error: 'decision 必须为 approve/reject，或提供合法 choice' });
+      return;
+    }
+    const mode = body.mode === undefined ? undefined : parseMemoryAccessMode(body.mode);
+    if (body.mode !== undefined && !mode) {
+      res.status(403).json({ error: '非法的记忆访问栏位' });
       return;
     }
     const note = typeof body.note === 'string' && body.note.trim() ? body.note.trim() : undefined;
     const store = opts.decisionLog ?? new DecisionLog();
     let result: AdjudicateResult;
+    let projectTransaction: PendingProjectTransactionResolution | undefined;
     try {
-      result = store.adjudicate(id, decision, { note });
+      result = choice
+        ? store.adjudicateChoice(id, choice, { note })
+        : store.adjudicate(id, decision as 'approve' | 'reject', { note });
+      if (
+        result.ok &&
+        result.entry.context?.kind === 'project_multifile_change_confirmation'
+      ) {
+        projectTransaction = pendingProjectTransactionStore.resolveInitialDecision(
+          store,
+          result.entry.id,
+        );
+      } else if (
+        result.ok &&
+        result.entry.context?.kind === 'project_transaction_conflict'
+      ) {
+        projectTransaction = pendingProjectTransactionStore.resolveConflictDecision(
+          store,
+          result.entry.id,
+        );
+      }
     } catch {
       try {
         store.close();
@@ -317,9 +545,16 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       // 记录库句柄关闭失败可忽略，不影响裁决结果返回
     }
     if (!result.ok) {
-      res.status(result.reason === 'not_found' ? 404 : 409).json({
-        error: result.reason === 'not_found' ? '未找到待裁决记录' : '该裁决已处理',
-      });
+      const status = result.reason === 'not_found' ? 404 : result.reason === 'already_decided' ? 409 : 400;
+      const error =
+        result.reason === 'not_found'
+          ? '未找到待裁决记录'
+          : result.reason === 'already_decided'
+            ? '该裁决已处理'
+            : result.reason === 'choice_required'
+              ? '该裁决必须提交明确 choice'
+              : 'choice 不在待裁决选项中';
+      res.status(status).json({ error });
       return;
     }
     const payload: {
@@ -335,14 +570,17 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
         submode?: string;
         error?: string;
       };
+      projectTransaction?: PendingProjectTransactionResolution;
     } = { ok: true, entry: result.entry };
+    if (projectTransaction) payload.projectTransaction = projectTransaction;
     if (result.resume) {
       payload.resume = result.resume;
       if (decision === 'approve') {
         try {
-          const run = await pipeline(result.resume.query, opts.deps ?? {}, {
+          const run = await pipeline(result.resume.query, pipelineDeps, {
             userId: opts.defaultUserId ?? 'ui-user',
             conversationId: result.entry.conversationId,
+            mode: mode ?? undefined,
             confirmResume: true,
             confirmResumeExecutor: result.resume.executor,
             confirmResumeIntent: result.resume.intent,
@@ -366,7 +604,12 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
     res.json(payload);
   });
 
-  app.get('/api/memory', (_req, res) => {
+  app.get('/api/memory', (req, res) => {
+    const mode = parseMemoryAccessMode(req.query.mode);
+    if (!mode) {
+      res.status(403).json({ error: '缺少或非法的记忆访问栏位' });
+      return;
+    }
     const items: Array<{
       id: string;
       type: 'fact' | 'session' | 'experience';
@@ -375,18 +618,22 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       createdAt: number;
       lastAccessedAt: number;
       meta: string;
+      stale?: boolean;
+      expiresAt?: number | null;
     }> = [];
     const userId = opts.defaultUserId ?? 'default';
-    if (opts.userContextStore) {
-      for (const fact of opts.userContextStore.listFacts(userId)) {
+    if (canAccessMemoryAsset(mode, 'chat_memory') && opts.userContextStore) {
+      for (const fact of opts.userContextStore.listFacts(userId, mode)) {
         items.push({
           id: `fact:${fact.id}`,
           type: 'fact',
-          layer: 'L2',
+          layer: fact.layer,
           content: fact.content,
           createdAt: fact.createdAt,
           lastAccessedAt: fact.lastAccessedAt,
-          meta: fact.source,
+          meta: `${fact.source} · ${fact.kind} · ${fact.scope}`,
+          stale: fact.stale,
+          expiresAt: fact.expiresAt,
         });
       }
       for (const session of opts.userContextStore.listSessions(userId)) {
@@ -401,7 +648,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
         });
       }
     }
-    if (opts.experienceManager) {
+    if (canAccessMemoryAsset(mode, 'skill') && opts.experienceManager) {
       for (const entry of opts.experienceManager.list()) {
         items.push({
           id: `experience:${entry.id}`,
@@ -414,11 +661,312 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
         });
       }
     }
-    res.json({ total: items.length, items });
+    res.json({ mode, assets: memoryAssetsForMode(mode), total: items.length, items });
+  });
+
+  app.get('/api/feedback', requireGatewayAuth, (_req, res) => {
+    const entries = feedbackStore.all();
+    res.json({ entries, latest: feedbackStore.latest(), stats: feedbackStore.stats() });
+  });
+
+  app.get('/api/skill-candidates', requireGatewayAuth, (req, res) => {
+    const userId =
+      typeof req.query.userId === 'string' && req.query.userId.trim()
+        ? req.query.userId.trim()
+        : (opts.defaultUserId ?? 'default');
+    const rulesByCandidate = new Map(
+      answerPostprocessRuleStore
+        .latest()
+        .filter((entry) => entry.userId === userId)
+        .map((entry) => [entry.candidateId, entry]),
+    );
+    const latestFeedback = feedbackStore.latest().filter((entry) => entry.userId === userId);
+    const candidates = skillCandidateStore
+      .latest()
+      .filter((entry) => entry.userId === userId)
+      .map((entry) => {
+        const rule = rulesByCandidate.get(entry.id);
+        const latestNegativeFeedback = rule?.needsReview
+          ? latestFeedback
+              .filter(
+                (item) =>
+                  item.feedback === 'reject' &&
+                  item.postprocessSkillNames?.includes(rule.name),
+              )
+              .reduce<(ReturnType<FeedbackStore['latest']>[number]) | null>(
+                (latest, item) =>
+                  !latest || item.createdAt >= latest.createdAt ? item : latest,
+                null,
+              )
+          : null;
+        return {
+          ...entry,
+          ruleEnabled: rule?.status === 'enabled',
+          ruleLifecycle: rule
+            ? {
+                usageCount: rule.usageCount,
+                thumbsDownCount: rule.thumbsDownCount,
+                consecutiveDown: rule.consecutiveDown,
+                needsReview: rule.needsReview,
+              }
+            : null,
+          latestNegativeFeedback: latestNegativeFeedback
+            ? {
+                reason: latestNegativeFeedback.reason,
+                note: latestNegativeFeedback.note,
+                query: latestNegativeFeedback.query,
+                answer: latestNegativeFeedback.answer,
+                createdAt: latestNegativeFeedback.createdAt,
+              }
+            : null,
+        };
+      })
+      .sort((left, right) => right.updatedAt - left.updatedAt);
+    res.json({ candidates });
+  });
+
+  app.get('/api/skill-candidates/:id/draft', requireGatewayAuth, (req, res) => {
+    const userId =
+      typeof req.query.userId === 'string' && req.query.userId.trim()
+        ? req.query.userId.trim()
+        : (opts.defaultUserId ?? 'default');
+    const current = skillCandidateStore
+      .latest()
+      .find((entry) => entry.id === req.params.id && entry.userId === userId);
+    if (!current) {
+      res.status(404).json({ error: '候选不存在' });
+      return;
+    }
+    if (current.status !== 'accepted') {
+      res.status(409).json({ error: '仅已保留候选可生成草案' });
+      return;
+    }
+    res.json({ draft: buildSkillCandidateDraft(current) });
+  });
+
+  app.post('/api/skill-candidates/:id', requireGatewayAuth, (req, res) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const userId =
+      typeof body.userId === 'string' && body.userId.trim()
+        ? body.userId.trim()
+        : (opts.defaultUserId ?? 'default');
+    const current = skillCandidateStore
+      .latest()
+      .find((entry) => entry.id === req.params.id && entry.userId === userId);
+    if (!current || (body.decision !== 'accept' && body.decision !== 'reject')) {
+      res.status(current ? 400 : 404).json({ error: current ? '候选决定非法' : '候选不存在' });
+      return;
+    }
+    const candidate = skillCandidateStore.decide(
+      current.id,
+      body.decision === 'accept' ? 'accepted' : 'rejected',
+    );
+    res.json({ ok: true, candidate });
+  });
+
+  app.post('/api/skill-candidates/:id/rule', requireGatewayAuth, (req, res) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const userId =
+      typeof body.userId === 'string' && body.userId.trim()
+        ? body.userId.trim()
+        : (opts.defaultUserId ?? 'default');
+    const candidate = skillCandidateStore
+      .latest()
+      .find((entry) => entry.id === req.params.id && entry.userId === userId);
+    if (!candidate) {
+      res.status(404).json({ error: '候选不存在' });
+      return;
+    }
+    if (body.action === 'enable') {
+      const rule = answerPostprocessRuleStore.enable(candidate);
+      if (!rule) {
+        res.status(409).json({ error: '该候选尚未接受或不支持确定性执行' });
+        return;
+      }
+      res.json({ ok: true, rule });
+      return;
+    }
+    if (body.action === 'disable') {
+      const current = answerPostprocessRuleStore.latest().find(
+        (entry) => entry.candidateId === candidate.id && entry.userId === userId,
+      );
+      const rule = current
+        ? answerPostprocessRuleStore.disable(current.id, userId)
+        : null;
+      if (!rule) {
+        res.status(404).json({ error: '规则不存在' });
+        return;
+      }
+      res.json({ ok: true, rule });
+      return;
+    }
+    if (body.action === 'restore_review') {
+      const current = answerPostprocessRuleStore.latest().find(
+        (entry) => entry.candidateId === candidate.id && entry.userId === userId,
+      );
+      const rule = current
+        ? answerPostprocessRuleStore.clearReview(current.id, userId)
+        : null;
+      if (!rule) {
+        res.status(404).json({ error: '规则不存在' });
+        return;
+      }
+      res.json({ ok: true, rule });
+      return;
+    }
+    res.status(400).json({ error: '规则操作非法' });
+  });
+
+  app.post('/api/feedback', requireGatewayAuth, (req, res) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const feedback = body.feedback;
+    const mode = parseMemoryAccessMode(body.mode);
+    const reason = body.reason === undefined || body.reason === '' ? undefined : body.reason;
+    const note = typeof body.note === 'string' && body.note.trim() ? body.note.trim() : undefined;
+    const correctedAnswer =
+      typeof body.correctedAnswer === 'string' && body.correctedAnswer.trim()
+        ? body.correctedAnswer.trim()
+        : undefined;
+    const skillName =
+      typeof body.skillName === 'string' && body.skillName.trim()
+        ? body.skillName.trim()
+        : undefined;
+    const postprocessSkillNames = Array.isArray(body.postprocessSkillNames)
+      ? [...new Set(body.postprocessSkillNames.map((name) =>
+          typeof name === 'string' ? name.trim() : '',
+        ))].filter(Boolean)
+      : undefined;
+    if (
+      (feedback !== 'accept' && feedback !== 'reject' && feedback !== 'correct') ||
+      !mode ||
+      typeof body.messageId !== 'string' ||
+      !body.messageId.trim() ||
+      typeof body.query !== 'string' ||
+      typeof body.answer !== 'string' ||
+      (body.skillName !== undefined && !skillName) ||
+      (body.postprocessSkillNames !== undefined &&
+        (!Array.isArray(body.postprocessSkillNames) ||
+          postprocessSkillNames?.length !== body.postprocessSkillNames.length)) ||
+      (reason !== undefined && !isAnswerFeedbackReason(reason)) ||
+      (body.note !== undefined && typeof body.note !== 'string') ||
+      (feedback === 'accept' && (reason !== undefined || note !== undefined || correctedAnswer !== undefined)) ||
+      (feedback === 'reject' && correctedAnswer !== undefined) ||
+      (feedback === 'correct' &&
+        (!correctedAnswer || correctedAnswer === body.answer || reason !== undefined || note !== undefined))
+    ) {
+      res.status(400).json({ error: '反馈字段不完整或非法' });
+      return;
+    }
+    const entry = feedbackStore.record({
+      userId:
+        typeof body.userId === 'string' && body.userId.trim()
+          ? body.userId.trim()
+          : (opts.defaultUserId ?? 'default'),
+      conversationId:
+        typeof body.conversationId === 'string' ? body.conversationId : '',
+      messageId: body.messageId.trim(),
+      mode,
+      query: body.query,
+      answer: body.answer,
+      ...(skillName !== undefined ? { skillName } : {}),
+      ...(postprocessSkillNames?.length ? { postprocessSkillNames } : {}),
+      feedback,
+      ...(reason !== undefined ? { reason } : {}),
+      ...(note !== undefined ? { note } : {}),
+      ...(correctedAnswer !== undefined ? { correctedAnswer } : {}),
+    });
+    let memorySaved = false;
+    if (feedback === 'correct' && correctedAnswer && opts.userContextStore) {
+      try {
+        opts.userContextStore.addFact(
+          entry.userId,
+          buildCorrectionPreferenceFact(correctedAnswer),
+          'corrected',
+          entry.createdAt,
+          undefined,
+          mode,
+        );
+        memorySaved = true;
+      } catch {
+        // 反馈审计已落盘；记忆写入失败通过返回字段披露。
+      }
+    }
+    let skillCandidate = null;
+    if (feedback === 'correct' && correctedAnswer) {
+      const pattern = detectCorrectionPattern(body.answer, correctedAnswer);
+      if (pattern) {
+        const matchingCorrections = feedbackStore.latest().filter((item) => {
+          if (item.userId !== entry.userId || item.feedback !== 'correct' || !item.correctedAnswer) {
+            return false;
+          }
+          return detectCorrectionPattern(item.answer, item.correctedAnswer)?.key === pattern.key;
+        });
+        if (matchingCorrections.length >= PARAMS.feedbackCandidateThreshold) {
+          skillCandidate = skillCandidateStore.propose({
+            userId: entry.userId,
+            pattern: pattern.key,
+            title: pattern.title,
+            description: pattern.description,
+            sampleCount: matchingCorrections.length,
+            latestSample: correctedAnswer,
+          }, entry.createdAt);
+        }
+      }
+    }
+    let skillReview: { needsReview: boolean; consecutiveDown: number } | null = null;
+    if (skillName && opts.deps?.skillLifecycle?.syncReviewSignals) {
+      const skillEntries = feedbackStore.latest().filter((item) => item.skillName === skillName);
+      const thumbsDownCount = skillEntries.filter((item) => item.feedback === 'reject').length;
+      let consecutiveDown = 0;
+      for (let index = skillEntries.length - 1; index >= 0; index -= 1) {
+        if (skillEntries[index].feedback !== 'reject') break;
+        consecutiveDown += 1;
+      }
+      skillReview = opts.deps.skillLifecycle.syncReviewSignals(
+        skillName,
+        thumbsDownCount,
+        consecutiveDown,
+        entry.createdAt,
+      );
+    }
+    const postprocessRuleReviews = (postprocessSkillNames ?? []).flatMap((name) => {
+      const ruleEntries = feedbackStore.latest().filter(
+        (item) => item.userId === entry.userId && item.postprocessSkillNames?.includes(name),
+      );
+      const thumbsDownCount = ruleEntries.filter((item) => item.feedback === 'reject').length;
+      let consecutiveDown = 0;
+      for (let index = ruleEntries.length - 1; index >= 0; index -= 1) {
+        if (ruleEntries[index].feedback !== 'reject') break;
+        consecutiveDown += 1;
+      }
+      const rule = answerPostprocessRuleStore.syncReviewSignals(
+        name,
+        entry.userId,
+        thumbsDownCount,
+        consecutiveDown,
+        entry.createdAt,
+      );
+      return rule ? [{ name, lifecycle: rule }] : [];
+    });
+    res.json({
+      ok: true,
+      entry,
+      memorySaved,
+      skillReview,
+      postprocessRuleReviews,
+      skillCandidate,
+      stats: feedbackStore.stats(),
+    });
   });
 
   app.post('/api/memory/forget', requireGatewayAuth, (req, res) => {
-    const body = (req.body ?? {}) as { id?: unknown; type?: unknown };
+    const body = (req.body ?? {}) as { id?: unknown; type?: unknown; mode?: unknown };
+    const mode = parseMemoryAccessMode(body.mode);
+    const asset = memoryItemAsset(body.type);
+    if (!mode || !asset || !canAccessMemoryAsset(mode, asset)) {
+      res.status(403).json({ ok: false, error: '当前栏位无权管理该记忆资产' });
+      return;
+    }
     const id = typeof body.id === 'string' ? body.id : '';
     const type = body.type;
     if (type === 'fact' && opts.userContextStore) {
@@ -718,6 +1266,11 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       res.status(400).json({ error: 'query 不能为空' });
       return;
     }
+    const mode = body.mode === undefined ? undefined : parseMemoryAccessMode(body.mode);
+    if (body.mode !== undefined && !mode) {
+      res.status(403).json({ error: '非法的记忆访问栏位' });
+      return;
+    }
     const modelId = typeof body.modelId === 'string' ? body.modelId : undefined;
     const modelSelection = parseModelId(modelId) ?? undefined;
     const userId =
@@ -760,9 +1313,10 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       }
     }
     try {
-      const result = await pipeline(query, opts.deps ?? {}, {
+      const result = await pipeline(query, pipelineDeps, {
         userId,
         conversationId,
+        mode: mode ?? undefined,
         modelSelection,
         files,
         watchdog: true,

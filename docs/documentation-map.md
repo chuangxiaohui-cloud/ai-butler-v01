@@ -63,6 +63,7 @@
 | 16 | 架构代码审计报告（2026-08-23 第三方输入） | 已归档 | `docs/2026-08-23-architecture-code-audit.md`（处置批次：H1-H10 `docs/plans/2026-08-23-security-audit-batch.md`、H5 `docs/plans/2026-08-23-session-context-h5.md`、H9/B1/B4/H8 `docs/plans/2026-08-23-audit-correctness-batch.md`、H6/D1-D5 `docs/plans/2026-08-23-audit-decision-batch.md`、H7+P4 `docs/plans/2026-08-23-audit-mid-batch-1.md`、P3+P5 `docs/plans/2026-08-23-audit-mid-batch-2.md`、P6+P8 `docs/plans/2026-08-23-audit-mid-batch-3.md`、P7+P11 `docs/plans/2026-08-23-audit-mid-batch-4.md`、P9+P15 `docs/plans/2026-08-23-audit-mid-batch-5.md`、P12+P16 `docs/plans/2026-08-23-audit-mid-batch-6.md`、P13+P14 `docs/plans/2026-08-23-audit-mid-batch-7.md`） |
 | 17 | 第三方审核材料清单 | ✅ 已有 `docs/audit-package-checklist.md`（2026-08-30） | `docs/audit-navigation.md` + §1-§8 装箱清单 |
 | 17 | v1.0 全量验收报告（[P-10]） | ✅ 已有 `docs/reports/v1-acceptance-report-2026-08-26.md`（E246） | [P-10] 五条件集 + `docs/plans/2026-08-26-v1-acceptance-run.md` |
+| 18 | MCP S3 真实协议证据与差距报告 | ✅ 已有 `docs/reports/mcp-s3-evidence-2026-09-14.md`（E410） | `npm run mcp:health` + `npm run mcp:evidence` + [P-10] 条件矩阵 |
 
 ## 维护规则
 

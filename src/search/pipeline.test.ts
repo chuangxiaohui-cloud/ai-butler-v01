@@ -8,7 +8,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 
@@ -25,6 +25,10 @@ import { closeJsonl } from '../log/jsonl.js';
 import { appendOperation } from '../security/operation-log.js';
 import { DeepReportStore } from './deep-report-store.js';
 import type { TrajectoryEvent } from '../trajectory/trajectory-log.js';
+import { AnswerPostprocessRuntime } from '../postprocess/answer-postprocess.js';
+import { PendingProjectTransactionStore } from '../security/pending-project-transaction-store.js';
+import { deriveProjectId, ProjectProfileStore } from '../mcp/project-profile-store.js';
+import type { ProjectMcpProfile } from '../mcp/project-profile.js';
 
 test('pipeline: splitSearchNotices 工具告警与用户提示分离（P1/P3）', () => {
   const { chatNotices, toolNotices } = splitSearchNotices([
@@ -295,11 +299,13 @@ class FakeMemoryStore implements Pick<MemoryStore, 'put' | 'recall'> {
 }
 
 class FakeSessionContextStore
-  implements Pick<SessionContextStore, 'load' | 'append' | 'compactIfNeeded'>
+  implements Pick<SessionContextStore, 'load' | 'append' | 'compactIfNeeded' | 'resolveLatestLifeTopic'>
 {
   summary: string | null;
   turns: SessionTurn[];
   appendCalls: Array<{ conversationId: string; role: 'user' | 'assistant'; text: string }> = [];
+  resolvedMaterial: string | null = null;
+  resolveCalls: Array<{ conversationId: string; text: string }> = [];
 
   constructor(summary: string | null = null, turns: SessionTurn[] = []) {
     this.summary = summary;
@@ -323,6 +329,11 @@ class FakeSessionContextStore
 
   async compactIfNeeded(): Promise<SessionContext | null> {
     return null;
+  }
+
+  async resolveLatestLifeTopic(conversationId: string, text: string): Promise<string | null> {
+    this.resolveCalls.push({ conversationId, text });
+    return this.resolvedMaterial;
   }
 }
 
@@ -405,6 +416,40 @@ function sandboxTmpDir(prefix: string): string {
   return mkdtempSync(join(base, prefix));
 }
 
+function mcpKeilProfile(projectRoot: string, observedAt = 100): ProjectMcpProfile {
+  const root = resolve(projectRoot);
+  const build = {
+    agentId: 'keil' as const,
+    toolName: 'keil.BuildProject' as const,
+    args: { projectPath: join(root, 'demo.uvprojx'), target: 'Debug' },
+  };
+  return {
+    schemaVersion: 1,
+    projectId: deriveProjectId(root),
+    projectRoot: root,
+    platform: 'keil-mdk',
+    chip: null,
+    targets: ['Debug'],
+    selectedTarget: 'Debug',
+    capabilities: [{
+      agentId: 'keil',
+      platform: 'keil-mdk',
+      build,
+      evidence: { source: 'tool_probe', evidenceRef: 'UV4.exe', observedAt },
+    }],
+    build,
+    flash: null,
+    serial: null,
+    sdkRoot: null,
+    template: null,
+    provenance: {
+      projectRoot: { source: 'project_file', evidenceRef: 'project-root', observedAt },
+      build: { source: 'tool_probe', evidenceRef: 'UV4.exe', observedAt },
+    },
+    verifiedAt: observedAt,
+  };
+}
+
 function fakeFile(name: string, type: string, bytes: Uint8Array | string) {
   const u8 = typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes;
   return {
@@ -428,6 +473,29 @@ test('pipeline: 规则③ 命中严肃类触发 safety 门', async () => {
 test('pipeline: 普通排错 query 不触发 safety 门', async () => {
   const r = await pipeline('ESP32 I2C 通信失败 无应答', deps);
   assert.notEqual(r.gate_triggered, 'safety');
+});
+
+test('pipeline: Stage 6 回答在落盘前经过 answer_postprocess 运行时', async () => {
+  const runtime = new AnswerPostprocessRuntime([
+    { name: 'reply-conclusion-first', apply: (answer) => `结论：${answer}` },
+  ]);
+  const sessionContext = new FakeSessionContextStore();
+  const events: TrajectoryEvent[] = [];
+  const r = await pipeline('ESP32 I2C 通信失败 无应答', {
+    ...deps,
+    answerPostprocess: runtime,
+    sessionContext,
+    trajectory: { record: (event) => events.push(event) },
+  }, { conversationId: 'postprocess-c1' });
+  assert.ok(r.answer.startsWith('结论：'));
+  assert.deepEqual(r.postprocessSkillNames, ['reply-conclusion-first']);
+  assert.ok(sessionContext.appendCalls.some(
+    (call) => call.role === 'assistant' && call.text.startsWith('结论：'),
+  ));
+  const answerEvent = events.find(
+    (event): event is Extract<TrajectoryEvent, { type: 'answer' }> => event.type === 'answer',
+  );
+  assert.ok(answerEvent?.answer.answerSnippet.startsWith('结论：'));
 });
 
 test('pipeline: 搜索使用 s2 构造的 search_query', async () => {
@@ -493,32 +561,36 @@ test('pipeline: Experience/Skill 注入合成上下文并记录使用', async ()
   const llm = new FakeLLM();
   const usedExperience: string[] = [];
   const usedSkill: string[] = [];
-  const r = await pipeline('STM32F103C8T6 最大主频是多少', {
-    ...deps,
-    llm,
-    experienceManager: {
-      search: () => [
-        {
-          id: 'e1',
-          skillName: 'chip-analysis',
-          content: 'STM32F103C8T6 最大主频 72MHz',
-          keywords: ['STM32', '主频'],
-          usageCount: 0,
-          thumbsDownCount: 0,
-          consecutiveDown: 0,
-          confidence: 0.8,
-          createdAt: Date.now(),
-          lastUsedAt: Date.now(),
-          needsReview: false,
-        },
-      ],
-      recordUse: (id) => usedExperience.push(id),
+  const r = await pipeline(
+    'STM32F103C8T6 最大主频是多少',
+    {
+      ...deps,
+      llm,
+      experienceManager: {
+        search: () => [
+          {
+            id: 'e1',
+            skillName: 'chip-analysis',
+            content: 'STM32F103C8T6 最大主频 72MHz',
+            keywords: ['STM32', '主频'],
+            usageCount: 0,
+            thumbsDownCount: 0,
+            consecutiveDown: 0,
+            confidence: 0.8,
+            createdAt: Date.now(),
+            lastUsedAt: Date.now(),
+            needsReview: false,
+          },
+        ],
+        recordUse: (id) => usedExperience.push(id),
+      },
+      skillLifecycle: {
+        findBest: () => ({ name: 'chip-analysis' }),
+        recordUse: (name) => usedSkill.push(name),
+      },
     },
-    skillLifecycle: {
-      findBest: () => ({ name: 'chip-analysis' }),
-      recordUse: (name) => usedSkill.push(name),
-    },
-  });
+    { mode: 'knowledge' },
+  );
   assert.equal(r.gate_triggered, 'none');
   assert.ok(llm.lastUserContent.includes('项目经验'));
   assert.ok(llm.lastUserContent.includes('最大主频 72MHz'));
@@ -527,6 +599,28 @@ test('pipeline: Experience/Skill 注入合成上下文并记录使用', async ()
   assert.ok(llm.lastUserContent.includes('STM32F103C8T6'));
   assert.deepEqual(usedExperience, ['e1']);
   assert.deepEqual(usedSkill, ['chip-analysis']);
+  assert.equal(r.skillName, 'chip-analysis');
+});
+
+test('pipeline: 生活栏不检索或注入 Skill 经验', async () => {
+  const llm = new FakeLLM();
+  let searched = false;
+  await pipeline(
+    'STM32F103C8T6 最大主频是多少',
+    {
+      ...deps,
+      llm,
+      experienceManager: {
+        search: () => {
+          searched = true;
+          return [];
+        },
+      },
+    },
+    { mode: 'life' },
+  );
+  assert.equal(searched, false);
+  assert.ok(!llm.lastUserContent.includes('项目经验'));
 });
 
 test('pipeline: 统一轨迹记录路由/技能/搜索/合成/答案', async () => {
@@ -576,6 +670,137 @@ test('pipeline: onArtifact 记录 Skill 生成/完成', async () => {
 test('pipeline: 本地日历查询走 calendar-skill 执行', async () => {
   const r = await pipeline('查一下我今天的日程', deps);
   assert.ok(r.answer.includes('日程'));
+  assert.equal(r.skillName, 'calendar-skill');
+});
+
+test('pipeline: MCP Skill 结构化产物透传到统一回答契约', async () => {
+  const r = await pipeline(
+    '查看 projects\\demo.uvprojx 有哪些 target',
+    {
+      ...deps,
+      llm: undefined,
+      skillDeps: {
+        callVLM: async () => '',
+        subAgent: {
+          dispatch: async (task) => ({
+            ok: true,
+            agentId: 'keil',
+            output: JSON.stringify({
+              projectPath: 'projects\\demo.uvprojx',
+              targets: ['Debug', 'Release'],
+              count: 2,
+            }),
+            untrusted: true,
+            attempts: 1,
+            elapsedMs: 1,
+            degraded: false,
+            task: { description: task },
+            status: 'succeeded',
+            plan: [],
+            progress: [],
+            artifacts: [],
+            evidence: [],
+            handoff: { required: false },
+          }),
+        },
+      },
+    },
+  );
+  assert.equal(r.skillName, 'mcp-agent');
+  assert.equal(r.artifacts?.[0]?.kind, 'keil-targets');
+  assert.deepEqual(r.artifacts?.[0]?.data.targets, ['Debug', 'Release']);
+});
+
+test('pipeline: E408 画像已就绪的 MCP build 先挂 pending，批准后恢复并调用 build', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'pipeline-mcp-build-'));
+  const projectPath = join(root, 'demo.uvprojx');
+  const profileStore = new ProjectProfileStore(join(root, 'profiles'));
+  const saved = profileStore.save(mcpKeilProfile(root));
+  assert.equal(saved.ok, true, saved.reason);
+  const decisionLog = new DecisionLog(join(root, 'decisions.jsonl'));
+  const notification = makeNotificationFake();
+  const escalation = makeEscalationFake();
+  let calls = 0;
+  let seenOptions: Record<string, unknown> | undefined;
+  const query = `请编译 Keil ${projectPath}`;
+  try {
+    const r1 = await pipeline(query, {
+      ...deps,
+      llm: undefined,
+      escalation: { decisionLog, state: escalation.state },
+      notificationStore: notification,
+      skillDeps: {
+        callVLM: async () => '',
+        projectProfiles: profileStore,
+        subAgent: {
+          dispatch: async (task, options) => {
+            calls++;
+            seenOptions = { task, ...(options ?? {}) };
+            return {
+              ok: true,
+              agentId: 'keil',
+              output: JSON.stringify({ ok: true }),
+              untrusted: true,
+              attempts: 1,
+              elapsedMs: 1,
+              degraded: false,
+              task: { description: task },
+              status: 'succeeded',
+              plan: [],
+              progress: [],
+              artifacts: [],
+              evidence: [{ kind: 'mcp_tool_call' as const, agentId: 'keil', toolName: 'BuildProject', attempt: 1, untrusted: true as const }],
+              handoff: { required: false },
+            };
+          },
+        },
+      },
+    }, { userId: 'e408-user', conversationId: 'e408-conversation' });
+    assert.equal(calls, 0, '首次请求只应创建 pending，不应执行 build');
+    assert.match(r1.answer, /不会擅自执行/);
+    assert.match(r1.answer, /构建 Keil 工程/);
+    assert.equal(decisionLog.openDecisions().length, 1);
+
+    const r2 = await pipeline('执行', {
+      ...deps,
+      llm: undefined,
+      escalation: { decisionLog, state: escalation.state },
+      notificationStore: notification,
+      skillDeps: {
+        callVLM: async () => '',
+        projectProfiles: profileStore,
+        subAgent: {
+          dispatch: async (task, options) => {
+            calls++;
+            seenOptions = { task, ...(options ?? {}) };
+            return {
+              ok: true,
+              agentId: 'keil',
+              output: JSON.stringify({ ok: true }),
+              untrusted: true,
+              attempts: 1,
+              elapsedMs: 1,
+              degraded: false,
+              task: { description: task },
+              status: 'succeeded',
+              plan: [],
+              progress: [],
+              artifacts: [],
+              evidence: [{ kind: 'mcp_tool_call' as const, agentId: 'keil', toolName: 'BuildProject', attempt: 1, untrusted: true as const }],
+              handoff: { required: false },
+            };
+          },
+        },
+      },
+    }, { userId: 'e408-user', conversationId: 'e408-conversation' });
+    assert.equal(calls, 1, '批准恢复后应恰好执行一次 build');
+    assert.equal(seenOptions?.toolName, 'keil.BuildProject');
+    assert.equal(seenOptions?.opKind, 'compile');
+    assert.match(r2.answer, /构建已完成/);
+    assert.equal(decisionLog.openDecisions().length, 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('pipeline: 显式 .ics 路径导入走 calendar-skill 并入库', async (t) => {
@@ -715,6 +940,7 @@ test('pipeline: 命中已安装市场 Skill 触发词 → 直连执行（E243）
   );
   assert.ok(r.answer.includes('差异：R1'));
   assert.equal(r.evidence.length, 0);
+  assert.equal(r.skillName, 'bom-diff');
 });
 
 test('pipeline: 市场 Skill 执行失败如实归因（E243）', async () => {
@@ -739,6 +965,7 @@ test('pipeline: 市场 Skill 执行失败如实归因（E243）', async () => {
   );
   assert.ok(r.answer.includes('执行失败'));
   assert.ok(r.answer.includes('denied'));
+  assert.equal(r.skillName, 'bom-diff');
 });
 
 test('pipeline: 未安装市场 Skill 时路由不受影响（E243）', async () => {
@@ -783,7 +1010,7 @@ test('pipeline: github_analysis 不被市场 Skill 触发词截走（E242 主链
           },
         },
       },
-      { userId: 'u1' },
+      { userId: 'u1', mode: 'knowledge' },
     );
     assert.ok(r.answer.includes('OpenClaw'));
   } finally {
@@ -1114,9 +1341,71 @@ test('pipeline: 直接“写入 <路径>”走 project-writer', async () => {
     assert.ok(r.answer.includes('已写入'));
     assert.equal(readFileSync(target, 'utf-8'), 'int main(void){return 0;}');
   } finally {
-    process.env.SANDBOX_ALLOWED_DIRS = oldSandbox;
+    if (oldSandbox === undefined) delete process.env.SANDBOX_ALLOWED_DIRS;
+    else process.env.SANDBOX_ALLOWED_DIRS = oldSandbox;
     if (oldLog === undefined) delete process.env.OPERATIONS_LOG_PATH;
     else process.env.OPERATIONS_LOG_PATH = oldLog;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: E398 多文件清单 prepare 后返回确认卡并登记 choice，确认仍零写入', async () => {
+  const dir = sandboxTmpDir('pipeline-writer-multifile-');
+  const logFile = join(dir, 'decision-log.jsonl');
+  const operationLog = join(dir, 'operations.jsonl');
+  const log = new DecisionLog(logFile);
+  const transactionStore = new PendingProjectTransactionStore();
+  const oldSandbox = process.env.SANDBOX_ALLOWED_DIRS;
+  const oldOperationLog = process.env.OPERATIONS_LOG_PATH;
+  process.env.SANDBOX_ALLOWED_DIRS = dir;
+  process.env.OPERATIONS_LOG_PATH = operationLog;
+  const first = join(dir, 'a.txt');
+  const second = join(dir, 'b.txt');
+  writeFileSync(first, 'old-a', 'utf-8');
+  let snapshotDir = '';
+  try {
+    const query = `请把以下多文件变更写入工程\n\`\`\`json\n${JSON.stringify({
+      files: [
+        { path: first, content: 'private-new-a' },
+        { path: second, content: 'private-new-b' },
+      ],
+    })}\n\`\`\``;
+    const result = await pipeline(
+      query,
+      {
+        ...deps,
+        llm: undefined,
+        escalation: { decisionLog: log },
+        pendingProjectTransactionStore: transactionStore,
+        skillDeps: { callVLM: async () => '' },
+      },
+      { userId: 'u1', conversationId: 'conv-e398' },
+    );
+    assert.ok(result.answer.includes('整批预检和项目快照'), result.answer);
+    assert.equal(result.artifacts?.[0]?.kind, 'project-change-confirmation');
+    snapshotDir = String(result.artifacts?.[0]?.data.snapshotDir ?? '');
+    assert.equal(readFileSync(first, 'utf-8'), 'old-a');
+    assert.equal(existsSync(second), false);
+    assert.doesNotMatch(JSON.stringify(result.artifacts), /private-new-a|private-new-b/);
+    const pending = log.openDecisions()[0];
+    assert.deepEqual(pending?.choices?.map((choice) => choice.id), ['confirm_changes', 'cancel_all']);
+    assert.equal(pending?.defaultChoice, 'cancel_all');
+    assert.equal(pending?.resume, undefined, 'E398 不得挂自动执行 resume');
+    assert.equal(transactionStore.get(pending!.id)?.transaction.id, pending?.context?.transactionId);
+    assert.doesNotMatch(JSON.stringify(pending), /private-new-a|private-new-b/);
+    const confirmed = log.adjudicateChoice(pending!.id, 'confirm_changes');
+    assert.equal(confirmed.ok, true);
+    assert.equal(readFileSync(first, 'utf-8'), 'old-a');
+    assert.equal(existsSync(second), false);
+    transactionStore.discard(pending!.id);
+  } finally {
+    log.close();
+    closeJsonl(logFile);
+    if (oldSandbox === undefined) delete process.env.SANDBOX_ALLOWED_DIRS;
+    else process.env.SANDBOX_ALLOWED_DIRS = oldSandbox;
+    if (oldOperationLog === undefined) delete process.env.OPERATIONS_LOG_PATH;
+    else process.env.OPERATIONS_LOG_PATH = oldOperationLog;
+    if (snapshotDir) rmSync(snapshotDir, { recursive: true, force: true });
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -1247,16 +1536,63 @@ test('pipeline: 记住指令直接写入长期事实且不搜索', async () => {
     const r = await pipeline(
       '记住：导出嘉立创时，Gerber 要关闭钻孔文件、勾选使用原文件名。',
       { ...deps, llm: undefined, userContextStore: store },
-      { userId: 'u1' },
+      { userId: 'u1', mode: 'knowledge' },
     );
     assert.ok(r.answer.includes('已记住'));
     assert.equal(r.evidence.length, 0);
     const ctx = store.load('u1');
-    assert.ok(ctx.longTermFacts.some((f) => f.content.includes('关闭钻孔文件')));
+    const remembered = ctx.longTermFacts.find((f) => f.content.includes('关闭钻孔文件'));
+    assert.equal(remembered?.scope, 'knowledge');
   } finally {
     store.close();
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('pipeline: 纠正记忆覆盖旧事实、重算层级且不搜索', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-correct-memory-'));
+  const store = new UserContextStore(join(dir, 'user-context.db'));
+  let searched = false;
+  try {
+    store.addFact('u1', '我使用 KiCad', 'user_explicit', Date.now(), undefined, 'knowledge');
+    const r = await pipeline(
+      '纠正记忆：我使用 KiCad → 我偏好 Altium 工具链',
+      {
+        ...deps,
+        userContextStore: store,
+        providers: [{
+          id: 'bocha',
+          search: async () => {
+            searched = true;
+            return { provider: 'bocha', ok: true, results: [], latencyMs: 0 };
+          },
+        }],
+      },
+      { userId: 'u1', mode: 'knowledge' },
+    );
+    assert.ok(r.answer.includes('已纠正记忆'));
+    assert.equal(searched, false);
+    const facts = store.listFacts('u1');
+    assert.equal(facts.some((fact) => fact.content === '我使用 KiCad'), false);
+    const corrected = facts.find((fact) => fact.content === '我偏好 Altium 工具链');
+    assert.equal(corrected?.source, 'corrected');
+    assert.equal(corrected?.kind, 'technical_preference');
+    assert.equal(corrected?.layer, 'L2');
+    assert.equal(corrected?.scope, 'knowledge');
+  } finally {
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: 无记忆存储时不虚报纠正成功', async () => {
+  const r = await pipeline(
+    '纠正记忆：旧事实 → 新事实',
+    { ...deps, userContextStore: undefined },
+    { userId: 'u1', mode: 'knowledge' },
+  );
+  assert.ok(r.answer.includes('未保存记忆纠正'));
+  assert.equal(r.confidence, 0.3);
 });
 
 test('pipeline: 记住的事实注入后续老规矩提问', async () => {
@@ -1272,10 +1608,53 @@ test('pipeline: 记住的事实注入后续老规矩提问', async () => {
     const r = await pipeline(
       '老规矩，把这个原理图导出给嘉立创。',
       { ...deps, llm, userContextStore: store },
-      { userId: 'u1' },
+      { userId: 'u1', mode: 'knowledge' },
     );
     assert.equal(r.gate_triggered, 'none');
     assert.ok(llm.lastUserContent.includes('关闭钻孔文件'));
+  } finally {
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: 工程栏不注入 Chat Memory，但保留身份画像', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-memory-acl-'));
+  const store = new UserContextStore(join(dir, 'user-context.db'));
+  try {
+    store.saveProfile('u1', {
+      role: '嵌入式电子产品开发工程师',
+      currentProjects: ['控制器项目'],
+      preferences: { replyStyle: 'concise', tone: 'professional' },
+    });
+    store.addFact('u1', 'CHAT_SECRET_FACT', 'user_explicit');
+    store.addSessionSummary('u1', 's1', 'CHAT_SECRET_SUMMARY', ['secret']);
+    const llm = new FakeLLM();
+    await pipeline(
+      'STM32F103C8T6 最大主频是多少',
+      {
+        ...deps,
+        llm,
+        userContextStore: store,
+        memoryStore: {
+          put: async () => '1',
+          recall: async () => [
+            {
+              session_id: 'v0.1-cli:u1',
+              query: 'CHAT_SECRET_QUERY',
+              answer: 'CHAT_SECRET_ANSWER',
+              confidence: 1,
+              evidence_hash: 'hash',
+              timestamp: Date.now(),
+            },
+          ],
+        },
+      },
+      { userId: 'u1', mode: 'engineering' },
+    );
+    assert.ok(llm.lastUserContent.includes('嵌入式电子产品开发工程师'));
+    assert.ok(llm.lastUserContent.includes('控制器项目'));
+    assert.ok(!llm.lastUserContent.includes('CHAT_SECRET'));
   } finally {
     store.close();
     rmSync(dir, { recursive: true, force: true });
@@ -1459,6 +1838,38 @@ test('pipeline: 无 conversationId 不启用会话上下文', async () => {
   const session = new FakeSessionContextStore('实体：X；决策：Y');
   await pipeline('普通查询', { ...deps, sessionContext: session });
   assert.equal(session.appendCalls.length, 0);
+});
+
+test('pipeline: 生活栏已解决话题写入 L2 人格素材', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-resolved-life-'));
+  const store = new UserContextStore(join(dir, 'user-context.db'));
+  const session = new FakeSessionContextStore();
+  session.resolvedMaterial = '用户已解决的情绪话题：最近工作压力很大，晚上总是失眠';
+  try {
+    await pipeline(
+      '我好多了，谢谢你',
+      { ...deps, userContextStore: store, sessionContext: session },
+      { userId: 'u1', conversationId: 'conv-life', mode: 'life' },
+    );
+    const fact = store.listFacts('u1', 'life').find((item) => item.content.includes('压力'));
+    assert.equal(session.resolveCalls.length, 1);
+    assert.equal(fact?.layer, 'L2');
+    assert.equal(fact?.scope, 'life');
+  } finally {
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: 非生活栏不触发已解决话题清理', async () => {
+  const session = new FakeSessionContextStore();
+  session.resolvedMaterial = '用户已解决的情绪话题：最近工作压力很大';
+  await pipeline(
+    '我好多了，谢谢你',
+    { ...deps, sessionContext: session },
+    { conversationId: 'conv-knowledge', mode: 'knowledge' },
+  );
+  assert.equal(session.resolveCalls.length, 0);
 });
 
 test('pipeline: 执行器真实失败如实归因（B4）', async () => {
@@ -1785,6 +2196,10 @@ test('pipeline: E315 待裁决自动写入通知（老板 risk_decision）', asy
     notify.events.some((e) => e.role === '老板' && e.kind === 'risk_decision' && e.title === '待你裁决'),
     '应写入 老板 risk_decision 通知事件',
   );
+  const event = notify.events.find(
+    (e) => e.role === '老板' && e.kind === 'risk_decision' && e.title === '待你裁决',
+  );
+  assert.equal(event?.decisionId, esc.records[0]?.id, '通知应携带对应 pending 的 decisionId');
 });
 
 test('pipeline: E309 搜索全空记失败、低置信 [P-16] 诚实声明并记录', async () => {
@@ -1952,6 +2367,10 @@ test('pipeline: E324 confirm + 写类执行器被挂起写 pending(resume)，不
       notify.events.some((e) => e.role === '老板' && e.kind === 'risk_decision' && e.title === '待你裁决'),
       '应写入 老板 risk_decision 通知事件',
     );
+    const event = notify.events.find(
+      (e) => e.role === '老板' && e.kind === 'risk_decision' && e.title === '待你裁决',
+    );
+    assert.equal(event?.decisionId, open[0]?.id, '通知应携带对应 pending 的 decisionId');
   } finally {
     log.close();
     closeJsonl(logFile);
@@ -2010,6 +2429,146 @@ test('pipeline: E330 confirm 恢复钉死原 executor——不被市场 Skill �
     assert.ok(approveRow, '应追加 chat_reply approve 裁决事件');
     assert.equal(approveRow?.refId, seeded.id);
     assert.equal(log.openDecisions().length, 0);
+  } finally {
+    log.close();
+    closeJsonl(logFile);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: E342 内容型思维导图——检索+LLM 出大纲并挂生成 .xmind 裁决卡（resume=pm_xmind）', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-e342-content-'));
+  const logFile = join(dir, 'decision-log.jsonl');
+  const log = new DecisionLog(logFile);
+  const base = makeEscalationFake();
+  const notify = makeNotificationFake();
+  const outline =
+    'STM32F103C8T6 系统架构思维导图\n1. Cortex-M3 内核\n1.1 时钟 72MHz\n1.2 中断控制器 NVIC\n2. 片上外设\n2.1 GPIO/USART/SPI/I2C\n3. 存储器与启动';
+  class OutlineLLM extends FakeLLM {
+    async complete(messages: ChatMessage[]): Promise<string> {
+      const system = messages[0]?.content ?? '';
+      if (system.includes('思维导图大纲')) return outline;
+      return super.complete(messages);
+    }
+  }
+  try {
+    const r = await pipeline(
+      'STM32F103C8T6 的系统架构思维导图？',
+      {
+        ...deps,
+        llm: new OutlineLLM(),
+        outlineLlm: new OutlineLLM(),
+        escalation: { decisionLog: log, state: base.state },
+        notificationStore: notify,
+      },
+      { conversationId: 'conv-e342-content' },
+    );
+    // E344：正文只回紧凑预览（中心主题 + 一级分支 + ⏸ 卡），完整大纲进 resume
+    assert.ok(
+      r.answer.includes('已把「STM32F103C8T6 系统架构思维导图」'),
+      `应交付紧凑预览，实际答案：${r.answer.slice(0, 500)}`,
+    );
+    assert.ok(r.answer.includes('Cortex-M3 内核'), '预览应含一级分支文字');
+    assert.ok(!r.answer.includes('1.1 时钟'), '正文不应再整段贴完整大纲');
+    assert.ok(r.answer.includes('⏸'), `预览后应挂等待确认卡，实际答案：${r.answer.slice(0, 500)}`);
+    const open = log.openDecisions();
+    assert.equal(open.length, 1, '应写入一条 open pending');
+    assert.equal(open[0]?.resume?.executor, 'pm_xmind');
+    assert.equal(open[0]?.resume?.intent, 'xmind');
+    assert.ok((open[0]?.resume?.query ?? '').includes('1.1 时钟'), 'resume.query 应为完整大纲');
+    assert.ok(
+      notify.events.some((e) => e.role === '老板' && e.kind === 'risk_decision' && e.title === '待你裁决'),
+      '应写入 老板 risk_decision 通知事件',
+    );
+  } finally {
+    log.close();
+    closeJsonl(logFile);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: E342 内容型思维导图——合成超时降级不挂卡，给重试引导', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-e342-timeout-'));
+  const logFile = join(dir, 'decision-log.jsonl');
+  const log = new DecisionLog(logFile);
+  const base = makeEscalationFake();
+  class TimeoutLLM extends FakeLLM {
+    async complete(messages: ChatMessage[]): Promise<string> {
+      const system = messages[0]?.content ?? '';
+      if (system.includes('思维导图大纲')) throw new Error('LLM fallback 链总预算 18000ms 超时');
+      return super.complete(messages);
+    }
+  }
+  try {
+    const r = await pipeline(
+      'STM32F103C8T6 的系统架构思维导图？',
+      {
+        ...deps,
+        llm: new TimeoutLLM(),
+        outlineLlm: new TimeoutLLM(),
+        escalation: { decisionLog: log, state: base.state },
+        notificationStore: makeNotificationFake(),
+      },
+      { conversationId: 'conv-e342-timeout' },
+    );
+    assert.ok(!r.answer.includes('⏸'), '超时兜底不应挂等待确认卡');
+    assert.ok(r.answer.includes('生成超时/失败'), '应给切换档位/提供大纲的重试引导');
+    assert.equal(log.openDecisions().length, 0, '不应写入 pending');
+  } finally {
+    log.close();
+    closeJsonl(logFile);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pipeline: E344 内容型思维导图——交付前清洗大纲（去重复中心主题/文末说明）并只回紧凑预览', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pipeline-e344-clean-'));
+  const logFile = join(dir, 'decision-log.jsonl');
+  const log = new DecisionLog(logFile);
+  const base = makeEscalationFake();
+  const messyOutline =
+    '嵌入式产品开发全流程\n' +
+    '嵌入式产品开发全流程\n' +
+    '1. 需求分析\n' +
+    '1.1 功能需求定义\n' +
+    '2. 方案设计\n' +
+    '（证据未覆盖：部分阶段实操步骤信息有待结合具体项目补充完善）';
+  class MessyLLM extends FakeLLM {
+    async complete(messages: ChatMessage[]): Promise<string> {
+      const system = messages[0]?.content ?? '';
+      if (system.includes('思维导图大纲')) return messyOutline;
+      return super.complete(messages);
+    }
+  }
+  try {
+    const r = await pipeline(
+      'STM32F103C8T6 的系统架构思维导图？',
+      {
+        ...deps,
+        llm: new MessyLLM(),
+        outlineLlm: new MessyLLM(),
+        escalation: { decisionLog: log, state: base.state },
+        notificationStore: makeNotificationFake(),
+      },
+      { conversationId: 'conv-e344-clean' },
+    );
+    assert.ok(!r.answer.includes('证据未覆盖'), '正文不应带文末说明杂质');
+    assert.ok(r.answer.includes('已把「嵌入式产品开发全流程」'), '预览应带中心主题');
+    assert.ok(r.answer.includes('⏸'), '应挂等待确认卡');
+    const open = log.openDecisions();
+    assert.equal(open.length, 1, '应写入一条 open pending');
+    const resumeQuery = open[0]?.resume?.query ?? '';
+    assert.equal(
+      resumeQuery,
+      '嵌入式产品开发全流程\n1 需求分析\n1.1 功能需求定义\n2 方案设计',
+      'resume 应为清洗后的规范大纲（无重复主题、无文末说明）',
+    );
+    assert.equal(
+      resumeQuery.split('嵌入式产品开发全流程').length - 1,
+      1,
+      '中心主题只应出现一次',
+    );
+    assert.ok(!resumeQuery.includes('证据未覆盖'), 'resume 不应含说明杂质');
   } finally {
     log.close();
     closeJsonl(logFile);

@@ -9,10 +9,7 @@
 
 import { basename } from 'node:path';
 
-import { listProjectFiles } from './files.js';
-
-/** 编辑器/Office 临时文件：快照前剔除，避免保存抖动触发无意义刷新 */
-const EDITOR_TEMP = /^~\$|^\.~|\.(tmp|swp|lock)$/i;
+import { EDITOR_TEMP, listProjectFiles } from './files.js';
 
 export interface ProjectFileStamp {
   path: string;

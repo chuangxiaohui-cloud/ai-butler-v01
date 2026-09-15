@@ -47,6 +47,47 @@ export interface SessionContext {
   updatedAt: string;
 }
 
+const RESOLVED_LIFE_RE =
+  /(?:^|[，。！？!?\s])(?:我|问题|事情|这事)?(?:已经)?(?:解决了|没事了|好多了|想通了|不难过了|不焦虑了|不用再聊了)(?:[，。！？!?\s]|$)/;
+const EMOTIONAL_TOPIC_RE =
+  /压力|焦虑|难过|伤心|生气|委屈|烦恼|心情|情绪|失眠|睡不着|孤独|害怕|担心/;
+const DAILY_TOPIC_RE =
+  /通勤|家务|作息|睡眠|吃饭|家人|朋友|伴侣|孩子|宠物|邻居|生活琐事/;
+
+function resolvedLifeMaterial(
+  ctx: SessionContext,
+  resolutionText: string,
+): { content: string; turnIds: Set<string> } | null {
+  if (!RESOLVED_LIFE_RE.test(resolutionText)) return null;
+  let resolutionIndex = -1;
+  for (let i = ctx.turns.length - 1; i >= 0; i -= 1) {
+    if (ctx.turns[i].role === 'user' && ctx.turns[i].text === resolutionText) {
+      resolutionIndex = i;
+      break;
+    }
+  }
+  if (resolutionIndex < 0) return null;
+  let topicIndex = -1;
+  for (let i = resolutionIndex - 1; i >= 0; i -= 1) {
+    if (ctx.turns[i].role === 'user') {
+      topicIndex = i;
+      break;
+    }
+  }
+  if (topicIndex < 0) return null;
+  const topic = ctx.turns[topicIndex].text;
+  const kind = EMOTIONAL_TOPIC_RE.test(topic)
+    ? '情绪'
+    : DAILY_TOPIC_RE.test(topic)
+      ? '日常'
+      : null;
+  if (!kind) return null;
+  return {
+    content: `用户已解决的${kind}话题：${topic}`,
+    turnIds: new Set(ctx.turns.slice(topicIndex).map((turn) => turn.id)),
+  };
+}
+
 /** 粗略 token 估算：中文为主约 2 字符/token，取 ceil(len/2)；仅用于压缩触发，非精确计量 */
 export function estimateTokens(text: string): number {
   return Math.ceil((text ?? '').length / 2);
@@ -216,6 +257,23 @@ export class SessionContextStore {
       ctx.turns.push({ id: randomUUID(), role, text: text ?? '', ts: new Date().toISOString() });
       ctx.updatedAt = new Date().toISOString();
       await this.persist(conversationId, ctx);
+    });
+  }
+
+  /** §8.3.1：只移出最近一组已明确解决的生活话题，返回供 L2 人格学习的素材。 */
+  async resolveLatestLifeTopic(
+    conversationId: string,
+    resolutionText: string,
+  ): Promise<string | null> {
+    return this.runExclusive(conversationId, async () => {
+      const ctx = await this.load(conversationId);
+      if (!ctx) return null;
+      const resolved = resolvedLifeMaterial(ctx, resolutionText);
+      if (!resolved) return null;
+      ctx.turns = ctx.turns.filter((turn) => !resolved.turnIds.has(turn.id));
+      ctx.updatedAt = new Date().toISOString();
+      await this.persist(conversationId, ctx);
+      return resolved.content;
     });
   }
 

@@ -13,7 +13,12 @@ class FakeMcpClient implements McpClient {
     return [];
   }
 
-  async callTool(name: string, args: Record<string, unknown>, timeoutMs?: number): Promise<McpCallResult> {
+  async callTool(
+    name: string,
+    args: Record<string, unknown>,
+    timeoutMs?: number,
+    _signal?: AbortSignal,
+  ): Promise<McpCallResult> {
     this.calls.push({ name, args, timeoutMs });
     if (this.mode === 'fail') {
       return { ok: false, output: '', untrusted: true, elapsedMs: 1, error: '工具失败' };
@@ -44,6 +49,30 @@ test('mcp-dispatcher: 成功调用返回 attempts=1 且 untrusted', async () => 
   assert.equal(result.output, 'out:kicad.sch_export');
   assert.equal(client.calls.length, 1);
   assert.equal(client.calls[0]?.name, 'kicad.sch_export');
+  assert.equal(result.task.description, '出原理图');
+  assert.equal(result.task.requestedTool, 'kicad.sch_export');
+  assert.equal(result.status, 'succeeded');
+  assert.deepEqual(result.plan.map((step) => step.status), ['completed', 'completed', 'completed']);
+  assert.deepEqual(result.artifacts, [{ kind: 'text', content: 'out:kicad.sch_export', untrusted: true }]);
+  assert.equal(result.evidence[0]?.toolName, 'kicad.sch_export');
+  assert.equal(result.handoff.required, false);
+});
+
+test('mcp-dispatcher: 进度回调可观察计划、执行与终态，观察方异常不阻断', async () => {
+  const kicad = meta('kicad', 'eda');
+  const client = new FakeMcpClient();
+  const dispatcher = new SubAgentDispatcher([kicad], new Map([['kicad', client]]));
+  const phases: string[] = [];
+  const result = await dispatcher.dispatch('检查原理图', {
+    toolName: 'kicad.run',
+    onProgress: (event) => {
+      phases.push(event.phase);
+      if (event.phase === 'running') throw new Error('观察方故障');
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(phases, ['planned', 'running', 'running', 'completed']);
+  assert.deepEqual(result.progress.map((event) => event.phase), phases);
 });
 
 test('mcp-dispatcher: 失败按重试次数重试且退避递增', async () => {
@@ -77,6 +106,8 @@ test('mcp-dispatcher: 超时中断标记 timedOut', async () => {
   assert.equal(result.ok, false);
   assert.equal(result.timedOut, true);
   assert.equal(result.attempts, 1);
+  assert.equal(result.failure?.code, 'timeout');
+  assert.equal(result.handoff.required, true);
 });
 
 test('mcp-dispatcher: 同类别降级到备用子 Agent 且标记 degraded', async () => {
@@ -98,6 +129,7 @@ test('mcp-dispatcher: 同类别降级到备用子 Agent 且标记 degraded', asy
   assert.equal(result.degraded, true);
   assert.equal(okClient.calls.length, 1);
   assert.equal(okClient.calls[0]?.name, 'kicad.run', '降级回退到备用 agent 默认工具');
+  assert.ok(result.progress.some((event) => event.phase === 'degraded'));
 });
 
 test('mcp-dispatcher: 预中止信号立即取消', async () => {
@@ -110,6 +142,33 @@ test('mcp-dispatcher: 预中止信号立即取消', async () => {
   assert.equal(result.ok, false);
   assert.equal(result.error, '已取消');
   assert.equal(client.calls.length, 0);
+  assert.equal(result.status, 'cancelled');
+  assert.equal(result.failure?.code, 'cancelled');
+  assert.equal(result.handoff.required, true);
+});
+
+test('mcp-dispatcher: 运行中取消传到 MCP client 并返回 cancelled 契约', async () => {
+  const keil = meta('keil', 'build');
+  let receivedSignal: AbortSignal | undefined;
+  const client = new FakeMcpClient();
+  client.callTool = async (_name, _args, _timeout, signal) => {
+    receivedSignal = signal;
+    await new Promise<void>((resolveWait) => signal?.addEventListener('abort', () => resolveWait(), { once: true }));
+    return { ok: false, output: '', untrusted: true, elapsedMs: 1, error: 'MCP 请求已取消', cancelled: true };
+  };
+  const dispatcher = new SubAgentDispatcher([keil], new Map([['keil', client]]));
+  const controller = new AbortController();
+  const pending = dispatcher.dispatch('编译固件', {
+    toolName: 'keil.compile',
+    retryCount: 0,
+    signal: controller.signal,
+  });
+  setTimeout(() => controller.abort(), 20);
+  const result = await pending;
+  assert.equal(receivedSignal, controller.signal);
+  assert.equal(result.status, 'cancelled');
+  assert.equal(result.failure?.code, 'cancelled');
+  assert.ok(result.progress.some((event) => event.phase === 'cancelled'));
 });
 
 test('mcp-dispatcher: 无可用子 Agent 时诚实报错', async () => {
@@ -119,6 +178,24 @@ test('mcp-dispatcher: 无可用子 Agent 时诚实报错', async () => {
   assert.equal(result.ok, false);
   assert.match(result.error ?? '', /没有可用的子 Agent/);
   assert.equal(result.attempts, 0);
+  assert.equal(result.task.description, '出图');
+  assert.equal(result.failure?.code, 'no_agent');
+  assert.deepEqual(result.plan.map((step) => step.status), ['failed', 'skipped', 'skipped']);
+});
+
+test('mcp-dispatcher: 同前缀但不在真实工具白名单时返回 validation failure', async () => {
+  const windows = { ...meta('windows', 'system'), allowedTools: ['Process'] };
+  const client = new FakeMcpClient();
+  const dispatcher = new SubAgentDispatcher([windows], new Map([['windows', client]]));
+  const result = await dispatcher.dispatch('执行 PowerShell', {
+    toolName: 'windows.PowerShell',
+    retryCount: 0,
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.failure?.code, 'validation_error');
+  assert.equal(result.failure?.retryable, false);
+  assert.equal(result.handoff.required, true);
+  assert.equal(client.calls.length, 0);
 });
 
 test('mcp-dispatcher: 白名单拒绝不进入调用', async () => {

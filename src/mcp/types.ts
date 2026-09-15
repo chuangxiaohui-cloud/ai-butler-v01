@@ -57,12 +57,13 @@ export interface McpCallResult {
   elapsedMs: number;
   error?: string;
   timedOut?: boolean;
+  cancelled?: boolean;
 }
 
 export interface McpClient {
   listTools(): Promise<McpTool[]>;
   /** timeoutMs 覆盖 [P-41] 心跳超时（调度器降级/重试场景可收紧） */
-  callTool(name: string, args: Record<string, unknown>, timeoutMs?: number): Promise<McpCallResult>;
+  callTool(name: string, args: Record<string, unknown>, timeoutMs?: number, signal?: AbortSignal): Promise<McpCallResult>;
   close(): void;
 }
 

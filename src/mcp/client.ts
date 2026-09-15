@@ -57,11 +57,11 @@ export class StdioMcpClient implements McpClient {
     return result?.tools ?? [];
   }
 
-  async callTool(name: string, args: Record<string, unknown>, timeoutMs?: number): Promise<McpCallResult> {
+  async callTool(name: string, args: Record<string, unknown>, timeoutMs?: number, signal?: AbortSignal): Promise<McpCallResult> {
     await this.initialize();
     const started = Date.now();
     try {
-      const result = (await this.request('tools/call', { name, arguments: args }, timeoutMs ?? this.heartbeat())) as {
+      const result = (await this.request('tools/call', { name, arguments: args }, timeoutMs ?? this.heartbeat(), signal, true)) as {
         content?: Array<{ type?: string; text?: string }>;
         isError?: boolean;
       };
@@ -73,9 +73,11 @@ export class StdioMcpClient implements McpClient {
         output: text,
         untrusted: true,
         elapsedMs: Date.now() - started,
+        ...(result?.isError ? { error: text || 'MCP 工具返回错误' } : {}),
       };
     } catch (err) {
       const timedOut = err instanceof Error && /超时/.test(err.message);
+      const cancelled = err instanceof Error && /已取消/.test(err.message);
       return {
         ok: false,
         output: '',
@@ -83,6 +85,7 @@ export class StdioMcpClient implements McpClient {
         elapsedMs: Date.now() - started,
         error: err instanceof Error ? err.message : String(err),
         timedOut,
+        cancelled,
       };
     }
   }
@@ -100,25 +103,56 @@ export class StdioMcpClient implements McpClient {
     return this.opts.startTimeoutMs ?? PARAMS.subAgentStartTimeoutMs;
   }
 
-  private request(method: string, params: Record<string, unknown>, timeoutMs: number): Promise<unknown> {
+  private request(
+    method: string,
+    params: Record<string, unknown>,
+    timeoutMs: number,
+    signal?: AbortSignal,
+    notifyRemoteCancel = false,
+  ): Promise<unknown> {
     const id = nextId++;
     return new Promise((resolve, reject) => {
       let timer: ReturnType<typeof setTimeout> | undefined;
+      const notifyCancelled = (reason: string) => {
+        if (!notifyRemoteCancel || this.proc.stdin.destroyed) return;
+        this.proc.stdin.write(JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'notifications/cancelled',
+          params: { requestId: id, reason },
+        }) + '\n');
+      };
+      const cleanup = () => {
+        if (timer !== undefined) clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+      };
+      const onAbort = () => {
+        if (!this.pending.delete(id)) return;
+        notifyCancelled('用户取消');
+        cleanup();
+        reject(new Error(`MCP 请求已取消（${method}）`));
+      };
       const onTimeout = () => {
-        this.pending.delete(id);
+        if (!this.pending.delete(id)) return;
+        notifyCancelled('请求超时');
+        cleanup();
         reject(new Error(`MCP 请求超时（${method}，${timeoutMs}ms）`));
       };
       timer = setTimeout(onTimeout, timeoutMs);
       this.pending.set(id, {
         resolve: (value) => {
-          if (timer !== undefined) clearTimeout(timer);
+          cleanup();
           resolve(value);
         },
         reject: (reason) => {
-          if (timer !== undefined) clearTimeout(timer);
+          cleanup();
           reject(reason);
         },
       });
+      signal?.addEventListener('abort', onAbort, { once: true });
+      if (signal?.aborted) {
+        onAbort();
+        return;
+      }
       this.proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
     });
   }

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分层架构图</title>
+<style>
+  :root{
+    --c1-bg:#E6F1FB; --c1-bd:#185FA5; --c1-tx:#0C447C;
+    --c2-bg:#E1F5EE; --c2-bd:#0F6E56; --c2-tx:#085041;
+    --c3-bg:#EEEDFE; --c3-bd:#534AB7; --c3-tx:#3C3489;
+    --c4-bg:#FAEEDA; --c4-bd:#854F0B; --c4-tx:#633806;
+    --c5-bg:#F1EFE8; --c5-bd:#888780; --c5-tx:#444441;
+    --c6-bg:#FBEAF0; --c6-bd:#993556; --c6-tx:#72243E;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:#fafafa;color:#222;padding:24px}
+  h1{font-size:18px;font-weight:600;margin-bottom:4px}
+  .sub{font-size:13px;color:#666;margin-bottom:20px}
+  .layer{border-radius:16px;padding:14px 18px 16px;margin:0 auto;max-width:920px}
+  .layer h2{font-size:14px;font-weight:600;margin-bottom:10px}
+  .layer .subtitle{font-weight:400;font-size:12px;opacity:.75}
+  .nodes{display:flex;gap:12px;flex-wrap:wrap}
+  .node{background:#fff;border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:110px}
+  .node .n{font-size:13px;font-weight:500}
+  .node .d{font-size:12px;color:#777;margin-top:2px}
+  .layer[data-c="1"]{background:var(--c1-bg);border:1px solid var(--c1-bd)} .layer[data-c="1"] h2,.layer[data-c="1"] .node{color:var(--c1-tx)} .layer[data-c="1"] .node{border:1px solid var(--c1-bd)}
+  .layer[data-c="2"]{background:var(--c2-bg);border:1px solid var(--c2-bd)} .layer[data-c="2"] h2,.layer[data-c="2"] .node{color:var(--c2-tx)} .layer[data-c="2"] .node{border:1px solid var(--c2-bd)}
+  .layer[data-c="3"]{background:var(--c3-bg);border:1px solid var(--c3-bd)} .layer[data-c="3"] h2,.layer[data-c="3"] .node{color:var(--c3-tx)} .layer[data-c="3"] .node{border:1px solid var(--c3-bd)}
+  .layer[data-c="4"]{background:var(--c4-bg);border:1px solid var(--c4-bd)} .layer[data-c="4"] h2,.layer[data-c="4"] .node{color:var(--c4-tx)} .layer[data-c="4"] .node{border:1px solid var(--c4-bd)}
+  .layer[data-c="5"]{background:var(--c5-bg);border:1px solid var(--c5-bd)} .layer[data-c="5"] h2,.layer[data-c="5"] .node{color:var(--c5-tx)} .layer[data-c="5"] .node{border:1px solid var(--c5-bd)}
+  .layer[data-c="6"]{background:var(--c6-bg);border:1px solid var(--c6-bd)} .layer[data-c="6"] h2,.layer[data-c="6"] .node{color:var(--c6-tx)} .layer[data-c="6"] .node{border:1px solid var(--c6-bd)}
+  .layer.highlight{border-width:2px;font-weight:600}
+  .node.core{background:var(--k-accent,#534AB7);border-color:transparent !important}
+  .node.core .n{color:#fff}
+  .node.core .d{color:rgba(255,255,255,.8)}
+  .arrow{display:flex;align-items:center;justify-content:center;gap:8px;height:44px}
+  .arrow .line{font-size:12px;color:#666;background:#fafafa;padding:2px 6px}
+  .rules{max-width:920px;margin:22px auto 0;border-left:3px solid #A32D2D;background:#FCEBEB;padding:10px 14px;border-radius:0 8px 8px 0}
+  .rules li{font-size:13px;margin:4px 0 4px 16px}
+  .fallback{max-width:920px;margin:20px auto;padding:14px;border:1px dashed #aaa;border-radius:8px;font-size:13px;color:#555;text-align:center;display:none}
+  .fallback button{margin-left:8px;padding:4px 12px;cursor:pointer}
+</style>
+</head>
+<body>
+<h1 id="title">分层架构图</h1>
+<div class="sub" id="subtitle">数据驱动渲染 —— 修改 JSON 后刷新本页即可更新</div>
+<div class="fallback" id="fallback">未自动读取到 JSON 数据。点击选择 JSON 文件，或把它拖进本页：<button onclick="document.getElementById('file').click()">选择文件</button><input type="file" id="file" accept=".json" hidden></div>
+<div id="app"></div>
+
+<script>
+function render(data){
+  document.getElementById('title').textContent = (data.meta&&data.meta.title)||'分层架构图';
+  if(data.meta&&data.meta.description){document.getElementById('subtitle').textContent=data.meta.description;}
+  const app = document.getElementById('app');
+  const layers = data.layers||[];
+  const colorCount = 6;
+  let html = '';
+  layers.forEach((layer,i)=>{
+    if(i>0){
+      const prev=layers[i-1];
+      const conn=(data.connections||[]).find(c=>c.from===prev.id&&c.to===layer.id);
+      html += `<div class="arrow"><svg width="16" height="30" viewBox="0 0 16 30"><line x1="8" y1="0" x2="8" y2="22" stroke="#888" stroke-width="1.5"/><path d="M3 20L8 28L13 20" fill="none" stroke="#888" stroke-width="1.5"/></svg>${conn&&conn.label?`<span class="line">${conn.label}</span>`:''}</div>`;
+    }
+    const color=(i%colorCount)+1;
+    html += `<div class="layer${layer.highlight?' highlight':''}" data-c="${color}"><h2>${layer.order||i+1}. ${layer.name}${layer.subtitle?`<span class="subtitle">（${layer.subtitle}）</span>`:''}</h2><div class="nodes">`;
+    (layer.nodes||[]).forEach(nd=>{
+      html += `<div class="node${nd.role==='core'?' core':''}"><div class="n">${nd.name}</div>${nd.detail?`<div class="d">${nd.detail}</div>`:''}</div>`;
+    });
+    html += `</div></div>`;
+  });
+  if(data.rules&&data.rules.length){
+    html += `<div class="rules"><b>关键规则</b><ul>${data.rules.map(r=>`<li>${r}</li>`).join('')}</ul></div>`;
+  }
+  app.innerHTML = html;
+}
+function loadText(text){
+  try{ render(JSON.parse(text)); }
+  catch(e){ alert('JSON 解析失败：'+e.message); }
+}
+const srcParam=new URLSearchParams(location.search).get('src');
+const candidates=[srcParam, 'data.json'].filter(Boolean);
+(function tryNext(i){
+  if (window.__LAYERED_INLINE__){
+    render(window.__LAYERED_INLINE__); // E364：单文件内联数据优先，避免 sandbox iframe 触发外部 JSON 自加载
+    return;
+  }
+  if(i>=candidates.length){
+    fetch('.',{cache:'no-store'}).then(r=>r.text()).then(t=>{
+      const m=[...t.matchAll(/href="([^"]+\.json)"/gi)].map(x=>decodeURIComponent(x[1]));
+      if(!m.length)throw 0;
+      return fetch(m[0],{cache:'no-store'}).then(r=>r.text());
+    }).then(loadText).catch(()=>{document.getElementById('fallback').style.display='block';});
+    return;
+  }
+  fetch(candidates[i],{cache:'no-store'})
+    .then(r=>{if(!r.ok)throw 0;return r.text()})
+    .then(loadText)
+    .catch(()=>tryNext(i+1));
+})(0);
+document.getElementById('file').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f)return;
+  f.text().then(loadText); document.getElementById('fallback').style.display='none';
+});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{
+  e.preventDefault(); const f=e.dataTransfer.files[0]; if(!f||!f.name.endsWith('.json'))return;
+  f.text().then(loadText); document.getElementById('fallback').style.display='none';
+});
+</script>
+</body>
+</html>

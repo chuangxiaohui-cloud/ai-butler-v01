@@ -403,6 +403,74 @@ export const ROUTING_TABLE: RoutingRule[] = [
     confidenceBoost: 0.3,
     baseConfidence: 0.6,
   },
+  // E340：Xmind 思维导图（PM 角色）——actionType-only strict 命中；中带置信度走 confirm，
+  // 写类 pm_xmind 执行器在 pipeline 挂起等批准（读 .xmind 同一低风险闸门）
+  // E342：内容型思维导图（主题 + 思维导图、无自带大纲）→ 检索 + LLM 出大纲，再挂生成 .xmind 裁决卡
+  {
+    id: 'R_XMIND_CONTENT',
+    match: { actionType: 'xmind_content' },
+    primaryLens: 'project_manager',
+    intent: 'xmind_content',
+    tags: ['pm', 'xmind', 'content'],
+    searchNeed: true,
+    confidenceBoost: 0.15,
+    baseConfidence: 0.55,
+    strictMatch: true,
+  },
+  {
+    id: 'R_XMIND',
+    match: { actionType: 'xmind' },
+    primaryLens: 'project_manager',
+    intent: 'xmind',
+    tags: ['pm', 'xmind'],
+    searchNeed: false,
+    executor: 'pm_xmind',
+    confidenceBoost: 0.15,
+    baseConfidence: 0.55,
+    strictMatch: true,
+  },
+  // E353：CodeGraph 本地代码影响/调用/项目解读（架构师/工程开发）——只读本地工具，
+  // 无写副作用 → 不进 confirm 写类清单；索引缺失时 skill 内给 init 引导
+  {
+    id: 'R_CODEGRAPH',
+    match: { actionType: 'codegraph_impact' },
+    primaryLens: 'architect',
+    intent: 'codegraph_impact',
+    tags: ['code', 'architect', 'impact'],
+    searchNeed: false,
+    executor: 'codegraph',
+    confidenceBoost: 0.2,
+    baseConfidence: 0.7,
+    strictMatch: true,
+  },
+  // E364：分层架构/框架/模块图（layered-arch 自研 viewer，替代 Archify 架构类）——写类执行器，
+  // decision=confirm 时由 pipeline 挂起等批准（content_generation 成本口径）
+  {
+    id: 'R_LAYERED_ARCH',
+    match: { actionType: 'layered_arch_diagram' },
+    primaryLens: 'architect',
+    intent: 'layered_arch_diagram',
+    tags: ['diagram', 'architect'],
+    searchNeed: false,
+    executor: 'layered_arch',
+    confidenceBoost: 0.15,
+    baseConfidence: 0.55,
+    strictMatch: true,
+  },
+  // E352：Archify 系统/流程/时序/数据流/生命周期交互图（架构师角色）——写类执行器，
+  // decision=confirm 时由 pipeline 挂起等批准（content_generation 成本口径）
+  {
+    id: 'R_ARCHIFY',
+    match: { actionType: 'archify_diagram' },
+    primaryLens: 'architect',
+    intent: 'archify_diagram',
+    tags: ['diagram', 'architect'],
+    searchNeed: false,
+    executor: 'archify',
+    confidenceBoost: 0.15,
+    baseConfidence: 0.55,
+    strictMatch: true,
+  },
   {
     id: 'R_CHAT',
     match: { actionType: 'chat' },

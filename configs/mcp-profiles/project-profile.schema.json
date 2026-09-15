@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-butler.local/schemas/mcp-project-profile-v1.json",
+  "title": "AI-Butler MCP Project Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "projectId",
+    "projectRoot",
+    "platform",
+    "chip",
+    "targets",
+    "selectedTarget",
+    "capabilities",
+    "build",
+    "flash",
+    "serial",
+    "sdkRoot",
+    "template",
+    "provenance",
+    "verifiedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "projectId": { "type": "string", "minLength": 1 },
+    "projectRoot": { "type": "string", "minLength": 1 },
+    "platform": { "type": ["string", "null"] },
+    "chip": { "type": ["string", "null"] },
+    "targets": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "selectedTarget": { "type": ["string", "null"] },
+    "capabilities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/capability" }
+    },
+    "build": { "$ref": "#/$defs/nullableToolRef" },
+    "flash": { "$ref": "#/$defs/nullableToolRef" },
+    "serial": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["port", "baud"],
+          "properties": {
+            "port": { "type": ["string", "null"] },
+            "baud": { "type": ["integer", "null"], "minimum": 1 }
+          }
+        }
+      ]
+    },
+    "sdkRoot": { "type": ["string", "null"] },
+    "template": { "type": ["string", "null"] },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/evidence" }
+    },
+    "verifiedAt": { "type": ["number", "null"], "minimum": 0 }
+  },
+  "$defs": {
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agentId", "platform", "build", "evidence"],
+      "properties": {
+        "agentId": { "type": "string", "minLength": 1 },
+        "platform": { "type": "string", "minLength": 1 },
+        "build": { "$ref": "#/$defs/nullableToolRef" },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    },
+    "nullableToolRef": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["agentId", "toolName", "args"],
+          "properties": {
+            "agentId": { "type": "string", "minLength": 1 },
+            "toolName": { "type": "string", "minLength": 1 },
+            "args": { "type": "object" }
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "evidenceRef", "observedAt"],
+      "properties": {
+        "source": {
+          "enum": ["model_candidate", "cache", "tool_probe", "project_file", "user_confirmed"]
+        },
+        "evidenceRef": { "type": ["string", "null"] },
+        "observedAt": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

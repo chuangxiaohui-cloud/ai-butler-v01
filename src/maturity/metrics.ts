@@ -19,6 +19,19 @@ export interface MaturityFeedbackSample {
   feedback?: string | null;
 }
 
+export function collectMaturityFeedbackSamples(
+  routeSamples: MaturityFeedbackSample[],
+  answerFeedback: Array<{ feedback?: string | null }>,
+): MaturityFeedbackSample[] {
+  return [
+    ...routeSamples.filter((sample) => sample.source === 'pipeline'),
+    ...answerFeedback.map((sample) => ({
+      source: 'answer_feedback',
+      feedback: sample.feedback ?? null,
+    })),
+  ];
+}
+
 export interface MaturityReuseObs {
   skillEvents: number;
   answerEvents: number;

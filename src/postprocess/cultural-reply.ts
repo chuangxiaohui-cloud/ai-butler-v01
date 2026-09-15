@@ -23,8 +23,8 @@ export function culturalReplyPostProcess(input: CulturalReplyInput): string {
     return parts.join('\n');
   }
 
-  const relatedFacts = memory.longTermFacts.filter((f) =>
-    /周星驰|唐伯虎|影视梗|小鸡啄米/.test(f.content),
+  const relatedFacts = memory.longTermFacts.filter(
+    (f) => !f.stale && /周星驰|唐伯虎|影视梗|小鸡啄米/.test(f.content),
   );
   const recentRelated = memory.recentSessions.filter((s) =>
     s.topics.some((t) => /短视频|选题|梗|创作/.test(t)),

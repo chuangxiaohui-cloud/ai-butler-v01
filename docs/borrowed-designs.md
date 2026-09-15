@@ -158,6 +158,50 @@
 4. 复杂 ML 路由、B5 集成、全渠道接入暂缓：当前规则 + 轻分类 + 三厂抽象足够，
    等真实数据积累后再评估。
 
+### 2.11 colbymchenry/codegraph → codegraph Skill（E353，2026-09-06 借入登记）
+
+- 来源：<https://github.com/colbymchenry/codegraph>（`@colbymchenry/codegraph` v1.0.1，
+  本机全局已装；MIT，Rust 内核 + 自托管 Node，100% 本地、SQLite 存储、零配置）。
+- 借入内容：**借“本地语义代码图”作为只读工具依赖**——不把 MCP 揉进产品运行时，
+  而是按 AI-Butler 确定性 executor 架构直接调 CLI（explore/impact/callers/callees/node，
+  `--json`/文本输出均可）；不借代码底座、不引入新 npm 依赖（运行时 spawn 本机 `codegraph`）。
+- 落地：`src/skills/codegraph/`（E353）——只读、无 confirm；意图触发词 + R_CODEGRAPH
+  （lens architect）；目标目录限沙箱白名单/工作区根；索引缺失返回 `codegraph init <dir>` 引导。
+- 状态：E353 已落地并有单测；真机冒烟待 owner（对已 `codegraph init` 的目录问影响/调用）。
+- 备注：宿主侧 `M:\202608111` 已建索引（`.codegraph/` 不入库），供 Codex 开发会话按
+  `AGENTS.md` 用 `codegraph explore` 定位代码；产品侧目标是 owner 的嵌入式工程目录，
+  需先对该目录 `codegraph init` 一次。
+
+### 2.12 tt-a1i/archify → archify Skill（E352，2026-09-06 借入登记）
+
+- 来源：<https://github.com/tt-a1i/archify>（MIT；官方以 agent Skill 形态分发——
+  typed JSON IR → 确定性 renderer → 自包含交互 HTML/SVG）。
+- 借入内容：**借“renderer 底座”作 vendor 依赖**——下载官方稳定发行包 `archify.zip`
+  v2.16.0（~1.3MB），解到 `src/skills/archify/vendor/archify/` 并 git 跟踪（含
+  `bin/archify.mjs`、五类 schema、examples、SKILL.md、LICENSE；剔 5 个预渲染示例 HTML，
+  可经 `scripts/render-examples.mjs` 复现）。运行时子进程 `node bin/archify.mjs
+  validate/deliver --json`（带 `ARCHIFY_UPDATE_CHECK_DISABLED=1`，不联网不写提醒状态），
+  不引入新 npm 依赖、无外部服务。
+- 落地：`src/skills/archify/`（E352）——五类图（Architecture / Workflow / Sequence /
+  Data Flow / Lifecycle）一次上；主模型按选定 schema 生成 typed JSON IR（content_generation
+  成本口径，confirm 低风险闸）→ validate 修复（≤2 轮）→ deliver 渲染 HTML 落盘
+  `outputs/archify/`；意图 `archify_diagram` + R_ARCHIFY（lens architect）；产物 HTML
+  自带缩放/搜索/深浅主题，JSON 源保留可迭代。
+- 状态：E352 已落地并有单测；真机 LLM 冒烟与生成质量待 owner（UI 上出 confirm 卡 →
+  批准 → 产物区打开 HTML）。
+
+### 2.13 MCU 工作流展示图 → MCP 领域编排规格（E400，2026-09-13 借入登记）
+
+- 来源：owner 提供的三张第三方 MCU 工作流展示图；仅有图片，作者、版本与实现证据未核验，
+  不将水印、Skill 名称、版本号或视觉资产纳入项目。
+- 借入内容：只借“单一领域入口 + 专业职责拆分 + 开发/编译/调试/测试闭环 + 统一交付”
+  的产品表达，用于补强需求 §4.1.2。
+- 本项目翻译：明确 Skill 方法层、子 Agent 执行层、MCP 工具桥接层；固定 Skill 流程改为
+  按项目裁剪的工作流节点；节点通过结构化 artifact/evidence 交接，并分别通过质量门和人工门。
+- 不借内容：不照搬固定 Skill 数量和名称，不以流程图代替真实 MCP 接入，不把“自动安排”
+  当作已完成证据，不合并下载、文件写入、编译与烧录权限。
+- 落地：需求 §4.1.2.1-§4.1.2.4、VS Code 子 Agent 只读占位与 registry/gateway 定向测试。
+
 ## 6. 来源
 
 - agent-skills：<https://github.com/addyosmani/agent-skills>
@@ -167,6 +211,7 @@
 - OpenSquilla：<https://github.com/opensquilla/opensquilla>（本地 `opensquilla/` v0.5.3）
 - OpenSquilla Agentic Routing 技术报告：<https://arxiv.org/abs/2607.11399>
 - ego-lite：<https://github.com/citrolabs/ego-lite>（用户所给 https://github.com/ego-lite/ego-lite 404；主页 https://lite.ego.app）
+- Archify：<https://github.com/tt-a1i/archify>（v2.16.0 官方 Skill 包 archify.zip，MIT）
 
 ### 2.5 POC-C → GitHub 解读契约（2026-08-26 借入登记）
 

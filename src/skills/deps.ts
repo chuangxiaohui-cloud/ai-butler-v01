@@ -53,4 +53,6 @@ export interface SkillDeps {
       options?: import('../mcp/dispatcher.js').DispatchOptions,
     ): Promise<import('../mcp/dispatcher.js').DispatchResult>;
   };
+  /** E408：统一工作流入口读取项目画像；测试可注入隔离 store，生产缺省使用 data/project-profiles。 */
+  projectProfiles?: Pick<import('../mcp/project-profile-store.js').ProjectProfileStore, 'loadForPlanning'>;
 }

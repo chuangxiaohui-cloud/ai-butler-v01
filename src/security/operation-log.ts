@@ -20,7 +20,13 @@ export interface OperationRecord {
   id: string;
   userId: string;
   conversationId?: string;
-  action: 'write' | 'rollback';
+  action: 'write' | 'rollback' | 'transaction';
+  status?: 'prepared' | 'completed' | 'cancelled' | 'rolled_back' | 'failed';
+  refId?: string;
+  transactionId?: string;
+  snapshotDir?: string;
+  paths?: string[];
+  error?: string;
   path: string;
   backup: string | null;
   created: boolean;
@@ -67,10 +73,17 @@ export function latestWriteOperation(
   const lines = readFileSync(logPath, 'utf-8')
     .split('\n')
     .filter((line) => line.trim().length > 0);
+  const rolledBackIds = new Set<string>();
   for (let i = lines.length - 1; i >= 0; i -= 1) {
     try {
       const record = JSON.parse(lines[i]) as OperationRecord;
+      if (record.action === 'rollback' && record.status !== 'failed' && record.refId) {
+        rolledBackIds.add(record.refId);
+        continue;
+      }
       if (record.action !== 'write') continue;
+      if (record.status && record.status !== 'completed') continue;
+      if (rolledBackIds.has(record.id)) continue;
       if (userId && record.userId !== userId) continue;
       if (conversationId && record.conversationId !== conversationId) continue;
       return record;
@@ -85,6 +98,29 @@ export interface RollbackResult {
   ok: boolean;
   message: string;
   restoredPath?: string;
+}
+
+function appendRollbackStatus(
+  operation: OperationRecord,
+  status: 'completed' | 'failed',
+  logPath: string,
+  error?: string,
+): void {
+  try {
+    appendOperation({
+      userId: operation.userId,
+      conversationId: operation.conversationId,
+      action: 'rollback',
+      status,
+      refId: operation.id,
+      path: operation.path,
+      backup: operation.backup,
+      created: operation.created,
+      error,
+    }, logPath);
+  } catch {
+    // 回滚结果优先；审计写入失败不能把已恢复的文件误报为回滚失败。
+  }
 }
 
 export function rollbackLatest(
@@ -118,6 +154,7 @@ export function rollbackLatest(
     if (operation.backup && existsSync(operation.backup)) {
       mkdirSync(dirname(operation.path), { recursive: true });
       copyFileSync(operation.backup, operation.path);
+      appendRollbackStatus(operation, 'completed', opts.logPath ?? operationLogPath());
       return {
         ok: true,
         message: `已回滚：${operation.path}（恢复自备份）`,
@@ -126,6 +163,7 @@ export function rollbackLatest(
     }
     if (operation.created) {
       rmSync(operation.path, { force: true });
+      appendRollbackStatus(operation, 'completed', opts.logPath ?? operationLogPath());
       return {
         ok: true,
         message: `已回滚：删除新建文件 ${operation.path}`,
@@ -137,6 +175,12 @@ export function rollbackLatest(
       message: `最近写入操作缺少备份且不是新建文件，无法回滚：${operation.path}`,
     };
   } catch (err) {
+    appendRollbackStatus(
+      operation,
+      'failed',
+      opts.logPath ?? operationLogPath(),
+      err instanceof Error ? err.message : String(err),
+    );
     return {
       ok: false,
       message: `回滚失败：${err instanceof Error ? err.message : String(err)}`,

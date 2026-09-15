@@ -4,6 +4,7 @@
  */
 
 import { isImageFile, toDataUrl } from '../../agent/multimodal-preprocessor.js';
+import { PARAMS } from '../../config/params.js';
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 import type { RawFileLike, SkillDeps } from '../deps.js';
 
@@ -90,7 +91,7 @@ export function createColorRecognitionSkill(): ExecutableSkill {
               prompt:
                 '提取这张图片的主色调，最多5个，只输出 JSON：{"colors":[{"name":"红色","hex":"#E60012"}]}。',
             },
-            { maxTokens: 200 },
+            { maxTokens: PARAMS.vlmImageMaxTokens },
           );
           const palette =
             parsePalette(raw) ??
@@ -112,7 +113,7 @@ export function createColorRecognitionSkill(): ExecutableSkill {
             prompt:
               '用一句话描述这张图片，并列出主要颜色（中文语义色名，最多5个，用顿号分隔）。',
           },
-          { maxTokens: 100 },
+          { maxTokens: PARAMS.vlmImageMaxTokens },
         );
         const semantic = parseSemantic(raw);
         return {

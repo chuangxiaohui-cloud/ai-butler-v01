@@ -50,6 +50,9 @@ npm run skill:market:run -- <name> [--query "<文本>"]|--list   # 市场 Skill 
 npm run skill:market:install -- --source <dir> --yes   # 本地安装市场 Skill（E250）
 npm run route:query:file -- <文件>   # 意图路由判题文件入口（E251，读文件 → routeV2 JSON）
 npm run maturity:check                    # 成熟度轻量自检 L0-L3（[P-25]，E247/E249）
+npm run mcp:health                        # 已配置 MCP server 握手/工具清单/只读默认调用健康检查（E388）
+npm run mcp:evidence                      # 五类专业 MCP 真实 stdio 最小夹具只读证据（E410）
+npm run profile:software -- --dry-run     # 只读发现已安装软件并预览职业画像建议（E365）
 ```
 
 `doc-lint` 默认验收 `一人公司AI-Agent需求文档_v2.5.md`，要求 `0 FAIL 0 WARN`。`--migration` 仅用于迁移期，正常开发不要依赖宽限。
@@ -61,6 +64,7 @@ npm run maturity:check                    # 成熟度轻量自检 L0-L3（[P-25]
 - 改动需求文档必须在提交前跑全量 `doc-lint`；凡涉及 §5/§6 的变更，必须同时改文档、跑基准并登记附录 A 的 `E-NN` 与 `bench:B-<yyyymmdd>-NN`。
 - 新术语 / 废弃术语必须完成“旧处 tombstone → 附录 E 定义 → 附录 A 登记”三件套。
 - 行为或参数变更先写 `docs/plans/YYYY-MM-DD-<主题>.md`，完成后补结果，并在当天 `progress-handoff.md` 加链接。
+- 每轮收尾必须在交接与最终回复中明确提醒下一轮首选，并列出后续几轮的推荐推进序列。
 - 从外部项目借入任何设计，必须写入 `docs/borrowed-designs.md`，并落地为 Skill / 接口 / 测试后才算完成。
 - 架构决策记入 `docs/adrs/`；文档状态维护 `docs/documentation-map.md`；目录或接口变化同步更新 `docs/code-directory.md` 与 `docs/directory-structure.md`，新增模块时同步本文件目录地图。
 
@@ -80,23 +84,25 @@ npm run maturity:check                    # 成熟度轻量自检 L0-L3（[P-25]
 | 路径 | 说明 |
 |------|------|
 | `src/search/` | Stage 1-6 搜索问答管道、搜索 provider、融合、兜底链 |
-| `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理 |
-| `src/skills/` | Skill 注册、生命周期与预置 Skill；市场 Skill（E243/E248/E250/E251：可执行 handler、触发词直连、本地安装、`@input` 安全输入通道） |
-| `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标、`maturity:check`，v1.0 P-10 条件③，E247） |
-| `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏 |
+| `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理；显式记住/纠正记忆指令（§8.3.2，E370） |
+| `src/skills/` | Skill 注册、生命周期与预置 Skill；市场 Skill（E243/E248/E250/E251：可执行 handler、触发词直连、本地安装、`@input` 安全输入通道）；project-writer 结构化多文件事务预览、确认与首次裁决执行（E398/E399）；回复连续 👎 达 [P-79] 标记复审并由用户恢复（E378/E379） |
+| `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标、`maturity:check`；合并路由标注与回复最新反馈，v1.0 P-10 条件③，E247/E377） |
+| `src/feedback/` | 回复反馈与最新值统计、Skill 复审、重复修订候选归并，以及 accepted 候选的只读草案预览（§9.3，E374-E381） |
+| `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏；软件职业画像（E365）；三栏 ACL（E367/E368）；人格事实分层、栏位冲突、时间敏感事实及已解决生活话题出窗/L2 保留（§8.1.3/§8.3，E369/E371-E373） |
 | `src/budget/` | 预算账本（append-only 拨款/支出事件，余额=拨款-支出，§2.1/§5 唯一权威，E308） |
-| `src/escalation/` | 困难升级与人类裁决记录（§4.3.1 [P-47]/[P-48]/[P-16] + §2.3 裁决记录，E309） |
+| `src/escalation/` | 困难升级与人类裁决记录（§4.3.1 [P-47]/[P-48]/[P-16] + §2.3 裁决记录，E309）；结构化多选一确认与 append-only 选择证据（E396） |
 | `src/repo/` | 代码托管联动（仓库白名单/预检门禁/commit+push/审计 + repo:push/repo:whitelist/repo:audit 真实 CLI，v1.0 S6，§11.4） |
-| `src/security/` | 命令/URL/动作白名单、沙箱、审计、域名授权（§10，E252 browser-actions/domain-auth） |
+| `src/security/` | 命令/URL/动作白名单、沙箱、审计、域名授权（§10，E252）；单文件回滚（E366），项目级快照/预检/暂存、自动回滚、冲突确认/重新确认及进程内三选一恢复执行（E393-E399/E402，§11.2） |
 | `src/slash/` | 斜杠命令层（/compact、/context，E193 手动入口） |
 | `src/im/` | 远程对话通道（授权开关/会话隔离/输出适配/复用 pipeline + OneBot 11 真实适配器，v1.0 S5，§4.5，E224+E241） |
 | `src/mail/` | 邮箱通道（凭据多账号容器、IMAP 只读收件/搜信/附件、SMTP 发信、Outlook OAuth2 设备码授权与自动续期 XOAUTH2，E293-E322，§4.5 生活助手） |
-| `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API、限速/并发闸门（P16） |
-| `src/mcp/` | MCP 子 Agent 注册/stdio 客户端/调度器/工具白名单与真实 server 配置装配（S3） |
+| `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API、限速/并发闸门（P16）；普通批准/否决、结构化 choice、project-writer 首次确认及冲突三选一执行入口（E323/E396/E399/E402） |
+| `src/mcp/` | MCP 子 Agent 运行契约与工具适配；Keil、VS Code、STM32-GCC、KiCad ERC 与 LTspice 只读链已接入并有真实 stdio 夹具证据（E401-E410），受 schema、白名单、沙箱与 [P-154] 约束；不含 EDA 编辑、实际仿真或烧录 |
 | `src/browser/` | 浏览器会话、CDP 持久化、页面抓取、浏览器操作（观察/交互/驱动，E252 §4.1.5） |
 | `src/config/` | PARAM、Provider Registry、模型目录、安全/用量/Skill 配置 |
 | `src/trajectory/` | append-only 轨迹日志（落盘 `data/trajectory.jsonl`） |
 | `src/log/` | JSONL 追加/轮转/缓存读（P15，trajectory/usage/metrics 共用） |
+| `src/postprocess/` | 文化回复、Stage 6 answer_postprocess Skill 运行时、用户级 append-only 启停与反馈复审账本；待复审规则展示按用户隔离的最近负反馈证据（§9.3，E382-E386） |
 | `scripts/` | 基准、评分、验收、路由校准、浏览器、PDF/OCR 等工具脚本 |
 | `bench/` | 基准数据与报告（git 跟踪） |
 | `docs/` | 文档资产总账、每日交接、推进计划、ADR、架构/设计/工程文档 |

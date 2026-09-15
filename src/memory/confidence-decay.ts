@@ -9,6 +9,8 @@ export type FactSource = 'user_explicit' | 'inferred' | 'corrected';
 
 export const DAY_MS = 24 * 3600 * 1000;
 export const WEEK_MS = 7 * DAY_MS;
+/** [P-93] 长期事实第二档老化检查点；时效记忆复用同一检查点。 */
+export const LONG_TERM_AGING_CHECKPOINT_DAYS = 90;
 
 export function daysIdle(last: number, now: number): number {
   return Math.max(0, (now - last) / DAY_MS);
@@ -42,7 +44,9 @@ export function decayedConfidence(
 ): number {
   const halfRate = source !== 'inferred';
   const apply = (factor: number) => (halfRate ? 1 - (1 - factor) / 2 : factor);
-  if (daysIdleValue >= 90) return base * apply(cfg.decayFactor90d);
+  if (daysIdleValue >= LONG_TERM_AGING_CHECKPOINT_DAYS) {
+    return base * apply(cfg.decayFactor90d);
+  }
   if (daysIdleValue >= 30) return base * apply(cfg.decayFactor30d);
   return base;
 }

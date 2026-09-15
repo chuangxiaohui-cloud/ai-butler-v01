@@ -20,6 +20,7 @@ import type { SkillDeps } from '../skills/deps.js';
 import { createGithubApiCache } from '../skills/github-reader/cache.js';
 import { TrajectoryLog } from '../trajectory/trajectory-log.js';
 import { createGatewayApp } from './app.js';
+import { recordProjectChanges } from './change-history.js';
 import { publishArtifactEvent } from './artifact-bus.js';
 import { startProjectWatcher } from './project-watcher.js';
 import { ReminderStore } from '../reminder/reminder-store.js';
@@ -39,6 +40,7 @@ const userContextStore = new UserContextStore();
 const sessionContext = new SessionContextStore();
 const routeCaseStore = new RouteCaseStore();
 const trajectoryLog = new TrajectoryLog();
+const marketSkillRunner = new MarketSkillRunner();
 const mcpAgents = createMcpAgents();
 const mcpDispatcher = new SubAgentDispatcher(mcpAgents.metas, mcpAgents.clients);
 const skillDeps: SkillDeps = {
@@ -55,6 +57,7 @@ process.on('exit', () => closeMcpAgents(mcpAgents.clients));
 
 try {
   skillLifecycle.ensureRegistered();
+  skillLifecycle.ensureMarketSkillsRegistered(marketSkillRunner.listInstalled());
 } catch {
   // 技能注册失败不阻塞 gateway
 }
@@ -77,7 +80,7 @@ const app = createGatewayApp({
     trajectory: trajectoryLog,
     browserSession,
     // E248 生产接线：市场 Skill 触发词直连执行（CLI 与 gateway 同一口径）
-    marketSkillRunner: new MarketSkillRunner(),
+    marketSkillRunner,
     sessionContext,
   },
 });
@@ -133,7 +136,11 @@ server.listen(PORT, HOST, () => {
   // E328：projects/ 目录变更监听 → files_changed SSE（UI 文件面板自动刷新外部改动）
   projectWatcher = startProjectWatcher({
     workspaceRoot: process.cwd(),
-    onChange: () => publishArtifactEvent('files_changed', { at: Date.now(), source: 'project_watch' }),
+    onChange: (changes) => {
+      // E339：watcher 差量入内存环（新增/修改/删除，新→旧），随 files_changed 供 UI 展示变更记录
+      recordProjectChanges(changes);
+      publishArtifactEvent('files_changed', { at: Date.now(), source: 'project_watch' });
+    },
   });
   // §D.3 启动时资源包健康检查：余额告警写入日志，不阻塞启动
   queryBochaBalance()
