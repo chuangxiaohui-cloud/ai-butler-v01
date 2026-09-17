@@ -17,7 +17,7 @@
 | `maturity:check` | **L2**（E416 时） |
 | `doc-lint` | 0 FAIL 0 WARN |
 | `test:all` | E417 后 exit 0（集成 36/36） |
-| 提交 | E411–E416：`77024d5`/`1cc2bf7`；**E417：本轮提交**；未 push |
+| 提交 | E411–E416：`77024d5`/`1cc2bf7`；**E417：`9c52c5b`**；未 push |
 
 ## 本轮关键动作
 
