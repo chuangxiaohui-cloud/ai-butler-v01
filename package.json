@@ -51,6 +51,7 @@
     "device:auth": "tsx scripts/device-auth.ts",
     "hardware:audit": "tsx scripts/hardware-audit.ts",
     "firmware:digest": "tsx scripts/firmware-digest.ts",
+    "hardware:gate": "tsx scripts/hardware-gate.ts",
     "install:skill": "tsx scripts/install-skill.ts",
     "mail:config": "tsx scripts/mail-config.ts",
     "mail:oauth": "tsx scripts/mail-oauth.ts",
