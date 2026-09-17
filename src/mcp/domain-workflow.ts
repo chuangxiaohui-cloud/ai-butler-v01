@@ -1,4 +1,4 @@
-/** E404/E409/E413/E424/E431：领域工作流执行入口；写入/仿真/烧录节点须已在入口层完成批准；E431 仅允许只读并行组。 */
+/** E404/E409/E413/E424/E431/E435：领域工作流执行入口；写入/仿真/烧录节点须已在入口层完成批准；E431 只读并行组；E435 有界 dependsOn DAG。 */
 
 import type { DispatchOptions, DispatchResult } from './dispatcher.js';
 import { computeFirmwareDigest } from './firmware-digest.js';
@@ -25,7 +25,7 @@ export type DomainWorkflowNodeKind =
   | 'ltspice_schematic_inventory'
   | 'ltspice_simulate'
   | 'hardware_flash';
-export type DomainWorkflowNodeStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+export type DomainWorkflowNodeStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped' | 'blocked';
 
 export interface DomainWorkflowNode {
   id: string;
@@ -64,8 +64,14 @@ export interface DomainWorkflowNode {
   /**
    * E431：只读并行组。相邻且同名的 read_only 节点同一波次 Promise.all；
    * build/write/simulate/flash 禁止带此字段。
+   * 与 dependsOn 互斥：同一计划不得混用。
    */
   parallelGroup?: string;
+  /**
+   * E435：有界依赖边（节点 id）。计划含任一 dependsOn 时按拓扑波次调度；
+   * 禁止环、禁止与 parallelGroup 混用；同波若 >1 个节点则必须全为 read_only。
+   */
+  dependsOn?: string[];
 }
 
 export interface DomainWorkflowPlan {
@@ -226,7 +232,9 @@ export async function executeDomainWorkflow(
     }
   }
 
-  const waves = partitionWaves(nodes);
+  const waves = planUsesDependencyEdges(plan.nodes)
+    ? partitionDependencyWaves(nodes)
+    : partitionWaves(nodes);
   for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
     const wave = waves[waveIndex]!;
     const waveOutcomes = await Promise.all(wave.map(async (node) => {
@@ -273,10 +281,7 @@ export async function executeDomainWorkflow(
     }
 
     if (waveFailed) {
-      const failedIds = new Set(wave.map((n) => n.id));
-      for (const pending of nodes) {
-        if (!failedIds.has(pending.id) && pending.status === 'pending') pending.status = 'skipped';
-      }
+      cascadeAfterFailure(nodes);
       return {
         ok: false,
         workflowId: plan.id,
@@ -414,6 +419,7 @@ function validatePlan(plan: DomainWorkflowPlan): void {
   /** 已结束的 parallelGroup：同名不得再次出现（须连续成波） */
   const closedGroups = new Set<string>();
   let openGroup: string | null = null;
+  const usesDependsOn = planUsesDependencyEdges(plan.nodes);
   for (const node of plan.nodes) {
     if (!node.id.trim() || ids.has(node.id)) throw new TypeError('节点 id 必须非空且唯一');
     ids.add(node.id);
@@ -437,6 +443,21 @@ function validatePlan(plan: DomainWorkflowPlan): void {
     if (node.inputRefs.some((item) => !item.trim()) || node.targetFiles.some((item) => !item.trim())) {
       throw new TypeError(`节点 ${node.id} 的输入引用与目标文件不能包含空值`);
     }
+    if (usesDependsOn && node.parallelGroup !== undefined) {
+      throw new TypeError(`节点 ${node.id}：dependsOn 计划不得混用 parallelGroup`);
+    }
+    if (node.dependsOn !== undefined) {
+      if (!Array.isArray(node.dependsOn) || node.dependsOn.length === 0) {
+        throw new TypeError(`节点 ${node.id} 的 dependsOn 若出现则须为非空数组`);
+      }
+      const seenDeps = new Set<string>();
+      for (const dep of node.dependsOn) {
+        if (!dep.trim()) throw new TypeError(`节点 ${node.id} 的 dependsOn 不能包含空值`);
+        if (dep === node.id) throw new TypeError(`节点 ${node.id} 不得依赖自身`);
+        if (seenDeps.has(dep)) throw new TypeError(`节点 ${node.id} 的 dependsOn 重复引用 ${dep}`);
+        seenDeps.add(dep);
+      }
+    }
     if (node.parallelGroup !== undefined) {
       const group = node.parallelGroup.trim();
       if (!group) throw new TypeError(`节点 ${node.id} 的 parallelGroup 不能为空`);
@@ -457,6 +478,19 @@ function validatePlan(plan: DomainWorkflowPlan): void {
       openGroup = null;
     }
   }
+  if (usesDependsOn) {
+    for (const node of plan.nodes) {
+      for (const dep of node.dependsOn ?? []) {
+        if (!ids.has(dep)) throw new TypeError(`节点 ${node.id} 依赖未知节点 ${dep}`);
+      }
+    }
+    // 拓扑分层同时验环与同波写风险
+    partitionDependencyWaves(plan.nodes.map((node) => ({ ...node, status: 'pending' as const })));
+  }
+}
+
+function planUsesDependencyEdges(nodes: Array<Pick<DomainWorkflowNode, 'dependsOn'>>): boolean {
+  return nodes.some((node) => Array.isArray(node.dependsOn) && node.dependsOn.length > 0);
 }
 
 /** E431：相邻同名 parallelGroup 合成一波；无组或不同组各自成波。 */
@@ -474,6 +508,78 @@ function partitionWaves(
     }
   }
   return waves;
+}
+
+/**
+ * E435：Kahn 分层。同层 >1 时必须全为 read_only（写锁）；
+ * 返回的波次按计划声明顺序稳定排序，便于证据可读。
+ */
+function partitionDependencyWaves(
+  nodes: DomainWorkflowResult['nodes'] | DomainWorkflowNode[],
+): Array<DomainWorkflowResult['nodes']> {
+  const byId = new Map(nodes.map((node) => [node.id, node as DomainWorkflowResult['nodes'][number]]));
+  const indegree = new Map<string, number>();
+  const children = new Map<string, string[]>();
+  for (const node of nodes) {
+    indegree.set(node.id, 0);
+    children.set(node.id, []);
+  }
+  for (const node of nodes) {
+    for (const dep of node.dependsOn ?? []) {
+      indegree.set(node.id, (indegree.get(node.id) ?? 0) + 1);
+      children.get(dep)!.push(node.id);
+    }
+  }
+  const waves: Array<DomainWorkflowResult['nodes']> = [];
+  let remaining = nodes.length;
+  const ready = nodes
+    .filter((node) => (indegree.get(node.id) ?? 0) === 0)
+    .map((node) => node.id);
+  while (ready.length > 0) {
+    const waveIds = [...ready];
+    ready.length = 0;
+    const wave = waveIds
+      .map((id) => byId.get(id)!)
+      .sort((a, b) => nodes.findIndex((n) => n.id === a.id) - nodes.findIndex((n) => n.id === b.id));
+    if (wave.length > 1 && wave.some((node) => node.risk !== 'read_only')) {
+      throw new TypeError('依赖 DAG 同波并行仅允许 read_only（禁止并行写/构建/仿真/烧录）');
+    }
+    waves.push(wave);
+    remaining -= wave.length;
+    for (const node of wave) {
+      for (const childId of children.get(node.id) ?? []) {
+        const next = (indegree.get(childId) ?? 0) - 1;
+        indegree.set(childId, next);
+        if (next === 0) ready.push(childId);
+      }
+    }
+  }
+  if (remaining > 0) throw new TypeError('dependsOn 存在环或不可达依赖，禁止执行');
+  return waves;
+}
+
+/** 失败后：依赖失败节点的下游标 blocked，其余 pending 标 skipped。 */
+function cascadeAfterFailure(nodes: DomainWorkflowResult['nodes']): void {
+  const failedOrBlocked = new Set(
+    nodes.filter((n) => n.status === 'failed' || n.status === 'blocked').map((n) => n.id),
+  );
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const node of nodes) {
+      if (node.status !== 'pending') continue;
+      const deps = node.dependsOn ?? [];
+      if (deps.some((dep) => failedOrBlocked.has(dep))) {
+        node.status = 'blocked';
+        node.error = '上游依赖失败，跳过执行';
+        failedOrBlocked.add(node.id);
+        grew = true;
+      }
+    }
+  }
+  for (const node of nodes) {
+    if (node.status === 'pending') node.status = 'skipped';
+  }
 }
 
 function parseArtifactData(output: string): unknown {

@@ -528,3 +528,182 @@ test('E431: build 不得进入 parallelGroup；同组失败跳过后续波次', 
   assert.equal(calls, 2);
   assert.deepEqual(result.nodes.map((n) => n.status), ['completed', 'failed', 'skipped']);
 });
+
+function roNode(
+  id: string,
+  toolName: 'keil.InspectProjectProfile' | 'vscode.InspectWorkspace' | 'stm32-gcc.InspectProjectProfile',
+  deps?: string[],
+): DomainWorkflowPlan['nodes'][number] {
+  if (toolName === 'vscode.InspectWorkspace') {
+    return {
+      id,
+      kind: 'workspace_inventory',
+      title: id,
+      inputRefs: ['projects/demo'],
+      outputKind: 'vscode_workspace',
+      agentId: 'vscode',
+      toolName,
+      args: { workspaceRoot: 'projects/demo' },
+      targetFiles: ['projects/demo/.vscode'],
+      risk: 'read_only',
+      acceptance: 'ok',
+      onFailure: 'handoff',
+      ...(deps ? { dependsOn: deps } : {}),
+    };
+  }
+  if (toolName === 'stm32-gcc.InspectProjectProfile') {
+    return {
+      id,
+      kind: 'stm32_project_inventory',
+      title: id,
+      inputRefs: ['projects/demo'],
+      outputKind: 'project_profile',
+      agentId: 'stm32-gcc',
+      toolName,
+      args: { root: 'projects/demo' },
+      targetFiles: ['projects/demo'],
+      risk: 'read_only',
+      acceptance: 'ok',
+      onFailure: 'handoff',
+      ...(deps ? { dependsOn: deps } : {}),
+    };
+  }
+  return {
+    id,
+    kind: 'project_inventory',
+    title: id,
+    inputRefs: ['projects/demo.uvprojx'],
+    outputKind: 'project_profile',
+    agentId: 'keil',
+    toolName,
+    args: { projectPath: 'projects/demo.uvprojx' },
+    targetFiles: ['projects/demo.uvprojx'],
+    risk: 'read_only',
+    acceptance: 'ok',
+    onFailure: 'handoff',
+    ...(deps ? { dependsOn: deps } : {}),
+  };
+}
+
+test('E435: dependsOn 只读菱形可同波并行，下游等两侧完成', async () => {
+  let inFlight = 0;
+  let peak = 0;
+  const order: string[] = [];
+  const dag: DomainWorkflowPlan = {
+    id: 'wf-dag-diamond',
+    projectId: 'project-0123456789abcdef',
+    completedRevisionCycles: 0,
+    nodes: [
+      roNode('a', 'keil.InspectProjectProfile'),
+      roNode('b', 'vscode.InspectWorkspace'),
+      roNode('c', 'stm32-gcc.InspectProjectProfile', ['a', 'b']),
+    ],
+  };
+  const result = await executeDomainWorkflow(dag, {
+    dispatch: async (_task, options) => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      order.push(options!.toolName!);
+      await new Promise((r) => setTimeout(r, 20));
+      inFlight -= 1;
+      return dispatchResult(options!.toolName!);
+    },
+  });
+  assert.equal(result.status, 'succeeded');
+  assert.ok(peak >= 2, `期望首波并行 peak>=2，实际 ${peak}`);
+  assert.equal(order.at(-1), 'stm32-gcc.InspectProjectProfile');
+  assert.deepEqual(result.nodes.map((n) => n.status), ['completed', 'completed', 'completed']);
+});
+
+test('E435: 环与未知依赖拒绝；同波含 build 拒绝；混用 parallelGroup 拒绝', async () => {
+  const cyclic: DomainWorkflowPlan = {
+    id: 'wf-cycle',
+    projectId: 'project-0123456789abcdef',
+    completedRevisionCycles: 0,
+    nodes: [
+      roNode('a', 'keil.InspectProjectProfile', ['b']),
+      roNode('b', 'vscode.InspectWorkspace', ['a']),
+    ],
+  };
+  await assert.rejects(
+    executeDomainWorkflow(cyclic, { dispatch: async () => dispatchResult('keil.InspectProjectProfile') }),
+    /环|不可达/,
+  );
+
+  const unknown: DomainWorkflowPlan = {
+    id: 'wf-unknown',
+    projectId: 'project-0123456789abcdef',
+    completedRevisionCycles: 0,
+    nodes: [roNode('a', 'keil.InspectProjectProfile', ['missing'])],
+  };
+  await assert.rejects(
+    executeDomainWorkflow(unknown, { dispatch: async () => dispatchResult('keil.InspectProjectProfile') }),
+    /未知节点/,
+  );
+
+  const mixedWrite: DomainWorkflowPlan = {
+    id: 'wf-mixed-write',
+    projectId: 'project-0123456789abcdef',
+    completedRevisionCycles: 0,
+    nodes: [
+      roNode('inv', 'keil.InspectProjectProfile'),
+      {
+        id: 'build',
+        kind: 'build',
+        title: '构建',
+        inputRefs: ['project_profile'],
+        outputKind: 'build_diagnostics',
+        agentId: 'keil',
+        toolName: 'keil.BuildProject',
+        args: { projectPath: 'projects/demo.uvprojx', target: 'Demo' },
+        targetFiles: ['projects/demo.uvprojx'],
+        risk: 'build',
+        acceptance: 'ok',
+        onFailure: 'revise',
+      },
+      // 任一 dependsOn 即进入 DAG 模式；首波 inv+build 同就绪 → 应拒绝
+      roNode('tail', 'vscode.InspectWorkspace', ['inv']),
+    ],
+  };
+  await assert.rejects(
+    executeDomainWorkflow(mixedWrite, { dispatch: async () => dispatchResult('keil.BuildProject') }),
+    /同波并行仅允许 read_only/,
+  );
+
+  const mixedGroup: DomainWorkflowPlan = {
+    id: 'wf-mixed-group',
+    projectId: 'project-0123456789abcdef',
+    completedRevisionCycles: 0,
+    nodes: [
+      { ...roNode('a', 'keil.InspectProjectProfile'), parallelGroup: 'g' },
+      roNode('b', 'vscode.InspectWorkspace', ['a']),
+    ],
+  };
+  await assert.rejects(
+    executeDomainWorkflow(mixedGroup, { dispatch: async () => dispatchResult('keil.InspectProjectProfile') }),
+    /不得混用 parallelGroup/,
+  );
+});
+
+test('E435: 上游失败则下游 blocked，无关 pending 仍 skipped', async () => {
+  const dag: DomainWorkflowPlan = {
+    id: 'wf-cascade',
+    projectId: 'project-0123456789abcdef',
+    completedRevisionCycles: 0,
+    nodes: [
+      roNode('a', 'keil.InspectProjectProfile'),
+      roNode('b', 'vscode.InspectWorkspace'),
+      roNode('c', 'stm32-gcc.InspectProjectProfile', ['a']),
+    ],
+  };
+  const result = await executeDomainWorkflow(dag, {
+    dispatch: async (_task, options) => {
+      const ok = options?.toolName !== 'keil.InspectProjectProfile';
+      return dispatchResult(options!.toolName!, ok);
+    },
+  });
+  assert.equal(result.status, 'failed');
+  assert.equal(result.nodes.find((n) => n.id === 'a')?.status, 'failed');
+  assert.equal(result.nodes.find((n) => n.id === 'b')?.status, 'completed');
+  assert.equal(result.nodes.find((n) => n.id === 'c')?.status, 'blocked');
+});
