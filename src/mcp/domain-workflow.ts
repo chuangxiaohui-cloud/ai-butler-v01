@@ -68,8 +68,9 @@ export interface DomainWorkflowNode {
    */
   parallelGroup?: string;
   /**
-   * E435：有界依赖边（节点 id）。计划含任一 dependsOn 时按拓扑波次调度；
-   * 禁止环、禁止与 parallelGroup 混用；同波若 >1 个节点则必须全为 read_only。
+   * E435/E436：有界依赖边（节点 id）。`dependsOn` 字段出现即启用 Kahn 拓扑波次；
+   * 空数组表示 DAG 根（对等只读可同首波并行）；禁止环、禁止与 parallelGroup 混用；
+   * 同波若 >1 个节点则必须全为 read_only。
    */
   dependsOn?: string[];
 }
@@ -447,8 +448,8 @@ function validatePlan(plan: DomainWorkflowPlan): void {
       throw new TypeError(`节点 ${node.id}：dependsOn 计划不得混用 parallelGroup`);
     }
     if (node.dependsOn !== undefined) {
-      if (!Array.isArray(node.dependsOn) || node.dependsOn.length === 0) {
-        throw new TypeError(`节点 ${node.id} 的 dependsOn 若出现则须为非空数组`);
+      if (!Array.isArray(node.dependsOn)) {
+        throw new TypeError(`节点 ${node.id} 的 dependsOn 必须是数组`);
       }
       const seenDeps = new Set<string>();
       for (const dep of node.dependsOn) {
@@ -490,7 +491,7 @@ function validatePlan(plan: DomainWorkflowPlan): void {
 }
 
 function planUsesDependencyEdges(nodes: Array<Pick<DomainWorkflowNode, 'dependsOn'>>): boolean {
-  return nodes.some((node) => Array.isArray(node.dependsOn) && node.dependsOn.length > 0);
+  return nodes.some((node) => node.dependsOn !== undefined);
 }
 
 /** E431：相邻同名 parallelGroup 合成一波；无组或不同组各自成波。 */

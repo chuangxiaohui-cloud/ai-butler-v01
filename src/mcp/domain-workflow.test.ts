@@ -707,3 +707,28 @@ test('E435: 上游失败则下游 blocked，无关 pending 仍 skipped', async (
   assert.equal(result.nodes.find((n) => n.id === 'b')?.status, 'completed');
   assert.equal(result.nodes.find((n) => n.id === 'c')?.status, 'blocked');
 });
+
+test('E436: dependsOn:[] 根节点只读同首波并行', async () => {
+  let inFlight = 0;
+  let peak = 0;
+  const peer: DomainWorkflowPlan = {
+    id: 'wf-peer-roots',
+    projectId: 'project-0123456789abcdef',
+    completedRevisionCycles: 0,
+    nodes: [
+      { ...roNode('a', 'keil.InspectProjectProfile'), dependsOn: [] },
+      { ...roNode('b', 'vscode.InspectWorkspace'), dependsOn: [] },
+    ],
+  };
+  const result = await executeDomainWorkflow(peer, {
+    dispatch: async (_task, options) => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await new Promise((r) => setTimeout(r, 20));
+      inFlight -= 1;
+      return dispatchResult(options!.toolName!);
+    },
+  });
+  assert.equal(result.status, 'succeeded');
+  assert.ok(peak >= 2, `期望 peer 根并行 peak>=2，实际 ${peak}`);
+});

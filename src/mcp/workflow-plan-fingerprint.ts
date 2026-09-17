@@ -20,7 +20,7 @@ function canonicalizeNode(node: DomainWorkflowNode): unknown {
     risk: node.risk,
     onFailure: node.onFailure,
     ...(node.parallelGroup ? { parallelGroup: node.parallelGroup } : {}),
-    ...(node.dependsOn && node.dependsOn.length > 0
+    ...(node.dependsOn !== undefined
       ? { dependsOn: [...node.dependsOn].sort() }
       : {}),
   };

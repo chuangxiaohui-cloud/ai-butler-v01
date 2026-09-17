@@ -172,7 +172,7 @@ test('E408：缺失或过期画像只生成只读 inventory 节点，绝不混�
   }
 });
 
-test('E408/E432/E433：多平台画像未明确平台时先并行只读盘点并附 platformChoices', () => {
+test('E408/E432/E433/E436：多平台画像未明确平台时先并行只读盘点并附 platformChoices', () => {
   const root = mkdtempSync(join(tmpdir(), 'mcp-workflow-entry-ambiguous-'));
   const projectRoot = join(root, 'multi-platform');
   const store = new ProjectProfileStore(join(root, 'profiles'));
@@ -190,9 +190,10 @@ test('E408/E432/E433：多平台画像未明确平台时先并行只读盘点并
     assert.equal(result.status, 'inventory_required');
     assert.match(result.message, /并行只读盘点/);
     assert.equal(result.plan?.nodes.length, 2);
+    assert.ok(result.plan?.nodes.every((n) => n.parallelGroup === undefined));
     assert.deepEqual(
-      result.plan?.nodes.map((n) => n.parallelGroup),
-      ['inventory', 'inventory'],
+      result.plan?.nodes.map((n) => n.dependsOn),
+      [[], []],
     );
     assert.ok(result.plan?.nodes.every((n) => n.risk === 'read_only'));
     assert.deepEqual(
@@ -218,7 +219,7 @@ test('E408/E432/E433：多平台画像未明确平台时先并行只读盘点并
   }
 });
 
-test('E432：单平台盘点不加 parallelGroup', () => {
+test('E432/E436：单平台盘点不加 dependsOn', () => {
   const root = mkdtempSync(join(tmpdir(), 'mcp-workflow-entry-single-inv-'));
   const projectRoot = join(root, 'keil-only');
   const projectPath = join(projectRoot, 'demo.uvprojx');
@@ -232,6 +233,7 @@ test('E432：单平台盘点不加 parallelGroup', () => {
     assert.equal(result.status, 'inventory_required');
     assert.equal(result.plan?.nodes.length, 1);
     assert.equal(result.plan?.nodes[0]?.parallelGroup, undefined);
+    assert.equal(result.plan?.nodes[0]?.dependsOn, undefined);
     assert.equal(result.plan?.nodes[0]?.agentId, 'keil');
     assert.equal(result.platformChoices, undefined);
   } finally {

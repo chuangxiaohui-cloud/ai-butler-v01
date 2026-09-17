@@ -1,4 +1,4 @@
-/** E408/E413/E424/E432/E433/E434：MCP 领域任务统一规划入口；构建/EDA 写入/仿真/烧录必须显式批准；多平台只读盘点自动 parallelGroup；盘点后附平台消歧选项与跟进问句。 */
+/** E408/E413/E424/E432/E433/E434/E436：MCP 领域任务统一规划入口；构建/EDA 写入/仿真/烧录必须显式批准；多平台只读盘点以 dependsOn 根并行；盘点后附平台消歧选项与跟进问句。 */
 
 import { dirname, resolve } from 'node:path';
 
@@ -587,7 +587,7 @@ function inventoryNode(location: ReturnType<typeof resolveLocation>): DomainWork
   return null;
 }
 
-/** E432：≥2 个相邻只读盘点自动同组；单节点不加组。 */
+/** E432/E436：≥2 个只读盘点打 dependsOn:[] 作 DAG 根并行；单节点不加。 */
 function tagReadonlyInventoryParallelGroup(nodes: DomainWorkflowNode[]): DomainWorkflowNode[] {
   const inventoryKinds = new Set([
     'project_inventory',
@@ -602,7 +602,7 @@ function tagReadonlyInventoryParallelGroup(nodes: DomainWorkflowNode[]): DomainW
   if (readonlyInventories.length < 2) return nodes;
   return nodes.map((node) => (
     node.risk === 'read_only' && inventoryKinds.has(node.kind)
-      ? { ...node, parallelGroup: 'inventory' }
+      ? { ...node, dependsOn: [], parallelGroup: undefined }
       : node
   ));
 }
