@@ -194,7 +194,9 @@ export function routeFromFeatures(
     features.actionType === 'compare' ||
     features.actionType === 'query' ||
     features.actionType === 'summarize' ||
-    features.actionType === 'analyze';
+    features.actionType === 'analyze' ||
+    // E417：无附件 extract_structure 已回退 web_search，与 summarize 同为可直连检索类
+    features.actionType === 'extract_structure';
   if (searchLikeAction && top?.intent === 'web_search') {
     decision = { type: 'direct', selected: top };
   } else if (

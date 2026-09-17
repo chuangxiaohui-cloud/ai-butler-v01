@@ -678,6 +678,27 @@ test('router-v2: GitHub 链接 + 项目问句（做什么用/值不值）→ git
     assert.fail('非 github 链接应走 web_search');
   }
 });
+// E417：裸「框架」不再误伤软件栈名词堆叠；无附件 extract_structure 回退搜索
+test('router-v2: E19 Tauri 框架/架构/技术栈 → web_search 而非 must_clarify', () => {
+  const r = routeV2('Tauri 框架 架构 技术栈');
+  assert.equal(r.features.actionType, 'qa');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'web_search');
+    assert.ok(r.decision.selected.confidence >= 0.5);
+  }
+});
+
+test('router-v2: E417 无附件提取结构 → web_search 回退', () => {
+  const r = routeV2('帮我提取章节结构');
+  assert.equal(r.features.actionType, 'extract_structure');
+  assert.equal(r.decision.type, 'direct');
+  if (r.decision.type === 'direct') {
+    assert.equal(r.decision.selected.intent, 'web_search');
+    assert.equal(r.decision.selected.matchedRule, 'R_EXTRACT_STRUCTURE_SEARCH');
+  }
+});
+
 test('router-v2: 芯片对比 → web_search 而非澄清', () => {
   const r = routeV2('对比 ESP32-S3 和 RP2040 在音频 I2S 应用上的功耗和 PSRAM 性能差异？');
   assert.equal(r.features.actionType, 'compare');

@@ -2530,6 +2530,8 @@ eadDocSummary（新增 scripts/office_docx_read.py：python-docx 纯读 docx 段
 
 ### 2026-09-17（[P-10] owner 签认与定稿晋升 E416）<br>- **变更**：owner 以「签」完成条件⑤；按 E197 复验门将 [P-10] 由 provisional@2026-08-24 晋升 **定稿**。五条件证据：① S1-S8+业务 MCP；② 2026-09-17 复跑 P-07/P-12/P-08（报告 `p10-condition2-rerun-2026-09-17.md`，E19 `must_clarify` 与 P-12 人工分未重评作遗留加强项）；③ `maturity:check`→L2（E415 滑动窗）；④ doc-lint 0 FAIL 0 WARN + test:all 单测 1642/1643（0 fail）+ 集成 36/36；⑤ 附录 C 无相反证据 + 本日签认。<br>- **证据**：计划 `docs/plans/2026-09-17-p10-owner-signoff.md`；报告 `docs/reports/v1-acceptance-report-2026-09-17.md`；条件②报告与 L2 差距报告交叉引用。<br>- **状态**：[P-10] 定稿通过；代码批次仍可能未提交，不改变验收口径本身。<br>- affects: §4.1.2,§5,附录A | bench:na(new-param) 理由：验收标准状态晋升与签认登记，无 §5/§6 数值变更；验证走 maturity/doc-lint/test:all
 
+### 2026-09-17（E19 路由 must_clarify 误触修复 E417）<br>- **变更**：收口 E416 条件②遗留——裸词「框架」误命中 `extract_structure`，无附件时零候选 `must_clarify`。① `intent-feature` 收窄文档语境「框架」，并补「框架/架构/技术栈」名词堆叠 → `qa`；② 新增 `R_EXTRACT_STRUCTURE_SEARCH`（`extract_structure`+`hasDocument:false`→`web_search`）；③ `router-v2` 将 `extract_structure` 纳入检索类直连（与 summarize 同口径）。`Tauri 框架 架构 技术栈` → `direct`/`web_search`；有附件文档结构仍走 `document_structure`。<br>- **证据**：计划 `docs/plans/2026-09-17-e19-must-clarify-fix.md`；router-v2 增补 E19/E417 单测；`npm run build` + `test:all` 通过。<br>- **状态**：完成；未重跑全量 v02a/devil；P-12 人工分仍为遗留加强。<br>- affects: §2.2,§6.1,附录A,src/agent/intent-feature.ts,src/agent/routing-table.ts,src/agent/router-v2.ts,src/agent/router-v2.test.ts | bench:na(typo) 理由：路由误澄清修复，无 §5/§6 参数数值变更；验证走 build、定向路由单测与 test:all
+
 ## 附录 B 历史教训
 
 > 原 §9.9.1 旧策略表 + §12.8/§12.9.6 旧描述 → 附录 B。总量 ≤100 行（`<details>` 内不计）。

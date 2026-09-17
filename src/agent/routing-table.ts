@@ -160,6 +160,17 @@ export const ROUTING_TABLE: RoutingRule[] = [
     executor: 'document_qa',
     confidenceBoost: 0.25,
   },
+  // E417：无附件的 extract_structure（如「提取章节结构」）回退联网检索，避免零候选 must_clarify；
+  // 有附件时只走 R_DOCUMENT_STRUCTURE，勿与本规则分差过近触发 option_clarify。
+  {
+    id: 'R_EXTRACT_STRUCTURE_SEARCH',
+    match: { actionType: 'extract_structure', hasDocument: false },
+    primaryLens: 'secretary',
+    intent: 'web_search',
+    tags: ['search', 'structure'],
+    searchNeed: true,
+    confidenceBoost: 0.2,
+  },
   {
     id: 'R007',
     match: { actionType: 'emergency' },
