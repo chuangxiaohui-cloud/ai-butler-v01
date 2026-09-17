@@ -1228,6 +1228,9 @@ function App() {
                   confirming={confirmingId === msg.id}
                   onRetry={retryFallback}
                   retrying={retryingId === msg.id}
+                  onPlatformChoice={(query) => {
+                    void askQuery(query);
+                  }}
                 />
               ))}
             </div>
@@ -1551,6 +1554,7 @@ function MessageItem({
   confirming,
   onRetry,
   retrying,
+  onPlatformChoice,
 }: {
   msg: Message;
   feedback: FeedbackValue | undefined;
@@ -1563,6 +1567,8 @@ function MessageItem({
   confirming: boolean;
   onRetry?: (msgId: string, query: string) => void;
   retrying?: boolean;
+  /** E434：点击工作流产物卡上的平台选项 → 发送构建跟进问句 */
+  onPlatformChoice?: (query: string) => void;
 }) {
   const isUser = msg.role === 'user';
   const [expandedTest, setExpandedTest] = useState<string | null>(null);
@@ -1594,6 +1600,7 @@ function MessageItem({
             key={`${artifact.kind}-${index}`}
             artifact={artifact}
             onOpenFile={onEvidence}
+            onPlatformChoice={onPlatformChoice}
           />
         ))}
         {xmindPaths.map((p) => (
@@ -1801,12 +1808,73 @@ function MessageItem({
   );
 }
 
+function extractWorkflowProjectRoot(nodes: Array<Record<string, unknown>>): string | undefined {
+  for (const node of nodes) {
+    if (Array.isArray(node.targetFiles)) {
+      const first = node.targetFiles.find((item): item is string => typeof item === 'string' && item.trim().length > 0);
+      if (first) return first;
+    }
+    const args = node.args && typeof node.args === 'object'
+      ? (node.args as Record<string, unknown>)
+      : null;
+    if (!args) continue;
+    if (typeof args.root === 'string' && args.root.trim()) return args.root;
+    if (typeof args.projectPath === 'string' && args.projectPath.trim()) return args.projectPath;
+  }
+  return undefined;
+}
+
+/** 与 src/mcp/workflow-entry.buildPlatformChoiceFollowUpQuery 同形（E434，UI 不直接依赖 src）。 */
+function buildUiPlatformChoiceFollowUpQuery(
+  choiceId: 'keil' | 'stm32-gcc',
+  projectRoot?: string,
+): string {
+  const root = projectRoot?.trim() ?? '';
+  const platform = choiceId === 'keil' ? 'Keil' : 'stm32-gcc';
+  return root ? `请编译 ${platform} 工程 ${root}` : `请编译 ${platform} 工程`;
+}
+
+function PlatformChoiceActions({
+  choices,
+  projectRoot,
+  onPlatformChoice,
+}: {
+  choices: Array<{ id: 'keil' | 'stm32-gcc'; label: string; hint: string }>;
+  projectRoot?: string;
+  onPlatformChoice?: (query: string) => void;
+}) {
+  const [selectedId, setSelectedId] = useState<'keil' | 'stm32-gcc' | null>(null);
+  return (
+    <div className="platform-choice-actions">
+      <span className="platform-choice-caption">构建前请选择平台：</span>
+      {choices.map((choice) => (
+        <button
+          key={choice.id}
+          type="button"
+          className={`platform-choice-btn${selectedId === choice.id ? ' selected' : ''}`}
+          disabled={!onPlatformChoice || selectedId !== null}
+          title={choice.hint || undefined}
+          onClick={() => {
+            if (!onPlatformChoice || selectedId !== null) return;
+            setSelectedId(choice.id);
+            onPlatformChoice(buildUiPlatformChoiceFollowUpQuery(choice.id, projectRoot));
+          }}
+        >
+          {choice.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function KeilArtifactCard({
   artifact,
   onOpenFile,
+  onPlatformChoice,
 }: {
   artifact: SkillArtifact;
   onOpenFile: (ev: Evidence) => void;
+  onPlatformChoice?: (query: string) => void;
 }) {
   if (artifact.kind === 'project-change-confirmation') {
     const changes = Array.isArray(artifact.data.changes)
@@ -1872,6 +1940,24 @@ function KeilArtifactCard({
     const workflow = artifact.data.workflow && typeof artifact.data.workflow === 'object'
       ? (artifact.data.workflow as Record<string, unknown>)
       : null;
+    const platformChoices: Array<{ id: 'keil' | 'stm32-gcc'; label: string; hint: string }> = Array.isArray(entry.platformChoices)
+      ? entry.platformChoices.flatMap((item) => {
+          if (!item || typeof item !== 'object') return [];
+          const id = (item as { id?: unknown }).id;
+          if (id !== 'keil' && id !== 'stm32-gcc') return [];
+          const choiceId: 'keil' | 'stm32-gcc' = id;
+          return [{
+            id: choiceId,
+            label: typeof (item as { label?: unknown }).label === 'string'
+              ? (item as { label: string }).label
+              : choiceId,
+            hint: typeof (item as { hint?: unknown }).hint === 'string'
+              ? (item as { hint: string }).hint
+              : '',
+          }];
+        })
+      : [];
+    const projectRoot = extractWorkflowProjectRoot(nodes);
     return (
       <section className="keil-artifact workflow-plan-artifact">
         <div className="keil-artifact-head">
@@ -1901,6 +1987,13 @@ function KeilArtifactCard({
             </div>
           ))}
         </div>
+        {platformChoices.length >= 2 && (
+          <PlatformChoiceActions
+            choices={platformChoices}
+            projectRoot={projectRoot}
+            onPlatformChoice={onPlatformChoice}
+          />
+        )}
         {(evidenceChain.length > 0 || (workflow && Array.isArray(workflow.evidence))) && (
           <div className="workflow-evidence-chain">
             <strong>证据链</strong>

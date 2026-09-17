@@ -1,4 +1,4 @@
-/** E408/E413/E424/E432/E433：MCP 领域任务统一规划入口；构建/EDA 写入/仿真/烧录必须显式批准；多平台只读盘点自动 parallelGroup；盘点后附平台消歧选项。 */
+/** E408/E413/E424/E432/E433/E434：MCP 领域任务统一规划入口；构建/EDA 写入/仿真/烧录必须显式批准；多平台只读盘点自动 parallelGroup；盘点后附平台消歧选项与跟进问句。 */
 
 import { dirname, resolve } from 'node:path';
 
@@ -49,6 +49,17 @@ export function formatPlatformChoices(choices: McpPlatformChoice[] | undefined):
   const lines = choices.map((item, index) => `${index + 1}. ${item.label}（${item.id}）：${item.hint}`);
   return `构建前请选择平台：\n${lines.join('\n')}`;
 }
+
+/** E434：UI/Skill 点击平台选项后生成可识别的构建跟进问句。 */
+export function buildPlatformChoiceFollowUpQuery(
+  choice: Pick<McpPlatformChoice, 'id'>,
+  projectRoot?: string | null,
+): string {
+  const root = typeof projectRoot === 'string' && projectRoot.trim() ? projectRoot.trim() : '';
+  const platform = choice.id === 'keil' ? 'Keil' : 'stm32-gcc';
+  return root ? `请编译 ${platform} 工程 ${root}` : `请编译 ${platform} 工程`;
+}
+
 export function isMcpDomainBuildRequest(query: string): boolean {
   return /(?:构建|编译|\bbuild\b|\.BuildProject\b)/i.test(query)
     && /(?:keil|\.uvprojx|stm32-gcc|arm-none-eabi|stm32.{0,12}cmake)/i.test(query);

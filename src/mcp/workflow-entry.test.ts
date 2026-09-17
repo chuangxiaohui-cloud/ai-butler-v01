@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import { deriveProjectId, ProjectProfileStore } from './project-profile-store.js';
 import {
+  buildPlatformChoiceFollowUpQuery,
   formatPlatformChoices,
   isMcpDomainBuildRequest,
   isMcpKicadEditRequest,
@@ -204,6 +205,14 @@ test('E408/E432/E433：多平台画像未明确平台时先并行只读盘点并
       ['keil', 'stm32-gcc'],
     );
     assert.match(formatPlatformChoices(result.platformChoices) ?? '', /构建前请选择平台/);
+    const followUp = buildPlatformChoiceFollowUpQuery({ id: 'keil' }, projectRoot);
+    assert.match(followUp, /Keil/);
+    assert.match(followUp, new RegExp(projectRoot.replace(/[\\^$*+?.()|[\]{}]/g, '\\$&')));
+    assert.equal(isMcpDomainBuildRequest(followUp), true);
+    assert.equal(
+      isMcpDomainBuildRequest(buildPlatformChoiceFollowUpQuery({ id: 'stm32-gcc' }, projectRoot)),
+      true,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

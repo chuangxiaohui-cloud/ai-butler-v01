@@ -574,6 +574,47 @@ button {
   color: #c45c26;
 }
 
+.platform-choice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.platform-choice-caption {
+  width: 100%;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.platform-choice-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.platform-choice-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.platform-choice-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.platform-choice-btn.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  opacity: 1;
+}
+
 .keil-targets {
   display: flex;
   flex-wrap: wrap;
