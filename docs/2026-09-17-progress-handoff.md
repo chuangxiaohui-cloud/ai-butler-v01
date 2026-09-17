@@ -1,29 +1,31 @@
-# 进度交接 · 2026-09-17（E429 已提交）
+# 进度交接 · 2026-09-17（E430 冒烟 + E425 v13 兼容）
 
 ## 本轮收口
 
-**E429 已提交** · `2b44671`（未 push）。
+**E430 / E425 补丁本轮提交**（hash 见本提交；随后回填）。
 
-覆盖：`npm run hardware:gate` → `evaluateHardwareGate` 只裁决；可选固件摘要；默认写审计 / `--no-audit` 静默；零烧录、零开串口。
+- Push：E429 已在 `f3f785a` 同步远端。
+- 冒烟：auth→gate 绿；COM PnP=Unknown → 打开诚实 `File not found`。
+- 修复：`serialport@13` 回调式 `open`/`close`。
 
 ## 状态表
 
 | 项 | 状态 |
 |----|------|
-| E419–E428 | 已提交 `ce47d35` |
-| E429 | **已提交** `2b44671`；未 push |
+| E419–E429 | 已 push `f3f785a` |
+| E430 + E425 v13 兼容 | **本轮提交** |
 
 ## 关键落点
 
-- 提交 → `2b44671`
-- 计划 → `docs/plans/2026-09-17-hardware-gate-cli.md`
-- 编排 → `src/mcp/hardware-gate-cli.ts` + `scripts/hardware-gate.ts`
+- 报告 → `docs/reports/hardware-readonly-smoke-2026-09-17.md`
+- 计划 → `docs/plans/2026-09-17-hardware-readonly-smoke.md`
+- 修复 → `src/mcp/serialport-reader.ts`
 
 ## 下一轮建议（首选在前）
 
 1. **可选**：说「push」同步远端。
-2. **可选**：真实硬件只读冒烟（先 `device:auth` 授权再 gate → serial_read）。
+2. **复跑**：设备 Status=OK 后再只读打开。
 3. **大项**：动态并行多 Skill；或转非硬件线。
-4. **不做**：串口写。
+4. **不做**：串口写；未确认不烧录。
 
-**本轮收工点**：E429 提交完成；`doc-lint` 与 `test:all` 绿。
+**本轮收工点**：E425 回调兼容与 E430 文档提交完成。

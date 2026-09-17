@@ -114,6 +114,54 @@ test('E425: 达到 maxBytes 即停；超时标记 timedOut', async () => {
   assert.equal(timed.bytesRead, 0);
 });
 
+test('E425: serialport@13 回调式 open/close 可打开并读到数据', async () => {
+  class CallbackSerialPort extends EventEmitter implements SerialPortInstance {
+    opened = false;
+    closed = false;
+
+    constructor(public readonly options: { path: string; baudRate: number; autoOpen?: boolean }) {
+      super();
+    }
+
+    open(callback?: (err: Error | null) => void): void {
+      this.opened = true;
+      queueMicrotask(() => {
+        callback?.(null);
+        this.emit('data', Buffer.from('cb-ok', 'utf8'));
+      });
+    }
+
+    close(callback?: (err: Error | null) => void): void {
+      this.closed = true;
+      queueMicrotask(() => callback?.(null));
+    }
+  }
+
+  let created: CallbackSerialPort | undefined;
+  const reader = createSerialportReader({
+    loadModule: async () => ({
+      SerialPort: class extends CallbackSerialPort {
+        constructor(options: { path: string; baudRate: number; autoOpen?: boolean }) {
+          super(options);
+          created = this;
+        }
+      } as unknown as SerialPortModule['SerialPort'],
+    }),
+  });
+
+  const result = await reader({
+    port: 'COM8',
+    baudRate: 115200,
+    maxBytes: 16,
+    timeoutMs: 500,
+  });
+  assert.equal(result.data, 'cb-ok');
+  assert.equal(result.bytesRead, 5);
+  assert.equal(result.timedOut, false);
+  assert.ok(created?.opened);
+  assert.ok(created?.closed);
+});
+
 test('E425: AbortSignal 取消；加载失败明确报错', async () => {
   const ac = new AbortController();
   const reader = createSerialportReader({

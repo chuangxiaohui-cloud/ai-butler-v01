@@ -5,14 +5,43 @@
 
 import type { SerialReader, SerialReaderResult } from './serial-driver.js';
 
-/** 最小串口实例契约（可注入 mock，避免单测依赖原生绑定）。 */
+/**
+ * 最小串口实例契约（可注入 mock，避免单测依赖原生绑定）。
+ * serialport@13 的 open/close 为回调式且返回 undefined；单测 mock 可用 Promise。
+ */
 export interface SerialPortInstance {
-  open(): Promise<void>;
-  close(): Promise<void>;
+  open(callback?: (err: Error | null) => void): void | Promise<void>;
+  close(callback?: (err: Error | null) => void): void | Promise<void>;
   on(event: 'data', listener: (chunk: Buffer) => void): void;
   on(event: 'error', listener: (err: Error) => void): void;
   /** 真实库有 write；生产 reader 不得调用。 */
   write?: (data: Buffer | string, callback?: (err?: Error | null) => void) => boolean;
+}
+
+/** 兼容 Promise / Node 回调两种 open·close 形态（E425 冒烟修正）。 */
+function invokePortLifecycle(
+  method: (callback?: (err: Error | null) => void) => void | Promise<void>,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const finish = (err?: Error | null): void => {
+      if (settled) return;
+      settled = true;
+      if (err) reject(err);
+      else resolve();
+    };
+    try {
+      const maybe = method((err) => finish(err ?? null));
+      if (maybe != null && typeof (maybe as Promise<void>).then === 'function') {
+        void (maybe as Promise<void>).then(() => finish(null), (err: unknown) => {
+          finish(err instanceof Error ? err : new Error(String(err)));
+        });
+      }
+      // 回调式：等 callback；若库既不返回 Promise 也不调 callback，由上层 timeout/abort 收口
+    } catch (err) {
+      finish(err instanceof Error ? err : new Error(String(err)));
+    }
+  });
 }
 
 export interface SerialPortModule {
@@ -130,16 +159,19 @@ export function createSerialportReader(
           request.signal.addEventListener('abort', onAbort, { once: true });
         }
 
-        void port.open().then(() => {
-          // 打开后若已达上限（极端空读后立刻 abort）由其它路径 finish
-        }, (err: unknown) => {
-          finish(err instanceof Error ? err : new Error(String(err)));
-        });
+        void invokePortLifecycle((cb) => port.open(cb)).then(
+          () => {
+            // 打开成功后由 data/timeout/abort 收口
+          },
+          (err: unknown) => {
+            finish(err instanceof Error ? err : new Error(String(err)));
+          },
+        );
       });
     } finally {
       cleanupListeners();
       try {
-        await port.close();
+        await invokePortLifecycle((cb) => port.close(cb));
       } catch {
         // 关闭失败不掩盖已读结果；下次打开由 OS/驱动报错
       }
