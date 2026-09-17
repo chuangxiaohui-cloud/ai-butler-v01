@@ -170,7 +170,7 @@ test('E408：缺失或过期画像只生成只读 inventory 节点，绝不混�
   }
 });
 
-test('E408：多平台画像在请求未明确平台时必须先澄清', () => {
+test('E408/E432：多平台画像未明确平台时先并行只读盘点', () => {
   const root = mkdtempSync(join(tmpdir(), 'mcp-workflow-entry-ambiguous-'));
   const projectRoot = join(root, 'multi-platform');
   const store = new ProjectProfileStore(join(root, 'profiles'));
@@ -185,9 +185,38 @@ test('E408：多平台画像在请求未明确平台时必须先澄清', () => {
       request(`请编译工程 ${projectRoot}，Keil 和 stm32-gcc 都可用`, projectRoot),
       store,
     );
-    assert.equal(result.status, 'clarification_required');
-    assert.match(result.message, /明确选择/);
-    assert.equal(result.plan, undefined);
+    assert.equal(result.status, 'inventory_required');
+    assert.match(result.message, /并行只读盘点/);
+    assert.equal(result.plan?.nodes.length, 2);
+    assert.deepEqual(
+      result.plan?.nodes.map((n) => n.parallelGroup),
+      ['inventory', 'inventory'],
+    );
+    assert.ok(result.plan?.nodes.every((n) => n.risk === 'read_only'));
+    assert.deepEqual(
+      result.plan?.nodes.map((n) => n.agentId).sort(),
+      ['keil', 'stm32-gcc'],
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('E432：单平台盘点不加 parallelGroup', () => {
+  const root = mkdtempSync(join(tmpdir(), 'mcp-workflow-entry-single-inv-'));
+  const projectRoot = join(root, 'keil-only');
+  const projectPath = join(projectRoot, 'demo.uvprojx');
+  const store = new ProjectProfileStore(join(root, 'profiles'));
+  mkdirSync(projectRoot, { recursive: true });
+  try {
+    const result = planMcpWorkflowEntry(
+      request(`请编译 Keil 工程 ${projectPath}`, projectRoot, { projectPath, platform: 'keil' }),
+      store,
+    );
+    assert.equal(result.status, 'inventory_required');
+    assert.equal(result.plan?.nodes.length, 1);
+    assert.equal(result.plan?.nodes[0]?.parallelGroup, undefined);
+    assert.equal(result.plan?.nodes[0]?.agentId, 'keil');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

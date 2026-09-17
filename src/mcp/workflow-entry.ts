@@ -1,4 +1,4 @@
-/** E408/E413/E424：MCP 领域任务统一规划入口；构建/EDA 写入/仿真/烧录必须显式批准。 */
+/** E408/E413/E424/E432：MCP 领域任务统一规划入口；构建/EDA 写入/仿真/烧录必须显式批准；多平台只读盘点自动 parallelGroup。 */
 
 import { dirname, resolve } from 'node:path';
 
@@ -103,7 +103,17 @@ export function planMcpWorkflowEntry(
   }
   const agentId = selectAgent(request.platform ?? location.platform, loaded);
   if (!agentId) {
-    return { status: 'clarification_required', message: '项目存在多个构建平台，请明确选择 Keil 或 STM32-GCC。' };
+    // E432：多平台未指定时先并行只读盘点各端；构建批准仍须随后明确平台
+    const agents = loaded.profile.capabilities
+      .map((item) => item.agentId)
+      .filter((id): id is 'keil' | 'stm32-gcc' => id === 'keil' || id === 'stm32-gcc');
+    return inventoryResult(
+      request,
+      location,
+      projectId,
+      '项目存在多个构建平台，先并行只读盘点；构建前请明确选择 Keil 或 STM32-GCC。',
+      { agents, capabilities: loaded.profile.capabilities },
+    );
   }
   if (loaded.reprobeRequired) {
     return inventoryResult(
@@ -464,22 +474,52 @@ function inventoryResult(
   location: ReturnType<typeof resolveLocation>,
   projectId: string,
   message: string,
+  multi?: {
+    agents: Array<'keil' | 'stm32-gcc'>;
+    capabilities?: ProjectPlatformCapability[];
+  },
 ): McpWorkflowEntryResult {
-  const node = inventoryNode(location);
-  if (!node) {
+  const nodes = multi && multi.agents.length > 0
+    ? multi.agents
+      .map((agentId) => inventoryNode(enrichLocationForAgent(location, agentId, multi.capabilities)))
+      .filter((node): node is DomainWorkflowNode => node !== null)
+    : (() => {
+      const single = inventoryNode(location);
+      if (single) return [single];
+      return (['keil', 'stm32-gcc'] as const)
+        .map((agentId) => inventoryNode(enrichLocationForAgent(location, agentId, undefined)))
+        .filter((node): node is DomainWorkflowNode => node !== null);
+    })();
+  if (nodes.length === 0) {
     return { status: 'clarification_required', message: `${message} 请明确平台与工程路径。` };
   }
   return {
     status: 'inventory_required',
     message,
-    plan: makePlan(projectId, request.completedRevisionCycles, [node]),
+    plan: makePlan(projectId, request.completedRevisionCycles, tagReadonlyInventoryParallelGroup(nodes)),
   };
+}
+
+/** 从画像能力补全 Keil .uvprojx 等盘点路径，便于多平台并行盘点。 */
+function enrichLocationForAgent(
+  location: ReturnType<typeof resolveLocation>,
+  agentId: 'keil' | 'stm32-gcc',
+  capabilities: ProjectPlatformCapability[] | undefined,
+): ReturnType<typeof resolveLocation> {
+  if (agentId === 'keil' && !location.projectPath && capabilities) {
+    const args = capabilities.find((item) => item.agentId === 'keil')?.build?.args;
+    const projectPath = typeof args?.projectPath === 'string' ? args.projectPath : null;
+    if (projectPath) {
+      return { ...location, platform: 'keil', projectPath: resolve(projectPath) };
+    }
+  }
+  return { ...location, platform: agentId };
 }
 
 function inventoryNode(location: ReturnType<typeof resolveLocation>): DomainWorkflowNode | null {
   if (location.platform === 'keil' && location.projectPath) {
     return {
-      id: 'inventory', kind: 'project_inventory', title: '盘点 Keil 项目画像', inputRefs: [location.projectPath],
+      id: 'inventory-keil', kind: 'project_inventory', title: '盘点 Keil 项目画像', inputRefs: [location.projectPath],
       outputKind: 'project_profile', agentId: 'keil', toolName: 'keil.InspectProjectProfile',
       args: { projectPath: location.projectPath }, targetFiles: [location.projectPath], risk: 'read_only',
       acceptance: '画像通过 schema 校验并写入证据缓存', onFailure: 'handoff',
@@ -487,13 +527,33 @@ function inventoryNode(location: ReturnType<typeof resolveLocation>): DomainWork
   }
   if (location.platform === 'stm32-gcc' && location.projectRoot) {
     return {
-      id: 'inventory', kind: 'stm32_project_inventory', title: '盘点 STM32-GCC 项目画像', inputRefs: [location.projectRoot],
+      id: 'inventory-stm32', kind: 'stm32_project_inventory', title: '盘点 STM32-GCC 项目画像', inputRefs: [location.projectRoot],
       outputKind: 'project_profile', agentId: 'stm32-gcc', toolName: 'stm32-gcc.InspectProjectProfile',
       args: { root: location.projectRoot }, targetFiles: [location.projectRoot], risk: 'read_only',
       acceptance: '画像通过 schema 校验并写入证据缓存', onFailure: 'handoff',
     };
   }
   return null;
+}
+
+/** E432：≥2 个相邻只读盘点自动同组；单节点不加组。 */
+function tagReadonlyInventoryParallelGroup(nodes: DomainWorkflowNode[]): DomainWorkflowNode[] {
+  const inventoryKinds = new Set([
+    'project_inventory',
+    'workspace_inventory',
+    'stm32_project_inventory',
+    'kicad_project_inventory',
+    'ltspice_schematic_inventory',
+  ]);
+  const readonlyInventories = nodes.filter(
+    (node) => node.risk === 'read_only' && inventoryKinds.has(node.kind),
+  );
+  if (readonlyInventories.length < 2) return nodes;
+  return nodes.map((node) => (
+    node.risk === 'read_only' && inventoryKinds.has(node.kind)
+      ? { ...node, parallelGroup: 'inventory' }
+      : node
+  ));
 }
 
 function buildNodeFromCapability(capability: ProjectPlatformCapability, projectRoot: string): DomainWorkflowNode | null {
