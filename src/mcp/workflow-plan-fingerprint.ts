@@ -19,6 +19,7 @@ function canonicalizeNode(node: DomainWorkflowNode): unknown {
     outputKind: node.outputKind,
     risk: node.risk,
     onFailure: node.onFailure,
+    ...(node.parallelGroup ? { parallelGroup: node.parallelGroup } : {}),
   };
 }
 

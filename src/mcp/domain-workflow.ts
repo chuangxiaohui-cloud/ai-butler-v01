@@ -1,4 +1,4 @@
-/** E404/E409/E413/E424：领域工作流执行入口；写入/仿真/烧录节点须已在入口层完成批准。 */
+/** E404/E409/E413/E424/E431：领域工作流执行入口；写入/仿真/烧录节点须已在入口层完成批准；E431 仅允许只读并行组。 */
 
 import type { DispatchOptions, DispatchResult } from './dispatcher.js';
 import { computeFirmwareDigest } from './firmware-digest.js';
@@ -61,6 +61,11 @@ export interface DomainWorkflowNode {
   risk: 'read_only' | 'build' | 'write' | 'simulate' | 'flash';
   acceptance: string;
   onFailure: 'handoff' | 'revise';
+  /**
+   * E431：只读并行组。相邻且同名的 read_only 节点同一波次 Promise.all；
+   * build/write/simulate/flash 禁止带此字段。
+   */
+  parallelGroup?: string;
 }
 
 export interface DomainWorkflowPlan {
@@ -221,43 +226,57 @@ export async function executeDomainWorkflow(
     }
   }
 
-  for (let index = 0; index < nodes.length; index++) {
-    const node = nodes[index]!;
-    node.status = 'running';
+  const waves = partitionWaves(nodes);
+  for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
+    const wave = waves[waveIndex]!;
+    const waveOutcomes = await Promise.all(wave.map(async (node) => {
+      node.status = 'running';
+      const dispatched = node.kind === 'hardware_flash'
+        ? await executeHardwareFlashNode(node, options?.hardware)
+        : await dispatcher.dispatch(node.title, {
+          toolName: node.toolName,
+          args: node.args,
+          category: node.agentId === 'vscode'
+            ? 'code'
+            : node.agentId === 'kicad' ? 'eda' : node.agentId === 'ltspice' ? 'simulation' : 'build',
+          ...(node.risk === 'build'
+            ? { opKind: 'compile' as const, retryCount: 0 }
+            : node.risk === 'write'
+              ? { opKind: 'filegen' as const, retryCount: 0 }
+              : node.risk === 'simulate'
+                ? { opKind: 'compile' as const, retryCount: 0 }
+                : { deterministic: true }),
+        });
+      return { node, dispatched };
+    }));
 
-    let dispatched: DispatchResult;
-    if (node.kind === 'hardware_flash') {
-      dispatched = await executeHardwareFlashNode(node, options?.hardware);
-    } else {
-      dispatched = await dispatcher.dispatch(node.title, {
-        toolName: node.toolName,
-        args: node.args,
-        category: node.agentId === 'vscode'
-          ? 'code'
-          : node.agentId === 'kicad' ? 'eda' : node.agentId === 'ltspice' ? 'simulation' : 'build',
-        ...(node.risk === 'build'
-          ? { opKind: 'compile' as const, retryCount: 0 }
-          : node.risk === 'write'
-            ? { opKind: 'filegen' as const, retryCount: 0 }
-            : node.risk === 'simulate'
-              ? { opKind: 'compile' as const, retryCount: 0 }
-              : { deterministic: true }),
-      });
+    // 按计划顺序合并证据，避免 Promise.all 完成先后打乱可读性
+    let waveFailed: { node: DomainWorkflowResult['nodes'][number]; error: string } | null = null;
+    for (const { node, dispatched } of waveOutcomes) {
+      evidence.push(...dispatched.evidence.map((item) => ({ ...item, nodeId: node.id })));
+      if (dispatched.output) {
+        artifacts.push({
+          nodeId: node.id,
+          kind: node.outputKind,
+          content: dispatched.output,
+          data: parseArtifactData(dispatched.output),
+          untrusted: true,
+        });
+      }
+      if (!dispatched.ok) {
+        node.status = 'failed';
+        node.error = dispatched.error ?? '节点执行失败';
+        if (!waveFailed) waveFailed = { node, error: node.error };
+      } else {
+        node.status = 'completed';
+      }
     }
-    evidence.push(...dispatched.evidence.map((item) => ({ ...item, nodeId: node.id })));
-    if (dispatched.output) {
-      artifacts.push({
-        nodeId: node.id,
-        kind: node.outputKind,
-        content: dispatched.output,
-        data: parseArtifactData(dispatched.output),
-        untrusted: true,
-      });
-    }
-    if (!dispatched.ok) {
-      node.status = 'failed';
-      node.error = dispatched.error ?? '节点执行失败';
-      for (const pending of nodes.slice(index + 1)) pending.status = 'skipped';
+
+    if (waveFailed) {
+      const failedIds = new Set(wave.map((n) => n.id));
+      for (const pending of nodes) {
+        if (!failedIds.has(pending.id) && pending.status === 'pending') pending.status = 'skipped';
+      }
       return {
         ok: false,
         workflowId: plan.id,
@@ -268,12 +287,11 @@ export async function executeDomainWorkflow(
         evidence,
         handoff: {
           required: true,
-          reason: node.error,
-          nextAction: node.onFailure === 'revise' ? '修订后重新规划下一轮。' : '交由用户审查。',
+          reason: waveFailed.error,
+          nextAction: waveFailed.node.onFailure === 'revise' ? '修订后重新规划下一轮。' : '交由用户审查。',
         },
       };
     }
-    node.status = 'completed';
   }
 
   return {
@@ -393,6 +411,9 @@ function validatePlan(plan: DomainWorkflowPlan): void {
   }
   if (plan.nodes.length === 0) throw new TypeError('工作流至少包含一个节点');
   const ids = new Set<string>();
+  /** 已结束的 parallelGroup：同名不得再次出现（须连续成波） */
+  const closedGroups = new Set<string>();
+  let openGroup: string | null = null;
   for (const node of plan.nodes) {
     if (!node.id.trim() || ids.has(node.id)) throw new TypeError('节点 id 必须非空且唯一');
     ids.add(node.id);
@@ -416,7 +437,43 @@ function validatePlan(plan: DomainWorkflowPlan): void {
     if (node.inputRefs.some((item) => !item.trim()) || node.targetFiles.some((item) => !item.trim())) {
       throw new TypeError(`节点 ${node.id} 的输入引用与目标文件不能包含空值`);
     }
+    if (node.parallelGroup !== undefined) {
+      const group = node.parallelGroup.trim();
+      if (!group) throw new TypeError(`节点 ${node.id} 的 parallelGroup 不能为空`);
+      if (node.risk !== 'read_only') {
+        throw new TypeError(`节点 ${node.id}：仅 read_only 可进入 parallelGroup（禁止并行写/构建/仿真/烧录）`);
+      }
+      if (closedGroups.has(group)) {
+        throw new TypeError(`parallelGroup "${group}" 必须连续；节点 ${node.id} 打断了同组`);
+      }
+      if (openGroup && openGroup !== group) {
+        closedGroups.add(openGroup);
+        openGroup = group;
+      } else {
+        openGroup = group;
+      }
+    } else if (openGroup) {
+      closedGroups.add(openGroup);
+      openGroup = null;
+    }
   }
+}
+
+/** E431：相邻同名 parallelGroup 合成一波；无组或不同组各自成波。 */
+function partitionWaves(
+  nodes: DomainWorkflowResult['nodes'],
+): Array<DomainWorkflowResult['nodes']> {
+  const waves: Array<DomainWorkflowResult['nodes']> = [];
+  for (const node of nodes) {
+    const group = node.parallelGroup?.trim() || null;
+    const last = waves[waves.length - 1];
+    if (group && last && last[0]?.parallelGroup?.trim() === group) {
+      last.push(node);
+    } else {
+      waves.push([node]);
+    }
+  }
+  return waves;
 }
 
 function parseArtifactData(output: string): unknown {

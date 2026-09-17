@@ -389,3 +389,142 @@ test('E424：hardware_flash 本地执行；无 perFlashConfirmed 不 spawn', asy
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('E431: 相邻只读节点同 parallelGroup 并行调度', async () => {
+  let inFlight = 0;
+  let peak = 0;
+  const started: string[] = [];
+  const parallelPlan: DomainWorkflowPlan = {
+    id: 'wf-parallel-ro',
+    projectId: 'project-0123456789abcdef',
+    completedRevisionCycles: 0,
+    nodes: [
+      {
+        id: 'keil-inv',
+        kind: 'project_inventory',
+        title: '盘点 Keil',
+        inputRefs: ['projects/demo.uvprojx'],
+        outputKind: 'project_profile',
+        agentId: 'keil',
+        toolName: 'keil.InspectProjectProfile',
+        args: { projectPath: 'projects/demo.uvprojx' },
+        targetFiles: ['projects/demo.uvprojx'],
+        risk: 'read_only',
+        acceptance: '画像就绪',
+        onFailure: 'handoff',
+        parallelGroup: 'inventory',
+      },
+      {
+        id: 'vs-inv',
+        kind: 'workspace_inventory',
+        title: '盘点 VS Code',
+        inputRefs: ['projects/demo'],
+        outputKind: 'vscode_workspace',
+        agentId: 'vscode',
+        toolName: 'vscode.InspectWorkspace',
+        args: { workspaceRoot: 'projects/demo' },
+        targetFiles: ['projects/demo/.vscode'],
+        risk: 'read_only',
+        acceptance: '工作区画像就绪',
+        onFailure: 'handoff',
+        parallelGroup: 'inventory',
+      },
+    ],
+  };
+
+  const result = await executeDomainWorkflow(parallelPlan, {
+    dispatch: async (_task, options) => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      started.push(options!.toolName!);
+      await new Promise((r) => setTimeout(r, 30));
+      inFlight -= 1;
+      return dispatchResult(options!.toolName!);
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(peak, 2);
+  assert.deepEqual(result.nodes.map((n) => n.status), ['completed', 'completed']);
+  assert.deepEqual(
+    result.evidence.map((e) => e.nodeId).sort(),
+    ['keil-inv', 'vs-inv'],
+  );
+  assert.ok(started.includes('keil.InspectProjectProfile'));
+  assert.ok(started.includes('vscode.InspectWorkspace'));
+});
+
+test('E431: build 不得进入 parallelGroup；同组失败跳过后续波次', async () => {
+  const bad: DomainWorkflowPlan = {
+    ...plan(),
+    nodes: plan().nodes.map((n, i) => (i === 1 ? { ...n, parallelGroup: 'x' } : n)),
+  };
+  await assert.rejects(
+    executeDomainWorkflow(bad, { dispatch: async () => dispatchResult('keil.BuildProject') }),
+    /仅 read_only 可进入 parallelGroup/,
+  );
+
+  const mixed: DomainWorkflowPlan = {
+    id: 'wf-par-fail',
+    projectId: 'project-0123456789abcdef',
+    completedRevisionCycles: 0,
+    nodes: [
+      {
+        id: 'a',
+        kind: 'project_inventory',
+        title: 'A',
+        inputRefs: ['projects/a.uvprojx'],
+        outputKind: 'project_profile',
+        agentId: 'keil',
+        toolName: 'keil.InspectProjectProfile',
+        args: {},
+        targetFiles: ['projects/a.uvprojx'],
+        risk: 'read_only',
+        acceptance: 'ok',
+        onFailure: 'handoff',
+        parallelGroup: 'g1',
+      },
+      {
+        id: 'b',
+        kind: 'workspace_inventory',
+        title: 'B',
+        inputRefs: ['projects/b'],
+        outputKind: 'vscode_workspace',
+        agentId: 'vscode',
+        toolName: 'vscode.InspectWorkspace',
+        args: {},
+        targetFiles: ['projects/b/.vscode'],
+        risk: 'read_only',
+        acceptance: 'ok',
+        onFailure: 'handoff',
+        parallelGroup: 'g1',
+      },
+      {
+        id: 'c',
+        kind: 'project_inventory',
+        title: 'C',
+        inputRefs: ['projects/c.uvprojx'],
+        outputKind: 'project_profile',
+        agentId: 'keil',
+        toolName: 'keil.InspectProjectProfile',
+        args: {},
+        targetFiles: ['projects/c.uvprojx'],
+        risk: 'read_only',
+        acceptance: 'ok',
+        onFailure: 'handoff',
+      },
+    ],
+  };
+
+  let calls = 0;
+  const result = await executeDomainWorkflow(mixed, {
+    dispatch: async (_task, options) => {
+      calls += 1;
+      const ok = options?.toolName !== 'vscode.InspectWorkspace';
+      return dispatchResult(options!.toolName!, ok);
+    },
+  });
+  assert.equal(result.status, 'failed');
+  assert.equal(calls, 2);
+  assert.deepEqual(result.nodes.map((n) => n.status), ['completed', 'failed', 'skipped']);
+});
