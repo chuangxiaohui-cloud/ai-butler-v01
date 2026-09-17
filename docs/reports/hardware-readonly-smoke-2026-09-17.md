@@ -24,3 +24,10 @@
 ## 证据目录
 
 `tmp/hardware-smoke-2026-09-17/`（运行时，不入库）
+
+## 复跑 · COM4 已连接（2026-09-17 晚）
+
+- PnP/Win32：`Silicon Labs CP210x (COM4)` **Status=OK**；`SerialPort.list()` 枚举到 COM4。
+- `hardware:gate` serial_read + UART-CP210x：allowed。
+- `runAuthorizedSerialRead` @115200：读到板子日志，例如 `[prov] #28238 sm=STA_RUN tcp=1 ring=0 heap=8888`（约 49–64 字节）。
+- **未写字节、未烧录**。
