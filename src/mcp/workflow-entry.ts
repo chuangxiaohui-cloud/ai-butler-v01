@@ -1,4 +1,4 @@
-/** E408/E413/E424/E432：MCP 领域任务统一规划入口；构建/EDA 写入/仿真/烧录必须显式批准；多平台只读盘点自动 parallelGroup。 */
+/** E408/E413/E424/E432/E433：MCP 领域任务统一规划入口；构建/EDA 写入/仿真/烧录必须显式批准；多平台只读盘点自动 parallelGroup；盘点后附平台消歧选项。 */
 
 import { dirname, resolve } from 'node:path';
 
@@ -26,14 +26,29 @@ export interface McpWorkflowEntryRequest {
   platform?: 'keil' | 'stm32-gcc';
 }
 
+export interface McpPlatformChoice {
+  id: 'keil' | 'stm32-gcc';
+  label: string;
+  /** 用户下一轮构建问句可复用的提示 */
+  hint: string;
+}
+
 export interface McpWorkflowEntryResult {
   status: McpWorkflowEntryStatus;
   message: string;
   plan?: DomainWorkflowPlan;
+  /** E433：多平台盘点后供 UI/Skill 展示的构建平台选项 */
+  platformChoices?: McpPlatformChoice[];
 }
 
 type ProfileReader = Pick<ProjectProfileStore, 'loadForPlanning'>;
 
+/** E433：把 platformChoices 编成可读后续动作文案。 */
+export function formatPlatformChoices(choices: McpPlatformChoice[] | undefined): string | undefined {
+  if (!choices || choices.length === 0) return undefined;
+  const lines = choices.map((item, index) => `${index + 1}. ${item.label}（${item.id}）：${item.hint}`);
+  return `构建前请选择平台：\n${lines.join('\n')}`;
+}
 export function isMcpDomainBuildRequest(query: string): boolean {
   return /(?:构建|编译|\bbuild\b|\.BuildProject\b)/i.test(query)
     && /(?:keil|\.uvprojx|stm32-gcc|arm-none-eabi|stm32.{0,12}cmake)/i.test(query);
@@ -493,11 +508,36 @@ function inventoryResult(
   if (nodes.length === 0) {
     return { status: 'clarification_required', message: `${message} 请明确平台与工程路径。` };
   }
+  const tagged = tagReadonlyInventoryParallelGroup(nodes);
+  const platformChoices = buildPlatformChoices(tagged);
   return {
     status: 'inventory_required',
     message,
-    plan: makePlan(projectId, request.completedRevisionCycles, tagReadonlyInventoryParallelGroup(nodes)),
+    plan: makePlan(projectId, request.completedRevisionCycles, tagged),
+    ...(platformChoices ? { platformChoices } : {}),
   };
+}
+
+function buildPlatformChoices(nodes: DomainWorkflowNode[]): McpPlatformChoice[] | undefined {
+  const agents = [...new Set(
+    nodes
+      .filter((node) => node.risk === 'read_only' && (node.agentId === 'keil' || node.agentId === 'stm32-gcc'))
+      .map((node) => node.agentId as 'keil' | 'stm32-gcc'),
+  )];
+  if (agents.length < 2) return undefined;
+  return agents.map((id) => (
+    id === 'keil'
+      ? {
+        id: 'keil' as const,
+        label: 'Keil MDK',
+        hint: '下一轮构建请写明「Keil」或指定 platform=keil',
+      }
+      : {
+        id: 'stm32-gcc' as const,
+        label: 'STM32-GCC / CMake',
+        hint: '下一轮构建请写明「stm32-gcc」或指定 platform=stm32-gcc',
+      }
+  ));
 }
 
 /** 从画像能力补全 Keil .uvprojx 等盘点路径，便于多平台并行盘点。 */

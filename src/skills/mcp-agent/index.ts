@@ -27,7 +27,7 @@ import {
 import { evaluateHardwareGate } from '../../mcp/hardware-gate.js';
 import { fingerprintDomainWorkflowPlan, shortPlanFingerprint } from '../../mcp/workflow-plan-fingerprint.js';
 import { WorkflowPlanStore } from '../../mcp/workflow-plan-store.js';
-import { isMcpDomainApprovalRequest, isMcpFlashRequest, planMcpWorkflowEntry } from '../../mcp/workflow-entry.js';
+import { isMcpDomainApprovalRequest, isMcpFlashRequest, planMcpWorkflowEntry, formatPlatformChoices } from '../../mcp/workflow-entry.js';
 
 /** 显式工具调用语法：`windows.Process` / `windows.Process(mode=list,limit=5)` */
 const TOOL_REF_RE = /((?:windows|keil|stm32-gcc|vscode|kicad|altium|freecad|cursor|ltspice)\.[A-Za-z][A-Za-z0-9_.-]*)(?:\(([^)]*)\))?/i;
@@ -368,7 +368,8 @@ export function createMcpAgentSkill(): ExecutableSkill {
             : `${entry.message}\n${action}未完成：${workflow.handoff.reason ?? '请交由用户审查。'}`,
           confidence: workflow.ok ? 0.8 : 0.3,
           followUpAction: entry.status === 'inventory_required'
-            ? '画像已更新；如需构建，请重新发起构建请求并完成批准。'
+            ? (formatPlatformChoices(entry.platformChoices)
+              ?? '画像已更新；如需构建，请重新发起构建请求并完成批准。')
             : workflow.handoff.nextAction,
           artifacts: [{
             kind: 'mcp-domain-workflow',

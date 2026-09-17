@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import { deriveProjectId, ProjectProfileStore } from './project-profile-store.js';
 import {
+  formatPlatformChoices,
   isMcpDomainBuildRequest,
   isMcpKicadEditRequest,
   isMcpLtspiceSimulateRequest,
@@ -170,7 +171,7 @@ test('E408：缺失或过期画像只生成只读 inventory 节点，绝不混�
   }
 });
 
-test('E408/E432：多平台画像未明确平台时先并行只读盘点', () => {
+test('E408/E432/E433：多平台画像未明确平台时先并行只读盘点并附 platformChoices', () => {
   const root = mkdtempSync(join(tmpdir(), 'mcp-workflow-entry-ambiguous-'));
   const projectRoot = join(root, 'multi-platform');
   const store = new ProjectProfileStore(join(root, 'profiles'));
@@ -197,6 +198,12 @@ test('E408/E432：多平台画像未明确平台时先并行只读盘点', () =>
       result.plan?.nodes.map((n) => n.agentId).sort(),
       ['keil', 'stm32-gcc'],
     );
+    assert.equal(result.platformChoices?.length, 2);
+    assert.deepEqual(
+      result.platformChoices?.map((c) => c.id).sort(),
+      ['keil', 'stm32-gcc'],
+    );
+    assert.match(formatPlatformChoices(result.platformChoices) ?? '', /构建前请选择平台/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -217,6 +224,7 @@ test('E432：单平台盘点不加 parallelGroup', () => {
     assert.equal(result.plan?.nodes.length, 1);
     assert.equal(result.plan?.nodes[0]?.parallelGroup, undefined);
     assert.equal(result.plan?.nodes[0]?.agentId, 'keil');
+    assert.equal(result.platformChoices, undefined);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
