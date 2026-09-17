@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { discoverLtspiceSchematics, inspectLtspiceSchematic, runLtspiceSimulation } from './ltspice.js';
+import { discoverLtspiceSchematics, inspectLtspiceSchematic, normalizeLtspiceBatchFlags, runLtspiceSimulation } from './ltspice.js';
 
 const ASC = [
   'Version 4',
@@ -177,6 +177,55 @@ test('E413: 缺少仿真指令时拒绝启动', async () => {
         },
       }),
       /缺少仿真指令/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('E419: 白名单批开关夹在 -b 与 .net 之间；非法开关拒绝', async () => {
+  const { root, schematicPath } = fixture();
+  const executable = join(root, 'fake-ltspice.exe');
+  const netPath = join(root, 'projects', 'analog', 'demo.net');
+  writeFileSync(executable, '', 'utf8');
+  try {
+    assert.deepEqual(normalizeLtspiceBatchFlags(['-ascii', '-ascii', '-alt']), ['-ascii', '-alt']);
+    assert.throws(() => normalizeLtspiceBatchFlags(['-foo']), /白名单/);
+    assert.throws(() => normalizeLtspiceBatchFlags(['-ascii=1']), /非法/);
+    assert.throws(() => normalizeLtspiceBatchFlags(['C:\\evil']), /非法/);
+
+    const calls: string[][] = [];
+    const result = await runLtspiceSimulation({
+      schematicPath,
+      workspaceRoot: root,
+      executable,
+      extraBatchFlags: ['-ascii'],
+      runner: async (_exe, args, options) => {
+        calls.push([...args]);
+        if (args[0] === '-netlist') {
+          writeFileSync(netPath, '* netlist\n.end\n', 'utf8');
+          return { stdout: '', stderr: '', exitCode: 0, durationMs: 1, timedOut: false };
+        }
+        assert.deepEqual(args, ['-b', '-ascii', netPath]);
+        writeFileSync(join(options.cwd, 'demo.raw'), 'raw', 'utf8');
+        return { stdout: 'ok', stderr: '', exitCode: 0, durationMs: 2, timedOut: false };
+      },
+    });
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.batchArgs, ['-b', '-ascii', netPath]);
+    assert.deepEqual(calls[1], ['-b', '-ascii', netPath]);
+
+    await assert.rejects(
+      () => runLtspiceSimulation({
+        schematicPath,
+        workspaceRoot: root,
+        executable,
+        extraBatchFlags: ['-Inject'],
+        runner: async () => {
+          throw new Error('不应启动');
+        },
+      }),
+      /白名单/,
     );
   } finally {
     rmSync(root, { recursive: true, force: true });

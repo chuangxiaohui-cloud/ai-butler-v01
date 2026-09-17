@@ -315,3 +315,77 @@ test('E409 节点 kind、agent、tool 不匹配时严格拒绝', async () => {
     /工具契约/,
   );
 });
+
+test('E424：hardware_flash 本地执行；无 perFlashConfirmed 不 spawn', async () => {
+  const { createHash } = await import('node:crypto');
+  const { mkdtempSync, rmSync, writeFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const root = mkdtempSync(join(process.cwd(), 'projects', 'e424-wf-'));
+  try {
+    const fwPath = join(root, 'app.bin');
+    const payload = Buffer.from('e424-wf');
+    writeFileSync(fwPath, payload);
+    const planFlash: DomainWorkflowPlan = {
+      id: 'wf-flash',
+      projectId: 'project-0123456789abcdef',
+      completedRevisionCycles: 0,
+      nodes: [{
+        id: 'hardware-flash',
+        kind: 'hardware_flash',
+        title: '受控烧录',
+        inputRefs: [fwPath],
+        outputKind: 'flash_result',
+        agentId: 'hardware',
+        toolName: 'hardware.FlashFirmware',
+        args: {
+          firmwarePath: fwPath,
+          deviceId: 'DEV-E424',
+          flashToolKind: 'st-flash',
+          flashExecutable: process.execPath,
+        },
+        targetFiles: [fwPath],
+        risk: 'flash',
+        acceptance: '烧录成功',
+        onFailure: 'handoff',
+      }],
+    };
+    let spawned = 0;
+    const denied = await executeDomainWorkflow(
+      planFlash,
+      { dispatch: async () => { throw new Error('不应 MCP'); } },
+      {
+        hardware: {
+          devices: { isAuthorized: () => true },
+          flashRunner: async () => {
+            spawned += 1;
+            return { stdout: '', stderr: '', exitCode: 0, durationMs: 1, timedOut: false };
+          },
+        },
+      },
+    );
+    assert.equal(denied.ok, false);
+    assert.match(denied.handoff.reason ?? '', /perFlashConfirmed/);
+    assert.equal(spawned, 0);
+
+    planFlash.nodes[0]!.args.perFlashConfirmed = true;
+    const ok = await executeDomainWorkflow(
+      planFlash,
+      { dispatch: async () => { throw new Error('不应 MCP'); } },
+      {
+        hardware: {
+          devices: { isAuthorized: () => true },
+          flashRunner: async () => {
+            spawned += 1;
+            return { stdout: 'ok', stderr: '', exitCode: 0, durationMs: 1, timedOut: false };
+          },
+        },
+      },
+    );
+    assert.equal(ok.ok, true);
+    assert.equal(spawned, 1);
+    assert.equal(ok.artifacts[0]?.kind, 'flash_result');
+    assert.equal(createHash('sha256').update(payload).digest('hex').length, 64);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

@@ -28,6 +28,7 @@ import { emitAiOpsDailyReport } from '../usage/ai-ops-notify.js';
 import { bochaBalanceWarning, describeBochaBalance, queryBochaBalance } from '../search/balance.js';
 import { closeMcpAgents, createMcpAgents } from '../mcp/config.js';
 import { SubAgentDispatcher } from '../mcp/dispatcher.js';
+import { createSerialportReader } from '../mcp/serialport-reader.js';
 
 const HOST = process.env.GATEWAY_HOST ?? '127.0.0.1';
 const PORT = Number(process.env.GATEWAY_PORT ?? '8787');
@@ -52,6 +53,8 @@ const skillDeps: SkillDeps = {
   httpCache: createGithubApiCache(),
   parseDocument: parseDocumentFile,
   subAgent: { dispatch: (task, options) => mcpDispatcher.dispatch(task, options) },
+  // E425：生产注入 serialport 只读绑定；仍须门禁 + executeSerialRead
+  serialReader: createSerialportReader(),
 };
 process.on('exit', () => closeMcpAgents(mcpAgents.clients));
 

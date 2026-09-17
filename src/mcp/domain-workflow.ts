@@ -1,6 +1,15 @@
-/** E404/E409/E413：领域工作流执行入口；写入/仿真节点须已在入口层完成批准。 */
+/** E404/E409/E413/E424：领域工作流执行入口；写入/仿真/烧录节点须已在入口层完成批准。 */
 
 import type { DispatchOptions, DispatchResult } from './dispatcher.js';
+import { computeFirmwareDigest } from './firmware-digest.js';
+import {
+  isFlashToolKind,
+  runAuthorizedFlash,
+  type FlashRunner,
+  type FlashToolKind,
+} from './flash-driver.js';
+import { evaluateHardwareGate } from './hardware-gate.js';
+import type { DeviceAuthStore } from './device-auth.js';
 import { checkRevisionLoop } from './workflow-guard.js';
 
 export type DomainWorkflowNodeKind =
@@ -14,7 +23,8 @@ export type DomainWorkflowNodeKind =
   | 'kicad_edit'
   | 'kicad_pcb_edit'
   | 'ltspice_schematic_inventory'
-  | 'ltspice_simulate';
+  | 'ltspice_simulate'
+  | 'hardware_flash';
 export type DomainWorkflowNodeStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
 
 export interface DomainWorkflowNode {
@@ -30,8 +40,9 @@ export interface DomainWorkflowNode {
     | 'erc_diagnostics'
     | 'eda_edit'
     | 'simulation_profile'
-    | 'simulation_result';
-  agentId: 'keil' | 'vscode' | 'stm32-gcc' | 'kicad' | 'ltspice';
+    | 'simulation_result'
+    | 'flash_result';
+  agentId: 'keil' | 'vscode' | 'stm32-gcc' | 'kicad' | 'ltspice' | 'hardware';
   toolName:
     | 'keil.InspectProjectProfile'
     | 'vscode.InspectWorkspace'
@@ -43,10 +54,11 @@ export interface DomainWorkflowNode {
     | 'kicad.EditSchematic'
     | 'kicad.EditPcb'
     | 'ltspice.InspectSchematic'
-    | 'ltspice.RunSimulation';
+    | 'ltspice.RunSimulation'
+    | 'hardware.FlashFirmware';
   args: Record<string, unknown>;
   targetFiles: string[];
-  risk: 'read_only' | 'build' | 'write' | 'simulate';
+  risk: 'read_only' | 'build' | 'write' | 'simulate' | 'flash';
   acceptance: string;
   onFailure: 'handoff' | 'revise';
 }
@@ -93,6 +105,16 @@ export interface DomainWorkflowResult {
 
 export interface DomainWorkflowDispatcher {
   dispatch(task: string, options?: DispatchOptions): Promise<DispatchResult>;
+}
+
+/** E424：烧录节点本地执行依赖（不经 MCP stdio）。 */
+export interface DomainWorkflowHardwareDeps {
+  devices: Pick<DeviceAuthStore, 'isAuthorized'>;
+  flashRunner?: FlashRunner;
+}
+
+export interface DomainWorkflowExecuteOptions {
+  hardware?: DomainWorkflowHardwareDeps;
 }
 
 const NODE_CONTRACT: Record<DomainWorkflowNodeKind, {
@@ -155,11 +177,17 @@ const NODE_CONTRACT: Record<DomainWorkflowNodeKind, {
     outputKind: 'simulation_result',
     risk: 'simulate',
   },
+  hardware_flash: {
+    toolName: 'hardware.FlashFirmware',
+    outputKind: 'flash_result',
+    risk: 'flash',
+  },
 };
 
 export async function executeDomainWorkflow(
   plan: DomainWorkflowPlan,
   dispatcher: DomainWorkflowDispatcher,
+  options?: DomainWorkflowExecuteOptions,
 ): Promise<DomainWorkflowResult> {
   validatePlan(plan);
   const nodes: DomainWorkflowResult['nodes'] = plan.nodes.map((node) => ({
@@ -169,7 +197,9 @@ export async function executeDomainWorkflow(
   const artifacts: DomainWorkflowArtifact[] = [];
   const evidence: DomainWorkflowEvidence[] = [];
 
-  if (nodes.some((node) => node.risk === 'build' || node.risk === 'write' || node.risk === 'simulate')) {
+  if (nodes.some((node) =>
+    node.risk === 'build' || node.risk === 'write' || node.risk === 'simulate' || node.risk === 'flash'
+  )) {
     const loop = checkRevisionLoop(plan.completedRevisionCycles);
     if (!loop.allowed) {
       for (const node of nodes) node.status = 'skipped';
@@ -194,20 +224,26 @@ export async function executeDomainWorkflow(
   for (let index = 0; index < nodes.length; index++) {
     const node = nodes[index]!;
     node.status = 'running';
-    const dispatched = await dispatcher.dispatch(node.title, {
-      toolName: node.toolName,
-      args: node.args,
-      category: node.agentId === 'vscode'
-        ? 'code'
-        : node.agentId === 'kicad' ? 'eda' : node.agentId === 'ltspice' ? 'simulation' : 'build',
-      ...(node.risk === 'build'
-        ? { opKind: 'compile' as const, retryCount: 0 }
-        : node.risk === 'write'
-          ? { opKind: 'filegen' as const, retryCount: 0 }
-          : node.risk === 'simulate'
-            ? { opKind: 'compile' as const, retryCount: 0 }
-            : { deterministic: true }),
-    });
+
+    let dispatched: DispatchResult;
+    if (node.kind === 'hardware_flash') {
+      dispatched = await executeHardwareFlashNode(node, options?.hardware);
+    } else {
+      dispatched = await dispatcher.dispatch(node.title, {
+        toolName: node.toolName,
+        args: node.args,
+        category: node.agentId === 'vscode'
+          ? 'code'
+          : node.agentId === 'kicad' ? 'eda' : node.agentId === 'ltspice' ? 'simulation' : 'build',
+        ...(node.risk === 'build'
+          ? { opKind: 'compile' as const, retryCount: 0 }
+          : node.risk === 'write'
+            ? { opKind: 'filegen' as const, retryCount: 0 }
+            : node.risk === 'simulate'
+              ? { opKind: 'compile' as const, retryCount: 0 }
+              : { deterministic: true }),
+      });
+    }
     evidence.push(...dispatched.evidence.map((item) => ({ ...item, nodeId: node.id })));
     if (dispatched.output) {
       artifacts.push({
@@ -252,6 +288,104 @@ export async function executeDomainWorkflow(
   };
 }
 
+async function executeHardwareFlashNode(
+  node: DomainWorkflowNode,
+  hardware: DomainWorkflowHardwareDeps | undefined,
+): Promise<DispatchResult> {
+  const base = (overrides: Partial<DispatchResult>): DispatchResult => ({
+    ok: false,
+    agentId: 'hardware',
+    output: '',
+    untrusted: true,
+    attempts: 1,
+    elapsedMs: 0,
+    degraded: false,
+    task: { description: node.title, requestedTool: 'hardware.FlashFirmware', category: 'build' },
+    status: 'failed',
+    plan: [],
+    progress: [],
+    artifacts: [],
+    evidence: [],
+    handoff: { required: true },
+    ...overrides,
+  });
+
+  if (!hardware?.devices) {
+    return base({ error: '烧录节点缺少硬件门禁依赖（deviceAuth）' });
+  }
+  if (node.args.perFlashConfirmed !== true) {
+    return base({
+      error: '每次烧录须独立确认（perFlashConfirmed）；工作流批准不能复用为烧录确认。',
+    });
+  }
+  const firmwarePath = typeof node.args.firmwarePath === 'string' ? node.args.firmwarePath : '';
+  const deviceId = typeof node.args.deviceId === 'string' ? node.args.deviceId : '';
+  const flashExecutable = typeof node.args.flashExecutable === 'string' ? node.args.flashExecutable : '';
+  if (!firmwarePath || !deviceId || !flashExecutable) {
+    return base({ error: '烧录节点缺少 firmwarePath / deviceId / flashExecutable' });
+  }
+  const digest = computeFirmwareDigest(firmwarePath);
+  if (!digest.ok) {
+    return base({ error: `固件摘要失败：${digest.reason}` });
+  }
+  const gate = evaluateHardwareGate(
+    {
+      action: 'flash',
+      deviceId,
+      port: typeof node.args.port === 'string' ? node.args.port : null,
+      firmware: digest.digest,
+      perFlashConfirmed: true,
+    },
+    { devices: hardware.devices },
+  );
+  if (!gate.allowed) {
+    return base({ error: gate.message });
+  }
+  try {
+    const toolKindRaw = node.args.flashToolKind;
+    const flashResult = await runAuthorizedFlash({
+      gate,
+      firmwarePath: digest.digest.path,
+      expectedSha256: digest.digest.sha256,
+      executable: flashExecutable,
+      ...(isFlashToolKind(toolKindRaw) ? { toolKind: toolKindRaw as FlashToolKind } : {}),
+      ...(typeof node.args.flashAddress === 'string' ? { flashAddress: node.args.flashAddress } : {}),
+      ...(typeof node.args.openocdCfg === 'string' ? { openocdCfg: node.args.openocdCfg } : {}),
+      ...(typeof node.args.openocdInterfaceCfg === 'string'
+        ? { openocdInterfaceCfg: node.args.openocdInterfaceCfg }
+        : {}),
+      ...(typeof node.args.openocdTargetCfg === 'string'
+        ? { openocdTargetCfg: node.args.openocdTargetCfg }
+        : {}),
+      ...(typeof node.args.dfuAlt === 'number' ? { dfuAlt: node.args.dfuAlt } : {}),
+      ...(typeof node.args.jlinkDevice === 'string' ? { jlinkDevice: node.args.jlinkDevice } : {}),
+      ...(typeof node.args.jlinkInterface === 'string'
+        ? { jlinkInterface: node.args.jlinkInterface as 'SWD' | 'JTAG' }
+        : {}),
+      ...(typeof node.args.jlinkSpeed === 'number' ? { jlinkSpeed: node.args.jlinkSpeed } : {}),
+      ...(hardware.flashRunner ? { runner: hardware.flashRunner } : {}),
+    });
+    return base({
+      ok: flashResult.ok,
+      status: flashResult.ok ? 'succeeded' : 'failed',
+      output: JSON.stringify(flashResult),
+      error: flashResult.ok ? undefined : flashResult.message,
+      evidence: [{
+        kind: 'mcp_tool_call',
+        agentId: 'hardware',
+        toolName: 'FlashFirmware',
+        attempt: 1,
+        untrusted: true,
+      }],
+      handoff: { required: !flashResult.ok },
+    });
+  } catch (err) {
+    return base({
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 function validatePlan(plan: DomainWorkflowPlan): void {
   if (!plan.id.trim() || !plan.projectId.trim()) throw new TypeError('workflow id 与 projectId 不能为空');
   if (!Number.isInteger(plan.completedRevisionCycles) || plan.completedRevisionCycles < 0) {
@@ -267,7 +401,13 @@ function validatePlan(plan: DomainWorkflowPlan): void {
       ? 'vscode'
       : node.kind.startsWith('stm32_')
         ? 'stm32-gcc'
-        : node.kind.startsWith('kicad_') ? 'kicad' : node.kind.startsWith('ltspice_') ? 'ltspice' : 'keil';
+        : node.kind.startsWith('kicad_')
+          ? 'kicad'
+          : node.kind.startsWith('ltspice_')
+            ? 'ltspice'
+            : node.kind.startsWith('hardware_')
+              ? 'hardware'
+              : 'keil';
     if (!expected || node.agentId !== expectedAgent || node.toolName !== expected.toolName
       || node.outputKind !== expected.outputKind || node.risk !== expected.risk) {
       throw new TypeError(`节点 ${node.id} 不符合 E404 工具契约`);

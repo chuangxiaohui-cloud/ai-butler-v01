@@ -1,5 +1,7 @@
 /**
- * E411：flash/串口能力契约。只定义门禁与证据形状，不打开设备、不烧录、不写串口。
+ * E411：flash/串口能力契约。只定义门禁与证据形状；串口写仍禁止。
+ * E420：烧录执行在 flash-driver（须门禁通过 + 独立确认 + executeFlash）。
+ * E421：串口只读执行在 serial-driver（须门禁通过 + executeSerialRead；默认可注入 reader）。
  */
 
 import { PARAMS } from '../config/params.js';
@@ -56,7 +58,7 @@ export interface HardwareGateDecision {
   action: HardwareActionKind;
   reason?: HardwareDenyReason;
   message: string;
-  /** 契约层超时预算，引用 [P-39]；本轮不启动真实烧录进程 */
+  /** 契约层超时预算，引用 [P-39]；真实 spawn 由 E420 flash-driver 消费 */
   timeoutMs: number;
   audit: {
     deviceId: string | null;

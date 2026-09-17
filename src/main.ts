@@ -17,6 +17,7 @@ import { MarketSkillRunner } from './skills/market/runner.js';
 import { bochaBalanceWarning, queryBochaBalance } from './search/balance.js';
 import { closeMcpAgents, createMcpAgents } from './mcp/config.js';
 import { SubAgentDispatcher } from './mcp/dispatcher.js';
+import { createSerialportReader } from './mcp/serialport-reader.js';
 
 const arg = process.argv[2];
 
@@ -41,7 +42,7 @@ const sessionContext = new SessionContextStore();
 const CLI_CONVERSATION_ID = 'cli';
 const mcpAgents = createMcpAgents();
 const mcpDispatcher = new SubAgentDispatcher(mcpAgents.metas, mcpAgents.clients);
-const skillDeps: SkillDeps = {
+  const skillDeps: SkillDeps = {
   callVLM: async (input, opts) => createVisionClient()(input, opts),
   complete: {
     complete: async (messages, opts) => (createSkillHeavyClient() ?? createHeavyClient()).complete(messages, opts),
@@ -50,6 +51,8 @@ const skillDeps: SkillDeps = {
   httpCache: createGithubApiCache(),
   parseDocument: parseDocumentFile,
   subAgent: { dispatch: (task, options) => mcpDispatcher.dispatch(task, options) },
+  // E425：生产注入 serialport 只读绑定；仍须门禁 + executeSerialRead；未装可选依赖则执行时诚实失败
+  serialReader: createSerialportReader(),
 };
 process.on('exit', () => closeMcpAgents(mcpAgents.clients));
 try {

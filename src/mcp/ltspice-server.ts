@@ -26,8 +26,21 @@ const tools = [
   },
   {
     name: 'RunSimulation',
-    description: '经批准后先 -netlist 再以固定 -b 批模式运行 LTspice；产物限定在原理图同目录沙箱内',
-    inputSchema: { type: 'object', properties: { schematicPath: { type: 'string' } }, required: ['schematicPath'], additionalProperties: false },
+    description:
+      '经批准后先 -netlist 再以 -b 批模式运行 LTspice；可选白名单批开关（-ascii/-alt）；产物限定在原理图同目录沙箱内',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schematicPath: { type: 'string' },
+        extraBatchFlags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: '可选批开关白名单：仅 -ascii、-alt',
+        },
+      },
+      required: ['schematicPath'],
+      additionalProperties: false,
+    },
   },
 ];
 
@@ -50,7 +63,15 @@ async function callTool(params: Record<string, unknown>): Promise<unknown> {
   if (name === 'RunSimulation') {
     if (typeof args.schematicPath !== 'string') throw new Error('schematicPath 必须是字符串');
     if (!executable) throw new Error('未配置 LTspice，无法执行仿真');
-    return runLtspiceSimulation({ schematicPath: args.schematicPath, workspaceRoot, executable });
+    const extraBatchFlags = Array.isArray(args.extraBatchFlags)
+      ? args.extraBatchFlags.filter((item): item is string => typeof item === 'string')
+      : undefined;
+    return runLtspiceSimulation({
+      schematicPath: args.schematicPath,
+      workspaceRoot,
+      executable,
+      ...(extraBatchFlags ? { extraBatchFlags } : {}),
+    });
   }
   throw new Error(`未知 LTspice 工具：${name}`);
 }

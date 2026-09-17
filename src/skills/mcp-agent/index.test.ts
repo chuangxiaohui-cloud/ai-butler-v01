@@ -1,4 +1,5 @@
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
@@ -560,6 +561,295 @@ test('mcp-agent: E411 无 subAgent 时串口请求仍返回门禁说明', async 
   );
   assert.match(String(out.result), /未在白名单|零硬件/);
   assert.equal(out.artifacts?.[0]?.kind, 'hardware-gate-decision');
+});
+
+test('mcp-agent: E420 门禁通过且 executeFlash 时注入 runner 执行烧录', async () => {
+  const root = mkdtempSync(join(process.cwd(), 'projects', 'e420-mcp-'));
+  try {
+    const fwPath = join(root, 'app.bin');
+    const payload = Buffer.from('mcp-agent-e420');
+    writeFileSync(fwPath, payload);
+    const digest = createHash('sha256').update(payload).digest('hex');
+    let runnerCalls = 0;
+    const out = await skill.execute(
+      {
+        query: '把固件烧录到板子',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: {
+          deviceId: 'JLINK-MCP-E420',
+          firmwarePath: fwPath,
+          perFlashConfirmed: true,
+          executeFlash: true,
+          flashExecutable: process.execPath,
+          flashToolKind: 'st-flash',
+        },
+      },
+      {
+        callVLM: async () => '',
+        deviceAuth: { isAuthorized: (id) => id === 'JLINK-MCP-E420' },
+        flashRunner: async () => {
+          runnerCalls += 1;
+          return { stdout: 'flashed', stderr: '', exitCode: 0, durationMs: 1, timedOut: false };
+        },
+      },
+    );
+    assert.equal(runnerCalls, 1);
+    assert.match(String(out.result), /烧录完成/);
+    assert.equal(out.artifacts?.some((a) => a.kind === 'flash-execution'), true);
+    assert.equal(digest.length, 64);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('mcp-agent: E420 门禁通过但未 executeFlash 时零 spawn', async () => {
+  const root = mkdtempSync(join(process.cwd(), 'projects', 'e420-mcp-noexec-'));
+  try {
+    const fwPath = join(root, 'app.bin');
+    writeFileSync(fwPath, Buffer.from('no-exec'));
+    let runnerCalls = 0;
+    const out = await skill.execute(
+      {
+        query: '烧录固件',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: {
+          deviceId: 'JLINK-MCP-E420',
+          firmwarePath: fwPath,
+          perFlashConfirmed: true,
+          flashExecutable: process.execPath,
+        },
+      },
+      {
+        callVLM: async () => '',
+        deviceAuth: { isAuthorized: () => true },
+        flashRunner: async () => {
+          runnerCalls += 1;
+          return { stdout: '', stderr: '', exitCode: 0, durationMs: 1, timedOut: false };
+        },
+      },
+    );
+    assert.equal(runnerCalls, 0);
+    assert.match(String(out.result), /executeFlash|门禁通过/);
+    assert.equal(out.artifacts?.[0]?.kind, 'hardware-gate-decision');
+    assert.equal(out.artifacts?.some((a) => a.kind === 'flash-execution'), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('mcp-agent: E421 门禁通过且 executeSerialRead 时注入 reader 只读', async () => {
+  let readerCalls = 0;
+  const out = await skill.execute(
+    {
+      query: '读一下 COM3 串口日志',
+      attachmentSignals: [],
+      rawFiles: [],
+      memory: null,
+      params: {
+        deviceId: 'UART-MCP-E421',
+        port: 'COM3',
+        executeSerialRead: true,
+        baudRate: 115200,
+      },
+    },
+    {
+      callVLM: async () => '',
+      deviceAuth: { isAuthorized: (id) => id === 'UART-MCP-E421' },
+      serialReader: async (req) => {
+        readerCalls += 1;
+        assert.equal(req.port, 'COM3');
+        return { data: 'hello', bytesRead: 5, durationMs: 1, timedOut: false };
+      },
+    },
+  );
+  assert.equal(readerCalls, 1);
+  assert.match(String(out.result), /串口只读完成/);
+  assert.equal(out.artifacts?.some((a) => a.kind === 'serial-read-execution'), true);
+});
+
+test('mcp-agent: E421 门禁通过但未 executeSerialRead 时零打开', async () => {
+  let readerCalls = 0;
+  const out = await skill.execute(
+    {
+      query: '读串口 COM4',
+      attachmentSignals: [],
+      rawFiles: [],
+      memory: null,
+      params: {
+        deviceId: 'UART-MCP-E421',
+        port: 'COM4',
+      },
+    },
+    {
+      callVLM: async () => '',
+      deviceAuth: { isAuthorized: () => true },
+      serialReader: async () => {
+        readerCalls += 1;
+        return { data: '', bytesRead: 0, durationMs: 1, timedOut: false };
+      },
+    },
+  );
+  assert.equal(readerCalls, 0);
+  assert.match(String(out.result), /executeSerialRead|门禁通过/);
+  assert.equal(out.artifacts?.some((a) => a.kind === 'serial-read-execution'), false);
+});
+
+test('mcp-agent: E422 openocd 工具模板透传固定 cfg', async () => {
+  const root = mkdtempSync(join(process.cwd(), 'projects', 'e422-mcp-'));
+  try {
+    const fwPath = join(root, 'app.elf');
+    writeFileSync(fwPath, Buffer.from('e422-mcp'));
+    let seenArgs: string[] = [];
+    const out = await skill.execute(
+      {
+        query: '用 openocd 烧录固件',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: {
+          deviceId: 'OCD-MCP-E422',
+          firmwarePath: fwPath,
+          perFlashConfirmed: true,
+          executeFlash: true,
+          flashExecutable: process.execPath,
+          flashToolKind: 'openocd',
+          openocdCfg: 'board/stm32f4discovery.cfg',
+        },
+      },
+      {
+        callVLM: async () => '',
+        deviceAuth: { isAuthorized: (id) => id === 'OCD-MCP-E422' },
+        flashRunner: async (_exe, args) => {
+          seenArgs = args;
+          return { stdout: 'ok', stderr: '', exitCode: 0, durationMs: 1, timedOut: false };
+        },
+      },
+    );
+    assert.match(String(out.result), /烧录完成/);
+    assert.deepEqual(seenArgs.slice(0, 3), ['-f', 'board/stm32f4discovery.cfg', '-c']);
+    assert.match(seenArgs[3]!, /program \{.*\} verify reset exit/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('mcp-agent: E423 dfu-util 工具模板透传', async () => {
+  const root = mkdtempSync(join(process.cwd(), 'projects', 'e423-dfu-'));
+  try {
+    const fwPath = join(root, 'app.bin');
+    writeFileSync(fwPath, Buffer.from('e423-dfu'));
+    let seenArgs: string[] = [];
+    const out = await skill.execute(
+      {
+        query: '用 dfu-util 烧录固件',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: {
+          deviceId: 'DFU-MCP-E423',
+          firmwarePath: fwPath,
+          perFlashConfirmed: true,
+          executeFlash: true,
+          flashExecutable: process.execPath,
+          flashToolKind: 'dfu-util',
+          dfuAlt: 0,
+          flashAddress: '0x08000000',
+        },
+      },
+      {
+        callVLM: async () => '',
+        deviceAuth: { isAuthorized: (id) => id === 'DFU-MCP-E423' },
+        flashRunner: async (_exe, args) => {
+          seenArgs = args;
+          return { stdout: 'ok', stderr: '', exitCode: 0, durationMs: 1, timedOut: false };
+        },
+      },
+    );
+    assert.match(String(out.result), /烧录完成/);
+    assert.deepEqual(seenArgs.slice(0, 4), ['-a', '0', '-s', '0x08000000:leave']);
+    assert.equal(seenArgs[4], '-D');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('mcp-agent: E424 烧录工作流须批准且批准后仍须 perFlashConfirmed', async () => {
+  const root = mkdtempSync(join(process.cwd(), 'projects', 'e424-mcp-'));
+  const plans = new WorkflowPlanStore(join(root, 'plans.jsonl'));
+  try {
+    writeFileSync(join(root, 'app.bin'), Buffer.from('e424-mcp'));
+    const pending = await skill.execute(
+      {
+        query: `请用 st-flash 烧录 ${join(root, 'app.bin')} 设备：DEV-E424`,
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      { callVLM: async () => '', workflowPlans: plans, deviceAuth: { isAuthorized: () => true } },
+    );
+    assert.match(String(pending.result), /等待高风险确认|烧录计划/);
+    assert.equal(pending.artifacts?.[0]?.kind, 'mcp-domain-workflow-plan');
+    const fingerprint = (pending.artifacts?.[0]?.data as { fingerprint?: string })?.fingerprint;
+    assert.ok(fingerprint);
+
+    let spawned = 0;
+    const approvedNoConfirm = await skill.execute(
+      {
+        query: `请用 st-flash 烧录 ${join(root, 'app.bin')} 设备：DEV-E424`,
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: {
+          mcpWorkflowApproved: true,
+          workflowPlanFingerprint: fingerprint,
+          flashExecutable: process.execPath,
+        },
+      },
+      {
+        callVLM: async () => '',
+        workflowPlans: plans,
+        deviceAuth: { isAuthorized: () => true },
+        flashRunner: async () => {
+          spawned += 1;
+          return { stdout: '', stderr: '', exitCode: 0, durationMs: 1, timedOut: false };
+        },
+      },
+    );
+    assert.match(String(approvedNoConfirm.result), /perFlashConfirmed/);
+    assert.equal(spawned, 0);
+
+    const done = await skill.execute(
+      {
+        query: `请用 st-flash 烧录 ${join(root, 'app.bin')} 设备：DEV-E424`,
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: {
+          mcpWorkflowApproved: true,
+          workflowPlanFingerprint: fingerprint,
+          perFlashConfirmed: true,
+          flashExecutable: process.execPath,
+        },
+      },
+      {
+        callVLM: async () => '',
+        workflowPlans: plans,
+        deviceAuth: { isAuthorized: () => true },
+        flashRunner: async () => {
+          spawned += 1;
+          return { stdout: 'ok', stderr: '', exitCode: 0, durationMs: 1, timedOut: false };
+        },
+      },
+    );
+    assert.match(String(done.result), /烧录已完成|已完成/);
+    assert.equal(spawned, 1);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('mcp-agent: E413 KiCad 编辑未批准时挂起且零 MCP 调用', async () => {

@@ -12,14 +12,22 @@ import type { SkillArtifact } from '../registry.js';
 import type { SkillDeps } from '../deps.js';
 import { DeviceAuthStore } from '../../mcp/device-auth.js';
 import { executeDomainWorkflow } from '../../mcp/domain-workflow.js';
+import { computeFirmwareDigest } from '../../mcp/firmware-digest.js';
+import {
+  isFlashToolKind,
+  runAuthorizedFlash,
+} from '../../mcp/flash-driver.js';
+import { runAuthorizedSerialRead } from '../../mcp/serial-driver.js';
 import {
   isHardwareCapabilityQuery,
   isHardwareFlashQuery,
+  validateFirmwareDigest,
+  type FirmwareDigest,
 } from '../../mcp/hardware-capability.js';
 import { evaluateHardwareGate } from '../../mcp/hardware-gate.js';
 import { fingerprintDomainWorkflowPlan, shortPlanFingerprint } from '../../mcp/workflow-plan-fingerprint.js';
 import { WorkflowPlanStore } from '../../mcp/workflow-plan-store.js';
-import { isMcpDomainApprovalRequest, planMcpWorkflowEntry } from '../../mcp/workflow-entry.js';
+import { isMcpDomainApprovalRequest, isMcpFlashRequest, planMcpWorkflowEntry } from '../../mcp/workflow-entry.js';
 
 /** 显式工具调用语法：`windows.Process` / `windows.Process(mode=list,limit=5)` */
 const TOOL_REF_RE = /((?:windows|keil|stm32-gcc|vscode|kicad|altium|freecad|cursor|ltspice)\.[A-Za-z][A-Za-z0-9_.-]*)(?:\(([^)]*)\))?/i;
@@ -49,16 +57,30 @@ export function createMcpAgentSkill(): ExecutableSkill {
     version: '0.1.0',
     triggers: ['进程', '窗口', '桌面', '系统工具', '子agent', '子 Agent', 'mcp', 'windows.', 'keil', '.uvprojx', 'vscode', 'VS Code', 'STM32-GCC', 'arm-none-eabi', 'KiCad', '.kicad_sch', '.kicad_pro', 'LTspice', '.asc', '烧录', '串口', 'flash', '编辑原理图', '仿真'],
     async execute(input: SkillInput, deps: SkillDeps): Promise<SkillOutput> {
-      // E411：烧录/串口只走契约门禁说明，不依赖 MCP server，也不连接设备
+      // E411/E420/E421：串口 / 显式 executeFlash 走硬件路径；带固件路径的烧录 NL 走 E424 工作流
       if (isHardwareCapabilityQuery(input.query)) {
+        const isFlash = isHardwareFlashQuery(input.query);
+        if (isFlash && input.params?.executeFlash !== true && isMcpFlashRequest(input.query)) {
+          // 落入下方领域工作流规划
+        } else {
         const devices = deps.deviceAuth ?? new DeviceAuthStore();
+        let firmware: FirmwareDigest | null = null;
+        if (isFlash) {
+          if (typeof input.params?.firmwarePath === 'string') {
+            const dig = computeFirmwareDigest(input.params.firmwarePath);
+            if (dig.ok) firmware = dig.digest;
+          } else if (validateFirmwareDigest(input.params?.firmware)) {
+            firmware = input.params.firmware;
+          }
+        }
+        const port = typeof input.params?.port === 'string' ? input.params.port : null;
         const decision = evaluateHardwareGate(
           {
-            action: isHardwareFlashQuery(input.query) ? 'flash' : 'serial_read',
+            action: isFlash ? 'flash' : 'serial_read',
             deviceId: typeof input.params?.deviceId === 'string' ? input.params.deviceId : null,
-            port: typeof input.params?.port === 'string' ? input.params.port : null,
+            port,
             serialMode: 'read_only',
-            firmware: null,
+            firmware,
             perFlashConfirmed: input.params?.perFlashConfirmed === true,
             authorizationSource:
               typeof input.params?.authorizationSource === 'string'
@@ -67,11 +89,137 @@ export function createMcpAgentSkill(): ExecutableSkill {
           },
           { devices },
         );
+
+        // E420：门禁通过 + 显式 executeFlash + flashExecutable 才 spawn（可注入 runner）
+        if (
+          isFlash
+          && decision.allowed
+          && input.params?.executeFlash === true
+          && typeof input.params?.flashExecutable === 'string'
+          && firmware
+        ) {
+          try {
+            const toolKindRaw = input.params?.flashToolKind;
+            const flashResult = await runAuthorizedFlash({
+              gate: decision,
+              firmwarePath: firmware.path,
+              expectedSha256: firmware.sha256,
+              executable: input.params.flashExecutable,
+              ...(isFlashToolKind(toolKindRaw) ? { toolKind: toolKindRaw } : {}),
+              ...(typeof input.params?.flashAddress === 'string'
+                ? { flashAddress: input.params.flashAddress }
+                : {}),
+              ...(typeof input.params?.openocdCfg === 'string'
+                ? { openocdCfg: input.params.openocdCfg }
+                : {}),
+              ...(typeof input.params?.openocdInterfaceCfg === 'string'
+                ? { openocdInterfaceCfg: input.params.openocdInterfaceCfg }
+                : {}),
+              ...(typeof input.params?.openocdTargetCfg === 'string'
+                ? { openocdTargetCfg: input.params.openocdTargetCfg }
+                : {}),
+              ...(typeof input.params?.dfuAlt === 'number' ? { dfuAlt: input.params.dfuAlt } : {}),
+              ...(typeof input.params?.jlinkDevice === 'string'
+                ? { jlinkDevice: input.params.jlinkDevice }
+                : {}),
+              ...(typeof input.params?.jlinkInterface === 'string'
+                ? { jlinkInterface: input.params.jlinkInterface as 'SWD' | 'JTAG' }
+                : {}),
+              ...(typeof input.params?.jlinkSpeed === 'number'
+                ? { jlinkSpeed: input.params.jlinkSpeed }
+                : {}),
+              ...(deps.flashRunner ? { runner: deps.flashRunner } : {}),
+            });
+            return {
+              result: `${decision.message}\n${flashResult.message}`,
+              confidence: flashResult.ok ? 0.85 : 0.45,
+              followUpAction: flashResult.ok
+                ? '烧录已执行；请核对板端现象与驱动日志。'
+                : '烧录未成功；检查工具路径、接线与固件摘要后重试（仍须每次独立确认）。',
+              artifacts: [
+                {
+                  kind: 'hardware-gate-decision',
+                  title: '硬件门禁裁决',
+                  data: { decision },
+                },
+                {
+                  kind: 'flash-execution',
+                  title: 'Flash 执行结果',
+                  data: { flashResult },
+                },
+              ],
+            };
+          } catch (err) {
+            const reason = err instanceof Error ? err.message : String(err);
+            return {
+              result: `${decision.message}\n烧录驱动拒绝执行：${reason}`,
+              confidence: 0.35,
+              followUpAction: '请核对固件路径/摘要、工具可执行文件与本次确认后再试。',
+              artifacts: [{
+                kind: 'hardware-gate-decision',
+                title: '硬件门禁裁决',
+                data: { decision, flashError: reason },
+              }],
+            };
+          }
+        }
+
+        // E421：门禁通过 + 显式 executeSerialRead + port 才只读（可注入 reader；默认不打开）
+        if (
+          !isFlash
+          && decision.allowed
+          && input.params?.executeSerialRead === true
+          && typeof port === 'string'
+        ) {
+          try {
+            const serialResult = await runAuthorizedSerialRead({
+              gate: decision,
+              port,
+              ...(typeof input.params?.baudRate === 'number' ? { baudRate: input.params.baudRate } : {}),
+              ...(typeof input.params?.maxBytes === 'number' ? { maxBytes: input.params.maxBytes } : {}),
+              ...(deps.serialReader ? { reader: deps.serialReader } : {}),
+            });
+            return {
+              result: `${decision.message}\n${serialResult.message}`,
+              confidence: serialResult.ok ? 0.85 : 0.45,
+              followUpAction: serialResult.ok
+                ? '串口只读已执行；请核对日志。写/发字节仍禁止。'
+                : '串口只读未完成；检查端口授权与注入 reader 后重试。',
+              artifacts: [
+                {
+                  kind: 'hardware-gate-decision',
+                  title: '硬件门禁裁决',
+                  data: { decision },
+                },
+                {
+                  kind: 'serial-read-execution',
+                  title: '串口只读结果',
+                  data: { serialResult },
+                },
+              ],
+            };
+          } catch (err) {
+            const reason = err instanceof Error ? err.message : String(err);
+            return {
+              result: `${decision.message}\n串口驱动拒绝执行：${reason}`,
+              confidence: 0.35,
+              followUpAction: '请核对设备白名单、端口名、波特率白名单，并注入 SerialReader。',
+              artifacts: [{
+                kind: 'hardware-gate-decision',
+                title: '硬件门禁裁决',
+                data: { decision, serialError: reason },
+              }],
+            };
+          }
+        }
+
         return {
           result: decision.message,
           confidence: 0.75,
           followUpAction: decision.allowed
-            ? '契约已通过，但 E411 仍不执行硬件动作；后续轮次才接入真实 flash/串口工具。'
+            ? (isFlash
+              ? '门禁已通过；提供 flashExecutable 并将 executeFlash=true 后由 E420 驱动执行烧录。串口写仍禁止。'
+              : '门禁已通过；提供 port 并将 executeSerialRead=true 后由 E421 只读（生产已注入 E425 serialport；未装可选依赖则执行时失败）。写/发字节仍禁止。')
             : '请先完成设备白名单授权，并提供固件摘要与本次独立确认；不得用 E410 夹具证据授权。',
           artifacts: [{
             kind: 'hardware-gate-decision',
@@ -79,14 +227,10 @@ export function createMcpAgentSkill(): ExecutableSkill {
             data: { decision },
           }],
         };
+        }
       }
-      if (!deps.subAgent) {
-        return {
-          result: 'MCP 子 Agent 调度未装配，无法执行系统/工具类操作。',
-          confidence: 0.2,
-          followUpAction: '配置 configs/mcp-agents.json 启用真实 MCP server 后可用。',
-          };
-      }
+
+      // E424：烧录工作流可无 MCP subAgent；其它领域动作仍需装配
       if (isMcpDomainApprovalRequest(input.query)) {
         const minimumObservedAt = typeof input.params?.minimumObservedAt === 'number'
           ? input.params.minimumObservedAt
@@ -102,14 +246,14 @@ export function createMcpAgentSkill(): ExecutableSkill {
           completedRevisionCycles,
         }, deps.projectProfiles);
         if (!entry.plan || entry.status === 'clarification_required') {
-          return { result: entry.message, confidence: 0.4, followUpAction: '补充工程路径、编辑内容或明确构建/仿真目标。' };
+          return { result: entry.message, confidence: 0.4, followUpAction: '补充工程路径、编辑内容、固件路径或明确构建/仿真/烧录目标。' };
         }
         if (entry.status === 'approval_required') {
           const saved = planStore.savePending({ query: input.query, plan: entry.plan });
           return {
             result: `${entry.message}\n计划指纹：${shortPlanFingerprint(saved.fingerprint)}`,
             confidence: 0.8,
-            followUpAction: '请通过统一裁决入口批准后再执行写入/仿真/构建。',
+            followUpAction: '请通过统一裁决入口批准后再执行写入/仿真/构建/烧录。',
             artifacts: [{
               kind: 'mcp-domain-workflow-plan',
               title: 'MCP 领域工作流计划',
@@ -145,13 +289,74 @@ export function createMcpAgentSkill(): ExecutableSkill {
               }],
             };
           }
+        }
+        const flashOnly = entry.plan.nodes.every((node) => node.kind === 'hardware_flash');
+        if (!flashOnly && !deps.subAgent) {
+          return {
+            result: 'MCP 子 Agent 调度未装配，无法执行系统/工具类操作。',
+            confidence: 0.2,
+            followUpAction: '配置 configs/mcp-agents.json 启用真实 MCP server 后可用。',
+          };
+        }
+        if (flashOnly && entry.status === 'ready') {
+          if (input.params?.perFlashConfirmed !== true) {
+            return {
+              result: `${entry.message}\n计划已批准，但仍须本次独立烧录确认（perFlashConfirmed=true）；不得复用工作流批准。`,
+              confidence: 0.55,
+              followUpAction: '设置 perFlashConfirmed=true 与 flashExecutable 后再次执行。',
+              artifacts: [{
+                kind: 'mcp-domain-workflow-plan',
+                title: 'MCP 领域工作流计划（待烧录确认）',
+                data: { entry, fingerprint: fingerprintDomainWorkflowPlan(entry.plan) },
+              }],
+            };
+          }
+          if (typeof input.params?.flashExecutable !== 'string') {
+            return {
+              result: `${entry.message}\n缺少 flashExecutable；无法执行烧录。`,
+              confidence: 0.4,
+              followUpAction: '提供 flash 工具可执行文件路径后再试。',
+            };
+          }
+          for (const node of entry.plan.nodes) {
+            if (node.kind !== 'hardware_flash') continue;
+            node.args = {
+              ...node.args,
+              perFlashConfirmed: true,
+              flashExecutable: input.params.flashExecutable,
+              ...(typeof input.params.flashAddress === 'string'
+                ? { flashAddress: input.params.flashAddress }
+                : {}),
+              ...(typeof input.params.dfuAlt === 'number' ? { dfuAlt: input.params.dfuAlt } : {}),
+              ...(typeof input.params.jlinkSpeed === 'number' ? { jlinkSpeed: input.params.jlinkSpeed } : {}),
+              ...(typeof input.params.jlinkInterface === 'string'
+                ? { jlinkInterface: input.params.jlinkInterface }
+                : {}),
+              ...(typeof input.params.port === 'string' ? { port: input.params.port } : {}),
+            };
+          }
+        }
+        if (expectedFingerprint && entry.status === 'ready') {
           planStore.markActive(expectedFingerprint);
         }
-        const workflow = await executeDomainWorkflow(entry.plan, deps.subAgent);
+        const dispatcher = deps.subAgent ?? {
+          dispatch: async () => {
+            throw new Error('本计划为本地 hardware_flash，不应调用 MCP dispatch');
+          },
+        };
+        const workflow = await executeDomainWorkflow(entry.plan, dispatcher, {
+          hardware: {
+            devices: deps.deviceAuth ?? new DeviceAuthStore(),
+            ...(deps.flashRunner ? { flashRunner: deps.flashRunner } : {}),
+          },
+        });
         const risk = entry.plan.nodes[0]?.risk;
         const action = entry.status === 'inventory_required'
           ? '只读盘点'
-          : risk === 'write' ? 'KiCad 编辑' : risk === 'simulate' ? 'LTspice 仿真' : '构建';
+          : risk === 'write' ? 'KiCad 编辑'
+            : risk === 'simulate' ? 'LTspice 仿真'
+              : risk === 'flash' ? '烧录'
+                : '构建';
         const fingerprint = fingerprintDomainWorkflowPlan(entry.plan);
         if (expectedFingerprint) {
           if (workflow.ok) planStore.markDone(expectedFingerprint);
@@ -183,6 +388,14 @@ export function createMcpAgentSkill(): ExecutableSkill {
             },
           }],
         };
+      }
+
+      if (!deps.subAgent) {
+        return {
+          result: 'MCP 子 Agent 调度未装配，无法执行系统/工具类操作。',
+          confidence: 0.2,
+          followUpAction: '配置 configs/mcp-agents.json 启用真实 MCP server 后可用。',
+          };
       }
       const match = input.query.match(TOOL_REF_RE);
       let toolRef = match?.[1];

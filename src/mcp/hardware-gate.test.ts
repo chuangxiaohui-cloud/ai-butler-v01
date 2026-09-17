@@ -138,7 +138,7 @@ test('E411: 已授权仍须每次 flash 独立确认；构建批准不能复用'
       { devices, portProbe: defaultPortProbe },
     );
     assert.equal(ok.allowed, true);
-    assert.match(ok.message, /不执行烧录/);
+    assert.match(ok.message, /门禁通过|executeFlash/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -159,7 +159,7 @@ test('E411: 串口默认只读；写操作即使确认也拒绝发送', () => {
       { devices },
     );
     assert.equal(readOk.allowed, true);
-    assert.match(readOk.message, /未打开端口|不打开串口/);
+    assert.match(readOk.message, /不打开端口|executeSerialRead|未打开端口|不打开串口/);
 
     const writeDenied = evaluateHardwareGate(
       {

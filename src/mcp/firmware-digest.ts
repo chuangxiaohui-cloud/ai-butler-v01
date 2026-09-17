@@ -16,8 +16,9 @@ export type FirmwareDigestResult =
 export function computeFirmwareDigest(
   firmwarePath: string,
   now = Date.now(),
+  workspaceRoot = process.cwd(),
 ): FirmwareDigestResult {
-  const check = isPathAllowed(firmwarePath);
+  const check = isPathAllowed(firmwarePath, workspaceRoot);
   if (!check.allowed || !check.resolved) {
     return { ok: false, reason: check.reason ?? '固件路径不在沙箱白名单内' };
   }

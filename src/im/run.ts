@@ -20,6 +20,7 @@ import { TrajectoryLog } from '../trajectory/trajectory-log.js';
 import { browserSession } from '../browser/session.js';
 import { closeMcpAgents, createMcpAgents } from '../mcp/config.js';
 import { SubAgentDispatcher } from '../mcp/dispatcher.js';
+import { createSerialportReader } from '../mcp/serialport-reader.js';
 import { pipeline } from '../search/pipeline.js';
 import { createImChannels, loadImChannelConfig } from './config.js';
 import { ImGate } from './gate.js';
@@ -54,6 +55,8 @@ const skillDeps: SkillDeps = {
   httpCache: createGithubApiCache(),
   parseDocument: parseDocumentFile,
   subAgent: { dispatch: (task, options) => mcpDispatcher.dispatch(task, options) },
+  // E425：生产注入 serialport 只读绑定；仍须门禁 + executeSerialRead
+  serialReader: createSerialportReader(),
 };
 
 try {

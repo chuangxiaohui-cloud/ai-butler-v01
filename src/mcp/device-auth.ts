@@ -83,6 +83,11 @@ export class DeviceAuthStore {
     return [...this.records];
   }
 
+  /** 当前有效授权（每设备取最新一条且未 revoked）。 */
+  listCurrent(): DeviceAuthRecord[] {
+    return [...this.latest.values()].filter((record) => record.revoked !== true);
+  }
+
   close(): void {
     closeJsonl(this.filePath);
   }

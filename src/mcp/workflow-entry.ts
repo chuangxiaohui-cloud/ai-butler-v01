@@ -1,11 +1,14 @@
-/** E408/E413：MCP 领域任务统一规划入口；构建/EDA 写入/仿真必须显式批准。 */
+/** E408/E413/E424：MCP 领域任务统一规划入口；构建/EDA 写入/仿真/烧录必须显式批准。 */
 
 import { dirname, resolve } from 'node:path';
 
 import type { DomainWorkflowNode, DomainWorkflowPlan } from './domain-workflow.js';
+import { isHardwareFlashQuery } from './hardware-capability.js';
+import type { FlashToolKind } from './flash-driver.js';
 import { deriveProjectId, ProjectProfileStore, type ProjectProfilePlanningResult } from './project-profile-store.js';
 import type { ProjectPlatformCapability } from './project-profile.js';
 import type { KiCadBoundedEdit } from './kicad-edit.js';
+import { normalizeLtspiceBatchFlags } from './ltspice.js';
 
 export type McpWorkflowEntryStatus =
   | 'clarification_required'
@@ -46,11 +49,17 @@ export function isMcpLtspiceSimulateRequest(query: string): boolean {
     && /(?:ltspice|\.asc\b)/i.test(query);
 }
 
-/** 需批准的 MCP 领域写/重动作（构建、KiCad 编辑、LTspice 仿真）。 */
+/** E424：带沙箱固件路径的烧录意图 → 工作流计划（仍须独立 perFlashConfirmed）。 */
+export function isMcpFlashRequest(query: string): boolean {
+  return isHardwareFlashQuery(query) && extractFirmwarePath(query) !== null;
+}
+
+/** 需批准的领域写/重动作（构建、KiCad 编辑、LTspice 仿真、flash）。 */
 export function isMcpDomainApprovalRequest(query: string): boolean {
   return isMcpDomainBuildRequest(query)
     || isMcpKicadEditRequest(query)
-    || isMcpLtspiceSimulateRequest(query);
+    || isMcpLtspiceSimulateRequest(query)
+    || isMcpFlashRequest(query);
 }
 
 export function planMcpWorkflowEntry(
@@ -58,12 +67,16 @@ export function planMcpWorkflowEntry(
   store: ProfileReader = new ProjectProfileStore(),
 ): McpWorkflowEntryResult {
   validateRequest(request);
-  // E411：统一入口仍只接受构建；烧录/串口走硬件门禁，不生成执行节点
-  if (/(?:烧录|下载固件|刷机|\bflash\b|\.FlashProject\b|串口|serial\s*port)/i.test(request.query)) {
+  // E411/E424：串口仍不进统一工作流；烧录走 hardware_flash 计划
+  if (/(?:串口|serial\s*port|\bCOM\d+\b|tty(?:USB|ACM)\d+)/i.test(request.query)
+    && !isHardwareFlashQuery(request.query)) {
     return {
       status: 'clarification_required',
-      message: '统一工作流入口不接受 flash/串口执行计划；请走 E411 硬件门禁（默认零硬件动作）。',
+      message: '统一工作流入口不接受串口执行计划；请走 E411/E421 硬件门禁（默认零打开）。',
     };
+  }
+  if (isMcpFlashRequest(request.query) || (isHardwareFlashQuery(request.query) && !isMcpDomainBuildRequest(request.query))) {
+    return planFlash(request);
   }
   if (isMcpKicadEditRequest(request.query)) {
     return /\.kicad_pcb\b/i.test(request.query) || /\.EditPcb\b/i.test(request.query)
@@ -74,7 +87,7 @@ export function planMcpWorkflowEntry(
     return planLtspiceSimulate(request);
   }
   if (!/(?:构建|编译|\bbuild\b|\.BuildProject\b)/i.test(request.query)) {
-    return { status: 'clarification_required', message: '当前统一入口只接受 Keil/STM32-GCC 构建、KiCad 原理图/PCB 有界编辑或 LTspice 仿真任务。' };
+    return { status: 'clarification_required', message: '当前统一入口只接受 Keil/STM32-GCC 构建、KiCad 原理图/PCB 有界编辑、LTspice 仿真或烧录任务。' };
   }
   const location = resolveLocation(request);
   if (!location.projectRoot) {
@@ -214,6 +227,15 @@ function planLtspiceSimulate(request: McpWorkflowEntryRequest): McpWorkflowEntry
   if (!schematicPath) {
     return { status: 'clarification_required', message: '请提供要仿真的 .asc 路径。' };
   }
+  let extraBatchFlags: string[] = [];
+  try {
+    extraBatchFlags = extractLtspiceBatchFlags(request.query);
+  } catch (error) {
+    return {
+      status: 'clarification_required',
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
   const resolved = resolve(schematicPath);
   const projectId = deriveProjectId(dirname(resolved));
   const node: DomainWorkflowNode = {
@@ -224,16 +246,133 @@ function planLtspiceSimulate(request: McpWorkflowEntryRequest): McpWorkflowEntry
     outputKind: 'simulation_result',
     agentId: 'ltspice',
     toolName: 'ltspice.RunSimulation',
-    args: { schematicPath: resolved },
+    args: {
+      schematicPath: resolved,
+      ...(extraBatchFlags.length ? { extraBatchFlags } : {}),
+    },
     targetFiles: [resolved],
     risk: 'simulate',
     acceptance: '批仿真退出成功并报告沙箱内产物摘要',
     onFailure: 'handoff',
   };
   const plan = makePlan(projectId, request.completedRevisionCycles, [node]);
+  const flagNote = extraBatchFlags.length ? `（含白名单开关 ${extraBatchFlags.join(' ')}）` : '';
   return request.approved
-    ? { status: 'ready', message: 'LTspice 仿真计划已批准，可以执行。', plan }
-    : { status: 'approval_required', message: 'LTspice 仿真计划已生成，等待高风险确认；当前未启动仿真。', plan };
+    ? { status: 'ready', message: `LTspice 仿真计划已批准，可以执行${flagNote}。`, plan }
+    : { status: 'approval_required', message: `LTspice 仿真计划已生成${flagNote}，等待高风险确认；当前未启动仿真。`, plan };
+}
+
+function planFlash(request: McpWorkflowEntryRequest): McpWorkflowEntryResult {
+  const firmwarePath = extractFirmwarePath(request.query);
+  if (!firmwarePath) {
+    return {
+      status: 'clarification_required',
+      message: '请提供沙箱内固件路径（projects/sandbox/outputs 下 .bin/.hex/.elf/.axf）。',
+    };
+  }
+  const deviceId = extractDeviceId(request.query);
+  if (!deviceId) {
+    return {
+      status: 'clarification_required',
+      message: '请提供设备标识（设备：… / device=…）；默认无设备授权。',
+    };
+  }
+  const toolKind = extractFlashToolKind(request.query);
+  if (toolKind === 'openocd') {
+    const openocdCfg = extractOpenocdBoardCfg(request.query);
+    const iface = extractLabeled(request.query, /(?:interface|接口配置)[：:\s]+([^\s，。；]+)/i);
+    const target = extractLabeled(request.query, /(?:target|目标配置)[：:\s]+([^\s，。；]+)/i);
+    if (!openocdCfg && !(iface && target)) {
+      return {
+        status: 'clarification_required',
+        message: 'openocd 须提供 board 配置（openocdCfg：board/….cfg）或 interface+target 配置。',
+      };
+    }
+  }
+  if (toolKind === 'jlink') {
+    const jlinkDevice = extractLabeled(request.query, /(?:jlinkDevice|芯片|deviceName)[：:\s]+([A-Za-z0-9_-]+)/i)
+      ?? (/STM32[A-Za-z0-9]+/i.exec(request.query)?.[0] ?? null);
+    if (!jlinkDevice) {
+      return {
+        status: 'clarification_required',
+        message: 'jlink 须提供芯片名（jlinkDevice：STM32…）。',
+      };
+    }
+  }
+  const resolved = resolve(firmwarePath);
+  const projectId = deriveProjectId(dirname(resolved));
+  const openocdCfg = extractOpenocdBoardCfg(request.query);
+  const openocdInterfaceCfg = extractLabeled(request.query, /(?:interface|接口配置)[：:\s]+([^\s，。；]+)/i);
+  const openocdTargetCfg = extractLabeled(request.query, /(?:target|目标配置)[：:\s]+([^\s，。；]+)/i);
+  const jlinkDevice = extractLabeled(request.query, /(?:jlinkDevice|芯片|deviceName)[：:\s]+([A-Za-z0-9_-]+)/i)
+    ?? (/STM32[A-Za-z0-9]+/i.exec(request.query)?.[0] ?? undefined);
+  const node: DomainWorkflowNode = {
+    id: 'hardware-flash',
+    kind: 'hardware_flash',
+    title: '受控烧录固件',
+    inputRefs: [resolved],
+    outputKind: 'flash_result',
+    agentId: 'hardware',
+    toolName: 'hardware.FlashFirmware',
+    args: {
+      firmwarePath: resolved,
+      deviceId,
+      flashToolKind: toolKind,
+      ...(openocdCfg ? { openocdCfg } : {}),
+      ...(openocdInterfaceCfg ? { openocdInterfaceCfg } : {}),
+      ...(openocdTargetCfg ? { openocdTargetCfg } : {}),
+      ...(jlinkDevice ? { jlinkDevice } : {}),
+    },
+    targetFiles: [resolved],
+    risk: 'flash',
+    acceptance: '门禁通过且烧录驱动 exit=0；工作流批准不能替代本次 perFlashConfirmed',
+    onFailure: 'handoff',
+  };
+  const plan = makePlan(projectId, request.completedRevisionCycles, [node]);
+  return request.approved
+    ? {
+      status: 'ready',
+      message: '烧录计划已批准；执行前仍须本次独立 perFlashConfirmed 与 flashExecutable。',
+      plan,
+    }
+    : {
+      status: 'approval_required',
+      message: '烧录计划已生成，等待高风险确认；当前未烧录。批准后仍须独立确认本次烧录。',
+      plan,
+    };
+}
+
+function extractFirmwarePath(query: string): string | null {
+  return query.match(
+    /((?:[A-Za-z]:\\|projects[\\/]|sandbox[\\/]|outputs[\\/])[^"“”\r\n]*?\.(?:bin|hex|elf|axf))\b/i,
+  )?.[1]?.trim() ?? null;
+}
+
+function extractDeviceId(query: string): string | null {
+  return extractLabeled(query, /(?:设备|deviceId|device)[：:=\s]+([A-Za-z0-9][A-Za-z0-9._-]{0,63})/i);
+}
+
+function extractLabeled(query: string, re: RegExp): string | null {
+  return query.match(re)?.[1]?.trim() ?? null;
+}
+
+function extractOpenocdBoardCfg(query: string): string | null {
+  return extractLabeled(query, /(?:openocdCfg|board)[：:\s]+((?:board)\/[A-Za-z0-9._-]+\.cfg)/i);
+}
+
+function extractFlashToolKind(query: string): FlashToolKind {
+  // 去掉「设备：xxx」片段，避免设备名（如 JLINK-1）被 \bjlink\b 误判为工具
+  const withoutDevice = query.replace(
+    /(?:设备|deviceId|device)[：:=\s]+[A-Za-z0-9][A-Za-z0-9._-]{0,63}/gi,
+    ' ',
+  );
+  if (/\bopenocd\b/i.test(withoutDevice)) return 'openocd';
+  if (/\bdfu-util\b|\bdfu\b/i.test(withoutDevice)) return 'dfu-util';
+  // 显式工具名优先于 jlink（设备序列号常含 JLINK）
+  if (/\bst-flash\b/i.test(withoutDevice)) return 'st-flash';
+  if (/\bpyocd\b/i.test(withoutDevice)) return 'pyocd';
+  if (/\bjlink\b|\bj-link\b/i.test(withoutDevice)) return 'jlink';
+  return 'st-flash';
 }
 
 function extractKiCadSchematicPath(query: string): string | null {
@@ -246,6 +385,17 @@ function extractKiCadPcbPath(query: string): string | null {
 
 function extractLtspicePath(query: string): string | null {
   return query.match(/((?:[A-Za-z]:\\|projects[\\/]|sandbox[\\/]|outputs[\\/])[^"“”\r\n]*?\.asc)/i)?.[1]?.trim() ?? null;
+}
+
+/** E419：从问句抽取可选批开关（开关：-ascii / flags: -ascii,-alt）。 */
+function extractLtspiceBatchFlags(query: string): string[] {
+  const matched = query.match(/(?:开关|批开关|flags?)[：:\s]+([^\r\n；;]+)/i)?.[1];
+  if (!matched) return [];
+  const tokens = matched
+    .split(/[,，\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return normalizeLtspiceBatchFlags(tokens);
 }
 
 function extractKiCadEdit(query: string): KiCadBoundedEdit | null {

@@ -23,6 +23,32 @@ export type LtspiceSimulationRunner = (
   options: { cwd: string; timeoutMs: number; signal?: AbortSignal },
 ) => Promise<LtspiceSimulationRunnerResult>;
 
+/** E419：可夹在 `-b` 与 `.net` 之间的无参批开关白名单（禁止路径/赋值/任意自定义）。 */
+export const LTSPICE_BATCH_FLAG_WHITELIST = Object.freeze(['-ascii', '-alt'] as const);
+
+export function normalizeLtspiceBatchFlags(flags: readonly string[] | undefined): string[] {
+  if (!flags || flags.length === 0) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of flags) {
+    const flag = String(raw).trim();
+    if (!flag) continue;
+    // 仅允许形如 -ascii 的无参开关，杜绝路径、赋值与 shell 元字符
+    if (!/^-[A-Za-z][A-Za-z0-9]*$/.test(flag)) {
+      throw new Error(`LTspice 批开关非法（仅允许无参字母开关）：${flag}`);
+    }
+    if (!(LTSPICE_BATCH_FLAG_WHITELIST as readonly string[]).includes(flag)) {
+      throw new Error(
+        `LTspice 批开关不在白名单：${flag}；允许 ${LTSPICE_BATCH_FLAG_WHITELIST.join('、')}`,
+      );
+    }
+    if (seen.has(flag)) continue;
+    seen.add(flag);
+    out.push(flag);
+  }
+  return out;
+}
+
 export interface LtspiceSchematicInspection {
   schematicPath: string;
   schematicRoot: string;
@@ -139,6 +165,8 @@ export async function runLtspiceSimulation(input: {
   workspaceRoot?: string;
   runner?: LtspiceSimulationRunner;
   signal?: AbortSignal;
+  /** E419：可选白名单批开关（夹在 -b 与 .net 之间） */
+  extraBatchFlags?: readonly string[];
 }): Promise<{
   ok: boolean;
   exitCode: number | null;
@@ -157,6 +185,7 @@ export async function runLtspiceSimulation(input: {
   if (!existsSync(input.executable) || !statSync(input.executable).isFile()) {
     throw new Error('LTspice 可执行文件不可用，请先登记真实路径');
   }
+  const extraBatchFlags = normalizeLtspiceBatchFlags(input.extraBatchFlags);
   const inspection = inspectLtspiceSchematic({
     schematicPath,
     workspaceRoot,
@@ -166,7 +195,7 @@ export async function runLtspiceSimulation(input: {
     throw new Error('原理图缺少仿真指令；拒绝猜测参数并启动仿真');
   }
   // LTspice 24 对 .asc 直接 -b 在无交互会话常会挂起；官方文档示例亦为 deck.cir。
-  // 先 -netlist 生成同目录 .net，再仅以 -b + .net 跑批仿真（禁止额外开关与 shell）。
+  // 先 -netlist 生成同目录 .net，再仅以 -b [白名单开关] + .net 跑批仿真（禁止任意自定义与 shell）。
   const runner = input.runner ?? defaultSimulationRunner;
   const cwd = dirname(schematicPath);
   const runOptions = {
@@ -196,7 +225,7 @@ export async function runLtspiceSimulation(input: {
   if (!existsSync(netPath) || !statSync(netPath).isFile()) {
     throw new Error('LTspice -netlist 未在原理图同目录生成 .net');
   }
-  const batchArgs = ['-b', netPath];
+  const batchArgs = ['-b', ...extraBatchFlags, netPath];
   const result = await runner(input.executable, batchArgs, runOptions);
   const after = listSimOutputs(schematicPath, workspaceRoot);
   const outputFiles = after.filter((item) => {

@@ -48,6 +48,9 @@
     "repo:push": "tsx scripts/repo-push.ts",
     "repo:whitelist": "tsx scripts/repo-whitelist.ts",
     "repo:audit": "tsx scripts/repo-audit.ts",
+    "device:auth": "tsx scripts/device-auth.ts",
+    "hardware:audit": "tsx scripts/hardware-audit.ts",
+    "firmware:digest": "tsx scripts/firmware-digest.ts",
     "install:skill": "tsx scripts/install-skill.ts",
     "mail:config": "tsx scripts/mail-config.ts",
     "mail:oauth": "tsx scripts/mail-oauth.ts",
@@ -134,6 +137,9 @@
     "express": "^4.21.0",
     "jszip": "^3.10.1",
     "playwright-core": "^1.62.1"
+  },
+  "optionalDependencies": {
+    "serialport": "^13.0.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",

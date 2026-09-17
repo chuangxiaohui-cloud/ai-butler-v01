@@ -200,17 +200,28 @@ test('E408：构建识别只覆盖带平台证据的 build 请求', () => {
   assert.equal(isMcpDomainBuildRequest('请编译普通 CMake 项目'), false);
 });
 
-test('E411：统一入口拒绝 flash/串口执行计划', () => {
+test('E411/E424：统一入口拒绝串口；烧录可生成 hardware_flash 计划', () => {
   const flash = planMcpWorkflowEntry({
-    query: '请烧录 Keil 工程 projects\\demo.uvprojx',
+    query: '请用 st-flash 烧录 projects/fw/app.bin 设备：JLINK-1',
+    approved: false,
+    minimumObservedAt: 0,
+    completedRevisionCycles: 0,
+  });
+  assert.equal(flash.status, 'approval_required');
+  assert.equal(flash.plan?.nodes[0]?.kind, 'hardware_flash');
+  assert.equal(flash.plan?.nodes[0]?.args?.flashToolKind, 'st-flash');
+  assert.equal(flash.plan?.nodes[0]?.args?.deviceId, 'JLINK-1');
+  assert.equal(flash.plan?.nodes[0]?.risk, 'flash');
+  assert.equal(flash.plan?.nodes[0]?.toolName, 'hardware.FlashFirmware');
+
+  const flashReady = planMcpWorkflowEntry({
+    query: '请用 st-flash 烧录 projects/fw/app.bin 设备：JLINK-1',
     approved: true,
     minimumObservedAt: 0,
     completedRevisionCycles: 0,
-    projectRoot: 'projects',
   });
-  assert.equal(flash.status, 'clarification_required');
-  assert.match(flash.message, /不接受 flash\/串口/);
-  assert.equal(flash.plan, undefined);
+  assert.equal(flashReady.status, 'ready');
+  assert.match(flashReady.message, /perFlashConfirmed/);
 
   const serial = planMcpWorkflowEntry({
     query: '请打开串口读日志',
@@ -219,7 +230,7 @@ test('E411：统一入口拒绝 flash/串口执行计划', () => {
     completedRevisionCycles: 0,
   });
   assert.equal(serial.status, 'clarification_required');
-  assert.match(serial.message, /硬件门禁/);
+  assert.match(serial.message, /不接受串口|硬件门禁/);
 });
 
 test('E413：KiCad 编辑与 LTspice 仿真须批准且无批准不生成 ready', () => {
@@ -254,6 +265,27 @@ test('E413：KiCad 编辑与 LTspice 仿真须批准且无批准不生成 ready'
 
   assert.equal(isMcpKicadEditRequest('编辑 KiCad projects/a.kicad_sch 注解：x'), true);
   assert.equal(isMcpLtspiceSimulateRequest('仿真 LTspice projects/a.asc'), true);
+});
+
+test('E419：LTspice 问句可带白名单批开关；非法开关澄清', () => {
+  const ok = planMcpWorkflowEntry({
+    query: '请对 LTspice projects/analog/demo.asc 做仿真 开关：-ascii',
+    approved: false,
+    minimumObservedAt: 0,
+    completedRevisionCycles: 0,
+  });
+  assert.equal(ok.status, 'approval_required');
+  assert.deepEqual(ok.plan?.nodes[0]?.args.extraBatchFlags, ['-ascii']);
+  assert.match(ok.message, /-ascii/);
+
+  const bad = planMcpWorkflowEntry({
+    query: '请对 LTspice projects/analog/demo.asc 做仿真 开关：-evil',
+    approved: false,
+    minimumObservedAt: 0,
+    completedRevisionCycles: 0,
+  });
+  assert.equal(bad.status, 'clarification_required');
+  assert.match(bad.message, /白名单/);
 });
 
 test('E418：KiCad PCB 有界编辑须批准且工具为 EditPcb', () => {

@@ -1,5 +1,6 @@
 /**
- * E411：flash/串口人工门。默认拒绝；允许仅表示「契约通过」，本轮仍不执行硬件。
+ * E411：flash/串口人工门。默认拒绝；允许仅表示「契约通过」。
+ * E420/E421：契约通过后由 flash/serial 驱动在显式 execute* 下才可动作；本函数仍不打开硬件。
  */
 
 import type { DeviceAuthStore } from './device-auth.js';
@@ -76,11 +77,11 @@ function decide(request: HardwareGateRequest, deps: HardwareGateDeps): HardwareG
     if (portCheck?.status === 'busy') {
       return deny(base, 'port_busy', `端口 ${portCheck.port} 被占用：${portCheck.reason ?? 'busy'}`);
     }
-    // 契约通过仍不等于执行：E411 不启动烧录进程
+    // 契约通过仍不等于执行：须另走 E420 flash-driver 且 executeFlash=true
     return {
       allowed: true,
       ...base,
-      message: '硬件门禁通过（契约层）。E411 不连接设备、不执行烧录；后续轮次才可接入真实 flash 工具。',
+      message: '硬件门禁通过（契约层）。未显式 executeFlash 时不启动烧录；E420 可在确认后调用 flash 驱动。',
     };
   }
 
@@ -94,17 +95,17 @@ function decide(request: HardwareGateRequest, deps: HardwareGateDeps): HardwareG
       return deny(base, 'port_busy', `端口 ${portCheck.port} 被占用：${portCheck.reason ?? 'busy'}`);
     }
     if (portCheck?.status === 'probe_disabled' && request.port) {
-      // 只读意图允许在未探测时通过契约，但仍声明未打开端口
+      // 只读意图允许在未探测时通过契约；真实打开须 E421 executeSerialRead
       return {
         allowed: true,
         ...base,
-        message: '串口只读门禁通过（契约层）。默认探针未打开端口，未读取任何字节。',
+        message: '串口只读门禁通过（契约层）。未显式 executeSerialRead 时不打开端口；E421 可在确认后只读。',
       };
     }
     return {
       allowed: true,
       ...base,
-      message: '串口只读门禁通过（契约层）。E411 不打开串口、不发送字节。',
+      message: '串口只读门禁通过（契约层）。未显式 executeSerialRead 时不打开端口、不发送字节；E421 可在确认后只读。',
     };
   }
 

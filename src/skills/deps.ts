@@ -57,6 +57,10 @@ export interface SkillDeps {
   projectProfiles?: Pick<import('../mcp/project-profile-store.js').ProjectProfileStore, 'loadForPlanning'>;
   /** E411：设备白名单；缺省读 data/device-auth.jsonl，测试可注入隔离 store。 */
   deviceAuth?: Pick<import('../mcp/device-auth.js').DeviceAuthStore, 'isAuthorized'>;
+  /** E420：可注入 flash runner（单测用）；缺省走默认 spawn，生产仍须 executeFlash。 */
+  flashRunner?: import('../mcp/flash-driver.js').FlashRunner;
+  /** E421/E425：可注入串口只读 reader；缺省拒绝打开；生产入口注入 createSerialportReader。 */
+  serialReader?: import('../mcp/serial-driver.js').SerialReader;
   /** E412：工作流计划指纹持久化；测试可注入隔离 store。 */
   workflowPlans?: Pick<
     import('../mcp/workflow-plan-store.js').WorkflowPlanStore,
