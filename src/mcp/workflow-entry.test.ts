@@ -133,7 +133,7 @@ test('E408：新鲜 Keil/STM32-GCC capability 各只生成一个结构化 build 
   }
 });
 
-test('E408：缺失或过期画像只生成只读 inventory 节点，绝不混入 build', () => {
+test('E408：缺失画像或 capability 过期只生成只读 inventory，绝不混入 build', () => {
   const root = mkdtempSync(join(tmpdir(), 'mcp-workflow-entry-inventory-'));
   const projectRoot = join(root, 'keil-project');
   const projectPath = join(projectRoot, 'demo.uvprojx');
@@ -153,7 +153,8 @@ test('E408：缺失或过期画像只生成只读 inventory 节点，绝不混�
 
     const saved = store.save(profile(projectRoot, [capability(projectRoot, 'keil', 100)], 100));
     assert.equal(saved.ok, true, saved.reason);
-    const stale = planMcpWorkflowEntry(
+    // capability 本身过期 → build 被清空，仍只盘点
+    const staleCapability = planMcpWorkflowEntry(
       request(`请编译 Keil 工程 ${projectPath}`, projectRoot, {
         projectPath,
         platform: 'keil',
@@ -161,12 +162,63 @@ test('E408：缺失或过期画像只生成只读 inventory 节点，绝不混�
       }),
       store,
     );
-    assert.equal(stale.status, 'inventory_required');
-    assert.ok(stale.plan);
-    assert.equal(stale.plan.nodes.length, 1);
-    assert.equal(stale.plan.nodes[0]?.kind, 'project_inventory');
-    assert.equal(stale.plan.nodes[0]?.risk, 'read_only');
-    assert.equal(stale.plan.nodes.some((node) => node.risk === 'build'), false);
+    assert.equal(staleCapability.status, 'inventory_required');
+    assert.ok(staleCapability.plan);
+    assert.equal(staleCapability.plan.nodes.length, 1);
+    assert.equal(staleCapability.plan.nodes[0]?.kind, 'project_inventory');
+    assert.equal(staleCapability.plan.nodes.some((node) => node.risk === 'build'), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('E437：画像部分过期但仍有可验证 build → inventory→build dependsOn 链且须批准', () => {
+  const root = mkdtempSync(join(tmpdir(), 'mcp-workflow-entry-chain-'));
+  const projectRoot = join(root, 'keil-project');
+  const projectPath = join(projectRoot, 'demo.uvprojx');
+  const store = new ProjectProfileStore(join(root, 'profiles'));
+  mkdirSync(projectRoot, { recursive: true });
+  try {
+    const base = profile(projectRoot, [capability(projectRoot, 'keil', 200)], 200);
+    const saved = store.save({
+      ...base,
+      chip: 'STM32F103',
+      provenance: {
+        ...base.provenance,
+        // 非 capability 字段过期 → reprobeRequired，但 capability.build 仍保留
+        chip: { source: 'tool_probe', evidenceRef: 'old-chip', observedAt: 50 },
+      },
+    });
+    assert.equal(saved.ok, true, saved.reason);
+    const result = planMcpWorkflowEntry(
+      request(`请编译 Keil 工程 ${projectPath}`, projectRoot, {
+        projectPath,
+        platform: 'keil',
+        minimumObservedAt: 100,
+      }),
+      store,
+    );
+    assert.equal(result.status, 'approval_required');
+    assert.ok(result.plan);
+    assert.equal(result.plan.nodes.length, 2);
+    assert.equal(result.plan.nodes[0]?.kind, 'project_inventory');
+    assert.deepEqual(result.plan.nodes[0]?.dependsOn, []);
+    assert.equal(result.plan.nodes[1]?.id, 'build');
+    assert.equal(result.plan.nodes[1]?.risk, 'build');
+    assert.deepEqual(result.plan.nodes[1]?.dependsOn, [result.plan.nodes[0]!.id]);
+    assert.match(result.message, /先只读盘点再构建/);
+
+    const approved = planMcpWorkflowEntry(
+      request(`请编译 Keil 工程 ${projectPath}`, projectRoot, {
+        projectPath,
+        platform: 'keil',
+        minimumObservedAt: 100,
+        approved: true,
+      }),
+      store,
+    );
+    assert.equal(approved.status, 'ready');
+    assert.equal(approved.plan?.nodes.length, 2);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

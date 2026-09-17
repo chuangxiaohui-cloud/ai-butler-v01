@@ -1,4 +1,4 @@
-/** E408/E413/E424/E432/E433/E434/E436：MCP 领域任务统一规划入口；构建/EDA 写入/仿真/烧录必须显式批准；多平台只读盘点以 dependsOn 根并行；盘点后附平台消歧选项与跟进问句。 */
+/** E408/E413/E424/E432/E433/E434/E436/E437：MCP 领域任务统一规划入口；构建/EDA 写入/仿真/烧录必须显式批准；多平台只读盘点以 dependsOn 根并行；过期仍可构建时 inventory→build 同计划链；盘点后附平台消歧选项与跟进问句。 */
 
 import { dirname, resolve } from 'node:path';
 
@@ -142,9 +142,30 @@ export function planMcpWorkflowEntry(
     );
   }
   if (loaded.reprobeRequired) {
+    const loc = { ...location, platform: agentId };
+    const capability = loaded.profile.capabilities.find((item) => item.agentId === agentId);
+    // E437：过期但仍有可验证 build → 同计划 inventory→build（dependsOn）；含 build 须批准
+    if (capability?.build) {
+      const inv = inventoryNode(loc);
+      const buildNode = buildNodeFromCapability(capability, loaded.profile.projectRoot);
+      if (inv && buildNode) {
+        const plan = makePlan(projectId, request.completedRevisionCycles, [
+          { ...inv, dependsOn: [] },
+          { ...buildNode, dependsOn: [inv.id] },
+        ]);
+        const staleLabel = (loaded.staleFields ?? []).join('、');
+        return request.approved
+          ? { status: 'ready', message: '盘点→构建计划已批准，可以执行。', plan }
+          : {
+            status: 'approval_required',
+            message: `项目画像已过期（${staleLabel}），批准后先只读盘点再构建；当前未执行构建。`,
+            plan,
+          };
+      }
+    }
     return inventoryResult(
       request,
-      { ...location, platform: agentId },
+      loc,
       projectId,
       `项目画像已过期（${(loaded.staleFields ?? []).join('、')}），先重新只读盘点。`,
     );
@@ -163,7 +184,7 @@ export function planMcpWorkflowEntry(
     : { status: 'approval_required', message: '构建计划已生成，等待用户批准；当前未执行任何构建。', plan };
 }
 
-/** pipeline 仅在画像已取证且确实将进入 build/写/仿真时建立裁决，不为盘点任务提前索要批准。 */
+/** pipeline 仅在确实将进入 build/写/仿真（含 E437 盘点→构建链）时建立裁决，不为纯盘点任务提前索要批准。 */
 export function mcpBuildApprovalRequired(
   query: string,
   store: ProfileReader = new ProjectProfileStore(),
