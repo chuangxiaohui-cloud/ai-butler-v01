@@ -80,11 +80,12 @@ async function main(): Promise<void> {
         : `[P-12] 未通过（≥2=${qualified}/31，硬答=${zeroHard}）`;
   }
 
+  const reportDate = new Date().toISOString().slice(0, 10);
   const report = `# v0.2a 验收报告（31 条全量）
 
-> 日期：2026-08-12 | 数据源：bench/v02a-queries.json
+> 日期：${reportDate} | 数据源：bench/v02a-queries.json
 > [P-12] 判定：31 条中 ≥80% 相关性达标且无 0 分硬答；相关性按 C.2 由人工回填。
-> **判定结果：${verdict}**
+> **判定结果：${verdict}**（若沿用既有 \`v02a-scores.json\`，则非本轮答案重评）
 
 ## 聚合
 

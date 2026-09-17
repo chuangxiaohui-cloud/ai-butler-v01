@@ -376,7 +376,7 @@ prose 定义永远模糊，改用**一刀测试**：
 
 **工作流计划指纹与恢复（E412）**：对领域工作流计划做 canonical SHA-256 指纹并写入 `data/mcp-workflow-plans.jsonl`；构建挂起时落盘 `pending_approval`，批准恢复须指纹与当前重算计划一致，漂移则拒绝静默执行（零 MCP 调用）。取消将记录标为 cancelled。UI 展示计划指纹短码、节点风险与 untrusted 工具证据链。
 
-**KiCad 编辑与 LTspice 仿真写入（E413）**：KiCad 开放有界 `EditSchematic`（追加注解 / 单次精确替换），经项目事务预检与快照后落盘；LTspice 开放 `RunSimulation`，仅允许固定 `-b` 批参数，产物限定原理图同目录沙箱。编辑与仿真均须高风险确认（复用 E412 计划指纹），无批准零写入、零仿真；不开放自由 PCB 编辑或自定义仿真开关。
+**KiCad 编辑与 LTspice 仿真写入（E413/E418）**：KiCad 开放有界 `EditSchematic`（追加注解 / 单次精确替换）与有界 `EditPcb`（丝印注解 / 单次精确替换），经项目事务预检与快照后落盘；LTspice 开放 `RunSimulation`，仅允许固定 `-b` 批参数，产物限定原理图同目录沙箱。编辑与仿真均须高风险确认（复用 E412 计划指纹），无批准零写入、零仿真；不开放自由布线/任意改铜皮或自定义仿真开关。
 
 **真实工程动作验收与 [P-10] 复验（E414）**：`mcp:accept` 区分 `fixture` / `business` 目标，默认 dry-run，仅 `--confirm` 才调用构建/ERC/仿真。夹具成功不等于业务验收；无业务工程、成熟度未达 L2+、doc-lint/全量未绿或缺 owner 签认时，[P-10] 仍不得标记通过。
 
@@ -400,7 +400,7 @@ prose 定义永远模糊，改用**一刀测试**：
 - **质量门**验证可机器判定的完成条件，例如配置可解析、编译结果、静态检查与测试结果；失败必须回到明确修订节点或上升给用户，不能带病交付。
 - **人工门**处理下载外部资料、修改项目、多文件冲突、烧录、连接硬件和改变外设状态等授权；通过质量门不等于获得高风险动作权限。
 - VS Code 归入编码类专业工作环境，与 Keil 的编译/target 能力互补：优先只读盘点工作区、源码、任务配置与诊断；任何文件修改复用 §11.2，任何终端/构建命令复用 §10 白名单，不因扩展或工作区信任自动扩大权限。
-- 当前实现边界：E389 已有通用运行契约，E390-E410 已形成 Keil、VS Code、STM32-GCC、KiCad ERC 与 LTspice 只读垂直链、统一入口及可复核协议证据；E411 已落地 flash/串口能力与风险契约（设备白名单、固件摘要、逐次人工门、串口默认只读、审计），但仍**不连接设备、不执行烧录、不向串口发送字节**；E412 已落地工作流计划指纹、持久化恢复与 UI 证据链展示；E413 已落地 KiCad 有界原理图编辑（项目事务）与 LTspice 固定批仿真（高风险确认）；E414 已落地动作验收入口并对夹具/业务工程执行构建/ERC/仿真复验；E415 已落地成熟度复用率滑动窗；[P-10] 已于 2026-09-17 按 E416 定稿通过（五条件齐，owner 签认）；仍**不开放自由 PCB/原理图任意改写或自定义仿真开关**；真实 flash/串口驱动、动态并行多 Skill 编排仍待实现，不得在 UI 中冒充完成。
+- 当前实现边界：E389 已有通用运行契约，E390-E410 已形成 Keil、VS Code、STM32-GCC、KiCad ERC 与 LTspice 只读垂直链、统一入口及可复核协议证据；E411 已落地 flash/串口能力与风险契约（设备白名单、固件摘要、逐次人工门、串口默认只读、审计），但仍**不连接设备、不执行烧录、不向串口发送字节**；E412 已落地工作流计划指纹、持久化恢复与 UI 证据链展示；E413 已落地 KiCad 有界原理图编辑（项目事务）与 LTspice 固定批仿真（高风险确认）；E414 已落地动作验收入口并对夹具/业务工程执行构建/ERC/仿真复验；E415 已落地成熟度复用率滑动窗；[P-10] 已于 2026-09-17 按 E416 定稿通过（五条件齐，owner 签认）；E418 已落地 KiCad **PCB 有界编辑**（丝印注解/单次替换，同项目事务）；仍**不开放自由布线/任意改铜皮或自定义仿真开关**；真实 flash/串口驱动、动态并行多 Skill 编排仍待实现，不得在 UI 中冒充完成。
 
 #### 4.1.3 栏位语义：上下文而非能力闸门
 
@@ -2531,6 +2531,8 @@ eadDocSummary（新增 scripts/office_docx_read.py：python-docx 纯读 docx 段
 ### 2026-09-17（[P-10] owner 签认与定稿晋升 E416）<br>- **变更**：owner 以「签」完成条件⑤；按 E197 复验门将 [P-10] 由 provisional@2026-08-24 晋升 **定稿**。五条件证据：① S1-S8+业务 MCP；② 2026-09-17 复跑 P-07/P-12/P-08（报告 `p10-condition2-rerun-2026-09-17.md`，E19 `must_clarify` 与 P-12 人工分未重评作遗留加强项）；③ `maturity:check`→L2（E415 滑动窗）；④ doc-lint 0 FAIL 0 WARN + test:all 单测 1642/1643（0 fail）+ 集成 36/36；⑤ 附录 C 无相反证据 + 本日签认。<br>- **证据**：计划 `docs/plans/2026-09-17-p10-owner-signoff.md`；报告 `docs/reports/v1-acceptance-report-2026-09-17.md`；条件②报告与 L2 差距报告交叉引用。<br>- **状态**：[P-10] 定稿通过；代码批次仍可能未提交，不改变验收口径本身。<br>- affects: §4.1.2,§5,附录A | bench:na(new-param) 理由：验收标准状态晋升与签认登记，无 §5/§6 数值变更；验证走 maturity/doc-lint/test:all
 
 ### 2026-09-17（E19 路由 must_clarify 误触修复 E417）<br>- **变更**：收口 E416 条件②遗留——裸词「框架」误命中 `extract_structure`，无附件时零候选 `must_clarify`。① `intent-feature` 收窄文档语境「框架」，并补「框架/架构/技术栈」名词堆叠 → `qa`；② 新增 `R_EXTRACT_STRUCTURE_SEARCH`（`extract_structure`+`hasDocument:false`→`web_search`）；③ `router-v2` 将 `extract_structure` 纳入检索类直连（与 summarize 同口径）。`Tauri 框架 架构 技术栈` → `direct`/`web_search`；有附件文档结构仍走 `document_structure`。<br>- **证据**：计划 `docs/plans/2026-09-17-e19-must-clarify-fix.md`；router-v2 增补 E19/E417 单测；`npm run build` + `test:all` 通过。<br>- **状态**：完成；未重跑全量 v02a/devil；P-12 人工分仍为遗留加强。<br>- affects: §2.2,§6.1,附录A,src/agent/intent-feature.ts,src/agent/routing-table.ts,src/agent/router-v2.ts,src/agent/router-v2.test.ts | bench:na(typo) 理由：路由误澄清修复，无 §5/§6 参数数值变更；验证走 build、定向路由单测与 test:all
+
+### 2026-09-17（KiCad PCB 有界编辑 E418）<br>- **变更**：在 E413 原理图有界编辑之上开放 `.kicad_pcb` 同等约束写：`append_annotation`（`gr_text` 丝印）与单次 `replace_text`；经项目事务快照；MCP `EditPcb` + 工作流节点 `kicad_pcb_edit`；高风险确认后才落盘。明确**不**开放自由布线/任意改铜。<br>- **证据**：计划 `docs/plans/2026-09-17-kicad-pcb-bounded-edit.md`；kicad-edit / workflow-entry 定向单测。<br>- **状态**：完成；自定义仿真开关与真实 flash 驱动仍待后续。<br>- affects: §4.1.2,附录A,src/mcp/kicad-edit.ts,src/mcp/kicad-server.ts,src/mcp/domain-workflow.ts,src/mcp/workflow-entry.ts,src/skills/mcp-agent/index.ts,configs/mcp-agents.json.example | bench:na(new-param) 理由：新增本地 PCB 有界写入能力，不改变 §5/§6 参数数值或搜索行为；验证走 build 与定向单测
 
 ## 附录 B 历史教训
 

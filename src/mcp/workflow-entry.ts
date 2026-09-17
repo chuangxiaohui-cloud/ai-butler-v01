@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import type { DomainWorkflowNode, DomainWorkflowPlan } from './domain-workflow.js';
 import { deriveProjectId, ProjectProfileStore, type ProjectProfilePlanningResult } from './project-profile-store.js';
 import type { ProjectPlatformCapability } from './project-profile.js';
-import type { KiCadSchematicEdit } from './kicad-edit.js';
+import type { KiCadBoundedEdit } from './kicad-edit.js';
 
 export type McpWorkflowEntryStatus =
   | 'clarification_required'
@@ -37,8 +37,8 @@ export function isMcpDomainBuildRequest(query: string): boolean {
 }
 
 export function isMcpKicadEditRequest(query: string): boolean {
-  return /(?:编辑|修改|追加注解|替换文本|\.EditSchematic\b)/i.test(query)
-    && /(?:kicad|\.kicad_sch)/i.test(query);
+  return /(?:编辑|修改|追加注解|替换文本|\.EditSchematic\b|\.EditPcb\b)/i.test(query)
+    && /(?:kicad|\.kicad_sch|\.kicad_pcb)/i.test(query);
 }
 
 export function isMcpLtspiceSimulateRequest(query: string): boolean {
@@ -66,13 +66,15 @@ export function planMcpWorkflowEntry(
     };
   }
   if (isMcpKicadEditRequest(request.query)) {
-    return planKicadEdit(request);
+    return /\.kicad_pcb\b/i.test(request.query) || /\.EditPcb\b/i.test(request.query)
+      ? planKicadPcbEdit(request)
+      : planKicadEdit(request);
   }
   if (isMcpLtspiceSimulateRequest(request.query)) {
     return planLtspiceSimulate(request);
   }
   if (!/(?:构建|编译|\bbuild\b|\.BuildProject\b)/i.test(request.query)) {
-    return { status: 'clarification_required', message: '当前统一入口只接受 Keil/STM32-GCC 构建、KiCad 编辑或 LTspice 仿真任务。' };
+    return { status: 'clarification_required', message: '当前统一入口只接受 Keil/STM32-GCC 构建、KiCad 原理图/PCB 有界编辑或 LTspice 仿真任务。' };
   }
   const location = resolveLocation(request);
   if (!location.projectRoot) {
@@ -173,6 +175,40 @@ function planKicadEdit(request: McpWorkflowEntryRequest): McpWorkflowEntryResult
     : { status: 'approval_required', message: 'KiCad 编辑计划已生成，等待高风险确认；当前未修改任何文件。', plan };
 }
 
+function planKicadPcbEdit(request: McpWorkflowEntryRequest): McpWorkflowEntryResult {
+  const pcbPath = extractKiCadPcbPath(request.query);
+  if (!pcbPath) {
+    return { status: 'clarification_required', message: '请提供要编辑的 .kicad_pcb 路径。' };
+  }
+  const edit = extractKiCadEdit(request.query);
+  if (!edit) {
+    return {
+      status: 'clarification_required',
+      message: '请提供有界编辑：追加注解（注解：…）或单次替换（替换：旧→新 / from→to）。自由布线不在范围内。',
+    };
+  }
+  const resolved = resolve(pcbPath);
+  const projectId = deriveProjectId(dirname(resolved));
+  const node: DomainWorkflowNode = {
+    id: 'kicad-pcb-edit',
+    kind: 'kicad_pcb_edit',
+    title: '编辑 KiCad PCB（有界，项目事务）',
+    inputRefs: [resolved],
+    outputKind: 'eda_edit',
+    agentId: 'kicad',
+    toolName: 'kicad.EditPcb',
+    args: { pcbPath: resolved, edit },
+    targetFiles: [resolved],
+    risk: 'write',
+    acceptance: '事务提交成功且源文件哈希与提案一致',
+    onFailure: 'handoff',
+  };
+  const plan = makePlan(projectId, request.completedRevisionCycles, [node]);
+  return request.approved
+    ? { status: 'ready', message: 'KiCad PCB 有界编辑计划已批准，将经项目事务落盘。', plan }
+    : { status: 'approval_required', message: 'KiCad PCB 有界编辑计划已生成，等待高风险确认；当前未修改任何文件。', plan };
+}
+
 function planLtspiceSimulate(request: McpWorkflowEntryRequest): McpWorkflowEntryResult {
   const schematicPath = extractLtspicePath(request.query);
   if (!schematicPath) {
@@ -204,11 +240,15 @@ function extractKiCadSchematicPath(query: string): string | null {
   return query.match(/((?:[A-Za-z]:\\|projects[\\/]|sandbox[\\/]|outputs[\\/])[^"“”\r\n]*?\.kicad_sch)/i)?.[1]?.trim() ?? null;
 }
 
+function extractKiCadPcbPath(query: string): string | null {
+  return query.match(/((?:[A-Za-z]:\\|projects[\\/]|sandbox[\\/]|outputs[\\/])[^"“”\r\n]*?\.kicad_pcb)/i)?.[1]?.trim() ?? null;
+}
+
 function extractLtspicePath(query: string): string | null {
   return query.match(/((?:[A-Za-z]:\\|projects[\\/]|sandbox[\\/]|outputs[\\/])[^"“”\r\n]*?\.asc)/i)?.[1]?.trim() ?? null;
 }
 
-function extractKiCadEdit(query: string): KiCadSchematicEdit | null {
+function extractKiCadEdit(query: string): KiCadBoundedEdit | null {
   const annotation = query.match(/(?:注解|标注|append(?:_annotation)?)[：:\s]+["“]?([^"”\r\n]+)["”]?/i)?.[1]?.trim();
   if (annotation) return { kind: 'append_annotation', text: annotation };
   const arrow = query.match(/(?:替换|replace)[：:\s]+(.+?)\s*(?:→|->|=>)\s*(.+?)(?:[。；;\r\n]|$)/i);

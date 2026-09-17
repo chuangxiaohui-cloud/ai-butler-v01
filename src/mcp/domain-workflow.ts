@@ -12,6 +12,7 @@ export type DomainWorkflowNodeKind =
   | 'kicad_project_inventory'
   | 'kicad_erc'
   | 'kicad_edit'
+  | 'kicad_pcb_edit'
   | 'ltspice_schematic_inventory'
   | 'ltspice_simulate';
 export type DomainWorkflowNodeStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
@@ -40,6 +41,7 @@ export interface DomainWorkflowNode {
     | 'kicad.InspectProject'
     | 'kicad.RunErc'
     | 'kicad.EditSchematic'
+    | 'kicad.EditPcb'
     | 'ltspice.InspectSchematic'
     | 'ltspice.RunSimulation';
   args: Record<string, unknown>;
@@ -135,6 +137,11 @@ const NODE_CONTRACT: Record<DomainWorkflowNodeKind, {
   },
   kicad_edit: {
     toolName: 'kicad.EditSchematic',
+    outputKind: 'eda_edit',
+    risk: 'write',
+  },
+  kicad_pcb_edit: {
+    toolName: 'kicad.EditPcb',
     outputKind: 'eda_edit',
     risk: 'write',
   },

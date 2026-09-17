@@ -255,3 +255,25 @@ test('E413：KiCad 编辑与 LTspice 仿真须批准且无批准不生成 ready'
   assert.equal(isMcpKicadEditRequest('编辑 KiCad projects/a.kicad_sch 注解：x'), true);
   assert.equal(isMcpLtspiceSimulateRequest('仿真 LTspice projects/a.asc'), true);
 });
+
+test('E418：KiCad PCB 有界编辑须批准且工具为 EditPcb', () => {
+  const edit = planMcpWorkflowEntry({
+    query: '请编辑 KiCad PCB projects/board/demo.kicad_pcb 注解：E418',
+    approved: false,
+    minimumObservedAt: 0,
+    completedRevisionCycles: 0,
+  });
+  assert.equal(edit.status, 'approval_required');
+  assert.equal(edit.plan?.nodes[0]?.kind, 'kicad_pcb_edit');
+  assert.equal(edit.plan?.nodes[0]?.toolName, 'kicad.EditPcb');
+  assert.equal(edit.plan?.nodes[0]?.risk, 'write');
+
+  const ready = planMcpWorkflowEntry({
+    query: '请编辑 KiCad PCB projects/board/demo.kicad_pcb 注解：E418',
+    approved: true,
+    minimumObservedAt: 0,
+    completedRevisionCycles: 0,
+  });
+  assert.equal(ready.status, 'ready');
+  assert.equal(isMcpKicadEditRequest('编辑 PCB projects/a.kicad_pcb 注解：x'), true);
+});

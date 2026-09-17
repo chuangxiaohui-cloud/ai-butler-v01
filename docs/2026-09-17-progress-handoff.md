@@ -5,29 +5,29 @@
 
 ## 一句话结论
 
-**[P-10] 定稿（E416）**；**E417 已 push**；**E19 抽检 + C.2（3/2/3）已提交**。
+**E418 KiCad PCB 有界编辑已提交**；全量 `bench:v02a` 报表同批落盘。全量 C.2 重评仍暂缓。
 
 ## 当前快照
 
 | 项 | 状态 |
 |----|------|
 | 分支 | `v0.2b` |
-| 远程 | E417 已 push；抽检文档已提交 bb5e0ff（未 push） |
-| [P-10] | **定稿**（E416） |
-| E19 | 管道 gate=none；C.2 相/时/可=**3/2/3**（综 2.67） |
-| `doc-lint` / `test:all` | E417 时绿 |
+| [P-10] | 定稿 |
+| E417 / E19 | 已 push；全量 v02a 报表已更新（E19 相关性=3） |
+| E418 | **本轮提交** |
+| `doc-lint` | 0 FAIL 0 WARN |
 
 ## 本轮关键动作
 
-1. E417 提交 `9c52c5b`/`51aa281`；双远程 push。
-2. E19 管道抽检 + C.2 → [`docs/reports/e19-pipeline-spotcheck-2026-09-17.md`](./reports/e19-pipeline-spotcheck-2026-09-17.md)
+1. 全量 `bench:v02a` → [`docs/plans/2026-09-17-bench-v02a-full.md`](./plans/2026-09-17-bench-v02a-full.md) · [`bench/v02a-report.md`](../bench/v02a-report.md)
+2. E418 PCB 有界编辑 → [`docs/plans/2026-09-17-kicad-pcb-bounded-edit.md`](./plans/2026-09-17-kicad-pcb-bounded-edit.md)
 
 ## 下一轮首选与后续序列
 
-1. **首选**：需要时再 push；或全量 `bench:v02a` 复跑覆盖报表。
-2. **可选**：其余 v01/v02a 条目 C.2 回填。
-3. **能力下一刀**：自由 PCB / 自定义仿真 / 真实 flash·串口（须单独立项）。
+1. **首选**：需要时 `push`；或自定义仿真开关白名单。
+2. **可选**：真实 flash 驱动（E411 门禁仍在）；全量 C.2 重评（已暂缓）。
+3. **更后**：自由布线级 PCB。
 
 ---
 
-**本轮收工点**：E19 抽检报告与 C.2 分已提交（bb5e0ff）。
+**本轮收工点**：E418 + v02a 报表已提交；未 push。

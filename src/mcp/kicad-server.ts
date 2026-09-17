@@ -2,7 +2,7 @@ import { createInterface } from 'node:readline';
 import { resolve } from 'node:path';
 
 import { discoverKiCadProjects, inspectKiCadProject, runKiCadErc } from './kicad.js';
-import { applyKiCadSchematicEdit, type KiCadSchematicEdit } from './kicad-edit.js';
+import { applyKiCadSchematicEdit, applyKiCadPcbEdit, type KiCadBoundedEdit } from './kicad-edit.js';
 
 interface RpcRequest { id?: number | string; method?: string; params?: Record<string, unknown> }
 
@@ -53,6 +53,29 @@ const tools = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'EditPcb',
+    description: '有界编辑 .kicad_pcb（追加丝印注解或单次精确替换），经项目事务快照后落盘；不开放自由布线',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        pcbPath: { type: 'string' },
+        edit: {
+          type: 'object',
+          properties: {
+            kind: { type: 'string', enum: ['append_annotation', 'replace_text'] },
+            text: { type: 'string' },
+            from: { type: 'string' },
+            to: { type: 'string' },
+          },
+          required: ['kind'],
+          additionalProperties: false,
+        },
+      },
+      required: ['pcbPath', 'edit'],
+      additionalProperties: false,
+    },
+  },
 ];
 
 function send(id: RpcRequest['id'], result?: unknown, error?: { code: number; message: string }) {
@@ -89,10 +112,23 @@ async function callTool(params: Record<string, unknown>): Promise<unknown> {
       snapshotDir: result.snapshotDir,
     };
   }
+  if (name === 'EditPcb') {
+    if (typeof args.pcbPath !== 'string') throw new Error('pcbPath 必须是字符串');
+    const edit = parseEdit(args.edit);
+    const result = applyKiCadPcbEdit({ pcbPath: args.pcbPath, edit, workspaceRoot });
+    if (!result.ok) throw new Error(result.error ?? 'KiCad PCB 编辑失败');
+    return {
+      ok: true,
+      summary: result.summary,
+      transactionId: result.transactionId,
+      committedPaths: result.committedPaths,
+      snapshotDir: result.snapshotDir,
+    };
+  }
   throw new Error(`未知 KiCad 工具：${name}`);
 }
 
-function parseEdit(value: unknown): KiCadSchematicEdit {
+function parseEdit(value: unknown): KiCadBoundedEdit {
   if (!value || typeof value !== 'object') throw new Error('edit 必须是对象');
   const record = value as Record<string, unknown>;
   if (record.kind === 'append_annotation') {

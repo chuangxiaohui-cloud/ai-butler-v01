@@ -31,7 +31,7 @@
     {
       "id": "kicad",
       "command": ["node", "--import", "tsx", "src/mcp/kicad-server.ts", "--kicad-cli", "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe"],
-      "allowedTools": ["DiscoverProjects", "InspectProject", "RunErc", "EditSchematic"],
+      "allowedTools": ["DiscoverProjects", "InspectProject", "RunErc", "EditSchematic", "EditPcb"],
       "defaultTool": "kicad.DiscoverProjects",
       "defaultArgs": { "root": "projects" }
     },

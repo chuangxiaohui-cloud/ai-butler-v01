@@ -256,7 +256,7 @@ export function createMcpAgentSkill(): ExecutableSkill {
                 ? { category: 'build' as const, deterministic: true }
                 : toolRef.startsWith('vscode.')
                   ? { category: 'code' as const, deterministic: true }
-                : toolRef === 'kicad.EditSchematic'
+                : toolRef === 'kicad.EditSchematic' || toolRef === 'kicad.EditPcb'
                   ? { category: 'eda' as const, opKind: 'filegen' as const, retryCount: 0 }
                 : toolRef.startsWith('kicad.')
                   ? { category: 'eda' as const, deterministic: true, retryCount: 0 }
