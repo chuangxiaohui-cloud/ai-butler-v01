@@ -1,4 +1,4 @@
-/** E404/E409：领域工作流执行入口；电子设计节点保持只读边界。 */
+/** E404/E409/E413：领域工作流执行入口；写入/仿真节点须已在入口层完成批准。 */
 
 import type { DispatchOptions, DispatchResult } from './dispatcher.js';
 import { checkRevisionLoop } from './workflow-guard.js';
@@ -11,7 +11,9 @@ export type DomainWorkflowNodeKind =
   | 'stm32_build'
   | 'kicad_project_inventory'
   | 'kicad_erc'
-  | 'ltspice_schematic_inventory';
+  | 'kicad_edit'
+  | 'ltspice_schematic_inventory'
+  | 'ltspice_simulate';
 export type DomainWorkflowNodeStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
 
 export interface DomainWorkflowNode {
@@ -19,7 +21,15 @@ export interface DomainWorkflowNode {
   kind: DomainWorkflowNodeKind;
   title: string;
   inputRefs: string[];
-  outputKind: 'project_profile' | 'vscode_workspace' | 'build_diagnostics' | 'eda_project' | 'erc_diagnostics' | 'simulation_profile';
+  outputKind:
+    | 'project_profile'
+    | 'vscode_workspace'
+    | 'build_diagnostics'
+    | 'eda_project'
+    | 'erc_diagnostics'
+    | 'eda_edit'
+    | 'simulation_profile'
+    | 'simulation_result';
   agentId: 'keil' | 'vscode' | 'stm32-gcc' | 'kicad' | 'ltspice';
   toolName:
     | 'keil.InspectProjectProfile'
@@ -29,10 +39,12 @@ export interface DomainWorkflowNode {
     | 'stm32-gcc.BuildProject'
     | 'kicad.InspectProject'
     | 'kicad.RunErc'
-    | 'ltspice.InspectSchematic';
+    | 'kicad.EditSchematic'
+    | 'ltspice.InspectSchematic'
+    | 'ltspice.RunSimulation';
   args: Record<string, unknown>;
   targetFiles: string[];
-  risk: 'read_only' | 'build';
+  risk: 'read_only' | 'build' | 'write' | 'simulate';
   acceptance: string;
   onFailure: 'handoff' | 'revise';
 }
@@ -121,10 +133,20 @@ const NODE_CONTRACT: Record<DomainWorkflowNodeKind, {
     outputKind: 'erc_diagnostics',
     risk: 'read_only',
   },
+  kicad_edit: {
+    toolName: 'kicad.EditSchematic',
+    outputKind: 'eda_edit',
+    risk: 'write',
+  },
   ltspice_schematic_inventory: {
     toolName: 'ltspice.InspectSchematic',
     outputKind: 'simulation_profile',
     risk: 'read_only',
+  },
+  ltspice_simulate: {
+    toolName: 'ltspice.RunSimulation',
+    outputKind: 'simulation_result',
+    risk: 'simulate',
   },
 };
 
@@ -140,7 +162,7 @@ export async function executeDomainWorkflow(
   const artifacts: DomainWorkflowArtifact[] = [];
   const evidence: DomainWorkflowEvidence[] = [];
 
-  if (nodes.some((node) => node.risk === 'build')) {
+  if (nodes.some((node) => node.risk === 'build' || node.risk === 'write' || node.risk === 'simulate')) {
     const loop = checkRevisionLoop(plan.completedRevisionCycles);
     if (!loop.allowed) {
       for (const node of nodes) node.status = 'skipped';
@@ -172,8 +194,12 @@ export async function executeDomainWorkflow(
         ? 'code'
         : node.agentId === 'kicad' ? 'eda' : node.agentId === 'ltspice' ? 'simulation' : 'build',
       ...(node.risk === 'build'
-        ? { opKind: 'compile', retryCount: 0 }
-        : { deterministic: true }),
+        ? { opKind: 'compile' as const, retryCount: 0 }
+        : node.risk === 'write'
+          ? { opKind: 'filegen' as const, retryCount: 0 }
+          : node.risk === 'simulate'
+            ? { opKind: 'compile' as const, retryCount: 0 }
+            : { deterministic: true }),
     });
     evidence.push(...dispatched.evidence.map((item) => ({ ...item, nodeId: node.id })));
     if (dispatched.output) {

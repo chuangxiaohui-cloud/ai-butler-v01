@@ -10,8 +10,16 @@
 import type { ExecutableSkill, SkillInput, SkillOutput } from '../registry.js';
 import type { SkillArtifact } from '../registry.js';
 import type { SkillDeps } from '../deps.js';
+import { DeviceAuthStore } from '../../mcp/device-auth.js';
 import { executeDomainWorkflow } from '../../mcp/domain-workflow.js';
-import { isMcpDomainBuildRequest, planMcpWorkflowEntry } from '../../mcp/workflow-entry.js';
+import {
+  isHardwareCapabilityQuery,
+  isHardwareFlashQuery,
+} from '../../mcp/hardware-capability.js';
+import { evaluateHardwareGate } from '../../mcp/hardware-gate.js';
+import { fingerprintDomainWorkflowPlan, shortPlanFingerprint } from '../../mcp/workflow-plan-fingerprint.js';
+import { WorkflowPlanStore } from '../../mcp/workflow-plan-store.js';
+import { isMcpDomainApprovalRequest, planMcpWorkflowEntry } from '../../mcp/workflow-entry.js';
 
 /** 显式工具调用语法：`windows.Process` / `windows.Process(mode=list,limit=5)` */
 const TOOL_REF_RE = /((?:windows|keil|stm32-gcc|vscode|kicad|altium|freecad|cursor|ltspice)\.[A-Za-z][A-Za-z0-9_.-]*)(?:\(([^)]*)\))?/i;
@@ -39,8 +47,39 @@ export function createMcpAgentSkill(): ExecutableSkill {
   return {
     name: 'mcp-agent',
     version: '0.1.0',
-    triggers: ['进程', '窗口', '桌面', '系统工具', '子agent', '子 Agent', 'mcp', 'windows.', 'keil', '.uvprojx', 'vscode', 'VS Code', 'STM32-GCC', 'arm-none-eabi', 'KiCad', '.kicad_sch', '.kicad_pro', 'LTspice', '.asc'],
+    triggers: ['进程', '窗口', '桌面', '系统工具', '子agent', '子 Agent', 'mcp', 'windows.', 'keil', '.uvprojx', 'vscode', 'VS Code', 'STM32-GCC', 'arm-none-eabi', 'KiCad', '.kicad_sch', '.kicad_pro', 'LTspice', '.asc', '烧录', '串口', 'flash', '编辑原理图', '仿真'],
     async execute(input: SkillInput, deps: SkillDeps): Promise<SkillOutput> {
+      // E411：烧录/串口只走契约门禁说明，不依赖 MCP server，也不连接设备
+      if (isHardwareCapabilityQuery(input.query)) {
+        const devices = deps.deviceAuth ?? new DeviceAuthStore();
+        const decision = evaluateHardwareGate(
+          {
+            action: isHardwareFlashQuery(input.query) ? 'flash' : 'serial_read',
+            deviceId: typeof input.params?.deviceId === 'string' ? input.params.deviceId : null,
+            port: typeof input.params?.port === 'string' ? input.params.port : null,
+            serialMode: 'read_only',
+            firmware: null,
+            perFlashConfirmed: input.params?.perFlashConfirmed === true,
+            authorizationSource:
+              typeof input.params?.authorizationSource === 'string'
+                ? input.params.authorizationSource
+                : null,
+          },
+          { devices },
+        );
+        return {
+          result: decision.message,
+          confidence: 0.75,
+          followUpAction: decision.allowed
+            ? '契约已通过，但 E411 仍不执行硬件动作；后续轮次才接入真实 flash/串口工具。'
+            : '请先完成设备白名单授权，并提供固件摘要与本次独立确认；不得用 E410 夹具证据授权。',
+          artifacts: [{
+            kind: 'hardware-gate-decision',
+            title: '硬件门禁裁决',
+            data: { decision },
+          }],
+        };
+      }
       if (!deps.subAgent) {
         return {
           result: 'MCP 子 Agent 调度未装配，无法执行系统/工具类操作。',
@@ -48,13 +87,14 @@ export function createMcpAgentSkill(): ExecutableSkill {
           followUpAction: '配置 configs/mcp-agents.json 启用真实 MCP server 后可用。',
           };
       }
-      if (isMcpDomainBuildRequest(input.query)) {
+      if (isMcpDomainApprovalRequest(input.query)) {
         const minimumObservedAt = typeof input.params?.minimumObservedAt === 'number'
           ? input.params.minimumObservedAt
           : 0;
         const completedRevisionCycles = typeof input.params?.completedRevisionCycles === 'number'
           ? input.params.completedRevisionCycles
           : 0;
+        const planStore = deps.workflowPlans ?? new WorkflowPlanStore();
         const entry = planMcpWorkflowEntry({
           query: input.query,
           approved: input.params?.mcpWorkflowApproved === true,
@@ -62,27 +102,86 @@ export function createMcpAgentSkill(): ExecutableSkill {
           completedRevisionCycles,
         }, deps.projectProfiles);
         if (!entry.plan || entry.status === 'clarification_required') {
-          return { result: entry.message, confidence: 0.4, followUpAction: '补充工程路径或明确选择 Keil / STM32-GCC。' };
+          return { result: entry.message, confidence: 0.4, followUpAction: '补充工程路径、编辑内容或明确构建/仿真目标。' };
         }
         if (entry.status === 'approval_required') {
+          const saved = planStore.savePending({ query: input.query, plan: entry.plan });
           return {
-            result: entry.message,
+            result: `${entry.message}\n计划指纹：${shortPlanFingerprint(saved.fingerprint)}`,
             confidence: 0.8,
-            followUpAction: '请通过统一裁决入口批准后再执行构建。',
-            artifacts: [{ kind: 'mcp-domain-workflow-plan', title: 'MCP 领域工作流计划', data: { entry } }],
+            followUpAction: '请通过统一裁决入口批准后再执行写入/仿真/构建。',
+            artifacts: [{
+              kind: 'mcp-domain-workflow-plan',
+              title: 'MCP 领域工作流计划',
+              data: {
+                entry,
+                fingerprint: saved.fingerprint,
+                fingerprintShort: shortPlanFingerprint(saved.fingerprint),
+                planRecordId: saved.id,
+              },
+            }],
           };
         }
+        // E412：批准恢复时若携带指纹，必须与当前重算计划一致，否则零 MCP 调用
+        const expectedFingerprint = typeof input.params?.workflowPlanFingerprint === 'string'
+          ? input.params.workflowPlanFingerprint
+          : null;
+        if (expectedFingerprint && entry.status === 'ready') {
+          const verified = planStore.verifyForResume(expectedFingerprint, entry.plan);
+          if (!verified.ok) {
+            return {
+              result: verified.message,
+              confidence: 0.35,
+              followUpAction: '请重新发起请求以生成新计划并再次批准。',
+              artifacts: [{
+                kind: 'mcp-domain-workflow-plan',
+                title: 'MCP 领域工作流计划（指纹漂移）',
+                data: {
+                  entry,
+                  fingerprint: fingerprintDomainWorkflowPlan(entry.plan),
+                  expectedFingerprint,
+                  resumeError: verified.reason,
+                },
+              }],
+            };
+          }
+          planStore.markActive(expectedFingerprint);
+        }
         const workflow = await executeDomainWorkflow(entry.plan, deps.subAgent);
-        const action = entry.status === 'inventory_required' ? '只读盘点' : '构建';
+        const risk = entry.plan.nodes[0]?.risk;
+        const action = entry.status === 'inventory_required'
+          ? '只读盘点'
+          : risk === 'write' ? 'KiCad 编辑' : risk === 'simulate' ? 'LTspice 仿真' : '构建';
+        const fingerprint = fingerprintDomainWorkflowPlan(entry.plan);
+        if (expectedFingerprint) {
+          if (workflow.ok) planStore.markDone(expectedFingerprint);
+          else planStore.markFailed(expectedFingerprint);
+        }
         return {
           result: workflow.ok
-            ? `${entry.message}\n${action}已完成。`
+            ? `${entry.message}\n${action}已完成。\n计划指纹：${shortPlanFingerprint(fingerprint)}`
             : `${entry.message}\n${action}未完成：${workflow.handoff.reason ?? '请交由用户审查。'}`,
           confidence: workflow.ok ? 0.8 : 0.3,
           followUpAction: entry.status === 'inventory_required'
             ? '画像已更新；如需构建，请重新发起构建请求并完成批准。'
             : workflow.handoff.nextAction,
-          artifacts: [{ kind: 'mcp-domain-workflow', title: 'MCP 领域工作流', data: { entry, workflow } }],
+          artifacts: [{
+            kind: 'mcp-domain-workflow',
+            title: 'MCP 领域工作流',
+            data: {
+              entry,
+              workflow,
+              fingerprint,
+              fingerprintShort: shortPlanFingerprint(fingerprint),
+              evidenceChain: (workflow.evidence ?? []).map((item) => ({
+                nodeId: item.nodeId,
+                agentId: item.agentId,
+                toolName: item.toolName,
+                attempt: item.attempt,
+                untrusted: true as const,
+              })),
+            },
+          }],
         };
       }
       const match = input.query.match(TOOL_REF_RE);
@@ -129,6 +228,7 @@ export function createMcpAgentSkill(): ExecutableSkill {
         } else if (/kicad|\.kicad_(?:pro|sch)/i.test(input.query)) {
           const path = input.query.match(/((?:[A-Za-z]:\\|projects[\\/]|sandbox[\\/]|outputs[\\/])[^"“”\r\n]*?\.kicad_(?:pro|sch))/i)?.[1];
           if (path) {
+            // 编辑意图已由 isMcpDomainApprovalRequest 短路；此处仅只读/ERC
             toolRef = /(?:erc|电气规则|规则检查)/i.test(input.query) && /\.kicad_sch$/i.test(path.trim())
               ? 'kicad.RunErc'
               : 'kicad.InspectProject';
@@ -140,6 +240,7 @@ export function createMcpAgentSkill(): ExecutableSkill {
             args = { root: 'projects' };
           }
         } else if (/ltspice|\.asc\b/i.test(input.query)) {
+          // 仿真意图已由批准门短路；此处仅只读盘点
           const path = input.query.match(/((?:[A-Za-z]:\\|projects[\\/]|sandbox[\\/]|outputs[\\/])[^"“”\r\n]*?\.asc)/i)?.[1];
           toolRef = path ? 'ltspice.InspectSchematic' : 'ltspice.DiscoverSchematics';
           args = path ? { schematicPath: path.trim() } : { root: 'projects' };
@@ -155,8 +256,12 @@ export function createMcpAgentSkill(): ExecutableSkill {
                 ? { category: 'build' as const, deterministic: true }
                 : toolRef.startsWith('vscode.')
                   ? { category: 'code' as const, deterministic: true }
+                : toolRef === 'kicad.EditSchematic'
+                  ? { category: 'eda' as const, opKind: 'filegen' as const, retryCount: 0 }
                 : toolRef.startsWith('kicad.')
                   ? { category: 'eda' as const, deterministic: true, retryCount: 0 }
+                : toolRef === 'ltspice.RunSimulation'
+                  ? { category: 'simulation' as const, opKind: 'compile' as const, retryCount: 0 }
                 : toolRef.startsWith('ltspice.')
                   ? { category: 'simulation' as const, deterministic: true }
                 : {}),
@@ -224,11 +329,16 @@ function presentMcpOutput(output: string): { text: string; artifacts: SkillArtif
       simulationDirectives?: string[];
       includeDirectives?: string[];
       simulationExecuted?: boolean;
+      outputFiles?: Array<{ path?: string; bytes?: number; sha256?: string }>;
+      batchArgs?: string[];
       sourceUnchanged?: boolean;
       reportGenerated?: boolean;
       reportRetained?: boolean;
       violations?: unknown[];
       exclusionCount?: number;
+      committedPaths?: string[];
+      summary?: string;
+      transactionId?: string;
     };
     if (Array.isArray(data.schematics)) {
       return {
@@ -238,7 +348,20 @@ function presentMcpOutput(output: string): { text: string; artifacts: SkillArtif
         artifacts: [],
       };
     }
-    if (data.schematicPath && typeof data.simulationExecuted === 'boolean') {
+    if (data.simulationExecuted === true && data.schematicPath) {
+      const outputs = (data.outputFiles ?? [])
+        .map((item) => `- ${item.path}（${item.bytes ?? 0} 字节）`)
+        .join('\n');
+      return {
+        text: [
+          `LTspice 批仿真${data.ok ? '完成' : '未成功'}：${data.schematicPath}`,
+          `参数：${(data.batchArgs ?? []).join(' ')}`,
+          outputs ? `产物：\n${outputs}` : '未检测到新的 raw/log/net 产物',
+        ].join('\n'),
+        artifacts: [{ kind: 'ltspice-simulation-result', title: 'LTspice 仿真结果', data }],
+      };
+    }
+    if (data.schematicPath && data.simulationExecuted === false) {
       return {
         text: [
           `LTspice 原理图只读盘点：${data.schematicPath}`,
@@ -246,6 +369,16 @@ function presentMcpOutput(output: string): { text: string; artifacts: SkillArtif
           '仿真执行：否',
         ].join('\n'),
         artifacts: [{ kind: 'ltspice-schematic-profile', title: 'LTspice 原理图画像', data }],
+      };
+    }
+    if (Array.isArray(data.committedPaths) && typeof data.summary === 'string') {
+      return {
+        text: [
+          `KiCad 编辑已提交：${data.summary}`,
+          `事务：${data.transactionId ?? 'n/a'}`,
+          `文件：${data.committedPaths.join('、')}`,
+        ].join('\n'),
+        artifacts: [{ kind: 'kicad-schematic-edit', title: 'KiCad 原理图编辑', data }],
       };
     }
     if (typeof data.sourceUnchanged === 'boolean' && Array.isArray(data.violations)) {

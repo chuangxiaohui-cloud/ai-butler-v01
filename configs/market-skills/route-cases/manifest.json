@@ -1,0 +1,9 @@
+{
+  "name": "route-cases",
+  "version": "0.1.0",
+  "triggers": ["路由样本", "route cases", "route:cases", "查看路由 case"],
+  "description": "查看意图路由 case 样本库（route:cases）",
+  "steps": ["npm run route:cases"],
+  "verify": ["git status --short"],
+  "permissions": ["command"]
+}

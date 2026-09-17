@@ -49,9 +49,10 @@ npm exec tsx scripts/doc-lint.ts   # 需求文档全量验收（唯一验收口�
 npm run skill:market:run -- <name> [--query "<文本>"]|--list   # 市场 Skill 执行/清单（E243；E251 带参输入）
 npm run skill:market:install -- --source <dir> --yes   # 本地安装市场 Skill（E250）
 npm run route:query:file -- <文件>   # 意图路由判题文件入口（E251，读文件 → routeV2 JSON）
-npm run maturity:check                    # 成熟度轻量自检 L0-L3（[P-25]，E247/E249）
+npm run maturity:check                    # 成熟度轻量自检 L0-L3（[P-25]，E247/E249/E415 滑动窗复用率）
 npm run mcp:health                        # 已配置 MCP server 握手/工具清单/只读默认调用健康检查（E388）
 npm run mcp:evidence                      # 五类专业 MCP 真实 stdio 最小夹具只读证据（E410）
+npm run mcp:accept                        # 构建/ERC/仿真动作验收（E414；默认 dry-run，加 --confirm 才执行）
 npm run profile:software -- --dry-run     # 只读发现已安装软件并预览职业画像建议（E365）
 ```
 
@@ -86,7 +87,7 @@ npm run profile:software -- --dry-run     # 只读发现已安装软件并预览
 | `src/search/` | Stage 1-6 搜索问答管道、搜索 provider、融合、兜底链 |
 | `src/agent/` | 三层意图路由、路由表、校准、模式映射、多模态预处理；显式记住/纠正记忆指令（§8.3.2，E370） |
 | `src/skills/` | Skill 注册、生命周期与预置 Skill；市场 Skill（E243/E248/E250/E251：可执行 handler、触发词直连、本地安装、`@input` 安全输入通道）；project-writer 结构化多文件事务预览、确认与首次裁决执行（E398/E399）；回复连续 👎 达 [P-79] 标记复审并由用户恢复（E378/E379） |
-| `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标、`maturity:check`；合并路由标注与回复最新反馈，v1.0 P-10 条件③，E247/E377） |
+| `src/maturity/` | 成熟度观测（L0-L3 判定、五维指标、`maturity:check`；复用率 [P-155]/[P-156] 滑动窗，E247/E377/E415） |
 | `src/feedback/` | 回复反馈与最新值统计、Skill 复审、重复修订候选归并，以及 accepted 候选的只读草案预览（§9.3，E374-E381） |
 | `src/memory/` | MemoryStore、ExperienceManager、用户上下文、蒸馏；软件职业画像（E365）；三栏 ACL（E367/E368）；人格事实分层、栏位冲突、时间敏感事实及已解决生活话题出窗/L2 保留（§8.1.3/§8.3，E369/E371-E373） |
 | `src/budget/` | 预算账本（append-only 拨款/支出事件，余额=拨款-支出，§2.1/§5 唯一权威，E308） |
@@ -97,7 +98,7 @@ npm run profile:software -- --dry-run     # 只读发现已安装软件并预览
 | `src/im/` | 远程对话通道（授权开关/会话隔离/输出适配/复用 pipeline + OneBot 11 真实适配器，v1.0 S5，§4.5，E224+E241） |
 | `src/mail/` | 邮箱通道（凭据多账号容器、IMAP 只读收件/搜信/附件、SMTP 发信、Outlook OAuth2 设备码授权与自动续期 XOAUTH2，E293-E322，§4.5 生活助手） |
 | `src/gateway/` | 单一共享 TurnLoop Express gateway 与 API、限速/并发闸门（P16）；普通批准/否决、结构化 choice、project-writer 首次确认及冲突三选一执行入口（E323/E396/E399/E402） |
-| `src/mcp/` | MCP 子 Agent 运行契约与工具适配；Keil、VS Code、STM32-GCC、KiCad ERC 与 LTspice 只读链已接入并有真实 stdio 夹具证据（E401-E410），受 schema、白名单、沙箱与 [P-154] 约束；不含 EDA 编辑、实际仿真或烧录 |
+| `src/mcp/` | MCP 子 Agent 运行契约与工具适配；Keil、VS Code、STM32-GCC、KiCad ERC 与 LTspice 只读链已接入并有真实 stdio 夹具证据（E401-E410），受 schema、白名单、沙箱与 [P-154] 约束；E411 flash/串口能力与风险契约（设备白名单/固件摘要/逐次确认/串口默认只读/审计），默认零硬件动作；E412 工作流计划指纹持久化与批准恢复校验；E413 KiCad 有界编辑（项目事务）与 LTspice 固定批仿真（高风险确认）；E414 动作验收入口（fixture/business + [P-10] 差距复验）；不含自由 PCB 编辑、自定义仿真开关或真实烧录驱动 |
 | `src/browser/` | 浏览器会话、CDP 持久化、页面抓取、浏览器操作（观察/交互/驱动，E252 §4.1.5） |
 | `src/config/` | PARAM、Provider Registry、模型目录、安全/用量/Skill 配置 |
 | `src/trajectory/` | append-only 轨迹日志（落盘 `data/trajectory.jsonl`） |

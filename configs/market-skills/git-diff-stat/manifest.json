@@ -1,0 +1,9 @@
+{
+  "name": "git-diff-stat",
+  "version": "0.1.0",
+  "triggers": ["改动统计", "git diff --stat", "变更概览", "diff 统计"],
+  "description": "工作区改动统计（git diff --stat）",
+  "steps": ["git diff --stat"],
+  "verify": ["git status --short"],
+  "permissions": ["command"]
+}

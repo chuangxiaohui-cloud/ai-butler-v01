@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { discoverLtspiceSchematics, inspectLtspiceSchematic } from './ltspice.js';
+import { discoverLtspiceSchematics, inspectLtspiceSchematic, runLtspiceSimulation } from './ltspice.js';
 
 const ASC = [
   'Version 4',
@@ -123,4 +123,62 @@ test('ltspice: UTF-16LE BOM 原理图可读取且缺少仿真指令时给出诊�
     rmSync(root, { recursive: true, force: true });
   }
   void schematicPath;
+});
+
+test('E413: 先 -netlist 再固定 -b .net，并报告沙箱内产物', async () => {
+  const { root, schematicPath } = fixture();
+  const executable = join(root, 'fake-ltspice.exe');
+  const netPath = join(root, 'projects', 'analog', 'demo.net');
+  writeFileSync(executable, '', 'utf8');
+  const calls: string[][] = [];
+  try {
+    const result = await runLtspiceSimulation({
+      schematicPath,
+      workspaceRoot: root,
+      executable,
+      runner: async (_exe, args, options) => {
+        calls.push([...args]);
+        if (args[0] === '-netlist') {
+          assert.deepEqual(args, ['-netlist', schematicPath]);
+          writeFileSync(netPath, '* netlist\n.end\n', 'utf8');
+          return { stdout: 'netlisted', stderr: '', exitCode: 0, durationMs: 5, timedOut: false };
+        }
+        assert.deepEqual(args, ['-b', netPath]);
+        writeFileSync(join(options.cwd, 'demo.raw'), 'raw-bytes', 'utf8');
+        writeFileSync(join(options.cwd, 'demo.log'), 'log-bytes', 'utf8');
+        return { stdout: 'ok', stderr: '', exitCode: 0, durationMs: 12, timedOut: false };
+      },
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.simulationExecuted, true);
+    assert.deepEqual(calls, [['-netlist', schematicPath], ['-b', netPath]]);
+    assert.deepEqual(result.batchArgs, ['-b', netPath]);
+    assert.equal(result.outputFiles.length, 3);
+    assert.ok(result.outputFiles.every((item) => item.path.startsWith('projects')));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('E413: 缺少仿真指令时拒绝启动', async () => {
+  const { root, projectRoot } = fixture();
+  const executable = join(root, 'fake-ltspice.exe');
+  writeFileSync(executable, '', 'utf8');
+  const bare = join(projectRoot, 'bare.asc');
+  writeFileSync(bare, 'Version 4\nSYMBOL Resistor 0 0 R0\nSYMATTR InstName R1\n', 'utf8');
+  try {
+    await assert.rejects(
+      () => runLtspiceSimulation({
+        schematicPath: bare,
+        workspaceRoot: root,
+        executable,
+        runner: async () => {
+          throw new Error('不应启动');
+        },
+      }),
+      /缺少仿真指令/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

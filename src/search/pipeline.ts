@@ -43,6 +43,8 @@ import {
   parseApprovalReply,
 } from '../escalation/confirm-gate.js';
 import { describeMcpWorkflowPlan, preflightMcpBuildRequest } from '../mcp/workflow-entry.js';
+import { fingerprintDomainWorkflowPlan, shortPlanFingerprint } from '../mcp/workflow-plan-fingerprint.js';
+import { WorkflowPlanStore } from '../mcp/workflow-plan-store.js';
 import { EscalationState } from '../escalation/escalation-state.js';
 import { NotificationStore } from '../notifications/notification-store.js';
 import {
@@ -275,6 +277,8 @@ export interface PipelineOptions {
   /** E330：confirm 恢复执行钉死原裁决时的执行器/意图（内部，防恢复路由被市场 Skill 触发词抢走） */
   confirmResumeExecutor?: string;
   confirmResumeIntent?: string;
+  /** E412：MCP 工作流计划指纹（批准恢复时校验漂移） */
+  confirmResumeWorkflowFingerprint?: string;
   /** 外部取消信号（v1.0 S1 深度报告等长任务透传） */
   signal?: AbortSignal;
   onProgress?: (stage: string) => void;
@@ -390,6 +394,118 @@ function readSkillTiming(
     ...(typeof t.synthesisError === 'string' && t.synthesisError
       ? { synthesisError: t.synthesisError }
       : {}),
+  };
+}
+
+/**
+ * E243：按触发词执行已安装市场 Skill。
+ * 澄清早退与直连路径共用，避免 option_clarify 抢走「写日报」等明确触发词。
+ */
+async function tryMarketSkillTrigger(args: {
+  query: string;
+  cleanQuery: string;
+  confidence: number;
+  start: number;
+  minTriggerLength: number;
+  confirmResume?: boolean;
+  /** 这些意图不拦截（深度报告 / GitHub 分析主链路优先） */
+  blockedIntent?: string;
+  marketSkillRunner?: PipelineDeps['marketSkillRunner'];
+  safeArtifact: (event: {
+    skill: string;
+    state: 'generating' | 'done' | 'failed';
+    path?: string;
+  }) => void;
+  recordTrajectory: (event: TrajectoryEventBody) => void;
+  memorySessionId: string;
+  memoryStore?: Pick<MemoryStore, 'put' | 'recall'>;
+  userId: string;
+  userStore?: PipelineDeps['userContextStore'];
+  summaryTags?: string[];
+  mode?: UiMode;
+  submode?: string;
+}): Promise<AnswerResult | null> {
+  if (args.confirmResume || !args.marketSkillRunner) return null;
+  if (args.blockedIntent === 'deep_report' || args.blockedIntent === 'github_analysis') {
+    return null;
+  }
+  const skillHit = matchInstalledSkillTrigger(
+    args.cleanQuery,
+    args.marketSkillRunner.listInstalledWithTriggers(),
+    args.minTriggerLength,
+  );
+  if (!skillHit) return null;
+
+  args.safeArtifact({ skill: skillHit.skillName, state: 'generating' });
+  const outcome = args.marketSkillRunner.run(skillHit.skillName, { input: args.cleanQuery });
+  if (outcome.ok) {
+    const answer = renderMarketSkillAnswer(outcome);
+    args.safeArtifact({ skill: skillHit.skillName, state: 'done' });
+    args.recordTrajectory({
+      type: 'skill',
+      skill: {
+        name: outcome.name,
+        version: outcome.version,
+        kind: 'market_trigger',
+        outputSnippet: answer.slice(0, 300),
+      },
+    });
+    args.recordTrajectory({
+      type: 'answer',
+      answer: {
+        answerSnippet: answer.slice(0, 300),
+        confidence: Math.max(0.75, args.confidence),
+        gateTriggered: 'none',
+        elapsedMs: Date.now() - args.start,
+      },
+    });
+    try {
+      await postProcess(
+        {
+          query: args.query,
+          answer,
+          confidence: Math.max(0.75, args.confidence),
+          evidence: [],
+          gateTriggered: 'none',
+          elapsedMs: Date.now() - args.start,
+          sessionId: args.memorySessionId,
+        },
+        { store: args.memoryStore ?? defaultMemoryStore() },
+      );
+      args.userStore?.addSessionSummary?.(
+        args.userId,
+        `s-${Date.now()}`,
+        `Q: ${args.query}\nA: ${answer.slice(0, 200)}`,
+        args.summaryTags ?? [],
+      );
+    } catch {
+      // 会话摘要写入失败不阻塞回复
+    }
+    return {
+      query: args.query,
+      answer,
+      confidence: Math.max(0.75, args.confidence),
+      evidence: [],
+      gate_triggered: 'none',
+      elapsed_ms: Date.now() - args.start,
+      mode: args.mode,
+      submode: args.submode,
+      skillName: skillHit.skillName,
+    };
+  }
+  args.safeArtifact({ skill: skillHit.skillName, state: 'failed' });
+  return {
+    query: args.query,
+    answer:
+      `✅ 已命中市场 Skill「${outcome.name} v${outcome.version}」\n` +
+      `⚠️ 执行失败：${outcome.error ?? '未知错误'}。`,
+    confidence: args.confidence,
+    evidence: [],
+    gate_triggered: 'none',
+    elapsed_ms: Date.now() - args.start,
+    mode: args.mode,
+    submode: args.submode,
+    skillName: skillHit.skillName,
   };
 }
 
@@ -669,12 +785,30 @@ export async function pipeline(
         if (reply === 'approve' && pendingAction.resume?.query) {
           // 批准：带 confirmResume 标记递归重放原请求，走同一条 pipeline 恢复执行；
           // E330：同时钉死原裁决时的 executor/intent，防恢复路由被市场 Skill 触发词抢走
+          const workflowFingerprint =
+            pendingAction.context?.kind === 'mcp_domain_workflow_plan'
+            && typeof pendingAction.context.fingerprint === 'string'
+              ? pendingAction.context.fingerprint
+              : undefined;
           return await pipeline(pendingAction.resume.query, deps, {
             ...opts,
             confirmResume: true,
             confirmResumeExecutor: pendingAction.resume.executor,
             confirmResumeIntent: pendingAction.resume.intent,
+            confirmResumeWorkflowFingerprint: workflowFingerprint,
           });
+        }
+        if (
+          reply === 'reject'
+          && pendingAction.context?.kind === 'mcp_domain_workflow_plan'
+          && typeof pendingAction.context.fingerprint === 'string'
+        ) {
+          try {
+            (deps.skillDeps?.workflowPlans ?? new WorkflowPlanStore())
+              .markCancelled(pendingAction.context.fingerprint);
+          } catch {
+            // 计划账本失败不阻塞取消回复
+          }
         }
         const answer = '已取消该操作，不会执行。';
         await recordSessionTurns(query, answer);
@@ -801,6 +935,25 @@ export async function pipeline(
     // 路由 case 采集失败不阻塞主对话
   }
   if (route.decision.type === 'option_clarify' || route.decision.type === 'must_clarify') {
+    // 澄清早退前：明确市场触发词优先执行，避免「写日报」等被多选一抢走（复用率口径依赖 market_trigger）
+    const marketBeforeClarify = await tryMarketSkillTrigger({
+      query,
+      cleanQuery: prepared.cleanQuery,
+      confidence: route.confidence,
+      start,
+      minTriggerLength: 2,
+      confirmResume: opts.confirmResume,
+      marketSkillRunner: deps.marketSkillRunner,
+      safeArtifact,
+      recordTrajectory,
+      memorySessionId,
+      memoryStore: deps.memoryStore,
+      userId,
+      userStore,
+      summaryTags: route.features.rawEntities,
+    });
+    if (marketBeforeClarify) return marketBeforeClarify;
+
     const options =
       route.decision.type === 'option_clarify'
         ? `\n${route.decision.options.map((o) => `${o.id}. ${o.label} - ${o.description}`).join('\n')}`
@@ -1155,8 +1308,20 @@ export async function pipeline(
       routeSelected.executor ?? '',
       prepared.originalQuery,
     );
+    let workflowFingerprint: string | undefined;
     if (routeSelected.executor === 'mcp_agent' && mcpBuildPreflight?.plan) {
       holdAnswer += `\n执行计划：\n${describeMcpWorkflowPlan(mcpBuildPreflight.plan)}`;
+      try {
+        const saved = (deps.skillDeps?.workflowPlans ?? new WorkflowPlanStore()).savePending({
+          query: prepared.originalQuery,
+          plan: mcpBuildPreflight.plan,
+        });
+        workflowFingerprint = saved.fingerprint;
+        holdAnswer += `\n计划指纹：${shortPlanFingerprint(saved.fingerprint)}`;
+      } catch {
+        workflowFingerprint = fingerprintDomainWorkflowPlan(mcpBuildPreflight.plan);
+        holdAnswer += `\n计划指纹：${shortPlanFingerprint(workflowFingerprint)}`;
+      }
     }
     try {
       const pending = confirmDecisionLog.record({
@@ -1169,6 +1334,15 @@ export async function pipeline(
           executor: routeSelected.executor ?? '',
           intent: routeSelected.intent,
         },
+        ...(workflowFingerprint
+          ? {
+              context: {
+                kind: 'mcp_domain_workflow_plan',
+                fingerprint: workflowFingerprint,
+                projectId: mcpBuildPreflight?.plan?.projectId,
+              },
+            }
+          : {}),
         conversationId,
         confidence: route.confidence,
       });
@@ -1202,93 +1376,29 @@ export async function pipeline(
   }
   // E243 收口：市场 Skill 自然语言路由（命中已安装 Skill 触发词 → 直连执行，绕开搜索）
   // 安全/专用意图已在前面短路返回；deep_report 走深度报告专用链路，不拦截。
-  if (
-    !opts.confirmResume && // E330：恢复执行按原 executor 分发，跳过市场块
-    deps.marketSkillRunner &&
-    routeSelected.intent !== 'deep_report' &&
-    routeSelected.intent !== 'github_analysis'
-  ) {
-    // E301：路由已直连本地 Skill（如 office-daily 搜信）时，2 字泛触发词（周报/日报/模板等）不抢专属意图；
-    // ≥3 字定向触发词（周报模板/生成周报/会议纪要等）仍视为明确意图，可覆盖本地路由。
+  // E301：路由已直连本地 Skill（如 office-daily 搜信）时，2 字泛触发词不抢；≥3 字定向触发词仍可覆盖。
+  {
     const minTriggerLength = route.decision.type === 'direct' ? 3 : 2;
-    const skillHit = matchInstalledSkillTrigger(
-      prepared.cleanQuery,
-      deps.marketSkillRunner.listInstalledWithTriggers(),
+    const marketHit = await tryMarketSkillTrigger({
+      query,
+      cleanQuery: prepared.cleanQuery,
+      confidence: route.confidence,
+      start,
       minTriggerLength,
-    );
-    if (skillHit) {
-      safeArtifact({ skill: skillHit.skillName, state: 'generating' });
-      const outcome = deps.marketSkillRunner.run(skillHit.skillName, { input: prepared.cleanQuery });
-      if (outcome.ok) {
-        const answer = renderMarketSkillAnswer(outcome);
-        safeArtifact({ skill: skillHit.skillName, state: 'done' });
-        recordTrajectory({
-          type: 'skill',
-          skill: {
-            name: outcome.name,
-            version: outcome.version,
-            kind: 'market_trigger',
-            outputSnippet: answer.slice(0, 300),
-          },
-        });
-        recordTrajectory({
-          type: 'answer',
-          answer: {
-            answerSnippet: answer.slice(0, 300),
-            confidence: Math.max(0.75, route.confidence),
-            gateTriggered: 'none',
-            elapsedMs: Date.now() - start,
-          },
-        });
-        try {
-          await postProcess(
-            {
-              query,
-              answer,
-              confidence: Math.max(0.75, route.confidence),
-              evidence: [],
-              gateTriggered: 'none',
-              elapsedMs: Date.now() - start,
-              sessionId: memorySessionId,
-            },
-            { store: deps.memoryStore ?? defaultMemoryStore() },
-          );
-          userStore?.addSessionSummary?.(
-            userId,
-            `s-${Date.now()}`,
-            `Q: ${query}\nA: ${answer.slice(0, 200)}`,
-            [routeSelected.intent, ...route.features.rawEntities],
-          );
-        } catch {
-          // 会话摘要写入失败不阻塞回复
-        }
-        return {
-          query,
-          answer,
-          confidence: Math.max(0.75, route.confidence),
-          evidence: [],
-          gate_triggered: 'none',
-          elapsed_ms: Date.now() - start,
-          mode: uiRoute.mode,
-          submode: uiRoute.submode,
-          skillName: skillHit.skillName,
-        };
-      }
-      safeArtifact({ skill: skillHit.skillName, state: 'failed' });
-      return {
-        query,
-        answer:
-          `✅ 已命中市场 Skill「${outcome.name} v${outcome.version}」\n` +
-          `⚠️ 执行失败：${outcome.error ?? '未知错误'}。`,
-        confidence: route.confidence,
-        evidence: [],
-        gate_triggered: 'none',
-        elapsed_ms: Date.now() - start,
-        mode: uiRoute.mode,
-        submode: uiRoute.submode,
-        skillName: skillHit.skillName,
-      };
-    }
+      confirmResume: opts.confirmResume,
+      blockedIntent: routeSelected.intent,
+      marketSkillRunner: deps.marketSkillRunner,
+      safeArtifact,
+      recordTrajectory,
+      memorySessionId,
+      memoryStore: deps.memoryStore,
+      userId,
+      userStore,
+      summaryTags: [routeSelected.intent, ...route.features.rawEntities],
+      mode: uiRoute.mode,
+      submode: uiRoute.submode,
+    });
+    if (marketHit) return marketHit;
   }
 
   if (!routeSelected.searchNeed && routeSelected.intent !== 'web_search') {
@@ -1342,6 +1452,9 @@ export async function pipeline(
                     mcpWorkflowApproved: opts.confirmResume === true,
                     minimumObservedAt: 0,
                     completedRevisionCycles: 0,
+                    ...(opts.confirmResumeWorkflowFingerprint
+                      ? { workflowPlanFingerprint: opts.confirmResumeWorkflowFingerprint }
+                      : {}),
                   }
                 : {}),
             },

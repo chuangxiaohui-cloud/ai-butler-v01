@@ -16,12 +16,14 @@ import { DatabaseSync } from 'node:sqlite';
 import { MarketStore } from '../src/skills/market/store.js';
 import { getSkills } from '../src/skills/registry.js';
 import { FeedbackStore } from '../src/feedback/feedback-store.js';
+import { PARAMS } from '../src/config/params.js';
 import {
   collectMaturityFeedbackSamples,
   computeMaturityMetrics,
-  countReuseEvents,
+  selectReuseObservation,
   type MaturityFeedbackSample,
   type MaturitySkillStat,
+  type TrajectoryReuseEvent,
 } from '../src/maturity/metrics.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -78,26 +80,43 @@ function main(): void {
   );
   feedbackStore.close();
 
-  const trajectoryEvents: Array<{ type?: string; skill?: { kind?: string } }> = [];
+  const trajectoryEvents: TrajectoryReuseEvent[] = [];
   for (const line of readLines(join(root, 'data', 'trajectory.jsonl'))) {
     try {
-      trajectoryEvents.push(JSON.parse(line) as { type?: string; skill?: { kind?: string } });
+      trajectoryEvents.push(JSON.parse(line) as TrajectoryReuseEvent);
     } catch {
       // 损坏行跳过
     }
   }
-  const { skillEvents, answerEvents } = countReuseEvents(trajectoryEvents);
+  const reuseObs = selectReuseObservation(trajectoryEvents, {
+    windowDays: PARAMS.maturityReuseWindowDays,
+    minAnswers: PARAMS.maturityReuseMinAnswers,
+  });
 
   const metrics = computeMaturityMetrics({
     presetSkills,
     skillStats,
     installedMarketSkills,
     feedbackSamples,
-    reuse: { skillEvents, answerEvents },
+    reuse: { skillEvents: reuseObs.skillEvents, answerEvents: reuseObs.answerEvents },
   });
 
   if (asJson) {
-    console.log(JSON.stringify(metrics, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          ...metrics,
+          reuseObservation: {
+            source: reuseObs.source,
+            windowDays: reuseObs.windowDays,
+            windowAnswerEvents: reuseObs.windowAnswerEvents,
+            minAnswers: reuseObs.minAnswers,
+          },
+        },
+        null,
+        2,
+      ),
+    );
     return;
   }
 
@@ -116,9 +135,13 @@ function main(): void {
       `（${metrics.acceptance.accept} 通过 / ${metrics.acceptance.reject} 驳回 / ` +
       `${metrics.acceptance.correct} 修改，n=${metrics.acceptance.total}）`,
   );
+  const reuseSourceLabel =
+    reuseObs.source === 'window'
+      ? `滑动窗 [P-155]=${reuseObs.windowDays}天`
+      : `全量回退（窗内回答 ${reuseObs.windowAnswerEvents}<[P-156]=${reuseObs.minAnswers}）`;
   console.log(
     `复用率观察：${metrics.reuse.rate === null ? '未观测' : pct(metrics.reuse.rate)}` +
-      `（${metrics.reuse.skillEvents} Skill 事件 / ${metrics.reuse.answerEvents} 回答事件）`,
+      `（${metrics.reuse.skillEvents} Skill 事件 / ${metrics.reuse.answerEvents} 回答事件；${reuseSourceLabel}）`,
   );
   console.log(
     `证据链完整度：${

@@ -1,0 +1,9 @@
+{
+  "name": "git-log-oneline",
+  "version": "0.1.0",
+  "triggers": ["最近提交", "git log", "提交历史", "oneline 日志", "看提交"],
+  "description": "最近 5 条提交（git log -5 --oneline）",
+  "steps": ["git log -5 --oneline"],
+  "verify": ["git status --short"],
+  "permissions": ["command"]
+}

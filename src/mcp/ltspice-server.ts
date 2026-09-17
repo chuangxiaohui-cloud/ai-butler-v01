@@ -1,7 +1,7 @@
 import { createInterface } from 'node:readline';
 import { resolve } from 'node:path';
 
-import { discoverLtspiceSchematics, inspectLtspiceSchematic } from './ltspice.js';
+import { discoverLtspiceSchematics, inspectLtspiceSchematic, runLtspiceSimulation } from './ltspice.js';
 
 interface RpcRequest { id?: number | string; method?: string; params?: Record<string, unknown> }
 
@@ -24,13 +24,18 @@ const tools = [
     description: '只读提取元件、实例名、模型引用和仿真指令；不写参数、不生成 raw/log/net',
     inputSchema: { type: 'object', properties: { schematicPath: { type: 'string' } }, required: ['schematicPath'], additionalProperties: false },
   },
+  {
+    name: 'RunSimulation',
+    description: '经批准后先 -netlist 再以固定 -b 批模式运行 LTspice；产物限定在原理图同目录沙箱内',
+    inputSchema: { type: 'object', properties: { schematicPath: { type: 'string' } }, required: ['schematicPath'], additionalProperties: false },
+  },
 ];
 
 function send(id: RpcRequest['id'], result?: unknown, error?: { code: number; message: string }) {
   if (id !== undefined) process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id, ...(error ? { error } : { result }) })}\n`);
 }
 
-function callTool(params: Record<string, unknown>): unknown {
+async function callTool(params: Record<string, unknown>): Promise<unknown> {
   const name = typeof params.name === 'string' ? params.name : '';
   const args = params.arguments && typeof params.arguments === 'object' ? params.arguments as Record<string, unknown> : {};
   if (name === 'DiscoverSchematics') {
@@ -42,11 +47,16 @@ function callTool(params: Record<string, unknown>): unknown {
     if (typeof args.schematicPath !== 'string') throw new Error('schematicPath 必须是字符串');
     return inspectLtspiceSchematic({ schematicPath: args.schematicPath, workspaceRoot, ...(executable ? { executable } : {}) });
   }
+  if (name === 'RunSimulation') {
+    if (typeof args.schematicPath !== 'string') throw new Error('schematicPath 必须是字符串');
+    if (!executable) throw new Error('未配置 LTspice，无法执行仿真');
+    return runLtspiceSimulation({ schematicPath: args.schematicPath, workspaceRoot, executable });
+  }
   throw new Error(`未知 LTspice 工具：${name}`);
 }
 
 const rl = createInterface({ input: process.stdin });
-rl.on('line', (line) => {
+rl.on('line', async (line) => {
   let request: RpcRequest;
   try { request = JSON.parse(line) as RpcRequest; } catch { return; }
   try {
@@ -55,7 +65,7 @@ rl.on('line', (line) => {
     } else if (request.method === 'tools/list') {
       send(request.id, { tools });
     } else if (request.method === 'tools/call') {
-      send(request.id, { content: [{ type: 'text', text: JSON.stringify(callTool(request.params ?? {})) }] });
+      send(request.id, { content: [{ type: 'text', text: JSON.stringify(await callTool(request.params ?? {})) }] });
     } else if (request.id !== undefined) {
       send(request.id, undefined, { code: -32601, message: `未知方法：${request.method ?? ''}` });
     }

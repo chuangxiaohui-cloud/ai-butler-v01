@@ -2,6 +2,7 @@ import { createInterface } from 'node:readline';
 import { resolve } from 'node:path';
 
 import { discoverKiCadProjects, inspectKiCadProject, runKiCadErc } from './kicad.js';
+import { applyKiCadSchematicEdit, type KiCadSchematicEdit } from './kicad-edit.js';
 
 interface RpcRequest { id?: number | string; method?: string; params?: Record<string, unknown> }
 
@@ -29,6 +30,29 @@ const tools = [
     description: '调用固定 kicad-cli sch erc 命令生成临时 JSON 报告；不修改工程文件',
     inputSchema: { type: 'object', properties: { schematicPath: { type: 'string' } }, required: ['schematicPath'], additionalProperties: false },
   },
+  {
+    name: 'EditSchematic',
+    description: '有界编辑 .kicad_sch（追加注解或单次精确替换），经项目事务快照后落盘',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schematicPath: { type: 'string' },
+        edit: {
+          type: 'object',
+          properties: {
+            kind: { type: 'string', enum: ['append_annotation', 'replace_text'] },
+            text: { type: 'string' },
+            from: { type: 'string' },
+            to: { type: 'string' },
+          },
+          required: ['kind'],
+          additionalProperties: false,
+        },
+      },
+      required: ['schematicPath', 'edit'],
+      additionalProperties: false,
+    },
+  },
 ];
 
 function send(id: RpcRequest['id'], result?: unknown, error?: { code: number; message: string }) {
@@ -52,7 +76,36 @@ async function callTool(params: Record<string, unknown>): Promise<unknown> {
     if (!executable) throw new Error('未配置 KiCad CLI，无法执行 ERC');
     return runKiCadErc({ schematicPath: args.schematicPath, workspaceRoot, executable });
   }
+  if (name === 'EditSchematic') {
+    if (typeof args.schematicPath !== 'string') throw new Error('schematicPath 必须是字符串');
+    const edit = parseEdit(args.edit);
+    const result = applyKiCadSchematicEdit({ schematicPath: args.schematicPath, edit, workspaceRoot });
+    if (!result.ok) throw new Error(result.error ?? 'KiCad 编辑失败');
+    return {
+      ok: true,
+      summary: result.summary,
+      transactionId: result.transactionId,
+      committedPaths: result.committedPaths,
+      snapshotDir: result.snapshotDir,
+    };
+  }
   throw new Error(`未知 KiCad 工具：${name}`);
+}
+
+function parseEdit(value: unknown): KiCadSchematicEdit {
+  if (!value || typeof value !== 'object') throw new Error('edit 必须是对象');
+  const record = value as Record<string, unknown>;
+  if (record.kind === 'append_annotation') {
+    if (typeof record.text !== 'string') throw new Error('append_annotation 需要 text');
+    return { kind: 'append_annotation', text: record.text };
+  }
+  if (record.kind === 'replace_text') {
+    if (typeof record.from !== 'string' || typeof record.to !== 'string') {
+      throw new Error('replace_text 需要 from/to');
+    }
+    return { kind: 'replace_text', from: record.from, to: record.to };
+  }
+  throw new Error('不支持的 edit.kind');
 }
 
 const rl = createInterface({ input: process.stdin });

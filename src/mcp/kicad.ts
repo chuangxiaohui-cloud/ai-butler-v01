@@ -164,8 +164,12 @@ export async function runKiCadErc(input: {
       : '';
     const isExcluded = (item: unknown) => typeof item === 'object' && item !== null
       && ((item as Record<string, unknown>).excluded === true || (item as Record<string, unknown>).exclusion === true);
+    const errorCount = violations.filter((item) => severityOf(item) === 'error').length;
+    const warningCount = violations.filter((item) => severityOf(item) === 'warning').length;
+    const exclusionCount = violations.filter(isExcluded).length;
+    // KiCad 10 用 --severity-all 时警告也会令 exit≠0；业务验收以 error 清零为准
     return {
-      ok: result.exitCode === 0 && !result.timedOut && !cancelled && sourceUnchanged,
+      ok: reportGenerated && errorCount === 0 && !result.timedOut && !cancelled && sourceUnchanged,
       exitCode: result.exitCode,
       durationMs: result.durationMs,
       timedOut: result.timedOut,
@@ -174,9 +178,9 @@ export async function runKiCadErc(input: {
       reportGenerated,
       reportRetained: false,
       violations,
-      errorCount: violations.filter((item) => severityOf(item) === 'error').length,
-      warningCount: violations.filter((item) => severityOf(item) === 'warning').length,
-      exclusionCount: violations.filter(isExcluded).length,
+      errorCount,
+      warningCount,
+      exclusionCount,
       stdout: result.stdout,
       stderr: result.stderr,
     };
@@ -222,6 +226,16 @@ function collectViolations(value: unknown): unknown[] {
   const record = value as Record<string, unknown>;
   for (const key of ['violations', 'items', 'errors']) {
     if (Array.isArray(record[key])) return record[key] as unknown[];
+  }
+  // KiCad 10 JSON：违规嵌在 sheets[].violations
+  if (Array.isArray(record.sheets)) {
+    const nested: unknown[] = [];
+    for (const sheet of record.sheets) {
+      if (typeof sheet !== 'object' || sheet === null) continue;
+      const violations = (sheet as Record<string, unknown>).violations;
+      if (Array.isArray(violations)) nested.push(...violations);
+    }
+    return nested;
   }
   return [];
 }

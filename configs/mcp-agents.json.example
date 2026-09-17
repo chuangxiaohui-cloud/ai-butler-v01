@@ -31,14 +31,14 @@
     {
       "id": "kicad",
       "command": ["node", "--import", "tsx", "src/mcp/kicad-server.ts", "--kicad-cli", "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe"],
-      "allowedTools": ["DiscoverProjects", "InspectProject", "RunErc"],
+      "allowedTools": ["DiscoverProjects", "InspectProject", "RunErc", "EditSchematic"],
       "defaultTool": "kicad.DiscoverProjects",
       "defaultArgs": { "root": "projects" }
     },
     {
       "id": "ltspice",
       "command": ["node", "--import", "tsx", "src/mcp/ltspice-server.ts", "--ltspice", "C:\\Users\\you\\AppData\\Local\\Programs\\ADI\\LTspice\\LTspice.exe"],
-      "allowedTools": ["DiscoverSchematics", "InspectSchematic"],
+      "allowedTools": ["DiscoverSchematics", "InspectSchematic", "RunSimulation"],
       "defaultTool": "ltspice.DiscoverSchematics",
       "defaultArgs": { "root": "projects" }
     }

@@ -55,4 +55,11 @@ export interface SkillDeps {
   };
   /** E408：统一工作流入口读取项目画像；测试可注入隔离 store，生产缺省使用 data/project-profiles。 */
   projectProfiles?: Pick<import('../mcp/project-profile-store.js').ProjectProfileStore, 'loadForPlanning'>;
+  /** E411：设备白名单；缺省读 data/device-auth.jsonl，测试可注入隔离 store。 */
+  deviceAuth?: Pick<import('../mcp/device-auth.js').DeviceAuthStore, 'isAuthorized'>;
+  /** E412：工作流计划指纹持久化；测试可注入隔离 store。 */
+  workflowPlans?: Pick<
+    import('../mcp/workflow-plan-store.js').WorkflowPlanStore,
+    'savePending' | 'verifyForResume' | 'markActive' | 'markDone' | 'markCancelled' | 'markFailed'
+  >;
 }

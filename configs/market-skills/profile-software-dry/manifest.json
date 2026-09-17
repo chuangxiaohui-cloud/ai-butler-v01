@@ -1,0 +1,9 @@
+{
+  "name": "profile-software-dry",
+  "version": "0.1.0",
+  "triggers": ["软件画像预览", "profile software", "职业画像 dry-run", "已装软件发现", "E365 预览"],
+  "description": "只读发现已安装软件并预览职业画像建议（E365，--dry-run）",
+  "steps": ["npm run profile:software -- --dry-run"],
+  "verify": ["git status --short"],
+  "permissions": ["command"]
+}

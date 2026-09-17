@@ -5,6 +5,7 @@ import {
   collectMaturityFeedbackSamples,
   computeMaturityMetrics,
   countReuseEvents,
+  selectReuseObservation,
   type MaturityInputs,
 } from './metrics.js';
 
@@ -123,6 +124,54 @@ test('countReuseEvents：只计 direct/market_trigger 派发与 answer，injecte
 test('countReuseEvents：空输入返回零', () => {
   const obs = countReuseEvents([]);
   assert.deepEqual(obs, { skillEvents: 0, answerEvents: 0 });
+});
+
+test('countReuseEvents：sinceTimestamp 只计窗口内事件', () => {
+  const obs = countReuseEvents(
+    [
+      { type: 'skill', skill: { kind: 'direct' }, timestamp: 1000 },
+      { type: 'answer', timestamp: 1000 },
+      { type: 'skill', skill: { kind: 'direct' }, timestamp: 2000 },
+      { type: 'answer', timestamp: 2000 },
+      { type: 'answer' }, // 无时间戳，窗口模式下丢弃
+    ],
+    { sinceTimestamp: 1500 },
+  );
+  assert.equal(obs.skillEvents, 1);
+  assert.equal(obs.answerEvents, 1);
+});
+
+test('selectReuseObservation：窗内回答达标用滑动窗，否则回退全量', () => {
+  const now = 10_000_000;
+  const day = 24 * 60 * 60 * 1000;
+  const events = [];
+  // 全量：20 skill / 100 answer → 20%
+  for (let i = 0; i < 80; i++) {
+    events.push({ type: 'answer' as const, timestamp: now - 30 * day });
+  }
+  for (let i = 0; i < 20; i++) {
+    events.push({ type: 'skill' as const, skill: { kind: 'direct' as const }, timestamp: now - 30 * day });
+    events.push({ type: 'answer' as const, timestamp: now - 30 * day });
+  }
+  // 近 14 天：30 skill / 40 answer → 75%
+  for (let i = 0; i < 10; i++) {
+    events.push({ type: 'answer' as const, timestamp: now - 2 * day });
+  }
+  for (let i = 0; i < 30; i++) {
+    events.push({ type: 'skill' as const, skill: { kind: 'market_trigger' as const }, timestamp: now - day });
+    events.push({ type: 'answer' as const, timestamp: now - day });
+  }
+
+  const windowed = selectReuseObservation(events, { windowDays: 14, minAnswers: 30, nowMs: now });
+  assert.equal(windowed.source, 'window');
+  assert.equal(windowed.skillEvents, 30);
+  assert.equal(windowed.answerEvents, 40);
+
+  const fallback = selectReuseObservation(events, { windowDays: 14, minAnswers: 50, nowMs: now });
+  assert.equal(fallback.source, 'lifetime');
+  assert.equal(fallback.windowAnswerEvents, 40);
+  assert.equal(fallback.skillEvents, 50);
+  assert.equal(fallback.answerEvents, 140);
 });
 
 test('computeMaturityMetrics：无预置 Skill 时判定 L0', () => {

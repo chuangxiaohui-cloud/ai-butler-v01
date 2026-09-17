@@ -1,0 +1,9 @@
+{
+  "name": "mcp-health",
+  "version": "0.1.0",
+  "triggers": ["MCP 健康检查", "mcp health", "mcp:health", "MCP 握手", "子 Agent 健康"],
+  "description": "已配置 MCP server 握手/工具清单/只读默认调用健康检查（E388）",
+  "steps": ["npm run mcp:health"],
+  "verify": ["git status --short"],
+  "permissions": ["command"]
+}

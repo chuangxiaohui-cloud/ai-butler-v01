@@ -1,0 +1,9 @@
+{
+  "name": "repo-audit",
+  "version": "0.1.0",
+  "triggers": ["仓库审计", "repo audit", "repo:audit", "托管审计日志"],
+  "description": "代码托管联动审计读取（repo:audit，§11.4）",
+  "steps": ["npm run repo:audit"],
+  "verify": ["git status --short"],
+  "permissions": ["command"]
+}

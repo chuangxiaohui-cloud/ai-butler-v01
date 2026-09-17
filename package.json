@@ -82,6 +82,7 @@
     "maturity:check": "tsx scripts/maturity-check.ts",
     "mcp:health": "tsx scripts/mcp-health.ts",
     "mcp:evidence": "tsx scripts/mcp-s3-evidence.ts",
+    "mcp:accept": "tsx scripts/mcp-s3-acceptance.ts",
     "profile:software": "tsx scripts/profile-software.ts",
     "browser:auth": "tsx scripts/browser-domain-auth.ts",
     "market:pdf:text": "tsx scripts/market-pdf-text.ts",

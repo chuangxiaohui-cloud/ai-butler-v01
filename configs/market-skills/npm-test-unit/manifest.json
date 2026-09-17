@@ -1,0 +1,9 @@
+{
+  "name": "npm-test-unit",
+  "version": "0.1.0",
+  "triggers": ["跑单测", "单元测试", "npm test", "test:unit", "node:test 单测"],
+  "description": "运行全量单测（npm run test → dist/**/*.test.js）",
+  "steps": ["npm run test"],
+  "verify": ["git status --short"],
+  "permissions": ["command"]
+}

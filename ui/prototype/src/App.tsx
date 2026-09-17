@@ -1849,6 +1849,83 @@ function KeilArtifactCard({
       </section>
     );
   }
+  if (artifact.kind === 'mcp-domain-workflow-plan' || artifact.kind === 'mcp-domain-workflow') {
+    const entry = artifact.data.entry && typeof artifact.data.entry === 'object'
+      ? (artifact.data.entry as Record<string, unknown>)
+      : {};
+    const plan = entry.plan && typeof entry.plan === 'object'
+      ? (entry.plan as Record<string, unknown>)
+      : {};
+    const nodes = Array.isArray(plan.nodes)
+      ? plan.nodes.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+      : [];
+    const fingerprintShort = typeof artifact.data.fingerprintShort === 'string'
+      ? artifact.data.fingerprintShort
+      : typeof artifact.data.fingerprint === 'string'
+        ? String(artifact.data.fingerprint).slice(0, 12)
+        : '';
+    const evidenceChain = Array.isArray(artifact.data.evidenceChain)
+      ? artifact.data.evidenceChain.filter(
+          (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object',
+        )
+      : [];
+    const workflow = artifact.data.workflow && typeof artifact.data.workflow === 'object'
+      ? (artifact.data.workflow as Record<string, unknown>)
+      : null;
+    return (
+      <section className="keil-artifact workflow-plan-artifact">
+        <div className="keil-artifact-head">
+          <strong>{artifact.title}</strong>
+          {fingerprintShort && <span title={String(artifact.data.fingerprint ?? '')}>指纹 {fingerprintShort}</span>}
+        </div>
+        {typeof entry.status === 'string' && <small>状态：{entry.status}</small>}
+        {typeof entry.message === 'string' && <small>{entry.message}</small>}
+        {typeof artifact.data.resumeError === 'string' && (
+          <small className="workflow-plan-drift">恢复拒绝：{String(artifact.data.resumeError)}</small>
+        )}
+        <div className="keil-diagnostics">
+          {nodes.length === 0 && <em>无计划节点</em>}
+          {nodes.map((node, index) => (
+            <div
+              className={`keil-diagnostic ${node.risk === 'build' ? 'warning' : ''}`}
+              key={`${String(node.id)}-${index}`}
+            >
+              <span>{String(node.risk ?? 'node')}</span>
+              <div>
+                <strong>{String(node.title ?? node.id ?? '节点')}</strong>
+                <small>
+                  {String(node.agentId ?? '')}.{String(String(node.toolName ?? '').split('.').at(-1) ?? '')}
+                  {typeof node.status === 'string' ? ` · ${node.status}` : ''}
+                </small>
+              </div>
+            </div>
+          ))}
+        </div>
+        {(evidenceChain.length > 0 || (workflow && Array.isArray(workflow.evidence))) && (
+          <div className="workflow-evidence-chain">
+            <strong>证据链</strong>
+            {(evidenceChain.length
+              ? evidenceChain
+              : Array.isArray(workflow?.evidence)
+                ? workflow.evidence.filter(
+                    (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object',
+                  )
+                : []
+            ).map((item, index) => (
+              <div className="evidence-chip" key={`${String(item.toolName)}-${index}`}>
+                <span>U</span>
+                <em>
+                  {String(item.agentId ?? '')}.{String(item.toolName ?? '')}
+                  {typeof item.attempt === 'number' ? ` #${item.attempt}` : ''}
+                  {' · untrusted'}
+                </em>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  }
   if (artifact.kind !== 'keil-diagnostics') return null;
   const diagnostics = Array.isArray(artifact.data.diagnostics)
     ? artifact.data.diagnostics.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')

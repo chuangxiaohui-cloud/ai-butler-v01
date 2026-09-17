@@ -7,6 +7,8 @@ import test from 'node:test';
 import { deriveProjectId, ProjectProfileStore } from './project-profile-store.js';
 import {
   isMcpDomainBuildRequest,
+  isMcpKicadEditRequest,
+  isMcpLtspiceSimulateRequest,
   planMcpWorkflowEntry,
   type McpWorkflowEntryRequest,
 } from './workflow-entry.js';
@@ -196,4 +198,60 @@ test('E408：构建识别只覆盖带平台证据的 build 请求', () => {
   assert.equal(isMcpDomainBuildRequest('请执行 stm32-gcc build'), true);
   assert.equal(isMcpDomainBuildRequest('请查看 Keil 工程有哪些 target'), false);
   assert.equal(isMcpDomainBuildRequest('请编译普通 CMake 项目'), false);
+});
+
+test('E411：统一入口拒绝 flash/串口执行计划', () => {
+  const flash = planMcpWorkflowEntry({
+    query: '请烧录 Keil 工程 projects\\demo.uvprojx',
+    approved: true,
+    minimumObservedAt: 0,
+    completedRevisionCycles: 0,
+    projectRoot: 'projects',
+  });
+  assert.equal(flash.status, 'clarification_required');
+  assert.match(flash.message, /不接受 flash\/串口/);
+  assert.equal(flash.plan, undefined);
+
+  const serial = planMcpWorkflowEntry({
+    query: '请打开串口读日志',
+    approved: true,
+    minimumObservedAt: 0,
+    completedRevisionCycles: 0,
+  });
+  assert.equal(serial.status, 'clarification_required');
+  assert.match(serial.message, /硬件门禁/);
+});
+
+test('E413：KiCad 编辑与 LTspice 仿真须批准且无批准不生成 ready', () => {
+  const edit = planMcpWorkflowEntry({
+    query: '请编辑 KiCad 原理图 projects/board/demo.kicad_sch 注解：E413',
+    approved: false,
+    minimumObservedAt: 0,
+    completedRevisionCycles: 0,
+  });
+  assert.equal(edit.status, 'approval_required');
+  assert.equal(edit.plan?.nodes[0]?.kind, 'kicad_edit');
+  assert.equal(edit.plan?.nodes[0]?.risk, 'write');
+  assert.equal(edit.plan?.nodes[0]?.toolName, 'kicad.EditSchematic');
+
+  const editReady = planMcpWorkflowEntry({
+    query: '请编辑 KiCad 原理图 projects/board/demo.kicad_sch 注解：E413',
+    approved: true,
+    minimumObservedAt: 0,
+    completedRevisionCycles: 0,
+  });
+  assert.equal(editReady.status, 'ready');
+
+  const sim = planMcpWorkflowEntry({
+    query: '请对 LTspice projects/analog/demo.asc 做仿真',
+    approved: false,
+    minimumObservedAt: 0,
+    completedRevisionCycles: 0,
+  });
+  assert.equal(sim.status, 'approval_required');
+  assert.equal(sim.plan?.nodes[0]?.kind, 'ltspice_simulate');
+  assert.equal(sim.plan?.nodes[0]?.risk, 'simulate');
+
+  assert.equal(isMcpKicadEditRequest('编辑 KiCad projects/a.kicad_sch 注解：x'), true);
+  assert.equal(isMcpLtspiceSimulateRequest('仿真 LTspice projects/a.asc'), true);
 });

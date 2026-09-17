@@ -1,0 +1,9 @@
+{
+  "name": "git-branch-current",
+  "version": "0.1.0",
+  "triggers": ["当前分支", "git branch", "我在哪个分支", "branch --show-current"],
+  "description": "显示当前 git 分支名",
+  "steps": ["git branch --show-current"],
+  "verify": ["git status --short"],
+  "permissions": ["command"]
+}

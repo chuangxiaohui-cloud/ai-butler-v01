@@ -16,7 +16,7 @@
 
 ### 0.2 权威归属（单家规则）
 
-1. **数值单家**：所有量化预算（延迟/成本/RAM/配额/阈值/权重）的总额与跨子系统分配，登记在 §5 的 PARAM 注册表，格式 `P-NN 名称=值 [状态]`（例：`P-82 候选路由歧义差阈值=0.15 [provisional@2026-08-13]`）。其余章节一律以 `[P-NN]` 引用，禁止裸数值；子系统章节只做内部拆解，并标注"本表之和 ≤ [§5.x] 分配值"。
+1. **数值单家**：所有量化预算（延迟/成本/RAM/配额/阈值/权重）的总额与跨子系统分配，登记在 §5 的 PARAM 注册表，格式 `P-NN 名称=值 [状态]`（例：`P-82 候选路由歧义差阈值=0.15 [定稿]`；provisional 写法见 0.3）。其余章节一律以 `[P-NN]` 引用，禁止裸数值；子系统章节只做内部拆解，并标注"本表之和 ≤ [§5.x] 分配值"。
 2. **安全单家**：安全规则与语义全归 §10，他章至多一行 `→ §10.x`；§10 内的量化限制同样登记为 §5 `[P-NN]` 后引用。
 3. **搜索单家**：搜索管道规格全归 §6。§13 只写代码路径+一行职责，不抄公式/数值/签名（签名住在代码 TSDoc，无副本即无漂移）。§4.2 与 §6 以唯一接口契约为边界：`answer(query) → { answer, confidence, evidence[], gate_triggered }`；§4.2 定义四字段的用户可见行为，§6 定义四字段如何算出。接口契约的"出现" = 锚点串精确文本匹配（忽略首尾空白）；"见 §6.3"、自然语言描述、代码围栏内的注释均不计入；该锚点串在 §4.2 与 §6 合计恰好 1 次。
 4. **Datasheet 单家**：本地权威源解析全归 §7；§6 以接口引用"本地权威源"，不内嵌解析规则。
@@ -368,9 +368,17 @@ prose 定义永远模糊，改用**一刀测试**：
 
 **统一任务入口与构建审批（E408）**：`src/mcp/workflow-entry.ts` 是 Keil/STM32-GCC 领域构建的统一规划入口。入口先按规范化工程根读取 `loadForPlanning`，只从画像 `capabilities[].build` 的结构化工具引用生成 E404 白名单节点；画像缺失、过期或无可验证 build 时只生成 `InspectProjectProfile` 只读盘点节点，平台不明确或多能力冲突时先澄清。画像就绪的 build 计划必须先在共享 pipeline 建立人工裁决，确认卡展示 Agent、工具和风险；批准恢复后重新规划并交给 `executeDomainWorkflow`，仍在任何工具调用前检查 [P-154]。首次批准不预授权后续修订轮，且本入口不接受 flash/serial。
 
-**EDA 与仿真只读链（E409）**：KiCad 本地 stdio MCP 开放 `DiscoverProjects`、`InspectProject` 与 `RunErc`；工程发现和盘点只读访问沙箱内 `.kicad_pro/.kicad_sch/.kicad_pcb`，ERC 固定使用无 shell 的 `kicad-cli sch erc` 参数，JSON 报告仅写系统临时目录、读取后删除，并校验源原理图未改变。LTspice 本地 stdio MCP 只开放 `DiscoverSchematics` 与 `InspectSchematic`，兼容 UTF-8/UTF-16 `.asc`，提取元件、实例名、模型引用与已有仿真指令；不启动 LTspice、不写仿真参数、不生成 `.raw/.log/.net`。两链均复用沙箱、工具白名单与 untrusted 输出边界；可执行文件存在只表示安装已取证，不等于 ERC 或仿真已成功。
+**EDA 与仿真只读链（E409）**：KiCad 本地 stdio MCP 开放 `DiscoverProjects`、`InspectProject` 与 `RunErc`；工程发现和盘点只读访问沙箱内 `.kicad_pro/.kicad_sch/.kicad_pcb`，ERC 固定使用无 shell 的 `kicad-cli sch erc` 参数，JSON 报告仅写系统临时目录、读取后删除，并校验源原理图未改变。LTspice 本地 stdio MCP 开放 `DiscoverSchematics` 与 `InspectSchematic`，兼容 UTF-8/UTF-16 `.asc`，提取元件、实例名、模型引用与已有仿真指令；只读路径不启动 LTspice、不写仿真参数。两链均复用沙箱、工具白名单与 untrusted 输出边界；可执行文件存在只表示安装已取证，不等于 ERC 或仿真已成功。E413 在批准门之上另开放有界编辑与批仿真（见下节）。
 
 **真实协议证据（E410）**：`mcp:health` 对每个配置 Agent 记录 initialize 是否通过、server 工具清单、验证级别，以及白名单只读调用的输出 SHA-256/字节数和 untrusted 标记；失败不得产生成功摘要。`mcp:evidence` 使用版本化最小夹具复核 Keil、VS Code、STM32-GCC、KiCad 与 LTspice 的真实 stdio 盘点链，原始工具输出不进入报告。夹具成功只证明协议与解析器可运行，不等同用户真实业务工程验收；任一配置 Agent 握手失败、成熟度未达 L2+、doc-lint/全量回归未绿或缺 owner 签认时，[P-10] 仍不得标记通过。
+
+**flash/串口能力与风险契约（E411）**：新增设备白名单账本（`data/device-auth.jsonl`）、固件本地 SHA-256 摘要、可注入端口占用探针（默认不打开真实端口）、硬件门禁与审计（`data/hardware-audit.jsonl`）。默认无设备授权即零硬件动作；每次 flash 须独立确认，构建批准与 E410 夹具证据不得继承为硬件许可；串口默认只读，写/发字节在本轮一律拒绝。mcp-agent 识别烧录/串口意图后只返回门禁说明，不生成 flash 执行节点、不调用硬件工具。超时预算仍引用 [P-39]，本轮不启动真实烧录进程。
+
+**工作流计划指纹与恢复（E412）**：对领域工作流计划做 canonical SHA-256 指纹并写入 `data/mcp-workflow-plans.jsonl`；构建挂起时落盘 `pending_approval`，批准恢复须指纹与当前重算计划一致，漂移则拒绝静默执行（零 MCP 调用）。取消将记录标为 cancelled。UI 展示计划指纹短码、节点风险与 untrusted 工具证据链。
+
+**KiCad 编辑与 LTspice 仿真写入（E413）**：KiCad 开放有界 `EditSchematic`（追加注解 / 单次精确替换），经项目事务预检与快照后落盘；LTspice 开放 `RunSimulation`，仅允许固定 `-b` 批参数，产物限定原理图同目录沙箱。编辑与仿真均须高风险确认（复用 E412 计划指纹），无批准零写入、零仿真；不开放自由 PCB 编辑或自定义仿真开关。
+
+**真实工程动作验收与 [P-10] 复验（E414）**：`mcp:accept` 区分 `fixture` / `business` 目标，默认 dry-run，仅 `--confirm` 才调用构建/ERC/仿真。夹具成功不等于业务验收；无业务工程、成熟度未达 L2+、doc-lint/全量未绿或缺 owner 签认时，[P-10] 仍不得标记通过。
 
 ##### 4.1.2.3 跨 Agent 产物与交接
 
@@ -392,7 +400,7 @@ prose 定义永远模糊，改用**一刀测试**：
 - **质量门**验证可机器判定的完成条件，例如配置可解析、编译结果、静态检查与测试结果；失败必须回到明确修订节点或上升给用户，不能带病交付。
 - **人工门**处理下载外部资料、修改项目、多文件冲突、烧录、连接硬件和改变外设状态等授权；通过质量门不等于获得高风险动作权限。
 - VS Code 归入编码类专业工作环境，与 Keil 的编译/target 能力互补：优先只读盘点工作区、源码、任务配置与诊断；任何文件修改复用 §11.2，任何终端/构建命令复用 §10 白名单，不因扩展或工作区信任自动扩大权限。
-- 当前实现边界：E389 已有通用运行契约，E390-E410 已形成 Keil、VS Code、STM32-GCC、KiCad ERC 与 LTspice 只读垂直链、统一入口及可复核协议证据；KiCad 编辑、LTspice 实际仿真、flash、串口、动态并行多 Skill 编排和用户真实工程验收仍待实现，不得在 UI 或验收报告中冒充完成。
+- 当前实现边界：E389 已有通用运行契约，E390-E410 已形成 Keil、VS Code、STM32-GCC、KiCad ERC 与 LTspice 只读垂直链、统一入口及可复核协议证据；E411 已落地 flash/串口能力与风险契约（设备白名单、固件摘要、逐次人工门、串口默认只读、审计），但仍**不连接设备、不执行烧录、不向串口发送字节**；E412 已落地工作流计划指纹、持久化恢复与 UI 证据链展示；E413 已落地 KiCad 有界原理图编辑（项目事务）与 LTspice 固定批仿真（高风险确认）；E414 已落地动作验收入口并对夹具/业务工程执行构建/ERC/仿真复验；E415 已落地成熟度复用率滑动窗；[P-10] 已于 2026-09-17 按 E416 定稿通过（五条件齐，owner 签认）；仍**不开放自由 PCB/原理图任意改写或自定义仿真开关**；真实 flash/串口驱动、动态并行多 Skill 编排仍待实现，不得在 UI 中冒充完成。
 
 #### 4.1.3 栏位语义：上下文而非能力闸门
 
@@ -613,8 +621,7 @@ Agent 尝试解决问题
 
 **格式**：`P-NN | 名称 | 值 | type | 状态 | constraint`
 
-**type 分类**：**numeric** 为纯数值+单位，可参与 constraint 线性求值；constraint 非空时 lint 解析并验证不等式，违反即 fail。
-- **conditional**：复合验收标准/多级评分/频率描述。不参与线性求值；constraint 列必须为空，非空则 lint fail("conditional 不可约束")。**placeholder**：TODO/草稿/预留。值为空或 TODO；constraint 列必须为空。晋升时须同步填值和 type。
+**type 分类**：**numeric** 为纯数值+单位，可参与 constraint 线性求值（非空则 lint 验证不等式）；**conditional** 为复合验收/多级评分/频率（不参与线性求值，constraint 必须空）；**placeholder** 为 TODO/草稿/预留（值空或 TODO，constraint 必须空；晋升时同步填值和 type）。
 
 **登记纪律**：
 1. 什么算 PARAM：预算/阈值/验收标准进 §5；实测值（Bocha P50=242ms 等）住附录 C 不登记；§0 治理常量（28 天/行数预算/n≥15）由 §0 自辖，不登记。
@@ -635,7 +642,7 @@ Agent 尝试解决问题
 | P-07 | v0.1 基准query验收 | 10条中≥8条相关性≥2分且无0分硬答 | conditional | 定稿 | |
 | P-08 | v0.2b L2记忆蒸馏验收 | v0.1 数据零丢失自动迁移通过 + MemoryCoreStore 回归测试通过（§4.4，E206） | conditional | 定稿 | |
 | P-09 | v1.0 全量验收标准 | ~~TODO~~ | placeholder | 已废弃（并入[P-10]） | |
-| P-10 | v1.0 全量验收（替P-09） | ① S1-S8 全功能切片落地且回归绿（§4.4 里程碑表 v1.0 范围，E220-E227）；② 既有验收口径回归通过（P-07/P-12/P-08）；③ 成熟度 §12.4 达 L2+（Skill 覆盖/验收通过率/复用率判据）；④ doc-lint 0 FAIL + 全量单测/集成绿；⑤ 附录 C 无相反证据 + owner 签认 | conditional | provisional@2026-08-24 | |
+| P-10 | v1.0 全量验收（替P-09） | ① S1-S8 全功能切片落地且回归绿（§4.4 里程碑表 v1.0 范围，E220-E227）；② 既有验收口径回归通过（P-07/P-12/P-08）；③ 成熟度 §12.4 达 L2+（Skill 覆盖/验收通过率/复用率判据）；④ doc-lint 0 FAIL + 全量单测/集成绿；⑤ 附录 C 无相反证据 + owner 签认 | conditional | 定稿（E416） | |
 | P-11 | 回灌动参阈值 | 10条 | numeric | 定稿 | |
 | P-12 | v0.2a 31条通过率阈值 | 80% | numeric | 定稿 | |
 | P-13 | 深度报告增量预算（生成+证据组装，不含内部搜索调用） | 45s | numeric | 定稿 | P-15+P-13 <= P-14 |
@@ -780,10 +787,11 @@ Agent 尝试解决问题
 | P-152 | 图片类 Skill VLM 单次输出 maxTokens（E351：推理型视觉模型思考与答案共享预算，替代 200/100） | 2048 | numeric | provisional@2026-09-05（E351） | |
 | P-153 | createVisionClient 默认单次超时（E351：推理型视觉模型放宽，env VLM_TIMEOUT_MS 可覆盖） | 20000ms | numeric | provisional@2026-09-05（E351） | |
 | P-154 | 跨节点自动修订循环单任务上限（构建→烧录→验证→修订；E401） | 2轮 | numeric | provisional@2026-09-13（E401） | |
+| P-155 | 成熟度复用率滑动观察窗（天；对齐 [P-25]「本周成熟度变化」，E415） | 14天 | numeric | provisional@2026-09-16（E415） | |
+| P-156 | 复用率滑动窗最低回答事件数（不足回退全量轨迹，防稀疏高分虚抬；E415） | 30 | numeric | provisional@2026-09-16（E415） | |
 
 
-> **约束注解**（lint 可评估，语法为线性不等式）：
-> - `P-15+P-13 <= P-14`（分配之和 ≤ 约束）；`P-03 <= P-02`（AnySearch 超时 ≤ Stage 3 预算）；`P-35 <= P-02`（Tavily 超时 ≤ Stage 3 预算）；`P-17 >= P-16`（低置信标注 ≥ 丢弃阈值）；P-14 是约束（定稿）；P-13/P-15 是分配（定稿，调值需附录 A 登记），和不得超 P-14；Stage 各预算（P-20/P-04/P-02/P-05/P-06/P-21）为独立上限，非可加约束——实际运行中 Stage 3 和 Stage 5 不会同时达上限，运行时总 ≤ [P-15] 由各 Stage 超时降级保护强制
+> **约束注解**（lint 可评估）：`P-15+P-13 <= P-14`；`P-03 <= P-02`；`P-35 <= P-02`；`P-17 >= P-16`；Stage 各预算（P-20/P-04/P-02/P-05/P-06/P-21）为独立上限，运行时总 ≤ [P-15] 由各 Stage 超时降级保护。
 
 
 ## §6 搜索引擎规格（唯一权威）
@@ -1723,6 +1731,7 @@ PM 按 §4.1.2 动态工作流拆解调度子 Agent（含 Keil 编译、VS Code 
 </details>
 
 - **验收样本阈值**：验收通过率正式判定样本 n≥30（高于 §0 治理下限 n≥15，对齐 E1 n=60 先例下限）；通过率 = accept / (accept + reject + correct)，「修改」计入分母不计通过。
+- **复用率观察窗**：同类问题复用率按 [P-155] 天滑动窗统计（E249 口径：direct + market_trigger / 回答事件）；窗内回答事件 < [P-156] 时回退全量轨迹，避免稀疏高分虚抬等级（E415）。自评估输出须标明「滑动窗」或「全量回退」。
 - **自评估频率**：[P-25] 做轻量自检，输出"本周成熟度变化"给老张（贴身女秘书式汇报）
 - **不自我夸大**：自评估只基于上述客观指标，不把"预置知识"计为"亲身经验"；离 L3 还远时如实告知，不冒充老专家
 - **反馈闭环联动**：成熟度指标数据来源与以下机制联动——§9 轻量反馈机制提供"赞/踩/修改"原始数据；§2.5"有眼力见儿"4 个行为指标纳入"用户反馈信号"维度；§8.2 Skill 生命周期管理的效用评估结果纳入"Skill 覆盖度"和"同类问题复用率"维度。反馈→评估→改进→再反馈，形成闭环。
@@ -2508,6 +2517,18 @@ eadDocSummary（新增 scripts/office_docx_read.py：python-docx 纯读 docx 段
 ### 2026-09-14（KiCad ERC 与 LTspice 只读 MCP 链 E409）<br>- **变更**：新增 KiCad 与 LTspice 本地 stdio MCP。KiCad 在沙箱内发现/盘点 `.kicad_pro/.kicad_sch/.kicad_pcb`，ERC 只允许固定无 shell 的 `kicad-cli sch erc`，JSON 报告进入临时目录、读取后清理并校验源文件未改变；LTspice 只读解析 UTF-8/UTF-16 `.asc` 的元件、实例名、模型引用和已有仿真指令，不启动 GUI 或仿真。mcp-agent、配置白名单和领域工作流分别接入 eda/simulation 节点，工具输出保持 untrusted。<br>- **证据**：计划 `docs/plans/2026-09-14-kicad-ltspice-readonly-mcp.md`；主项目 build 与 E409 定向单测通过；测试覆盖沙箱/符号链接、固定 ERC 参数、临时报告清理、源文件不变、UTF-16 解析、自然语言路由及领域类别。<br>- **状态**：E409 代码与轻量验证完成；本轮未执行真实工程 ERC、LTspice 仿真、全量测试、集成/E2E 或 bench，也未开放编辑、flash/串口。<br>- affects: §4.1.2,§10,§13,附录A,src/mcp/kicad.ts,src/mcp/kicad-server.ts,src/mcp/ltspice.ts,src/mcp/ltspice-server.ts,src/mcp/domain-workflow.ts,src/skills/mcp-agent/index.ts,configs/mcp-agents.json.example | bench:na(new-param) 理由：新增本地只读工程取证与受控 ERC，不改变 §5/§6 参数或搜索行为；按成本纪律仅运行 build、定向单测与 doc-lint
 
 ### 2026-09-14（MCP S3 真实协议证据与 [P-10] 差距验收 E410）<br>- **变更**：增强 `mcp:health` 证据契约，显式记录 initialize、工具名、验证级别及成功只读调用的 SHA-256/字节数/untrusted，失败不生成成功证据；新增 `mcp:evidence` 与五类最小夹具，对 Keil、VS Code、STM32-GCC、KiCad、LTspice 执行真实 stdio 工具清单和只读盘点。本机五条专业链均通过；Windows MCP initialize 超时，未虚报整体健康。<br>- **证据**：计划 `docs/plans/2026-09-14-mcp-s3-real-evidence.md`；报告 `docs/reports/mcp-s3-evidence-2026-09-14.md`；专业链 5/5 真实只读调用通过，health 定向单测通过，成熟度自检为 L1。<br>- **状态**：E410 完成专业 MCP 协议与夹具证据补强；[P-10] 因 Windows MCP 握手、L2+、doc-lint 0 FAIL、全量回归和最终签认条件未同时满足而继续未通过；未运行 build/真实 ERC/仿真/flash/串口、全量、集成/E2E 或 bench。<br>- affects: §4.1.2,§13,附录A,src/mcp/health.ts,src/mcp/health.test.ts,scripts/mcp-s3-evidence.ts,package.json,projects/e410-mcp-evidence,docs/reports/mcp-s3-evidence-2026-09-14.md | bench:na(new-param) 理由：本地真实 stdio 只读取证与验收报告，不改变 §5/§6 参数或搜索行为；按成本纪律不运行昂贵验收
+
+### 2026-09-15（flash/串口能力与风险契约 E411）<br>- **变更**：落地硬件门禁契约——设备白名单（append-only，禁止 e410_fixture/mcp_fixture/model_candidate/build_approval 授权）、固件沙箱内 SHA-256 摘要、默认可注入但禁用真实打开的端口探针、逐次 flash 独立确认、串口默认只读且写操作硬拒绝、取消/超时语义与硬件审计 JSONL。mcp-agent 识别烧录/串口后只返回门禁说明；workflow-entry 拒绝生成 flash/串口执行计划。超时预算沿用 [P-39]，本轮不连接设备、不烧录、不发送串口字节。<br>- **证据**：计划 `docs/plans/2026-09-15-flash-serial-capability-contract.md`；定向单测覆盖默认拒绝、夹具来源禁入、逐次确认、串口只读、端口 busy、固件摘要与 mcp-agent/入口接线。<br>- **状态**：E411 契约层完成；真实 flash/串口驱动、设备连接与硬件 E2E 仍待后续轮次。<br>- affects: §4.1.2,§10,§11.1,§13,附录A,src/mcp/hardware-capability.ts,src/mcp/device-auth.ts,src/mcp/hardware-gate.ts,src/mcp/firmware-digest.ts,src/mcp/port-probe.ts,src/mcp/hardware-audit.ts,src/mcp/workflow-entry.ts,src/skills/mcp-agent/index.ts,src/skills/deps.ts | bench:na(new-param) 理由：新增本地硬件门禁契约与审计，不改变 §5/§6 参数数值或搜索行为；按成本纪律仅运行 build 与定向单测
+
+### 2026-09-16（工作流计划指纹与恢复 E412）<br>- **变更**：对领域工作流计划做 canonical SHA-256 指纹，挂起时写入 `data/mcp-workflow-plans.jsonl`；批准恢复校验指纹与当前重算计划一致，漂移则拒绝静默执行；取消标记 cancelled。DecisionLog/UI 暴露计划指纹与 untrusted 工具证据链。<br>- **证据**：计划 `docs/plans/2026-09-16-workflow-plan-fingerprint-resume.md`；`workflow-plan-store` 与 mcp-agent 定向单测覆盖指纹稳定、漂移拒绝与恢复路径。<br>- **状态**：E412 完成计划指纹持久化与恢复校验；真实硬件动作仍不在本轮。<br>- affects: §4.1.2,附录A,src/mcp/workflow-plan-fingerprint.ts,src/mcp/workflow-plan-store.ts,src/skills/mcp-agent/index.ts,src/pipeline.ts,src/gateway/app.ts,ui/prototype/src/App.tsx | bench:na(new-param) 理由：新增本地工作流计划指纹与恢复校验，不改变 §5/§6 参数数值或搜索行为；按成本纪律仅运行 build 与定向单测
+
+### 2026-09-16（KiCad 编辑与 LTspice 仿真写入 E413）<br>- **变更**：KiCad 有界 `EditSchematic`（追加注解/单次精确替换）经项目事务快照落盘；LTspice `RunSimulation` 固定 `-b` 批模式，产物限沙箱同目录；领域工作流新增 `kicad_edit`/`ltspice_simulate` 节点，统一入口与 mcp-agent 高风险确认（复用 E412 指纹），无批准零副作用。<br>- **证据**：计划 `docs/plans/2026-09-16-kicad-edit-ltspice-simulate.md`；kicad-edit、ltspice、workflow-entry、domain-workflow、mcp-agent 定向单测覆盖。<br>- **状态**：E413 受控写入链完成；自由 PCB 编辑、自定义仿真开关、真实业务工程验收仍待后续。<br>- affects: §4.1.2,附录A,src/mcp/kicad-edit.ts,src/mcp/ltspice.ts,src/mcp/domain-workflow.ts,src/mcp/workflow-entry.ts,src/skills/mcp-agent/index.ts,src/escalation/confirm-gate.ts,configs/mcp-agents.json.example | bench:na(new-param) 理由：新增本地 EDA/仿真受控写入，不改变 §5/§6 参数数值或搜索行为；按成本纪律仅运行 build 与定向单测
+
+### 2026-09-16（真实工程动作验收与 [P-10] 复验 E414）<br>- **变更**：新增 `mcp:accept` 验收入口与契约，区分 fixture/business；默认 dry-run，`--confirm` 才执行构建/ERC/仿真。本轮无业务工程，对 e410 夹具受控执行：Keil 构建成功、KiCad ERC 已跑、STM32 缺 CMake cache 失败、LTspice 批仿真超时；成熟度仍为 L1，[P-10] 五条件均未整体通过。<br>- **证据**：计划 `docs/plans/2026-09-16-mcp-s3-acceptance-p10.md`；报告 `docs/reports/mcp-s3-acceptance-2026-09-16.md`；acceptance 定向单测通过。<br>- **状态**：E414 验收入口与夹具复验完成；业务工程验收与 [P-10] 通过仍待用户工程与后续条件。<br>- affects: §4.1.2,附录A,src/mcp/acceptance.ts,scripts/mcp-s3-acceptance.ts,package.json,docs/reports/mcp-s3-acceptance-2026-09-16.md | bench:na(new-param) 理由：新增本地动作验收脚本与差距报告，不改变 §5/§6 参数数值或搜索行为；按成本纪律仅运行 build、定向单测、受控夹具验收与 maturity/doc-lint
+
+### 2026-09-16（成熟度复用率滑动观察窗 E415）<br>- **变更**：对齐 [P-25]「本周成熟度变化」——新增 [P-155]/[P-156]；`selectReuseObservation` 优先按滑动窗统计 E249 复用率，窗内回答不足时回退全量；`maturity:check` 输出标明窗口/回退；§12.4 登记观察窗规则。避免冷启动与基准问答全量稀释当前 Skill 复用能力。<br>- **证据**：计划 `docs/plans/2026-09-16-maturity-reuse-window.md`；metrics 定向单测覆盖窗口过滤、达标用窗、不足回退；doc-lint 与 maturity:check 复验。<br>- **状态**：E415 完成；L2 是否达成以滑动窗（样本达标）为准，[P-10] 仍须 owner 签认与其余条件。<br>- affects: §5,§12.4,附录A,src/config/params.ts,src/maturity/metrics.ts,scripts/maturity-check.ts | bench:na(new-param) 理由：新增观察窗 PARAM 与成熟度统计口径，不改变搜索管道行为；验证走 build、定向单测、doc-lint、maturity:check
+
+### 2026-09-17（[P-10] owner 签认与定稿晋升 E416）<br>- **变更**：owner 以「签」完成条件⑤；按 E197 复验门将 [P-10] 由 provisional@2026-08-24 晋升 **定稿**。五条件证据：① S1-S8+业务 MCP；② 2026-09-17 复跑 P-07/P-12/P-08（报告 `p10-condition2-rerun-2026-09-17.md`，E19 `must_clarify` 与 P-12 人工分未重评作遗留加强项）；③ `maturity:check`→L2（E415 滑动窗）；④ doc-lint 0 FAIL 0 WARN + test:all 单测 1642/1643（0 fail）+ 集成 36/36；⑤ 附录 C 无相反证据 + 本日签认。<br>- **证据**：计划 `docs/plans/2026-09-17-p10-owner-signoff.md`；报告 `docs/reports/v1-acceptance-report-2026-09-17.md`；条件②报告与 L2 差距报告交叉引用。<br>- **状态**：[P-10] 定稿通过；代码批次仍可能未提交，不改变验收口径本身。<br>- affects: §4.1.2,§5,附录A | bench:na(new-param) 理由：验收标准状态晋升与签认登记，无 §5/§6 数值变更；验证走 maturity/doc-lint/test:all
 
 ## 附录 B 历史教训
 

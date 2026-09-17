@@ -21,6 +21,7 @@ import { pipeline, type PipelineDeps } from '../search/pipeline.js';
 import { bochaBalanceWarning, queryBochaBalance } from '../search/balance.js';
 import { listSkillMetadata } from '../skills/registry.js';
 import { getSubAgents } from '../mcp/registry.js';
+import { WorkflowPlanStore } from '../mcp/workflow-plan-store.js';
 import { loadMcpAgentConfig } from '../mcp/config.js';
 import { writeDisabledSkills } from '../config/skills-config.js';
 import { readUsageBudget, writeUsageBudget } from '../config/usage-budget.js';
@@ -529,6 +530,18 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
           store,
           result.entry.id,
         );
+      } else if (
+        result.ok
+        && decision === 'reject'
+        && result.entry.context?.kind === 'mcp_domain_workflow_plan'
+        && typeof result.entry.context.fingerprint === 'string'
+      ) {
+        try {
+          (pipelineDeps.skillDeps?.workflowPlans ?? new WorkflowPlanStore())
+            .markCancelled(result.entry.context.fingerprint);
+        } catch {
+          // 计划账本失败不阻塞否决回执
+        }
       }
     } catch {
       try {
@@ -577,6 +590,11 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
       payload.resume = result.resume;
       if (decision === 'approve') {
         try {
+          const workflowFingerprint =
+            result.entry.context?.kind === 'mcp_domain_workflow_plan'
+            && typeof result.entry.context.fingerprint === 'string'
+              ? result.entry.context.fingerprint
+              : undefined;
           const run = await pipeline(result.resume.query, pipelineDeps, {
             userId: opts.defaultUserId ?? 'ui-user',
             conversationId: result.entry.conversationId,
@@ -584,6 +602,7 @@ export function createGatewayApp(opts: GatewayOptions = {}): express.Express {
             confirmResume: true,
             confirmResumeExecutor: result.resume.executor,
             confirmResumeIntent: result.resume.intent,
+            confirmResumeWorkflowFingerprint: workflowFingerprint,
             watchdog: true,
             onProgress: (stage) => publishArtifactEvent('progress', { stage, at: Date.now() }),
             onArtifact: (event) => publishArtifactEvent('artifact', { ...event, at: Date.now() }),

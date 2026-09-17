@@ -147,6 +147,58 @@ test('kicad: ERC 使用固定只读参数，解析临时报告并清理', async 
   }
 });
 
+test('kicad: KiCad10 sheets 报告仅有警告时 ok，有 error 时失败', async () => {
+  const { root, schematicPath } = fixture();
+  try {
+    const warnOnly = await runKiCadErc({
+      schematicPath,
+      executable: process.execPath,
+      workspaceRoot: root,
+      runner: async (_exe, args) => {
+        const reportPath = args[args.indexOf('--output') + 1] ?? '';
+        writeFileSync(reportPath, JSON.stringify({
+          sheets: [{
+            path: '/',
+            violations: [
+              { severity: 'warning', type: 'endpoint_off_grid', description: 'off grid' },
+              { severity: 'warning', type: 'lib_symbol_issues', description: 'lib' },
+            ],
+          }],
+        }), 'utf8');
+        return { stdout: '', stderr: '', exitCode: 5, durationMs: 2, timedOut: false };
+      },
+    });
+    assert.equal(warnOnly.ok, true);
+    assert.equal(warnOnly.errorCount, 0);
+    assert.equal(warnOnly.warningCount, 2);
+    assert.equal(warnOnly.violations.length, 2);
+
+    const withError = await runKiCadErc({
+      schematicPath,
+      executable: process.execPath,
+      workspaceRoot: root,
+      runner: async (_exe, args) => {
+        const reportPath = args[args.indexOf('--output') + 1] ?? '';
+        writeFileSync(reportPath, JSON.stringify({
+          sheets: [{
+            path: '/',
+            violations: [
+              { severity: 'error', type: 'pin_not_connected', description: 'open pin' },
+              { severity: 'warning', type: 'endpoint_off_grid', description: 'off grid' },
+            ],
+          }],
+        }), 'utf8');
+        return { stdout: '', stderr: '', exitCode: 5, durationMs: 2, timedOut: false };
+      },
+    });
+    assert.equal(withError.ok, false);
+    assert.equal(withError.errorCount, 1);
+    assert.equal(withError.warningCount, 1);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('kicad: 未验证 kicad-cli 时诚实失败，不把工具探测当 ERC 成功', async () => {
   const { root, schematicPath } = fixture();
   try {

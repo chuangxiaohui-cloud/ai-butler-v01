@@ -51,7 +51,7 @@ const EXECUTOR_PROFILE: Record<string, ConfirmExecutorProfile> = {
   pm_xmind: { label: '处理 Xmind 思维导图（读写本地文件）', risk: 'low', costKind: 'local' },
   layered_arch: { label: '生成分层架构图（LLM 整理后写入本地产物）', risk: 'low', costKind: 'content_generation' },
   archify: { label: '生成系统架构图（LLM 整理后写入本地产物）', risk: 'low', costKind: 'content_generation' },
-  mcp_agent: { label: '执行已取证的本地工程构建', risk: 'medium', costKind: 'local' },
+  mcp_agent: { label: '执行本地工程构建/EDA 写入/仿真', risk: 'high', costKind: 'local' },
 };
 
 export function isConfirmWriteExecutor(executor?: string): boolean {

@@ -1,0 +1,9 @@
+{
+  "name": "mcp-accept-dryrun",
+  "version": "0.1.0",
+  "triggers": ["MCP 验收预览", "mcp accept dry-run", "mcp:accept", "动作验收 dry-run", "E414 预览"],
+  "description": "MCP 构建/ERC/仿真动作验收 dry-run（默认不 --confirm，E414）",
+  "steps": ["npm run mcp:accept"],
+  "verify": ["git status --short"],
+  "permissions": ["command"]
+}

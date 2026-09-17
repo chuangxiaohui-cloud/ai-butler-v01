@@ -235,6 +235,61 @@ test('E409 EDA 与仿真只读节点严格映射工具契约和类别', async ()
   ]);
 });
 
+test('E413 写入与仿真节点映射风险与 opKind', async () => {
+  const plan: DomainWorkflowPlan = {
+    id: 'wf-write-sim',
+    projectId: 'project-0123456789abcdef',
+    completedRevisionCycles: 0,
+    nodes: [
+      {
+        id: 'kicad-edit',
+        kind: 'kicad_edit',
+        title: '编辑原理图',
+        inputRefs: ['projects/demo.kicad_sch'],
+        outputKind: 'eda_edit',
+        agentId: 'kicad',
+        toolName: 'kicad.EditSchematic',
+        args: { schematicPath: 'projects/demo.kicad_sch', edit: { kind: 'append_annotation', text: 'n' } },
+        targetFiles: ['projects/demo.kicad_sch'],
+        risk: 'write',
+        acceptance: '事务提交成功',
+        onFailure: 'handoff',
+      },
+      {
+        id: 'ltspice-sim',
+        kind: 'ltspice_simulate',
+        title: '批仿真',
+        inputRefs: ['projects/demo.asc'],
+        outputKind: 'simulation_result',
+        agentId: 'ltspice',
+        toolName: 'ltspice.RunSimulation',
+        args: { schematicPath: 'projects/demo.asc' },
+        targetFiles: ['projects/demo.asc'],
+        risk: 'simulate',
+        acceptance: '批仿真成功',
+        onFailure: 'handoff',
+      },
+    ],
+  };
+  const calls: Array<{ toolName?: string; category?: string; opKind?: string; retryCount?: number }> = [];
+  const result = await executeDomainWorkflow(plan, {
+    dispatch: async (_task, options) => {
+      calls.push({
+        toolName: options?.toolName,
+        category: options?.category,
+        opKind: options?.opKind,
+        retryCount: options?.retryCount,
+      });
+      return dispatchResult(options!.toolName!);
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(calls, [
+    { toolName: 'kicad.EditSchematic', category: 'eda', opKind: 'filegen', retryCount: 0 },
+    { toolName: 'ltspice.RunSimulation', category: 'simulation', opKind: 'compile', retryCount: 0 },
+  ]);
+});
+
 test('E409 节点 kind、agent、tool 不匹配时严格拒绝', async () => {
   const invalid: DomainWorkflowPlan = {
     id: 'wf-invalid-eda',

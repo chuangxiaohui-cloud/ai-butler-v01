@@ -110,6 +110,10 @@ export const PARAMS = {
   vlmTimeoutMs: 20_000,
   /** P-154 跨节点“构建→烧录→验证→修订”自动修订循环单任务上限（E401） */
   subAgentRevisionCycleLimit: 2,
+  /** P-155 成熟度复用率滑动观察窗（天；对齐 [P-25]「本周成熟度变化」，略宽于 7 天以稳住样本） */
+  maturityReuseWindowDays: 14,
+  /** P-156 滑动窗内最低回答事件数；不足则回退全量轨迹，避免稀疏高分虚抬 L2（E415） */
+  maturityReuseMinAnswers: 30,
   /** P-117 低置信二次取证总预算（对齐单目标抓取 8s 超时） */
   secondPassBudgetMs: 8_000,
   /** P-118 取证 PDF 解析大小上限 */
@@ -228,6 +232,8 @@ export const PARAM_IDS: Record<ParamKey, string> = {
   vlmImageMaxTokens: 'P-152',
   vlmTimeoutMs: 'P-153',
   subAgentRevisionCycleLimit: 'P-154',
+  maturityReuseWindowDays: 'P-155',
+  maturityReuseMinAnswers: 'P-156',
   secondPassBudgetMs: 'P-117',
   pdfParseMaxBytes: 'P-118',
   calibrationWindowDays: 'P-119',

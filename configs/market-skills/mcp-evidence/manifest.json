@@ -1,0 +1,9 @@
+{
+  "name": "mcp-evidence",
+  "version": "0.1.0",
+  "triggers": ["MCP 证据", "mcp evidence", "mcp:evidence", "五类 MCP 夹具", "E410 证据"],
+  "description": "五类专业 MCP 真实 stdio 最小夹具只读证据（E410）",
+  "steps": ["npm run mcp:evidence"],
+  "verify": ["git status --short"],
+  "permissions": ["command"]
+}

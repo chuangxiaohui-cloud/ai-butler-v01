@@ -1,0 +1,9 @@
+{
+  "name": "maturity-check",
+  "version": "0.1.0",
+  "triggers": ["成熟度自检", "maturity check", "maturity:check", "L0 L1 L2", "成熟度等级"],
+  "description": "成熟度轻量自检 L0-L3（[P-25]，E247/E249）",
+  "steps": ["npm run maturity:check"],
+  "verify": ["git status --short"],
+  "permissions": ["command"]
+}

@@ -943,6 +943,40 @@ test('pipeline: 命中已安装市场 Skill 触发词 → 直连执行（E243）
   assert.equal(r.skillName, 'bom-diff');
 });
 
+test('pipeline: option_clarify 时仍优先命中市场 Skill 触发词（写日报）', async () => {
+  const r = await pipeline(
+    '帮我写日报',
+    {
+      ...deps,
+      llm: undefined,
+      marketSkillRunner: {
+        listInstalledWithTriggers: () => [
+          {
+            name: 'docx-write',
+            triggers: ['写日报', '日报模板', '日报'],
+          },
+        ],
+        run: (name: string) =>
+          name === 'docx-write'
+            ? {
+                ok: true,
+                name: 'docx-write',
+                version: '0.1.0',
+                results: [
+                  { step: 'write', ok: true, status: 0, stdout: '已生成日报模板', stderr: '' },
+                ],
+                durationMs: 3,
+              }
+            : { ok: false, name, version: '', results: [], error: 'not found', durationMs: 0 },
+      },
+    },
+    { userId: 'u1' },
+  );
+  assert.ok(r.answer.includes('已生成日报模板'), r.answer);
+  assert.equal(r.skillName, 'docx-write');
+  assert.ok(!r.answer.includes('哪个方向'), r.answer);
+});
+
 test('pipeline: 市场 Skill 执行失败如实归因（E243）', async () => {
   const r = await pipeline(
     '帮我把这两个 BOM 对比一下差异',

@@ -1,0 +1,9 @@
+{
+  "name": "browser-status",
+  "version": "0.1.0",
+  "triggers": ["浏览器状态", "browser status", "CDP 状态", "调试端口状态"],
+  "description": "浏览器会话/CDP 状态查询（browser:status）",
+  "steps": ["npm run browser:status"],
+  "verify": ["git status --short"],
+  "permissions": ["command"]
+}

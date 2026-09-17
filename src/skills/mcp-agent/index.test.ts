@@ -8,17 +8,21 @@ import type { SkillDeps } from '../deps.js';
 import type { DispatchResult } from '../../mcp/dispatcher.js';
 import { deriveProjectId, ProjectProfileStore } from '../../mcp/project-profile-store.js';
 import type { ProjectMcpProfile } from '../../mcp/project-profile.js';
+import { WorkflowPlanStore } from '../../mcp/workflow-plan-store.js';
+import { fingerprintDomainWorkflowPlan } from '../../mcp/workflow-plan-fingerprint.js';
 
 const skill = createMcpAgentSkill();
 
 function depsWithSubAgent(
   dispatch: SkillDeps['subAgent'],
   projectProfiles?: SkillDeps['projectProfiles'],
+  workflowPlans?: SkillDeps['workflowPlans'],
 ): SkillDeps {
   return {
     callVLM: async () => '',
     subAgent: dispatch,
     ...(projectProfiles ? { projectProfiles } : {}),
+    ...(workflowPlans ? { workflowPlans } : {}),
   };
 }
 
@@ -148,6 +152,7 @@ test('mcp-agent: E408 未批准的 Keil build 只生成计划，不执行 build'
   const projectPath = join(root, 'demo.uvprojx');
   mkdirSync(root, { recursive: true });
   const store = installProfile(root, new ProjectProfileStore(join(root, 'profiles')));
+  const plans = new WorkflowPlanStore(join(root, 'plans.jsonl'));
   let calls = 0;
   try {
     const deps = depsWithSubAgent({
@@ -155,7 +160,7 @@ test('mcp-agent: E408 未批准的 Keil build 只生成计划，不执行 build'
         calls++;
         return runResult({ ok: true, agentId: 'keil', status: 'succeeded', handoff: { required: false } });
       },
-    }, store);
+    }, store, plans);
     const out = await skill.execute(
       {
         query: `请编译 Keil 工程 ${projectPath}`,
@@ -168,7 +173,72 @@ test('mcp-agent: E408 未批准的 Keil build 只生成计划，不执行 build'
     );
     assert.equal(calls, 0);
     assert.match(String(out.result), /批准/);
+    assert.match(String(out.result), /计划指纹/);
     assert.equal(out.artifacts?.[0]?.kind, 'mcp-domain-workflow-plan');
+    assert.equal(typeof out.artifacts?.[0]?.data.fingerprint, 'string');
+    assert.equal(plans.list().length, 1);
+    assert.equal(plans.list()[0]?.status, 'pending_approval');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('mcp-agent: E412 指纹漂移时批准恢复零 MCP 调用', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'mcp-agent-drift-'));
+  const projectPath = join(root, 'demo.uvprojx');
+  mkdirSync(root, { recursive: true });
+  const store = installProfile(root, new ProjectProfileStore(join(root, 'profiles')));
+  const plans = new WorkflowPlanStore(join(root, 'plans.jsonl'));
+  let calls = 0;
+  try {
+    const deps = depsWithSubAgent({
+      dispatch: async () => {
+        calls++;
+        return runResult({ ok: true, agentId: 'keil', status: 'succeeded', handoff: { required: false } });
+      },
+    }, store, plans);
+    const pending = await skill.execute(
+      {
+        query: `请编译 Keil 工程 ${projectPath}`,
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: { mcpWorkflowApproved: false, minimumObservedAt: 0, completedRevisionCycles: 0 },
+      },
+      deps,
+    );
+    const fingerprint = String(pending.artifacts?.[0]?.data.fingerprint ?? '');
+    assert.ok(fingerprint.length === 64);
+    // 篡改挂起指纹对应的计划节点语义，模拟画像/计划漂移
+    const record = plans.findByFingerprint(fingerprint);
+    assert.ok(record);
+    record!.plan.nodes[0]!.args = { ...record!.plan.nodes[0]!.args, target: 'Release' };
+    // 重新保存一个不同指纹的 pending，使旧指纹与当前重算计划不一致
+    const staleFingerprint = fingerprintDomainWorkflowPlan({
+      ...record!.plan,
+      nodes: record!.plan.nodes.map((node) => ({
+        ...node,
+        args: { ...node.args, target: 'Stale' },
+      })),
+    });
+    const out = await skill.execute(
+      {
+        query: `请编译 Keil 工程 ${projectPath}`,
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: {
+          mcpWorkflowApproved: true,
+          minimumObservedAt: 0,
+          completedRevisionCycles: 0,
+          workflowPlanFingerprint: staleFingerprint,
+        },
+      },
+      deps,
+    );
+    assert.equal(calls, 0);
+    assert.match(String(out.result), /指纹|漂移|重新/);
+    assert.equal(out.artifacts?.[0]?.data.resumeError, 'not_found');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -455,4 +525,136 @@ test('mcp-agent: LTspice 自然语言请求路由到仿真只读盘点', async (
   assert.equal(seenOptions?.opKind, undefined);
   assert.match(String(out.result), /LTspice 原理图只读盘点/);
   assert.equal(out.artifacts?.[0]?.kind, 'ltspice-schematic-profile');
+});
+
+test('mcp-agent: E411 烧录请求走硬件门禁且不调用子 Agent', async () => {
+  let dispatched = false;
+  const deps: SkillDeps = {
+    callVLM: async () => '',
+    subAgent: {
+      dispatch: async () => {
+        dispatched = true;
+        return runResult({ ok: true, agentId: 'keil', status: 'succeeded', handoff: { required: false } });
+      },
+    },
+  };
+  const out = await skill.execute(
+    { query: '把固件烧录到板子', attachmentSignals: [], rawFiles: [], memory: null },
+    deps,
+  );
+  assert.equal(dispatched, false);
+  assert.match(String(out.result), /缺少设备标识|未在白名单|零硬件/);
+  assert.equal(out.artifacts?.[0]?.kind, 'hardware-gate-decision');
+});
+
+test('mcp-agent: E411 无 subAgent 时串口请求仍返回门禁说明', async () => {
+  const out = await skill.execute(
+    {
+      query: '读一下 COM3 串口日志',
+      attachmentSignals: [],
+      rawFiles: [],
+      memory: null,
+      params: { deviceId: 'UART-1' },
+    },
+    { callVLM: async () => '', deviceAuth: { isAuthorized: () => false } },
+  );
+  assert.match(String(out.result), /未在白名单|零硬件/);
+  assert.equal(out.artifacts?.[0]?.kind, 'hardware-gate-decision');
+});
+
+test('mcp-agent: E413 KiCad 编辑未批准时挂起且零 MCP 调用', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'mcp-agent-kicad-edit-'));
+  const plans = new WorkflowPlanStore(join(root, 'plans.jsonl'));
+  let dispatched = false;
+  try {
+    const out = await skill.execute(
+      {
+        query: '请编辑 KiCad 原理图 projects/board/demo.kicad_sch 注解：E413',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      depsWithSubAgent({
+        dispatch: async () => {
+          dispatched = true;
+          return runResult({ ok: true, agentId: 'kicad', status: 'succeeded', handoff: { required: false } });
+        },
+      }, undefined, plans),
+    );
+    assert.equal(dispatched, false);
+    assert.match(String(out.result), /等待高风险确认|未修改任何文件/);
+    assert.equal(out.artifacts?.[0]?.kind, 'mcp-domain-workflow-plan');
+    assert.equal(plans.list()[0]?.status, 'pending_approval');
+    assert.equal(plans.list()[0]?.plan.nodes[0]?.kind, 'kicad_edit');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('mcp-agent: E413 LTspice 仿真批准后按计划执行', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'mcp-agent-ltspice-sim-'));
+  const plans = new WorkflowPlanStore(join(root, 'plans.jsonl'));
+  const calls: string[] = [];
+  try {
+    const pending = await skill.execute(
+      {
+        query: '请对 LTspice projects/analog/demo.asc 做仿真',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+      },
+      depsWithSubAgent({
+        dispatch: async (_q, options) => {
+          calls.push(String(options?.toolName));
+          return runResult({
+            ok: true,
+            agentId: 'ltspice',
+            status: 'succeeded',
+            output: JSON.stringify({
+              ok: true,
+              simulationExecuted: true,
+              schematicPath: 'projects/analog/demo.asc',
+              batchArgs: ['-b', 'projects/analog/demo.asc'],
+              outputFiles: [{ path: 'projects/analog/demo.raw', bytes: 4, sha256: 'abcd' }],
+            }),
+            handoff: { required: false },
+          });
+        },
+      }, undefined, plans),
+    );
+    const fingerprint = String((pending.artifacts?.[0]?.data as { fingerprint?: string })?.fingerprint ?? '');
+    assert.ok(fingerprint);
+    const out = await skill.execute(
+      {
+        query: '请对 LTspice projects/analog/demo.asc 做仿真',
+        attachmentSignals: [],
+        rawFiles: [],
+        memory: null,
+        params: { mcpWorkflowApproved: true, workflowPlanFingerprint: fingerprint },
+      },
+      depsWithSubAgent({
+        dispatch: async (_q, options) => {
+          calls.push(String(options?.toolName));
+          return runResult({
+            ok: true,
+            agentId: 'ltspice',
+            status: 'succeeded',
+            output: JSON.stringify({
+              ok: true,
+              simulationExecuted: true,
+              schematicPath: 'projects/analog/demo.asc',
+              batchArgs: ['-b', 'projects/analog/demo.asc'],
+              outputFiles: [{ path: 'projects/analog/demo.raw', bytes: 4, sha256: 'abcd' }],
+            }),
+            handoff: { required: false },
+          });
+        },
+      }, undefined, plans),
+    );
+    assert.deepEqual(calls, ['ltspice.RunSimulation']);
+    assert.match(String(out.result), /LTspice 仿真已完成/);
+    assert.equal(plans.list()[0]?.status, 'done');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

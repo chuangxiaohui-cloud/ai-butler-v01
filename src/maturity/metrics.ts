@@ -1,3 +1,5 @@
+import { PARAMS } from '../config/params.js';
+
 /**
  * 成熟度五维指标计算（§12.4 判据，[P-25] 轻量自检）
  * 纯函数：输入可注入的数据源快照，输出五维指标与 L0-L3 判定，不读 IO。
@@ -5,6 +7,7 @@
  * - 用户累积 Skill = 市场安装 Skill（预置不计数，§12.4 不自我夸大）
  * - 验收通过率 = accept / (accept + reject + correct)；n≥30 才做正式判定（对齐 E1 n=60 先例下限）
  * - 复用率 = 用户驱动 Skill 派发（direct + market_trigger）/ 回答事件；injected（上下文注入）不计入（E249 校准口径）
+ * - 复用率默认按 [P-155] 天滑动窗观测（对齐 [P-25]「本周成熟度变化」）；窗内回答 < [P-156] 时回退全量（E415）
  * - 证据链完整度由审查报告抽样输入（未抽样时输出 null，不预设结论）
  */
 
@@ -37,18 +40,24 @@ export interface MaturityReuseObs {
   answerEvents: number;
 }
 
-export interface MaturityReuseObs {
-  skillEvents: number;
-  answerEvents: number;
-}
+export type TrajectoryReuseEvent = {
+  type?: string;
+  timestamp?: number;
+  skill?: { kind?: string };
+};
 
 /** E249 校准口径：复用率只计用户驱动派发（direct/market_trigger），injected 上下文注入不计入 */
 export function countReuseEvents(
-  events: Array<{ type?: string; skill?: { kind?: string } }>,
+  events: TrajectoryReuseEvent[],
+  opts: { sinceTimestamp?: number } = {},
 ): MaturityReuseObs {
   let skillEvents = 0;
   let answerEvents = 0;
+  const since = opts.sinceTimestamp;
   for (const event of events) {
+    if (since !== undefined) {
+      if (typeof event.timestamp !== 'number' || event.timestamp < since) continue;
+    }
     if (event.type === 'answer') {
       answerEvents += 1;
     } else if (
@@ -59,6 +68,52 @@ export function countReuseEvents(
     }
   }
   return { skillEvents, answerEvents };
+}
+
+export interface MaturityReuseSelection extends MaturityReuseObs {
+  /** window = 滑动窗达标；lifetime = 窗内样本不足回退全量 */
+  source: 'window' | 'lifetime';
+  windowDays: number;
+  windowAnswerEvents: number;
+  minAnswers: number;
+}
+
+/**
+ * E415：优先用 [P-155] 天滑动窗；窗内回答事件 < [P-156] 时回退全量，避免稀疏高分窗虚抬等级。
+ * 缺省读取 PARAMS.maturityReuseWindowDays / maturityReuseMinAnswers。
+ */
+export function selectReuseObservation(
+  events: TrajectoryReuseEvent[],
+  opts: { windowDays?: number; minAnswers?: number; nowMs?: number } = {},
+): MaturityReuseSelection {
+  const windowDays = Math.max(
+    1,
+    Math.floor(opts.windowDays ?? PARAMS.maturityReuseWindowDays),
+  );
+  const minAnswers = Math.max(
+    1,
+    Math.floor(opts.minAnswers ?? PARAMS.maturityReuseMinAnswers),
+  );
+  const nowMs = opts.nowMs ?? Date.now();
+  const sinceTimestamp = nowMs - windowDays * 24 * 60 * 60 * 1000;
+  const window = countReuseEvents(events, { sinceTimestamp });
+  if (window.answerEvents >= minAnswers) {
+    return {
+      ...window,
+      source: 'window',
+      windowDays,
+      windowAnswerEvents: window.answerEvents,
+      minAnswers,
+    };
+  }
+  const lifetime = countReuseEvents(events);
+  return {
+    ...lifetime,
+    source: 'lifetime',
+    windowDays,
+    windowAnswerEvents: window.answerEvents,
+    minAnswers,
+  };
 }
 
 export interface MaturityEvidenceSample {
